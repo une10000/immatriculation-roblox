@@ -2,31 +2,29 @@ import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 
-# Configuration de la page
+# Configuration
 st.set_page_config(page_title="RCRP - Immatriculations", layout="centered")
 st.title("🚗 Système d'Immatriculation")
 
-# Connexion au Google Sheet
+# Connexion
 conn = st.connection("gsheets", type=GSheetsConnection)
-
-# Lecture des données (on force le rafraîchissement)
 df = conn.read(ttl=0)
-
-# Nettoyage automatique des noms de colonnes
 df.columns = [str(c).strip() for c in df.columns]
 
-# --- FORMULAIRE D'AJOUT ---
+# --- FORMULAIRE ---
 with st.expander("➕ Enregistrer un nouveau véhicule"):
     with st.form("inscription"):
         user = st.text_input("Nom d'utilisateur ROBLOX")
         marque = st.text_input("Marque du véhicule")
         v_type = st.text_input("Type de véhicule")
         couleur = st.text_input("Couleur du véhicule")
-        etat = st.selectbox("L'état de la plaque", ["Valide", "Périmée"])
+        # --- TA MODIFICATION ICI ---
+        etat = st.selectbox("État (State)", ["Californie", "Florida", "Liberty County", "New York", "Texas"])
+        # ----------------------------
         plaque = st.text_input("Numéro de la plaque")
-        sign = st.text_input("Signature (Nom d'utilisateur)")
+        sign = st.text_input("Signature")
         
-        submit = st.form_submit_button("Valider l'immatriculation")
+        submit = st.form_submit_button("Valider")
 
         if submit:
             new_row = pd.DataFrame([{
@@ -41,25 +39,26 @@ with st.expander("➕ Enregistrer un nouveau véhicule"):
             }])
             updated_df = pd.concat([df, new_row], ignore_index=True)
             conn.update(data=updated_df)
-            st.success("Immatriculation enregistrée !")
+            st.success("Enregistré !")
             st.rerun()
 
 st.divider()
 
-# --- LISTE ET SUPPRESSION ---
-st.subheader("Véhicules enregistrés")
+# --- RECHERCHE ET LISTE ---
+st.subheader("Base de données")
+search = st.text_input("🔍 Rechercher une plaque ou un pseudo")
 
 if not df.empty:
-    for index, row in df.iterrows():
+    # Filtrer les résultats si on écrit dans la barre de recherche
+    filtered_df = df[df.astype(str).apply(lambda x: search.lower() in x.str.lower().values, axis=1)]
+    
+    for index, row in filtered_df.iterrows():
         col1, col2 = st.columns([4, 1])
-        # Affichage simplifié pour éviter les erreurs de texte
-        info = f"{row.get('Numéro de la plaque', 'N/A')} | {row.get('Nom d\'utilisateur ROBLOX', 'Inconnu')}"
+        info = f"**{row.get('Numéro de la plaque', 'N/A')}** ({row.get('L\'état de la plaque', 'N/A')}) — {row.get('Nom d\'utilisateur ROBLOX', 'Inconnu')}"
         col1.write(info)
-        
         if col2.button("🗑️", key=f"btn_{index}"):
             df = df.drop(index)
             conn.update(data=df)
-            st.warning("Entrée supprimée.")
             st.rerun()
 else:
-    st.info("Aucun véhicule dans la base de données.")
+    st.info("Aucun véhicule enregistré.")
