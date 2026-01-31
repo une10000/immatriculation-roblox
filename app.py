@@ -44,8 +44,9 @@ with tabs[0]:
                 if u_reg and p_reg and c_reg:
                     new_row = pd.DataFrame([{"Horodateur": pd.Timestamp.now().strftime("%d/%m/%Y %H:%M"), "Nom d'utilisateur ROBLOX": u_reg, "Marque du véhicule": m_reg, "L'état de la plaque": e_reg, "Numéro de la plaque": p_reg, "CODE": str(c_reg)}])
                     conn.update(worksheet=nom_feuille_immat, data=pd.concat([df, new_row], ignore_index=True))
-                    st.success("Véhicule enregistré !")
+                    st.success("✅ Véhicule enregistré avec succès !")
                     st.rerun()
+                else: st.error("Veuillez remplir tous les champs.")
 
     st.divider()
     s_query = st.text_input("🔍 Rechercher véhicule (Pseudo, Plaque, Marque)").strip().upper()
@@ -54,17 +55,23 @@ with tabs[0]:
         display_df = df[mask]
         st.dataframe(display_df[[c for c in display_df.columns if c != "CODE"]], use_container_width=True)
         
+        # --- SECTION SUPPRESSION AVEC PSEUDOS ---
         with st.expander("⚙️ Supprimer ma fiche"):
             for idx, row in display_df.iterrows():
+                p_val = row.get("Numéro de la plaque", "N/A")
+                u_val = row.get("Nom d'utilisateur ROBLOX", "N/A")
+                
                 c1, c2, c3 = st.columns([3, 2, 1])
-                c1.write(f"🏷️ **{row['Numéro de la plaque']}**")
+                # Ajout du Pseudo ROBLOX ici :
+                c1.write(f"🏷️ **{p_val}** — 👤 **{u_val}**")
+                
                 i_code = c2.text_input("Code", key=f"del_{idx}", type="password", placeholder="Code secret", label_visibility="collapsed")
                 if c3.button("🗑️", key=f"btn_del_{idx}"):
                     if i_code == str(row.get("CODE")):
                         conn.update(worksheet=nom_feuille_immat, data=df.drop(idx))
-                        st.success("Supprimé !")
+                        st.toast(f"Fiche {p_val} supprimée", icon="🗑️")
                         st.rerun()
-                    else: st.error("Faux")
+                    else: st.error("Code incorrect")
 
 # ==========================================
 # ONGLET 2 : POINTS DE PERMIS
@@ -93,12 +100,11 @@ with tabs[1]:
             col1.metric("Points", f"{pts_actuels}/25")
             col2.write(f"**Discord:** {row.get('Nom Discord')}")
             
-            # Logique de couleur (accepte OUI et OK)
             if valid in ["OUI", "OK"]: col3.success("✅ VALIDE")
             elif valid == "DANGER": col3.warning("⚠️ DANGER")
             else: col3.error("🛑 INVALIDE")
 
-            # --- ZONE ADMIN POUR LES POINTS ---
+            # --- ZONE ADMIN ---
             with st.expander(f"⚙️ Gérer les points de {row.get('Nom Roblox')}"):
                 c_adm1, c_adm2, c_adm3 = st.columns([2, 1, 1])
                 auth_code = c_adm1.text_input("Code Admin", key=f"adm_code_{idx}", type="password", placeholder="Code")
@@ -106,24 +112,24 @@ with tabs[1]:
                 
                 if c_adm3.button("➖ Retirer", key=f"sub_{idx}"):
                     if auth_code == CODE_ADMIN_GENERAL:
-                        nouveau_solde = max(0, pts_actuels - nb_pts)
-                        df_pts.at[idx, "PTS"] = nouveau_solde
+                        n_solde = max(0, pts_actuels - nb_pts)
+                        df_pts.at[idx, "PTS"] = n_solde
                         conn.update(worksheet=nom_feuille_pts, data=df_pts)
-                        st.toast(f"Points retirés ! Nouveau solde : {nouveau_solde}", icon="📉")
+                        st.toast(f"Points retirés ! ({n_solde}/25)", icon="📉")
                         st.rerun()
-                    else: st.error("Code faux")
+                    else: st.error("Code Admin faux")
                 
                 if c_adm3.button("➕ Ajouter", key=f"add_{idx}"):
                     if auth_code == CODE_ADMIN_GENERAL:
-                        nouveau_solde = min(25, pts_actuels + nb_pts)
-                        df_pts.at[idx, "PTS"] = nouveau_solde
+                        n_solde = min(25, pts_actuels + nb_pts)
+                        df_pts.at[idx, "PTS"] = n_solde
                         conn.update(worksheet=nom_feuille_pts, data=df_pts)
-                        st.toast(f"Points ajoutés ! Nouveau solde : {nouveau_solde}", icon="📈")
+                        st.toast(f"Points ajoutés ! ({n_solde}/25)", icon="📈")
                         st.rerun()
-                    else: st.error("Code faux")
+                    else: st.error("Code Admin faux")
             st.divider()
     elif not df_pts.empty:
-        st.info("Recherchez un nom pour voir ou modifier ses points.")
+        st.info("Entrez un nom pour consulter ou modifier un dossier.")
 
 # --- VERSION ---
 st.markdown("<div style='position: fixed; left: 10px; bottom: 10px; color: grey; font-size: 12px;'>Version v2</div>", unsafe_allow_html=True)
