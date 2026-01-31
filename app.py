@@ -5,10 +5,8 @@ import pandas as pd
 st.set_page_config(page_title="RCRP - Immatriculations", layout="wide")
 
 # --- LOGO ET TITRE (LOGO EN HAUT) ---
-# Affichage du logo en premier
 st.image("https://cdn.discordapp.com/attachments/1441508709024006315/1467106550656270484/Capture_decran_2025-12-01_a_21.03.31.png?ex=697f2cf3&is=697ddb73&hm=dccb2edf0897deb4ccbdee22b3221134415bfed15b2cc808e439232c6f18bcab&", width=200)
 
-# Affichage du titre et sous-titre juste en dessous
 st.title("🚗 Système d'Immatriculation")
 st.write("### RCRP - Fichier Central de la Police")
 
@@ -82,7 +80,6 @@ if not df.empty:
         display_df = df
 
     if not display_df.empty:
-        # Affichage du tableau principal
         st.dataframe(display_df, use_container_width=True)
         
         st.write("---")
@@ -104,3 +101,21 @@ if not df.empty:
         st.warning("⚠️ Aucun résultat trouvé.")
 else:
     st.info("La base de données est vide.")
+
+# --- VERSION EN BAS À GAUCHE ---
+st.markdown(
+    """
+    <style>
+    .version-footer {
+        position: fixed;
+        left: 10px;
+        bottom: 10px;
+        color: grey;
+        font-size: 12px;
+        z-index: 100;
+    }
+    </style>
+    <div class="version-footer">Version v1.4</div>
+    """,
+    unsafe_allow_html=True
+)
