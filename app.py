@@ -38,7 +38,6 @@ liste_marques = sorted([
 with st.expander("➕ Enregistrer un véhicule"):
     with st.form("inscription"):
         user = st.text_input("Pseudo ROBLOX")
-        # Remplacement du texte libre par une liste déroulante pour les marques
         marque = st.selectbox("Marque du véhicule", liste_marques)
         etat = st.selectbox("État", liste_etats)
         plaque = st.text_input("Numéro de la plaque")
@@ -61,14 +60,16 @@ st.divider()
 
 # --- SYSTÈME DE RECHERCHE ---
 st.subheader("🔍 Recherche dans le fichier central")
-search_query = st.text_input("Rechercher par Pseudo ou Plaque", placeholder="Ex: ZOT-4865...").strip().upper()
+search_query = st.text_input("Rechercher par Pseudo, Plaque ou Marque", placeholder="Ex: Gemini, ZOT-4865...").strip().upper()
 
 # --- FILTRAGE ET AFFICHAGE ---
 if not df.empty:
     if search_query:
+        # Recherche étendue au Pseudo, à la Plaque et à la Marque
         mask = (
             df["Nom d'utilisateur ROBLOX"].astype(str).str.contains(search_query, case=False, na=False) | 
-            df["Numéro de la plaque"].astype(str).str.contains(search_query, case=False, na=False)
+            df["Numéro de la plaque"].astype(str).str.contains(search_query, case=False, na=False) |
+            df["Marque du véhicule"].astype(str).str.contains(search_query, case=False, na=False)
         )
         display_df = df[mask]
     else:
@@ -83,7 +84,7 @@ if not df.empty:
         for index, row in display_df.iterrows():
             p = row.get("Numéro de la plaque", "N/A")
             u = row.get("Nom d'utilisateur ROBLOX", "N/A")
-            m = row.get("Marque du véhicule", "Inconnue")
+            m = row.get("Marque du véhicule", "N/A")
             
             col_info, col_btn = st.columns([4, 1])
             col_info.write(f"🏷️ **{p}** — 👤 **{u}** ({m})")
