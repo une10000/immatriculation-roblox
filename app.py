@@ -15,7 +15,7 @@ try:
 except Exception:
     df = pd.DataFrame()
 
-# --- LISTE COMPLÈTE DES ÉTATS ---
+# --- LISTE DES ÉTATS ---
 liste_etats = sorted([
     "Alberta", "Beautiful British Columbia", "California", "Colorado", "Connecticut", 
     "Delaware", "Washington", "Florida", "Indiana", "Kansas", "Maine", "Manitoba", 
@@ -26,11 +26,20 @@ liste_etats = sorted([
     "Utah", "Vermont", "Virginia", "Wisconsin", "Yukon"
 ])
 
+# --- LISTE DES MARQUES RCRP ---
+liste_marques = sorted([
+    "Altstadt", "Bremen", "Comrader", "Delton", "Envy", "Eva", "Gam", "Gemini", 
+    "Hamotsu", "Katzmann", "Koritsu", "Land treker", "Lexima", "Linco", "Lyon", 
+    "Mita", "Mizuhara", "Nesumi", "Neptune", "Revasser", "Revolt", "Roamer", 
+    "Senseon", "Shatoku", "Sternauster", "Turismo", "Yosurai"
+])
+
 # --- FORMULAIRE D'ENREGISTREMENT ---
 with st.expander("➕ Enregistrer un véhicule"):
     with st.form("inscription"):
         user = st.text_input("Pseudo ROBLOX")
-        marque = st.text_input("Marque du véhicule")
+        # Remplacement du texte libre par une liste déroulante pour les marques
+        marque = st.selectbox("Marque du véhicule", liste_marques)
         etat = st.selectbox("État", liste_etats)
         plaque = st.text_input("Numéro de la plaque")
         
@@ -45,19 +54,17 @@ with st.expander("➕ Enregistrer un véhicule"):
                 }])
                 updated_df = pd.concat([df, new_row], ignore_index=True)
                 conn.update(worksheet=nom_feuille, data=updated_df)
-                st.success("Véhicule enregistré !")
+                st.success(f"Véhicule {marque} enregistré !")
                 st.rerun()
 
 st.divider()
 
 # --- SYSTÈME DE RECHERCHE ---
 st.subheader("🔍 Recherche dans le fichier central")
-# Barre de recherche simple
 search_query = st.text_input("Rechercher par Pseudo ou Plaque", placeholder="Ex: ZOT-4865...").strip().upper()
 
 # --- FILTRAGE ET AFFICHAGE ---
 if not df.empty:
-    # Création du tableau à afficher (soit filtré, soit complet)
     if search_query:
         mask = (
             df["Nom d'utilisateur ROBLOX"].astype(str).str.contains(search_query, case=False, na=False) | 
@@ -67,26 +74,25 @@ if not df.empty:
     else:
         display_df = df
 
-    # Affichage du tableau
     if not display_df.empty:
         st.dataframe(display_df, use_container_width=True)
         
         st.write("---")
         st.write("### ⚙️ Actions sur les résultats")
         
-        # On utilise des colonnes pour un rendu plus propre
         for index, row in display_df.iterrows():
             p = row.get("Numéro de la plaque", "N/A")
             u = row.get("Nom d'utilisateur ROBLOX", "N/A")
+            m = row.get("Marque du véhicule", "Inconnue")
             
             col_info, col_btn = st.columns([4, 1])
-            col_info.write(f"🏷️ **{p}** — 👤 **{u}**")
+            col_info.write(f"🏷️ **{p}** — 👤 **{u}** ({m})")
             
             if col_btn.button("🗑️ Supprimer", key=f"del_{index}"):
                 df_dropped = df.drop(index)
                 conn.update(worksheet=nom_feuille, data=df_dropped)
                 st.rerun()
     else:
-        st.warning("⚠️ Aucun résultat trouvé pour cette recherche.")
+        st.warning("⚠️ Aucun résultat trouvé.")
 else:
-    st.info("La base de données est actuellement vide.")
+    st.info("La base de données est vide.")
