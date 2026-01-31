@@ -8,7 +8,7 @@ st.title("🚗 Système d'Immatriculation")
 conn = st.connection("gsheets", type=GSheetsConnection)
 nom_feuille = "Copie de Immatriculations"
 
-# Lecture des données
+# --- LECTURE DES DONNÉES ---
 try:
     df = conn.read(worksheet=nom_feuille, ttl=0)
     df.columns = [str(c).strip() for c in df.columns]
@@ -26,12 +26,11 @@ liste_etats = sorted([
     "Utah", "Vermont", "Virginia", "Wisconsin", "Yukon"
 ])
 
-# --- FORMULAIRE ---
+# --- FORMULAIRE D'ENREGISTREMENT ---
 with st.expander("➕ Enregistrer un véhicule"):
     with st.form("inscription"):
         user = st.text_input("Pseudo ROBLOX")
         marque = st.text_input("Marque du véhicule")
-        # On utilise maintenant la variable liste_etats ici
         etat = st.selectbox("État", liste_etats)
         plaque = st.text_input("Numéro de la plaque")
         
@@ -51,28 +50,10 @@ with st.expander("➕ Enregistrer un véhicule"):
 
 st.divider()
 
-# --- AFFICHAGE ET SUPPRESSION ---
-st.subheader("Base de données")
+# --- SYSTÈME DE RECHERCHE ---
+st.subheader("🔍 Recherche dans le fichier central")
+search_query = st.text_input("Rechercher par Pseudo ou Plaque", placeholder="Ex: ZOT-4865 ou Ibrahim...").strip().upper()
 
+# --- FILTRAGE ET AFFICHAGE ---
 if not df.empty:
-    # On affiche le tableau pour voir toutes les colonnes
-    st.dataframe(df, use_container_width=True)
-    
-    st.write("---")
-    # Liste pour supprimer
-    for index, row in df.iterrows():
-        # On utilise .get pour éviter les erreurs si une colonne manque
-        p = row.get("Numéro de la plaque", "Sans Plaque")
-        u = row.get("Nom d'utilisateur ROBLOX", "Inconnu")
-        
-        c1, c2 = st.columns([5, 1])
-        c1.write(f"🏷️ Plaque: **{p}** | 👤 Proprio: **{u}**")
-        
-        if c2.button("🗑️ Effacer", key=f"del_{index}"):
-            # On supprime la ligne du tableau
-            df_dropped = df.drop(index)
-            # On renvoie le tableau entier SANS cette ligne à Google Sheets
-            conn.update(worksheet=nom_feuille, data=df_dropped)
-            st.rerun()
-else:
-    st.info("Aucune donnée trouvée. Vérifie tes titres en ligne 1 de ton Google Sheet.")
+    # On crée une copie filtrée du DataFrame si une recherche est active
