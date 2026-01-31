@@ -96,19 +96,13 @@ with tabs[1]:
             except:
                 pts_actuels = 0
             
-            # --- CALCUL DU STATUT v2.7 (Avec Emoji Croix Rouge ❌) ---
-            if pts_actuels >= 20:
-                st_label = "VALIDE"
-                st_icon = "✅"
-                st_color = "green"
-            elif pts_actuels >= 10:
-                st_label = "DANGER"
-                st_icon = "⚠️"
-                st_color = "orange"
+            # --- CALCUL DU STATUT v2.8 (Nouveaux Paliers) ---
+            if pts_actuels >= 14:
+                st_label, st_icon, st_color = "VALIDE", "✅", "green"
+            elif pts_actuels >= 1:
+                st_label, st_icon, st_color = "DANGER", "⚠️", "orange"
             else:
-                st_label = "INVALIDE"
-                st_icon = "❌" # Changement demandé : Panneau Stop -> Croix Rouge
-                st_color = "red"
+                st_label, st_icon, st_color = "INVALIDE", "❌", "red"
             
             st.markdown(f"### 👤 {row.get('Nom Roblox')}")
             col1, col2, col3 = st.columns([1, 1, 1])
@@ -132,8 +126,9 @@ with tabs[1]:
                         if auth_code == CODE_ADMIN_GENERAL:
                             nouveau = max(0, pts_actuels - nb_pts) if sub else min(25, pts_actuels + nb_pts)
                             
-                            if nouveau >= 20: n_statut = "VALIDE"
-                            elif nouveau >= 10: n_statut = "DANGER"
+                            # Calcul automatique pour le Sheets
+                            if nouveau >= 14: n_statut = "VALIDE"
+                            elif nouveau >= 1: n_statut = "DANGER"
                             else: n_statut = "INVALIDE"
                             
                             df_pts.at[idx, "PTS"] = nouveau
@@ -149,5 +144,5 @@ with tabs[1]:
     elif not df_pts.empty:
         st.info("Recherchez un nom pour agir sur le permis.")
 
-# --- VERSION v2.7 ---
-st.markdown("<div style='position: fixed; left: 10px; bottom: 10px; color: grey; font-size: 12px;'>Version v2.7</div>", unsafe_allow_html=True)
+# --- VERSION v2.8 ---
+st.markdown("<div style='position: fixed; left: 10px; bottom: 10px; color: grey; font-size: 12px;'>Version v2.8</div>", unsafe_allow_html=True)
