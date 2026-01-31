@@ -89,22 +89,27 @@ with tabs[1]:
 
         for idx, row in res.iterrows():
             pts_actuels = int(row.get("PTS", 0))
-            valid = str(row.get("Validité", "NON")).strip().upper()
+            
+            # --- LOGIQUE DE STATUT CORRIGÉE v2.3 ---
+            status_brut = str(row.get("Validité", "NON")).strip().upper()
             
             st.markdown(f"### 👤 {row.get('Nom Roblox')}")
             col1, col2, col3 = st.columns([1, 1, 1])
             col1.metric("Points", f"{pts_actuels}/25")
             col2.write(f"**Discord:** {row.get('Nom Discord')}")
             
-            if valid in ["OUI", "OK"]: col3.success("✅ VALIDE")
-            elif valid == "DANGER": col3.warning("⚠️ DANGER")
-            else: col3.error("🛑 INVALIDE")
+            # Reconnaissance de toutes les variantes de "Valide"
+            if status_brut in ["VALIDE", "OUI", "OK"]:
+                col3.success("✅ VALIDE")
+            elif status_brut == "DANGER":
+                col3.warning("⚠️ DANGER")
+            else:
+                col3.error("🛑 INVALIDE")
 
-            # --- ZONE ADMIN CORRIGÉE ---
             with st.expander(f"⚙️ Modifier les points de {row.get('Nom Roblox')}"):
                 with st.form(key=f"form_pts_{idx}"):
-                    auth_code = st.text_input("Code Admin", type="password", placeholder="Entrez le code")
-                    nb_pts = st.number_input("Nombre de points à modifier", min_value=1, max_value=25, value=1)
+                    auth_code = st.text_input("Code Admin", type="password", placeholder="Code")
+                    nb_pts = st.number_input("Points à modifier", min_value=1, max_value=25, value=1)
                     
                     c_btn1, c_btn2 = st.columns(2)
                     sub = c_btn1.form_submit_button("➖ Retirer")
@@ -117,12 +122,13 @@ with tabs[1]:
                             
                             df_pts.at[idx, "PTS"] = nouveau
                             conn.update(worksheet=nom_feuille_pts, data=df_pts)
-                            st.toast(f"Mise à jour réussie : {nouveau}/25", icon="✅")
+                            st.toast(f"Points mis à jour : {nouveau}/25", icon="✅")
                             st.rerun()
                         else:
                             st.error("Code Admin incorrect")
             st.divider()
     elif not df_pts.empty:
-        st.info("Entrez un nom pour consulter ou modifier un dossier.")
+        st.info("Recherchez un nom pour agir sur le permis.")
 
-st.markdown("<div style='position: fixed; left: 10px; bottom: 10px; color: grey; font-size: 12px;'>Version v2.2</div>", unsafe_allow_html=True)
+# --- VERSION MISE À JOUR v2.3 ---
+st.markdown("<div style='position: fixed; left: 10px; bottom: 10px; color: grey; font-size: 12px;'>Version v2.3</div>", unsafe_allow_html=True)
