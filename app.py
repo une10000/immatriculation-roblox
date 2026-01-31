@@ -12,7 +12,7 @@ nom_feuille = "Copie de Immatriculations"
 try:
     df = conn.read(worksheet=nom_feuille, ttl=0)
     df.columns = [str(c).strip() for c in df.columns]
-except:
+except Exception:
     df = pd.DataFrame()
 
 # --- LISTE COMPLÈTE DES ÉTATS ---
@@ -52,9 +52,41 @@ st.divider()
 
 # --- SYSTÈME DE RECHERCHE ---
 st.subheader("🔍 Recherche dans le fichier central")
+# Barre de recherche simple
 search_query = st.text_input("Rechercher par Pseudo ou Plaque", placeholder="Ex: ZOT-4865...").strip().upper()
 
 # --- FILTRAGE ET AFFICHAGE ---
 if not df.empty:
-    # On filtre les données selon la recherche
-    if search_query
+    # Création du tableau à afficher (soit filtré, soit complet)
+    if search_query:
+        mask = (
+            df["Nom d'utilisateur ROBLOX"].astype(str).str.contains(search_query, case=False, na=False) | 
+            df["Numéro de la plaque"].astype(str).str.contains(search_query, case=False, na=False)
+        )
+        display_df = df[mask]
+    else:
+        display_df = df
+
+    # Affichage du tableau
+    if not display_df.empty:
+        st.dataframe(display_df, use_container_width=True)
+        
+        st.write("---")
+        st.write("### ⚙️ Actions sur les résultats")
+        
+        # On utilise des colonnes pour un rendu plus propre
+        for index, row in display_df.iterrows():
+            p = row.get("Numéro de la plaque", "N/A")
+            u = row.get("Nom d'utilisateur ROBLOX", "N/A")
+            
+            col_info, col_btn = st.columns([4, 1])
+            col_info.write(f"🏷️ **{p}** — 👤 **{u}**")
+            
+            if col_btn.button("🗑️ Supprimer", key=f"del_{index}"):
+                df_dropped = df.drop(index)
+                conn.update(worksheet=nom_feuille, data=df_dropped)
+                st.rerun()
+    else:
+        st.warning("⚠️ Aucun résultat trouvé pour cette recherche.")
+else:
+    st.info("La base de données est actuellement vide.")
