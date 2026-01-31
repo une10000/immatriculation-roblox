@@ -127,7 +127,7 @@ with tabs[1]:
                             st.error("Code Admin incorrect")
             st.divider()
     elif not df_pts.empty:
-        st.info("Recherchez un nom pour agir sur le permis.")
+        st.info("Recherchez un nom pour vérifier la validité du permis.")
 
 # --- VERSION v2.4 ---
 st.markdown("<div style='position: fixed; left: 10px; bottom: 10px; color: grey; font-size: 12px;'>Version v2.4</div>", unsafe_allow_html=True)
