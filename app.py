@@ -27,7 +27,7 @@ liste_marques = sorted(["Altstadt", "Bremen", "Comrader", "Delton", "Envy", "Eva
 # --- FORMULAIRE D'ENREGISTREMENT ---
 with st.expander("➕ Enregistrer un véhicule"):
     with st.form("inscription"):
-        user = st.text_input("Pseudo ROBLOX")
+        user = st.text_input("Nom d'utilisateur ROBLOX")
         marque = st.selectbox("Marque du véhicule", liste_marques)
         etat = st.selectbox("État", liste_etats)
         plaque = st.text_input("Numéro de la plaque")
