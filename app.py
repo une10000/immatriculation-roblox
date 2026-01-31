@@ -45,10 +45,10 @@ with st.expander("➕ Enregistrer un véhicule"):
                 }])
                 updated_df = pd.concat([df, new_row], ignore_index=True)
                 conn.update(worksheet=nom_feuille, data=updated_df)
-                st.success("Véhicule enregistré ! Retenez bien votre code.")
+                st.success("Véhicule enregistré sur rcrpfr.ch !")
                 st.rerun()
             else:
-                st.error("Remplissez tous les champs (Pseudo, Plaque et Code Secret).")
+                st.error("Remplissez tous les champs.")
 
 st.divider()
 
@@ -66,14 +66,12 @@ if not df.empty:
         display_df = df
 
     if not display_df.empty:
-        # Affichage sans la colonne CODE
         cols_to_show = [c for c in display_df.columns if c != "CODE"]
         st.dataframe(display_df[cols_to_show], use_container_width=True)
         
         st.write("---")
         st.write("### ⚙️ Gestion de mes immatriculations")
-        st.info("Pour supprimer une plaque, entrez son code secret.")
-
+        
         for index, row in display_df.iterrows():
             p = row.get("Numéro de la plaque", "N/A")
             u = row.get("Nom d'utilisateur ROBLOX", "N/A")
@@ -81,7 +79,6 @@ if not df.empty:
             
             c1, c2, c3 = st.columns([3, 2, 1])
             c1.write(f"🏷️ **{p}** — 👤 **{u}**")
-            
             input_code = c2.text_input("Code", key=f"code_{index}", type="password", label_visibility="collapsed", placeholder="Code secret")
             
             if c3.button("🗑️ Effacer", key=f"btn_{index}"):
@@ -97,5 +94,5 @@ if not df.empty:
 else:
     st.info("La base de données est vide.")
 
-# --- VERSION ---
-st.markdown("<div style='position: fixed; left: 10px; bottom: 10px; color: grey; font-size: 12px;'>Version v1.5</div>", unsafe_allow_html=True)
+# --- VERSION FINALE v1.6 ---
+st.markdown("<div style='position: fixed; left: 10px; bottom: 10px; color: grey; font-size: 12px;'>Version v1.6 (Domaine Actif)</div>", unsafe_allow_html=True)
