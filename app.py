@@ -14,6 +14,9 @@ st.write("### RCRPFR - Base de données officielle")
 # Connexion aux Google Sheets
 conn = st.connection("gsheets", type=GSheetsConnection)
 
+# --- CONFIGURATION ADMIN ---
+CODE_ADMIN_GENERAL = "RCRP2026"  # <--- TON CODE SECRET ADMIN
+
 # --- NAVIGATION PAR ONGLETS ---
 tabs = st.tabs(["🚗 Immatriculations", "🪪 Points de Permis"])
 
@@ -22,115 +25,97 @@ tabs = st.tabs(["🚗 Immatriculations", "🪪 Points de Permis"])
 # ==========================================
 with tabs[0]:
     nom_feuille_immat = "Copie de Immatriculations"
-    
     try:
         df = conn.read(worksheet=nom_feuille_immat, ttl=0)
         df.columns = [str(c).strip() for c in df.columns]
-    except Exception:
-        df = pd.DataFrame()
+    except: df = pd.DataFrame()
 
     liste_etats = sorted(["Alberta", "Beautiful British Columbia", "California", "Colorado", "Connecticut", "Delaware", "Washington", "Florida", "Indiana", "Kansas", "Maine", "Manitoba", "Maryland", "Massachusetts", "Michigan", "Mississippi", "Montana", "New Brunswick", "New Hampshire", "New Jersey", "New York", "Newfoundland Labrador", "Nova Scotia", "Nuvanut", "Ohio", "Oklahoma", "Ontario", "Pennsylvania", "Prince Edward Island", "Quebec", "Rhode Island", "Saskatchewan", "South Carolina", "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Wisconsin", "Yukon"])
     liste_marques = sorted(["Altstadt", "Bremen", "Comrader", "Delton", "Envy", "Eva", "Gam", "Gemini", "Hamotsu", "Katzmann", "Koritsu", "Land treker", "Lexima", "Linco", "Lyon", "Mita", "Mizuhara", "Nesumi", "Neptune", "Revasser", "Revolt", "Roamer", "Senseon", "Shatoku", "Sternauster", "Turismo", "Yosurai"])
 
     with st.expander("➕ Enregistrer un véhicule"):
         with st.form("inscription"):
-            user = st.text_input("Nom d'utilisateur ROBLOX")
-            marque = st.selectbox("Marque du véhicule", liste_marques)
-            etat = st.selectbox("État", liste_etats)
-            plaque = st.text_input("Numéro de la plaque")
-            code_secret = st.text_input("Code secret (pour suppression)", type="password")
-            
+            u_reg = st.text_input("Nom d'utilisateur ROBLOX")
+            m_reg = st.selectbox("Marque du véhicule", liste_marques)
+            e_reg = st.selectbox("État", liste_etats)
+            p_reg = st.text_input("Numéro de la plaque")
+            c_reg = st.text_input("Code secret (pour suppression)", type="password")
             if st.form_submit_button("Valider"):
-                if user and plaque and code_secret:
-                    new_row = pd.DataFrame([{
-                        "Horodateur": pd.Timestamp.now().strftime("%d/%m/%Y %H:%M"),
-                        "Nom d'utilisateur ROBLOX": user,
-                        "Marque du véhicule": marque,
-                        "L'état de la plaque": etat,
-                        "Numéro de la plaque": plaque,
-                        "CODE": str(code_secret)
-                    }])
-                    updated_df = pd.concat([df, new_row], ignore_index=True)
-                    conn.update(worksheet=nom_feuille_immat, data=updated_df)
+                if u_reg and p_reg and c_reg:
+                    new_row = pd.DataFrame([{"Horodateur": pd.Timestamp.now().strftime("%d/%m/%Y %H:%M"), "Nom d'utilisateur ROBLOX": u_reg, "Marque du véhicule": m_reg, "L'état de la plaque": e_reg, "Numéro de la plaque": p_reg, "CODE": str(c_reg)}])
+                    conn.update(worksheet=nom_feuille_immat, data=pd.concat([df, new_row], ignore_index=True))
                     st.success("Véhicule enregistré !")
                     st.rerun()
-                else:
-                    st.error("Remplissez tous les champs.")
 
     st.divider()
-    st.subheader("🔍 Recherche de véhicules")
-    search_query = st.text_input("Rechercher par Pseudo, Plaque ou Marque", placeholder="Ex: Gemini, ZOT-4865...").strip().upper()
-
+    s_query = st.text_input("🔍 Rechercher véhicule (Pseudo, Plaque, Marque)").strip().upper()
     if not df.empty:
-        if search_query:
-            mask = (df["Nom d'utilisateur ROBLOX"].astype(str).str.contains(search_query, case=False, na=False) | 
-                    df["Numéro de la plaque"].astype(str).str.contains(search_query, case=False, na=False) |
-                    df["Marque du véhicule"].astype(str).str.contains(search_query, case=False, na=False))
-            display_df = df[mask]
-        else:
-            display_df = df
-
-        if not display_df.empty:
-            cols_to_show = [c for c in display_df.columns if c != "CODE"]
-            st.dataframe(display_df[cols_to_show], use_container_width=True)
-            
-            st.write("---")
-            st.write("### ⚙️ Gestion des fiches")
-            for index, row in display_df.iterrows():
-                p, u, real_code = row.get("Numéro de la plaque"), row.get("Nom d'utilisateur ROBLOX"), str(row.get("CODE", ""))
+        mask = df.apply(lambda r: r.astype(str).str.contains(s_query, case=False).any(), axis=1) if s_query else [True]*len(df)
+        display_df = df[mask]
+        st.dataframe(display_df[[c for c in display_df.columns if c != "CODE"]], use_container_width=True)
+        
+        with st.expander("⚙️ Supprimer ma fiche"):
+            for idx, row in display_df.iterrows():
                 c1, c2, c3 = st.columns([3, 2, 1])
-                c1.write(f"🏷️ **{p}** — 👤 **{u}**")
-                input_code = c2.text_input("Code", key=f"code_{index}", type="password", label_visibility="collapsed", placeholder="Code secret")
-                if c3.button("🗑️ Effacer", key=f"btn_{index}"):
-                    if input_code == real_code:
-                        df_dropped = df.drop(index)
-                        conn.update(worksheet=nom_feuille_immat, data=df_dropped)
-                        st.success("Supprimé !")
+                c1.write(f"🏷️ **{row['Numéro de la plaque']}**")
+                i_code = c2.text_input("Code", key=f"del_{idx}", type="password", placeholder="Code secret", label_visibility="collapsed")
+                if c3.button("🗑️", key=f"btn_del_{idx}"):
+                    if i_code == str(row.get("CODE")):
+                        conn.update(worksheet=nom_feuille_immat, data=df.drop(idx))
                         st.rerun()
-                    else: st.error("Code incorrect")
+                    else: st.error("Faux")
 
 # ==========================================
 # ONGLET 2 : POINTS DE PERMIS
 # ==========================================
 with tabs[1]:
-    st.subheader("🪪 Vérification des Points de Permis")
+    st.subheader("🪪 Gestion des Permis")
     nom_feuille_pts = "Points Permis"
-    
     try:
         df_pts = conn.read(worksheet=nom_feuille_pts, ttl=0)
         df_pts.columns = [str(c).strip() for c in df_pts.columns]
-    except:
-        df_pts = pd.DataFrame()
+    except: df_pts = pd.DataFrame()
 
-    search_pts = st.text_input("Rechercher un Nom Roblox ou Discord", key="search_pts_input").strip()
+    search_p = st.text_input("🔍 Rechercher conducteur (Roblox ou Discord)").strip()
 
-    if not df_pts.empty and search_pts:
-        mask_pts = (df_pts["Nom Discord"].astype(str).str.contains(search_pts, case=False, na=False) | 
-                    df_pts["Nom Roblox"].astype(str).str.contains(search_pts, case=False, na=False))
-        res = df_pts[mask_pts]
+    if not df_pts.empty and search_p:
+        mask_p = (df_pts["Nom Discord"].astype(str).str.contains(search_p, case=False, na=False) | 
+                  df_pts["Nom Roblox"].astype(str).str.contains(search_p, case=False, na=False))
+        res = df_pts[mask_p]
 
-        if not res.empty:
-            for _, row in res.iterrows():
-                pts = row.get("PTS", 0)
-                valid = str(row.get("Validité", "NON")).strip().upper()
+        for idx, row in res.iterrows():
+            pts_actuels = int(row.get("PTS", 0))
+            valid = str(row.get("Validité", "NON")).strip().upper()
+            
+            st.markdown(f"### 👤 {row.get('Nom Roblox')}")
+            col1, col2, col3 = st.columns([1, 1, 1])
+            col1.metric("Points", f"{pts_actuels}/25")
+            col2.write(f"**Discord:** {row.get('Nom Discord')}")
+            if valid in ["OUI", "OK"]: col3.success("✅ VALIDE")
+            elif valid == "DANGER": col3.warning("⚠️ DANGER")
+            else: col3.error("🛑 INVALIDE")
+
+            with st.expander(f"⚙️ Gérer les points de {row.get('Nom Roblox')}"):
+                c_adm1, c_adm2, c_adm3 = st.columns([2, 1, 1])
+                auth_code = c_adm1.text_input("Code Admin", key=f"adm_code_{idx}", type="password", placeholder="Code")
+                nb_pts = c_adm2.number_input("Nbr", min_value=1, max_value=25, key=f"val_{idx}")
                 
-                st.markdown(f"### 👤 {row.get('Nom Roblox')}")
-                c1, c2, c3 = st.columns(3)
-                c1.metric("Points restants", f"{pts}/25")
-                c2.write(f"**Discord:** {row.get('Nom Discord')}")
+                if c_adm3.button("➖ Retirer", key=f"sub_{idx}"):
+                    if auth_code == CODE_ADMIN_GENERAL:
+                        df_pts.at[idx, "PTS"] = max(0, pts_actuels - nb_pts)
+                        conn.update(worksheet=nom_feuille_pts, data=df_pts)
+                        st.rerun()
+                    else: st.error("Code faux")
                 
-                # Correction de la logique de couleur selon tes formules Sheets
-                if valid in ["OUI", "OK"]:
-                    c3.success(f"✅ PERMIS VALIDE ({valid})")
-                elif valid == "DANGER":
-                    c3.warning("⚠️ ATTENTION (DANGER)")
-                else:
-                    c3.error(f"🛑 PERMIS INVALIDE ({valid})")
-                st.divider()
-        else:
-            st.warning("Aucun dossier trouvé.")
+                if c_adm3.button("➕ Ajouter", key=f"add_{idx}"):
+                    if auth_code == CODE_ADMIN_GENERAL:
+                        df_pts.at[idx, "PTS"] = min(25, pts_actuels + nb_pts)
+                        conn.update(worksheet=nom_feuille_pts, data=df_pts)
+                        st.rerun()
+                    else: st.error("Code faux")
+            st.divider()
     elif not df_pts.empty:
-        st.info("Entrez un nom pour consulter le dossier.")
+        st.info("Recherchez un nom pour voir ou modifier ses points.")
 
-# --- VERSION ---
-st.markdown("<div style='position: fixed; left: 10px; bottom: 10px; color: grey; font-size: 12px;'>Version v2.1 (Domaine Actif - Fix Permis)</div>", unsafe_allow_html=True)
+# --- VERSION FINALE ---
+st.markdown("<div style='position: fixed; left: 10px; bottom: 10px; color: grey; font-size: 12px;'>Version v2</div>", unsafe_allow_html=True)
