@@ -31,8 +31,7 @@ with st.expander("➕ Enregistrer un véhicule"):
         marque = st.selectbox("Marque du véhicule", liste_marques)
         etat = st.selectbox("État", liste_etats)
         plaque = st.text_input("Numéro de la plaque")
-        # NOUVEAU : Code secret
-        code_secret = st.text_input("Code secret (pour pouvoir supprimer plus tard)", type="password", help="Choisissez un code simple pour effacer votre propre fiche plus tard.")
+        code_secret = st.text_input("Code secret (pour suppression)", type="password", help="Code obligatoire pour effacer votre fiche plus tard.")
         
         if st.form_submit_button("Valider"):
             if user and plaque and code_secret:
@@ -42,14 +41,14 @@ with st.expander("➕ Enregistrer un véhicule"):
                     "Marque du véhicule": marque,
                     "L'état de la plaque": etat,
                     "Numéro de la plaque": plaque,
-                    "CODE": code_secret  # On stocke le code dans une colonne cachée
+                    "CODE": str(code_secret)
                 }])
                 updated_df = pd.concat([df, new_row], ignore_index=True)
                 conn.update(worksheet=nom_feuille, data=updated_df)
-                st.success(f"Véhicule enregistré ! Retenez bien votre code.")
+                st.success("Véhicule enregistré ! Retenez bien votre code.")
                 st.rerun()
             else:
-                st.error("Veuillez remplir tous les champs, y compris le code secret.")
+                st.error("Remplissez tous les champs (Pseudo, Plaque et Code).")
 
 st.divider()
 
@@ -67,23 +66,23 @@ if not df.empty:
         display_df = df
 
     if not display_df.empty:
-        # On affiche le tableau (sans montrer la colonne CODE aux policiers)
+        # Affichage sans la colonne CODE
         cols_to_show = [c for c in display_df.columns if c != "CODE"]
         st.dataframe(display_df[cols_to_show], use_container_width=True)
         
         st.write("---")
         st.write("### ⚙️ Gestion de mes immatriculations")
-        st.info("Pour supprimer une de vos plaques, entrez son code secret.")
+        st.info("Pour supprimer une plaque, entrez son code secret.")
 
         for index, row in display_df.iterrows():
             p = row.get("Numéro de la plaque", "N/A")
+            u = row.get("Nom d'utilisateur ROBLOX", "N/A")
             real_code = str(row.get("CODE", ""))
             
             c1, c2, c3 = st.columns([3, 2, 1])
-            c1.write(f"🏷️ **{p}** ({row.get('Nom d'utilisateur ROBLOX')})")
+            c1.write(f"🏷️ **{p}** — 👤 **{u}**")
             
-            # Champ pour taper le code avant de supprimer
-            input_code = c2.text_input("Code secret", key=f"code_{index}", type="password", label_visibility="collapsed", placeholder="Entrez le code")
+            input_code = c2.text_input("Code", key=f"code_{index}", type="password", label_visibility="collapsed", placeholder="Code secret")
             
             if c3.button("🗑️ Effacer", key=f"btn_{index}"):
                 if input_code == real_code:
