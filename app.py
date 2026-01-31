@@ -15,7 +15,7 @@ st.write("### RCRPFR - Base de données officielle")
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 # --- CONFIGURATION ADMIN ---
-CODE_ADMIN_GENERAL = "RCRP2026"  # <--- TON CODE SECRET ADMIN
+CODE_ADMIN_GENERAL = "RCRPFR25-26"  # <--- TON CODE SECRET ADMIN
 
 # --- NAVIGATION PAR ONGLETS ---
 tabs = st.tabs(["🚗 Immatriculations", "🪪 Points de Permis"])
