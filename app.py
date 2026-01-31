@@ -5,18 +5,18 @@ import pandas as pd
 st.set_page_config(page_title="RCRP - Immatriculations", layout="wide")
 st.title("🚗 Système d'Immatriculation")
 
-# Connexion sécurisée
+# Connexion sécurisée au robot (Service Account)
 conn = st.connection("gsheets", type=GSheetsConnection)
 nom_feuille = "Copie de Immatriculations"
 
-# Lecture des données
+# Lecture des données en temps réel
 try:
     df = conn.read(worksheet=nom_feuille, ttl=0)
     df.columns = [str(c).strip() for c in df.columns]
 except:
     df = pd.DataFrame()
 
-# LA LISTE COMPLÈTE DE TES ÉTATS
+# Liste des états mise à jour (avec le Wisconsin !)
 liste_etats = sorted([
     "Alberta", "Beautiful British Columbia", "California", "Colorado", "Connecticut", 
     "Delaware", "Washington", "Florida", "Indiana", "Kansas", "Maine", "Manitoba", 
@@ -27,7 +27,7 @@ liste_etats = sorted([
     "Utah", "Vermont", "Virginia", "Wisconsin", "Yukon"
 ])
 
-# --- FORMULAIRE ---
+# --- FORMULAIRE D'ENREGISTREMENT ---
 with st.expander("➕ Enregistrer un nouveau véhicule"):
     with st.form("inscription"):
         c1, c2 = st.columns(2)
@@ -47,35 +47,38 @@ with st.expander("➕ Enregistrer un nouveau véhicule"):
                     "L'état de la plaque": etat,
                     "Numéro de la plaque": plaque
                 }])
+                # On ajoute la ligne et on renvoie tout à Google
                 updated_df = pd.concat([df, new_row], ignore_index=True)
                 conn.update(worksheet=nom_feuille, data=updated_df)
-                st.success("✅ Enregistré !")
+                st.success(f"Véhicule {plaque} enregistré avec succès !")
                 st.rerun()
+            else:
+                st.error("Remplis au moins le Pseudo et la Plaque !")
 
 st.divider()
 
-# --- AFFICHAGE ET SUPPRESSION ---
-st.subheader("Base de données (Feuille 3)")
-search = st.text_input("🔍 Rechercher une plaque ou un pseudo")
+# --- RECHERCHE ET SUPPRESSION ---
+st.subheader("Base de données")
+search = st.text_input("🔍 Rechercher (Plaque ou Pseudo)")
 
 if not df.empty:
-    # Filtre de recherche
+    # Filtrer selon la recherche
     mask = df.astype(str).apply(lambda x: search.lower() in x.str.lower().values, axis=1)
     df_filtered = df[mask]
     
-    # On affiche chaque ligne avec son bouton supprimer
+    # Affichage ligne par ligne avec bouton supprimer
     for index, row in df_filtered.iterrows():
-        col_txt, col_btn = st.columns([5, 1])
+        col_info, col_del = st.columns([5, 1])
         
         p = row.get("Numéro de la plaque", "N/A")
+        u = row.get("Nom d'utilisateur ROBLOX", "Inconnu")
         e = row.get("L'état de la plaque", "N/A")
-        u = row.get("Nom d'utilisateur ROBLOX", "N/A")
         
-        col_txt.write(f"🔹 **{p}** ({e}) — Membre: `{u}`")
+        col_info.write(f"🔹 **{p}** ({e}) — Propriétaire : `{u}`")
         
-        if col_btn.button("🗑️ Effacer", key=f"del_{index}"):
+        if col_del.button("🗑️ Effacer", key=f"del_{index}"):
             df_final = df.drop(index)
             conn.update(worksheet=nom_feuille, data=df_final)
             st.rerun()
 else:
-    st.info("La base est vide. Vérifie que tes titres en ligne 1 de ton Google Sheet sont corrects.")
+    st.info("Aucune donnée enregistrée pour le moment.")
