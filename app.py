@@ -1,6 +1,7 @@
 import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
+from datetime import datetime, timedelta
 
 # Configuration de la page
 st.set_page_config(page_title="RCRP - Fichier Central", layout="wide")
@@ -15,7 +16,7 @@ st.write("### RCRPFR - Base de données officielle")
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 # --- CONFIGURATION ADMIN ---
-CODE_ADMIN_GENERAL = "RCRPFR25-26"  # <--- TON CODE SECRET ADMIN
+CODE_ADMIN_GENERAL = "RCRPFR-25-26"  # Ton nouveau code mis à jour
 
 # --- NAVIGATION PAR ONGLETS ---
 tabs = st.tabs(["🚗 Immatriculations", "🪪 Points de Permis"])
@@ -42,7 +43,17 @@ with tabs[0]:
             c_reg = st.text_input("Code secret (pour suppression)", type="password")
             if st.form_submit_button("Valider"):
                 if u_reg and p_reg and c_reg:
-                    new_row = pd.DataFrame([{"Horodateur": pd.Timestamp.now().strftime("%d/%m/%Y %H:%M"), "Nom d'utilisateur ROBLOX": u_reg, "Marque du véhicule": m_reg, "L'état de la plaque": e_reg, "Numéro de la plaque": p_reg, "CODE": str(c_reg)}])
+                    # Correction de l'heure : UTC + 1 heure
+                    heure_locale = (datetime.now() + timedelta(hours=1)).strftime("%d/%m/%Y %H:%M")
+                    
+                    new_row = pd.DataFrame([{
+                        "Horodateur": heure_locale, 
+                        "Nom d'utilisateur ROBLOX": u_reg, 
+                        "Marque du véhicule": m_reg, 
+                        "L'état de la plaque": e_reg, 
+                        "Numéro de la plaque": p_reg, 
+                        "CODE": str(c_reg)
+                    }])
                     conn.update(worksheet=nom_feuille_immat, data=pd.concat([df, new_row], ignore_index=True))
                     st.success("✅ Véhicule enregistré avec succès !")
                     st.rerun()
@@ -55,17 +66,15 @@ with tabs[0]:
         display_df = df[mask]
         st.dataframe(display_df[[c for c in display_df.columns if c != "CODE"]], use_container_width=True)
         
-        # --- SECTION SUPPRESSION AVEC PSEUDOS ---
         with st.expander("⚙️ Supprimer ma fiche"):
             for idx, row in display_df.iterrows():
                 p_val = row.get("Numéro de la plaque", "N/A")
                 u_val = row.get("Nom d'utilisateur ROBLOX", "N/A")
                 
                 c1, c2, c3 = st.columns([3, 2, 1])
-                # Ajout du Pseudo ROBLOX ici :
                 c1.write(f"🏷️ **{p_val}** — 👤 **{u_val}**")
                 
-                i_code = c2.text_input("Code", key=f"del_{idx}", type="password", placeholder="Code secret", label_visibility="collapsed")
+                i_code = c2.text_input("Code", key=f"del_{idx}", type="password", placeholder="Code", label_visibility="collapsed")
                 if c3.button("🗑️", key=f"btn_del_{idx}"):
                     if i_code == str(row.get("CODE")):
                         conn.update(worksheet=nom_feuille_immat, data=df.drop(idx))
@@ -104,7 +113,6 @@ with tabs[1]:
             elif valid == "DANGER": col3.warning("⚠️ DANGER")
             else: col3.error("🛑 INVALIDE")
 
-            # --- ZONE ADMIN ---
             with st.expander(f"⚙️ Gérer les points de {row.get('Nom Roblox')}"):
                 c_adm1, c_adm2, c_adm3 = st.columns([2, 1, 1])
                 auth_code = c_adm1.text_input("Code Admin", key=f"adm_code_{idx}", type="password", placeholder="Code")
@@ -132,4 +140,4 @@ with tabs[1]:
         st.info("Entrez un nom pour consulter ou modifier un dossier.")
 
 # --- VERSION ---
-st.markdown("<div style='position: fixed; left: 10px; bottom: 10px; color: grey; font-size: 12px;'>Version v2</div>", unsafe_allow_html=True)
+st.markdown("<div style='position: fixed; left: 10px; bottom: 10px; color: grey; font-size: 12px;'>Version v2.1</div>", unsafe_allow_html=True)
