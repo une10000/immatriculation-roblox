@@ -91,25 +91,35 @@ with tabs[1]:
         res = df_pts[mask_p]
 
         for idx, row in res.iterrows():
-            pts_actuels = int(row.get("PTS", 0))
+            # Correction : S'assurer que les points sont bien un nombre
+            try:
+                pts_actuels = int(row.get("PTS", 0))
+            except:
+                pts_actuels = 0
             
-            # --- LOGIQUE DE STATUT AUTOMATIQUE v2.6 ---
-            # Le site calcule le statut lui-même au lieu de dépendre d'une formule Sheets instable
+            # --- CALCUL DU STATUT EN TEMPS RÉEL v2.6 ---
             if pts_actuels >= 20:
-                status_final = "VALIDE"
-                color_func = st.success
+                st_label = "VALIDE"
+                st_icon = "✅"
+                st_color = "green"
             elif pts_actuels >= 10:
-                status_final = "DANGER"
-                color_func = st.warning
+                st_label = "DANGER"
+                st_icon = "⚠️"
+                st_color = "orange"
             else:
-                status_final = "INVALIDE"
-                color_func = st.error
+                st_label = "INVALIDE"
+                st_icon = "🛑"
+                st_color = "red"
             
             st.markdown(f"### 👤 {row.get('Nom Roblox')}")
             col1, col2, col3 = st.columns([1, 1, 1])
             col1.metric("Points", f"{pts_actuels}/25")
             col2.write(f"**Discord:** {row.get('Nom Discord')}")
-            color_func(f"✅ {status_final}")
+            
+            # Affichage stylisé du statut
+            if st_color == "green": col3.success(f"{st_icon} {st_label}")
+            elif st_color == "orange": col3.warning(f"{st_icon} {st_label}")
+            else: col3.error(f"{st_icon} {st_label}")
 
             with st.expander(f"⚙️ Modifier les points de {row.get('Nom Roblox')}"):
                 with st.form(key=f"form_pts_{idx}"):
@@ -122,21 +132,18 @@ with tabs[1]:
 
                     if sub or add:
                         if auth_code == CODE_ADMIN_GENERAL:
-                            # Calcul du nouveau solde
-                            if sub: nouveau = max(0, pts_actuels - nb_pts)
-                            else: nouveau = min(25, pts_actuels + nb_pts)
+                            nouveau = max(0, pts_actuels - nb_pts) if sub else min(25, pts_actuels + nb_pts)
                             
-                            # Calcul automatique du nouveau statut pour l'envoyer au Sheets
+                            # On définit le mot qui ira dans le Sheets pour que ce soit propre
                             if nouveau >= 20: n_statut = "VALIDE"
                             elif nouveau >= 10: n_statut = "DANGER"
                             else: n_statut = "INVALIDE"
                             
-                            # Mise à jour des deux colonnes dans le DataFrame
                             df_pts.at[idx, "PTS"] = nouveau
                             df_pts.at[idx, "Validité"] = n_statut
                             
                             conn.update(worksheet=nom_feuille_pts, data=df_pts)
-                            st.toast(f"Points mis à jour : {nouveau}/25", icon="✅")
+                            st.toast(f"Mise à jour réussie : {nouveau}/25", icon="✅")
                             time.sleep(0.5)
                             st.rerun()
                         else:
@@ -145,5 +152,5 @@ with tabs[1]:
     elif not df_pts.empty:
         st.info("Recherchez un nom pour agir sur le permis.")
 
-# --- VERSION MISE À JOUR v2.6 ---
+# --- VERSION v2.6 ---
 st.markdown("<div style='position: fixed; left: 10px; bottom: 10px; color: grey; font-size: 12px;'>Version v2.6</div>", unsafe_allow_html=True)
