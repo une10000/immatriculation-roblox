@@ -52,8 +52,9 @@ st.divider()
 
 # --- SYSTÈME DE RECHERCHE ---
 st.subheader("🔍 Recherche dans le fichier central")
-search_query = st.text_input("Rechercher par Pseudo ou Plaque", placeholder="Ex: ZOT-4865 ou Ibrahim...").strip().upper()
+search_query = st.text_input("Rechercher par Pseudo ou Plaque", placeholder="Ex: ZOT-4865...").strip().upper()
 
 # --- FILTRAGE ET AFFICHAGE ---
 if not df.empty:
-    # On crée une copie filtrée du DataFrame si une recherche est active
+    # On filtre les données selon la recherche
+    if search_query
