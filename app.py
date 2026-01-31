@@ -59,7 +59,7 @@ with tabs[0]:
                         "CODE": str(c_reg)
                     }])
                     conn.update(worksheet=nom_feuille_immat, data=pd.concat([df, new_row], ignore_index=True))
-                    st.success(f"✅ Véhicule enregistré !")
+                    st.success("✅ Véhicule enregistré !")
                     time.sleep(1)
                     st.rerun()
 
@@ -72,16 +72,21 @@ with tabs[0]:
         
         st.markdown("### 🛠️ Gérer mes fiches")
         for idx, row in display_df.iterrows():
-            with st.expander(f"⚙️ Modifier / Supprimer : {row.get('Numéro de la plaque')} ({row.get('Nom d'utilisateur ROBLOX')})"):
+            # CORRECTION SYNTAXE LIGNE 75
+            label_expander = f"⚙️ Modifier / Supprimer : {row.get('Numéro de la plaque')} ({row.get('Nom d\'utilisateur ROBLOX')})"
+            with st.expander(label_expander):
                 c_auth = st.text_input("Ton code secret", key=f"auth_{idx}", type="password")
                 
                 col_mod1, col_mod2 = st.columns(2)
                 with col_mod1:
-                    new_m = st.selectbox("Marque", liste_marques, index=liste_marques.index(row['Marque du véhicule']) if row['Marque du véhicule'] in liste_marques else 0, key=f"m_{idx}")
-                    new_e = st.selectbox("État", liste_etats, index=liste_etats.index(row["L'état de la plaque"]) if row["L'état de la plaque"] in liste_etats else 0, key=f"e_{idx}")
+                    m_val = row.get('Marque du véhicule', '')
+                    new_m = st.selectbox("Marque", liste_marques, index=liste_marques.index(m_val) if m_val in liste_marques else 0, key=f"m_{idx}")
+                    e_val = row.get("L'état de la plaque", '')
+                    new_e = st.selectbox("État", liste_etats, index=liste_etats.index(e_val) if e_val in liste_etats else 0, key=f"e_{idx}")
                 with col_mod2:
-                    new_p = st.text_input("Plaque", value=row['Numéro de la plaque'], key=f"p_{idx}")
-                    new_a = st.selectbox("Assurance", liste_assurances, index=liste_assurances.index(row['Assurance']) if row['Assurance'] in liste_assurances else 0, key=f"a_{idx}")
+                    new_p = st.text_input("Plaque", value=row.get('Numéro de la plaque', ''), key=f"p_{idx}")
+                    a_val = row.get('Assurance', 'Non assuré')
+                    new_a = st.selectbox("Assurance", liste_assurances, index=liste_assurances.index(a_val) if a_val in liste_assurances else 0, key=f"a_{idx}")
                 
                 b1, b2 = st.columns(2)
                 if b1.button("💾 Enregistrer modifications", key=f"save_{idx}"):
@@ -105,7 +110,7 @@ with tabs[0]:
                     else: st.error("Code incorrect")
 
 # ==========================================
-# ONGLET 2 : POINTS DE PERMIS (Inchangé)
+# ONGLET 2 : POINTS DE PERMIS
 # ==========================================
 with tabs[1]:
     st.subheader("🪪 Gestion des Permis")
@@ -115,30 +120,51 @@ with tabs[1]:
         df_pts.columns = [str(c).strip() for c in df_pts.columns]
     except: df_pts = pd.DataFrame()
 
-    search_p = st.text_input("🔍 Rechercher conducteur").strip()
+    search_p = st.text_input("🔍 Rechercher conducteur (Roblox)").strip()
     if not df_pts.empty and search_p:
         mask_p = (df_pts["Nom Roblox"].astype(str).str.contains(search_p, case=False, na=False))
         res = df_pts[mask_p]
         for idx, row in res.iterrows():
-            pts_actuels = int(row.get("PTS", 0))
+            try: pts_actuels = int(row.get("PTS", 0))
+            except: pts_actuels = 0
+            
+            # --- CORRECTION VISUELLE STATUT ---
+            if pts_actuels >= 14: st_label, st_icon, st_color = "VALIDE", "✅", "green"
+            elif pts_actuels >= 1: st_label, st_icon, st_color = "DANGER", "⚠️", "orange"
+            else: st_label, st_icon, st_color = "INVALIDE", "❌", "red"
+            
             st.markdown(f"### 👤 {row.get('Nom Roblox')}")
-            c_p1, c_p2 = st.columns(2)
-            c_p1.metric("Points", f"{pts_actuels}/25")
-            with st.expander("⚙️ Modifier"):
+            col1, col2, col3 = st.columns([1, 1, 1])
+            col1.metric("Points", f"{pts_actuels}/25")
+            
+            if st_color == "green": col3.success(f"{st_icon} {st_label}")
+            elif st_color == "orange": col3.warning(f"{st_icon} {st_label}")
+            else: col3.error(f"{st_icon} {st_label}")
+
+            with st.expander(f"⚙️ Modifier les points de {row.get('Nom Roblox')}"):
                 with st.form(key=f"f_pts_{idx}"):
                     auth = st.text_input("Code Admin", type="password")
-                    nb = st.number_input("Nombre", min_value=1, max_value=25, value=1)
-                    sub = st.form_submit_button("Retirer")
-                    add = st.form_submit_button("Ajouter")
+                    nb = st.number_input("Nombre de points", min_value=1, max_value=25, value=1)
+                    cb1, cb2 = st.columns(2)
+                    sub = cb1.form_submit_button("➖ Retirer")
+                    add = cb2.form_submit_button("➕ Ajouter")
                     if (sub or add) and auth == CODE_ADMIN_GENERAL:
                         nouveau = max(0, pts_actuels - nb) if sub else min(25, pts_actuels + nb)
+                        # Calcul statut pour Google Sheets
+                        if nouveau >= 14: n_statut = "VALIDE"
+                        elif nouveau >= 1: n_statut = "DANGER"
+                        else: n_statut = "INVALIDE"
                         df_pts.at[idx, "PTS"] = nouveau
+                        df_pts.at[idx, "Validité"] = n_statut
                         conn.update(worksheet=nom_feuille_pts, data=df_pts)
+                        st.toast("Succès", icon="✅")
+                        time.sleep(0.5)
                         st.rerun()
+                    elif (sub or add): st.error("Code Admin incorrect")
             st.divider()
 
 # ==========================================
-# ONGLET 3 : BANQUE 🏦 (Inchangé)
+# ONGLET 3 : BANQUE 🏦
 # ==========================================
 with tabs[2]:
     st.subheader("💰 Banque Centrale de RCRP")
@@ -148,31 +174,48 @@ with tabs[2]:
         df_bank.columns = [str(c).strip() for c in df_bank.columns]
     except: df_bank = pd.DataFrame(columns=["Nom Roblox", "Solde"])
 
-    with st.expander("✨ Ouvrir un compte (15 000 $)"):
+    with st.expander("✨ Pas encore de compte ? Ouvre le tien ici !"):
         with st.form("pub_reg"):
-            n_u = st.text_input("Nom Roblox")
+            n_u = st.text_input("Nom Roblox").strip()
             if st.form_submit_button("Confirmer"):
-                if n_u and (df_bank.empty or n_u.lower() not in df_bank["Nom Roblox"].str.lower().values):
-                    new_acc = pd.DataFrame([{"Nom Roblox": n_u, "Solde": 15000.0}])
-                    conn.update(worksheet=nom_feuille_banque, data=pd.concat([df_bank, new_acc], ignore_index=True))
-                    st.rerun()
-
-    st.divider()
-    search_b = st.text_input("🔍 Rechercher solde").strip()
-    if not df_bank.empty and search_b:
-        mask_b = df_bank["Nom Roblox"].astype(str).str.contains(search_b, case=False, na=False)
-        for idx, row in df_bank[mask_b].iterrows():
-            solde = float(row.get("Solde", 0))
-            st.markdown(f"### 👤 {row.get('Nom Roblox')}")
-            st.metric("Solde", f"{solde:,.0f} $".replace(",", " "))
-            with st.expander("🛡️ Admin"):
-                with st.form(key=f"f_bank_{idx}"):
-                    a_b = st.text_input("Code Admin", type="password")
-                    m_b = st.number_input("Montant", min_value=0.0)
-                    if st.form_submit_button("Appliquer") and a_b == CODE_ADMIN_GENERAL:
-                        df_bank.at[idx, "Solde"] = solde + m_b # (Simplifié pour l'exemple)
-                        conn.update(worksheet=nom_feuille_banque, data=df_bank)
+                if n_u:
+                    if not df_bank.empty and n_u.lower() in df_bank["Nom Roblox"].str.lower().values:
+                        st.error("❌ Ce compte existe déjà.")
+                    else:
+                        new_acc = pd.DataFrame([{"Nom Roblox": n_u, "Solde": 15000.0}])
+                        conn.update(worksheet=nom_feuille_banque, data=pd.concat([df_bank, new_acc], ignore_index=True))
+                        st.success(f"Bienvenue {n_u} !")
+                        time.sleep(1)
                         st.rerun()
 
-# --- VERSION v3.7 ---
-st.markdown("<div style='position: fixed; left: 10px; bottom: 10px; color: grey; font-size: 12px;'>Version v3.7 - Modif Immat</div>", unsafe_allow_html=True)
+    st.divider()
+    search_b = st.text_input("🔍 Rechercher solde (Nom Roblox)").strip()
+    if not df_bank.empty and search_b:
+        mask_b = df_bank["Nom Roblox"].astype(str).str.contains(search_b, case=False, na=False)
+        res_b = df_bank[mask_b]
+        for idx, row in res_b.iterrows():
+            try: solde_actuel = float(row.get("Solde", 0))
+            except: solde_actuel = 0.0
+            st.markdown(f"### 👤 {row.get('Nom Roblox')}")
+            st.metric("Solde", f"{solde_actuel:,.0f} $".replace(",", " "))
+            
+            with st.expander("🛡️ Admin (Amendes / Salaires)"):
+                with st.form(key=f"f_bank_{idx}"):
+                    a_b = st.text_input("Code Admin", type="password")
+                    m_b = st.number_input("Montant", min_value=0.0, step=500.0)
+                    col_b1, col_b2 = st.columns(2)
+                    ret_b = col_b1.form_submit_button("📉 Retirer")
+                    dep_b = col_b2.form_submit_button("📈 Ajouter")
+                    
+                    if (ret_b or dep_b) and a_b == CODE_ADMIN_GENERAL:
+                        n_solde = solde_actuel - m_b if ret_b else solde_actuel + m_b
+                        df_bank.at[idx, "Solde"] = n_solde
+                        conn.update(worksheet=nom_feuille_banque, data=df_bank)
+                        st.toast("Transaction effectuée")
+                        time.sleep(0.5)
+                        st.rerun()
+                    elif (ret_b or dep_b): st.error("Code Admin incorrect")
+            st.divider()
+
+# --- VERSION v3.8 ---
+st.markdown("<div style='position: fixed; left: 10px; bottom: 10px; color: grey; font-size: 12px;'>Version v3.8 - Fix Syntax & Icons</div>", unsafe_allow_html=True)
