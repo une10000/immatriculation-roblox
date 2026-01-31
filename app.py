@@ -48,7 +48,7 @@ with st.expander("➕ Enregistrer un véhicule"):
                 st.success("Véhicule enregistré ! Retenez bien votre code.")
                 st.rerun()
             else:
-                st.error("Remplissez tous les champs (Pseudo, Plaque et Code).")
+                st.error("Remplissez tous les champs (Pseudo, Plaque et Code Secret).")
 
 st.divider()
 
