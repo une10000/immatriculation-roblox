@@ -15,12 +15,24 @@ try:
 except:
     df = pd.DataFrame()
 
+# --- LISTE COMPLÈTE DES ÉTATS ---
+liste_etats = sorted([
+    "Alberta", "Beautiful British Columbia", "California", "Colorado", "Connecticut", 
+    "Delaware", "Washington", "Florida", "Indiana", "Kansas", "Maine", "Manitoba", 
+    "Maryland", "Massachusetts", "Michigan", "Mississippi", "Montana", "New Brunswick", 
+    "New Hampshire", "New Jersey", "New York", "Newfoundland Labrador", "Nova Scotia", 
+    "Nuvanut", "Ohio", "Oklahoma", "Ontario", "Pennsylvania", "Prince Edward Island", 
+    "Quebec", "Rhode Island", "Saskatchewan", "South Carolina", "Tennessee", "Texas", 
+    "Utah", "Vermont", "Virginia", "Wisconsin", "Yukon"
+])
+
 # --- FORMULAIRE ---
 with st.expander("➕ Enregistrer un véhicule"):
     with st.form("inscription"):
         user = st.text_input("Pseudo ROBLOX")
         marque = st.text_input("Marque du véhicule")
-        etat = st.selectbox("État", ["Alberta", "Quebec", "Ontario", "New York", "California"])
+        # On utilise maintenant la variable liste_etats ici
+        etat = st.selectbox("État", liste_etats)
         plaque = st.text_input("Numéro de la plaque")
         
         if st.form_submit_button("Valider"):
