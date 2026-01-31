@@ -2,6 +2,7 @@ import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 from datetime import datetime, timedelta
+import time
 
 # Configuration de la page
 st.set_page_config(page_title="RCRP - Fichier Central", layout="wide")
@@ -47,6 +48,7 @@ with tabs[0]:
                     new_row = pd.DataFrame([{"Horodateur": heure_locale, "Nom d'utilisateur ROBLOX": u_reg, "Marque du véhicule": m_reg, "L'état de la plaque": e_reg, "Numéro de la plaque": p_reg, "CODE": str(c_reg)}])
                     conn.update(worksheet=nom_feuille_immat, data=pd.concat([df, new_row], ignore_index=True))
                     st.success("✅ Véhicule enregistré !")
+                    time.sleep(1)
                     st.rerun()
 
     st.divider()
@@ -67,6 +69,7 @@ with tabs[0]:
                     if i_code == str(row.get("CODE")):
                         conn.update(worksheet=nom_feuille_immat, data=df.drop(idx))
                         st.toast(f"Fiche supprimée", icon="🗑️")
+                        time.sleep(1)
                         st.rerun()
 
 # ==========================================
@@ -90,21 +93,23 @@ with tabs[1]:
         for idx, row in res.iterrows():
             pts_actuels = int(row.get("PTS", 0))
             
-            # --- LOGIQUE DE STATUT CORRIGÉE v2.3 ---
-            status_brut = str(row.get("Validité", "NON")).strip().upper()
+            # --- LOGIQUE DE STATUT AUTOMATIQUE v2.6 ---
+            # Le site calcule le statut lui-même au lieu de dépendre d'une formule Sheets instable
+            if pts_actuels >= 20:
+                status_final = "VALIDE"
+                color_func = st.success
+            elif pts_actuels >= 10:
+                status_final = "DANGER"
+                color_func = st.warning
+            else:
+                status_final = "INVALIDE"
+                color_func = st.error
             
             st.markdown(f"### 👤 {row.get('Nom Roblox')}")
             col1, col2, col3 = st.columns([1, 1, 1])
             col1.metric("Points", f"{pts_actuels}/25")
             col2.write(f"**Discord:** {row.get('Nom Discord')}")
-            
-            # Reconnaissance de toutes les variantes de "Valide"
-            if status_brut in ["VALIDE", "OUI", "OK"]:
-                col3.success("✅ VALIDE")
-            elif status_brut == "DANGER":
-                col3.warning("⚠️ DANGER")
-            else:
-                col3.error("🛑 INVALIDE")
+            color_func(f"✅ {status_final}")
 
             with st.expander(f"⚙️ Modifier les points de {row.get('Nom Roblox')}"):
                 with st.form(key=f"form_pts_{idx}"):
@@ -117,18 +122,28 @@ with tabs[1]:
 
                     if sub or add:
                         if auth_code == CODE_ADMIN_GENERAL:
+                            # Calcul du nouveau solde
                             if sub: nouveau = max(0, pts_actuels - nb_pts)
                             else: nouveau = min(25, pts_actuels + nb_pts)
                             
+                            # Calcul automatique du nouveau statut pour l'envoyer au Sheets
+                            if nouveau >= 20: n_statut = "VALIDE"
+                            elif nouveau >= 10: n_statut = "DANGER"
+                            else: n_statut = "INVALIDE"
+                            
+                            # Mise à jour des deux colonnes dans le DataFrame
                             df_pts.at[idx, "PTS"] = nouveau
+                            df_pts.at[idx, "Validité"] = n_statut
+                            
                             conn.update(worksheet=nom_feuille_pts, data=df_pts)
                             st.toast(f"Points mis à jour : {nouveau}/25", icon="✅")
+                            time.sleep(0.5)
                             st.rerun()
                         else:
                             st.error("Code Admin incorrect")
             st.divider()
     elif not df_pts.empty:
-        st.info("Recherchez un nom pour vérifier la valibité du permis.")
+        st.info("Recherchez un nom pour agir sur le permis.")
 
-# --- VERSION MISE À JOUR v2.3 ---
-st.markdown("<div style='position: fixed; left: 10px; bottom: 10px; color: grey; font-size: 12px;'>Version v2.3</div>", unsafe_allow_html=True)
+# --- VERSION MISE À JOUR v2.6 ---
+st.markdown("<div style='position: fixed; left: 10px; bottom: 10px; color: grey; font-size: 12px;'>Version v2.6</div>", unsafe_allow_html=True)
