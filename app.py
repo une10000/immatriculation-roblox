@@ -2,6 +2,7 @@ import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 
+# Configuration de la page
 st.set_page_config(page_title="RCRP - Fichier Central", layout="wide")
 
 # --- LOGO ET TITRE ---
@@ -10,7 +11,7 @@ st.image("https://cdn.discordapp.com/attachments/1441508709024006315/14671065506
 st.title("🚓 Fichier Central de la Police")
 st.write("### RCRPFR - Base de données officielle")
 
-# Connexion Google Sheets
+# Connexion aux Google Sheets
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 # --- NAVIGATION PAR ONGLETS ---
@@ -74,7 +75,7 @@ with tabs[0]:
             st.dataframe(display_df[cols_to_show], use_container_width=True)
             
             st.write("---")
-            st.write("### ⚙️ Gestion")
+            st.write("### ⚙️ Gestion des fiches")
             for index, row in display_df.iterrows():
                 p, u, real_code = row.get("Numéro de la plaque"), row.get("Nom d'utilisateur ROBLOX"), str(row.get("CODE", ""))
                 c1, c2, c3 = st.columns([3, 2, 1])
@@ -104,7 +105,6 @@ with tabs[1]:
     search_pts = st.text_input("Rechercher un Nom Roblox ou Discord", key="search_pts_input").strip()
 
     if not df_pts.empty and search_pts:
-        # Recherche dans les colonnes Nom Discord ou Nom Roblox
         mask_pts = (df_pts["Nom Discord"].astype(str).str.contains(search_pts, case=False, na=False) | 
                     df_pts["Nom Roblox"].astype(str).str.contains(search_pts, case=False, na=False))
         res = df_pts[mask_pts]
@@ -112,25 +112,25 @@ with tabs[1]:
         if not res.empty:
             for _, row in res.iterrows():
                 pts = row.get("PTS", 0)
-                valid = row.get("Validité", "NON")
+                valid = str(row.get("Validité", "NON")).strip().upper()
                 
-                # Interface propre pour les points
                 st.markdown(f"### 👤 {row.get('Nom Roblox')}")
                 c1, c2, c3 = st.columns(3)
                 c1.metric("Points restants", f"{pts}/25")
                 c2.write(f"**Discord:** {row.get('Nom Discord')}")
                 
-                if valid == "OUI":
-                    c3.success("✅ PERMIS VALIDE")
+                # Correction de la logique de couleur selon tes formules Sheets
+                if valid in ["OUI", "OK"]:
+                    c3.success(f"✅ PERMIS VALIDE ({valid})")
                 elif valid == "DANGER":
                     c3.warning("⚠️ ATTENTION (DANGER)")
                 else:
-                    c3.error("🛑 PERMIS INVALIDE")
+                    c3.error(f"🛑 PERMIS INVALIDE ({valid})")
                 st.divider()
         else:
-            st.warning("Aucun dossier trouvé pour ce nom.")
+            st.warning("Aucun dossier trouvé.")
     elif not df_pts.empty:
-        st.info("Entrez un nom pour consulter le dossier du conducteur.")
+        st.info("Entrez un nom pour consulter le dossier.")
 
 # --- VERSION ---
-st.markdown("<div style='position: fixed; left: 10px; bottom: 10px; color: grey; font-size: 12px;'>Version v2.0 (Système Multi-Fiches)</div>", unsafe_allow_html=True)
+st.markdown("<div style='position: fixed; left: 10px; bottom: 10px; color: grey; font-size: 12px;'>Version v2.1 (Domaine Actif - Fix Permis)</div>", unsafe_allow_html=True)
