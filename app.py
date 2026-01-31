@@ -5,6 +5,7 @@ import pandas as pd
 st.set_page_config(page_title="RCRP - Immatriculations", layout="wide")
 st.title("🚗 Système d'Immatriculation")
 
+# Connexion sécurisée
 conn = st.connection("gsheets", type=GSheetsConnection)
 nom_feuille = "Copie de Immatriculations"
 
@@ -15,15 +16,29 @@ try:
 except:
     df = pd.DataFrame()
 
+# LA LISTE COMPLÈTE DE TES ÉTATS
+liste_etats = sorted([
+    "Alberta", "Beautiful British Columbia", "California", "Colorado", "Connecticut", 
+    "Delaware", "Washington", "Florida", "Indiana", "Kansas", "Maine", "Manitoba", 
+    "Maryland", "Massachusetts", "Michigan", "Mississippi", "Montana", "New Brunswick", 
+    "New Hampshire", "New Jersey", "New York", "Newfoundland Labrador", "Nova Scotia", 
+    "Nuvanut", "Ohio", "Oklahoma", "Ontario", "Pennsylvania", "Prince Edward Island", 
+    "Quebec", "Rhode Island", "Saskatchewan", "South Carolina", "Tennessee", "Texas", 
+    "Utah", "Vermont", "Virginia", "Wisconsin", "Yukon"
+])
+
 # --- FORMULAIRE ---
-with st.expander("➕ Enregistrer un véhicule"):
+with st.expander("➕ Enregistrer un nouveau véhicule"):
     with st.form("inscription"):
-        user = st.text_input("Pseudo ROBLOX")
-        marque = st.text_input("Marque du véhicule")
-        etat = st.selectbox("État", ["Alberta", "Quebec", "Ontario", "New York", "California"])
-        plaque = st.text_input("Numéro de la plaque")
+        c1, c2 = st.columns(2)
+        user = c1.text_input("Pseudo ROBLOX")
+        marque = c2.text_input("Marque du véhicule")
         
-        if st.form_submit_button("Valider"):
+        c3, c4 = st.columns(2)
+        plaque = c3.text_input("Numéro de la plaque")
+        etat = c4.selectbox("État / Province", liste_etats)
+        
+        if st.form_submit_button("Valider l'immatriculation"):
             if user and plaque:
                 new_row = pd.DataFrame([{
                     "Horodateur": pd.Timestamp.now().strftime("%d/%m/%Y %H:%M"),
@@ -34,33 +49,33 @@ with st.expander("➕ Enregistrer un véhicule"):
                 }])
                 updated_df = pd.concat([df, new_row], ignore_index=True)
                 conn.update(worksheet=nom_feuille, data=updated_df)
-                st.success("Véhicule enregistré !")
+                st.success("✅ Enregistré !")
                 st.rerun()
 
 st.divider()
 
 # --- AFFICHAGE ET SUPPRESSION ---
-st.subheader("Base de données")
+st.subheader("Base de données (Feuille 3)")
+search = st.text_input("🔍 Rechercher une plaque ou un pseudo")
 
 if not df.empty:
-    # On affiche le tableau pour voir toutes les colonnes
-    st.dataframe(df, use_container_width=True)
+    # Filtre de recherche
+    mask = df.astype(str).apply(lambda x: search.lower() in x.str.lower().values, axis=1)
+    df_filtered = df[mask]
     
-    st.write("---")
-    # Liste pour supprimer
-    for index, row in df.iterrows():
-        # On utilise .get pour éviter les erreurs si une colonne manque
-        p = row.get("Numéro de la plaque", "Sans Plaque")
-        u = row.get("Nom d'utilisateur ROBLOX", "Inconnu")
+    # On affiche chaque ligne avec son bouton supprimer
+    for index, row in df_filtered.iterrows():
+        col_txt, col_btn = st.columns([5, 1])
         
-        c1, c2 = st.columns([5, 1])
-        c1.write(f"🏷️ Plaque: **{p}** | 👤 Proprio: **{u}**")
+        p = row.get("Numéro de la plaque", "N/A")
+        e = row.get("L'état de la plaque", "N/A")
+        u = row.get("Nom d'utilisateur ROBLOX", "N/A")
         
-        if c2.button("🗑️ Effacer", key=f"del_{index}"):
-            # On supprime la ligne du tableau
-            df_dropped = df.drop(index)
-            # On renvoie le tableau entier SANS cette ligne à Google Sheets
-            conn.update(worksheet=nom_feuille, data=df_dropped)
+        col_txt.write(f"🔹 **{p}** ({e}) — Membre: `{u}`")
+        
+        if col_btn.button("🗑️ Effacer", key=f"del_{index}"):
+            df_final = df.drop(index)
+            conn.update(worksheet=nom_feuille, data=df_final)
             st.rerun()
 else:
-    st.info("Aucune donnée trouvée. Vérifie tes titres en ligne 1 de ton Google Sheet.")
+    st.info("La base est vide. Vérifie que tes titres en ligne 1 de ton Google Sheet sont corrects.")
