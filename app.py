@@ -141,7 +141,7 @@ with tabs[2]:
 
     with st.expander("✨ Pas encore de compte ? Ouvre le tien ici !"):
         with st.form("public_register"):
-            new_user = st.text_input("Ton nom Roblox( ne pas faire de doublons ) ").strip()
+            new_user = st.text_input("Ton nom Roblox ( ne pas faire de doublons ) ").strip()
             st.info("Solde de bienvenue : 15 000 $")
             if st.form_submit_button("Confirmer l'ouverture"):
                 if new_user:
