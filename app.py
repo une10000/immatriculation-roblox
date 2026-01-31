@@ -16,7 +16,7 @@ st.write("### RCRPFR - Base de données officielle")
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 # --- CONFIGURATION ADMIN ---
-CODE_ADMIN_GENERAL = "RCRPFR-25-26"  # Ton nouveau code mis à jour
+CODE_ADMIN_GENERAL = "RCRPFR-25-26"
 
 # --- NAVIGATION PAR ONGLETS ---
 tabs = st.tabs(["🚗 Immatriculations", "🪪 Points de Permis"])
@@ -43,21 +43,11 @@ with tabs[0]:
             c_reg = st.text_input("Code secret (pour suppression)", type="password")
             if st.form_submit_button("Valider"):
                 if u_reg and p_reg and c_reg:
-                    # Correction de l'heure : UTC + 1 heure
                     heure_locale = (datetime.now() + timedelta(hours=1)).strftime("%d/%m/%Y %H:%M")
-                    
-                    new_row = pd.DataFrame([{
-                        "Horodateur": heure_locale, 
-                        "Nom d'utilisateur ROBLOX": u_reg, 
-                        "Marque du véhicule": m_reg, 
-                        "L'état de la plaque": e_reg, 
-                        "Numéro de la plaque": p_reg, 
-                        "CODE": str(c_reg)
-                    }])
+                    new_row = pd.DataFrame([{"Horodateur": heure_locale, "Nom d'utilisateur ROBLOX": u_reg, "Marque du véhicule": m_reg, "L'état de la plaque": e_reg, "Numéro de la plaque": p_reg, "CODE": str(c_reg)}])
                     conn.update(worksheet=nom_feuille_immat, data=pd.concat([df, new_row], ignore_index=True))
-                    st.success("✅ Véhicule enregistré avec succès !")
+                    st.success("✅ Véhicule enregistré !")
                     st.rerun()
-                else: st.error("Veuillez remplir tous les champs.")
 
     st.divider()
     s_query = st.text_input("🔍 Rechercher véhicule (Pseudo, Plaque, Marque)").strip().upper()
@@ -70,17 +60,14 @@ with tabs[0]:
             for idx, row in display_df.iterrows():
                 p_val = row.get("Numéro de la plaque", "N/A")
                 u_val = row.get("Nom d'utilisateur ROBLOX", "N/A")
-                
                 c1, c2, c3 = st.columns([3, 2, 1])
                 c1.write(f"🏷️ **{p_val}** — 👤 **{u_val}**")
-                
                 i_code = c2.text_input("Code", key=f"del_{idx}", type="password", placeholder="Code", label_visibility="collapsed")
                 if c3.button("🗑️", key=f"btn_del_{idx}"):
                     if i_code == str(row.get("CODE")):
                         conn.update(worksheet=nom_feuille_immat, data=df.drop(idx))
-                        st.toast(f"Fiche {p_val} supprimée", icon="🗑️")
+                        st.toast(f"Fiche supprimée", icon="🗑️")
                         st.rerun()
-                    else: st.error("Code incorrect")
 
 # ==========================================
 # ONGLET 2 : POINTS DE PERMIS
@@ -113,31 +100,29 @@ with tabs[1]:
             elif valid == "DANGER": col3.warning("⚠️ DANGER")
             else: col3.error("🛑 INVALIDE")
 
-            with st.expander(f"⚙️ Gérer les points de {row.get('Nom Roblox')}"):
-                c_adm1, c_adm2, c_adm3 = st.columns([2, 1, 1])
-                auth_code = c_adm1.text_input("Code Admin", key=f"adm_code_{idx}", type="password", placeholder="Code")
-                nb_pts = c_adm2.number_input("Nbr", min_value=1, max_value=25, key=f"val_{idx}")
-                
-                if c_adm3.button("➖ Retirer", key=f"sub_{idx}"):
-                    if auth_code == CODE_ADMIN_GENERAL:
-                        n_solde = max(0, pts_actuels - nb_pts)
-                        df_pts.at[idx, "PTS"] = n_solde
-                        conn.update(worksheet=nom_feuille_pts, data=df_pts)
-                        st.toast(f"Points retirés ! ({n_solde}/25)", icon="📉")
-                        st.rerun()
-                    else: st.error("Code Admin faux")
-                
-                if c_adm3.button("➕ Ajouter", key=f"add_{idx}"):
-                    if auth_code == CODE_ADMIN_GENERAL:
-                        n_solde = min(25, pts_actuels + nb_pts)
-                        df_pts.at[idx, "PTS"] = n_solde
-                        conn.update(worksheet=nom_feuille_pts, data=df_pts)
-                        st.toast(f"Points ajoutés ! ({n_solde}/25)", icon="📈")
-                        st.rerun()
-                    else: st.error("Code Admin faux")
+            # --- ZONE ADMIN CORRIGÉE ---
+            with st.expander(f"⚙️ Modifier les points de {row.get('Nom Roblox')}"):
+                with st.form(key=f"form_pts_{idx}"):
+                    auth_code = st.text_input("Code Admin", type="password", placeholder="Entrez le code")
+                    nb_pts = st.number_input("Nombre de points à modifier", min_value=1, max_value=25, value=1)
+                    
+                    c_btn1, c_btn2 = st.columns(2)
+                    sub = c_btn1.form_submit_button("➖ Retirer")
+                    add = c_btn2.form_submit_button("➕ Ajouter")
+
+                    if sub or add:
+                        if auth_code == CODE_ADMIN_GENERAL:
+                            if sub: nouveau = max(0, pts_actuels - nb_pts)
+                            else: nouveau = min(25, pts_actuels + nb_pts)
+                            
+                            df_pts.at[idx, "PTS"] = nouveau
+                            conn.update(worksheet=nom_feuille_pts, data=df_pts)
+                            st.toast(f"Mise à jour réussie : {nouveau}/25", icon="✅")
+                            st.rerun()
+                        else:
+                            st.error("Code Admin incorrect")
             st.divider()
     elif not df_pts.empty:
         st.info("Entrez un nom pour consulter ou modifier un dossier.")
 
-# --- VERSION ---
-st.markdown("<div style='position: fixed; left: 10px; bottom: 10px; color: grey; font-size: 12px;'>Version v2.1</div>", unsafe_allow_html=True)
+st.markdown("<div style='position: fixed; left: 10px; bottom: 10px; color: grey; font-size: 12px;'>Version v2.2</div>", unsafe_allow_html=True)
