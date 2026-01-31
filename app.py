@@ -3,7 +3,17 @@ from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 
 st.set_page_config(page_title="RCRP - Immatriculations", layout="wide")
-st.title("🚗 Système d'Immatriculation")
+
+# --- LOGO ET TITRE ---
+col1, col2 = st.columns([1, 6])
+
+with col1:
+    # Ton logo Discord
+    st.image("https://cdn.discordapp.com/attachments/1441508709024006315/1467106550656270484/Capture_decran_2025-12-01_a_21.03.31.png?ex=697f2cf3&is=697ddb73&hm=dccb2edf0897deb4ccbdee22b3221134415bfed15b2cc808e439232c6f18bcab&", width=120)
+
+with col2:
+    st.title("Système d'Immatriculation")
+    st.write("RCRP - Fichier Central de la Police")
 
 conn = st.connection("gsheets", type=GSheetsConnection)
 nom_feuille = "Copie de Immatriculations"
@@ -65,7 +75,6 @@ search_query = st.text_input("Rechercher par Pseudo, Plaque ou Marque", placehol
 # --- FILTRAGE ET AFFICHAGE ---
 if not df.empty:
     if search_query:
-        # Recherche étendue au Pseudo, à la Plaque et à la Marque
         mask = (
             df["Nom d'utilisateur ROBLOX"].astype(str).str.contains(search_query, case=False, na=False) | 
             df["Numéro de la plaque"].astype(str).str.contains(search_query, case=False, na=False) |
