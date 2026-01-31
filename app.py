@@ -2,6 +2,7 @@ import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 from datetime import datetime, timedelta
+import time # Importation nécessaire pour le petit délai de sécurité
 
 # Configuration de la page
 st.set_page_config(page_title="RCRP - Fichier Central", layout="wide")
@@ -47,6 +48,7 @@ with tabs[0]:
                     new_row = pd.DataFrame([{"Horodateur": heure_locale, "Nom d'utilisateur ROBLOX": u_reg, "Marque du véhicule": m_reg, "L'état de la plaque": e_reg, "Numéro de la plaque": p_reg, "CODE": str(c_reg)}])
                     conn.update(worksheet=nom_feuille_immat, data=pd.concat([df, new_row], ignore_index=True))
                     st.success("✅ Véhicule enregistré !")
+                    time.sleep(1)
                     st.rerun()
 
     st.divider()
@@ -67,6 +69,7 @@ with tabs[0]:
                     if i_code == str(row.get("CODE")):
                         conn.update(worksheet=nom_feuille_immat, data=df.drop(idx))
                         st.toast(f"Fiche supprimée", icon="🗑️")
+                        time.sleep(1)
                         st.rerun()
 
 # ==========================================
@@ -89,8 +92,6 @@ with tabs[1]:
 
         for idx, row in res.iterrows():
             pts_actuels = int(row.get("PTS", 0))
-            
-            # --- LOGIQUE DE STATUT CORRIGÉE v2.3 ---
             status_brut = str(row.get("Validité", "NON")).strip().upper()
             
             st.markdown(f"### 👤 {row.get('Nom Roblox')}")
@@ -98,13 +99,9 @@ with tabs[1]:
             col1.metric("Points", f"{pts_actuels}/25")
             col2.write(f"**Discord:** {row.get('Nom Discord')}")
             
-            # Reconnaissance de toutes les variantes de "Valide"
-            if status_brut in ["VALIDE", "OUI", "OK"]:
-                col3.success("✅ VALIDE")
-            elif status_brut == "DANGER":
-                col3.warning("⚠️ DANGER")
-            else:
-                col3.error("🛑 INVALIDE")
+            if status_brut in ["VALIDE", "OUI", "OK"]: col3.success("✅ VALIDE")
+            elif status_brut == "DANGER": col3.warning("⚠️ DANGER")
+            else: col3.error("🛑 INVALIDE")
 
             with st.expander(f"⚙️ Modifier les points de {row.get('Nom Roblox')}"):
                 with st.form(key=f"form_pts_{idx}"):
@@ -123,6 +120,8 @@ with tabs[1]:
                             df_pts.at[idx, "PTS"] = nouveau
                             conn.update(worksheet=nom_feuille_pts, data=df_pts)
                             st.toast(f"Points mis à jour : {nouveau}/25", icon="✅")
+                            # Délai de sécurité pour éviter le crash au rechargement
+                            time.sleep(0.5) 
                             st.rerun()
                         else:
                             st.error("Code Admin incorrect")
@@ -130,5 +129,5 @@ with tabs[1]:
     elif not df_pts.empty:
         st.info("Recherchez un nom pour agir sur le permis.")
 
-# --- VERSION MISE À JOUR v2.3 ---
-st.markdown("<div style='position: fixed; left: 10px; bottom: 10px; color: grey; font-size: 12px;'>Version v2.3</div>", unsafe_allow_html=True)
+# --- VERSION v2.4 ---
+st.markdown("<div style='position: fixed; left: 10px; bottom: 10px; color: grey; font-size: 12px;'>Version v2.4</div>", unsafe_allow_html=True)
