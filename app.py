@@ -196,19 +196,26 @@ with tabs[1]:
                             st.rerun()
 
             with col_admin2:
-                with st.expander("🗑️ Supprimer le profil"):
+                with st.popover("🗑️ Supprimer le profil"):
+                    st.write("### Zone de Danger")
                     auth_del = st.text_input("Code Admin", type="password", key=f"del_code_{idx}")
-                    # Double vérification avec un état de session
-                    if st.button("❌ Effacer le profil", key=f"btn_del_{idx}"):
+                    
+                    # On utilise un checkbox pour la double vérification, c'est plus stable
+                    confirm_check = st.checkbox("Je confirme vouloir supprimer ce dossier", key=f"check_{idx}")
+                    
+                    if st.button("🔥 Supprimer définitivement", key=f"btn_del_{idx}", type="primary"):
                         if auth_del == CODE_ADMIN_GENERAL:
-                            st.warning("⚠️ Es-tu vraiment sûr de vouloir supprimer ce dossier ?")
-                            if st.button("🔥 CONFIRMER LA SUPPRESSION", key=f"btn_confirm_{idx}"):
-                                conn.update(worksheet=nom_feuille_pts, data=df_pts.drop(idx))
-                                st.error("Profil supprimé.")
+                            if confirm_check:
+                                # Suppression effective
+                                new_df = df_pts.drop(idx)
+                                conn.update(worksheet=nom_feuille_pts, data=new_df)
+                                st.error("Profil supprimé !")
                                 time.sleep(1)
                                 st.rerun()
-                        else: st.error("Code Admin incorrect.")
-            st.divider()
+                            else:
+                                st.warning("Coche la case de confirmation d'abord.")
+                        else:
+                            st.error("Code Admin incorrect.")
 
 # ==========================================
 # ONGLET 3 : BANQUE 🏦
