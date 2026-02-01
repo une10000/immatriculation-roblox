@@ -128,7 +128,7 @@ with tabs[1]:
         mask_discord = pd.Series([False] * len(df_pts)) # Par défaut si la colonne n'existe pas
         
         if "Utilisateur Discord" in df_pts.columns:
-            mask_discord = df_pts["Utilisateur Discord"].astype(str).str.contains(search_p, case=False, na=False)
+            mask_discord = df_pts["Nom Discord"].astype(str).str.contains(search_p, case=False, na=False)
             
         res = df_pts[mask_roblox | mask_discord]
         
