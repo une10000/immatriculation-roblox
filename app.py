@@ -22,7 +22,7 @@ CODE_ADMIN_GENERAL = "RCRPFR-25-26"
 # --- LISTES ---
 liste_etats = sorted(["Alberta", "Beautiful British Columbia", "California", "Colorado", "Connecticut", "Delaware", "Washington", "Florida", "Indiana", "Kansas", "Maine", "Manitoba", "Maryland", "Massachusetts", "Michigan", "Mississippi", "Montana", "New Brunswick", "New Hampshire", "New Jersey", "New York", "Newfoundland Labrador", "Nova Scotia", "Nuvanut", "Ohio", "Oklahoma", "Ontario", "Pennsylvania", "Prince Edward Island", "Quebec", "Rhode Island", "Saskatchewan", "South Carolina", "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Wisconsin", "Yukon"])
 liste_marques = sorted(["Altstadt", "Bremen", "Comrader", "Delton", "Envy", "Eva", "Gam", "Gemini", "Hamotsu", "Katzmann", "Koritsu", "Land treker", "Lexima", "Linco", "Lyon", "Marshall", "Mita", "Mizuhara", "Nesumi", "Neptune", "Revasser", "Revolt", "Roamer", "Senseon", "Shatoku", "Sternauster", "Turismo", "Yosurai"])
-liste_assurances = ["Non assuré", "RCT", "Averis", "Global Assurance"]
+liste_assurances = ["Non assuré", "RCT", "Averis"] # Global Assurance supprimé
 
 # --- NAVIGATION PAR ONGLETS ---
 tabs = st.tabs(["🚗 Immatriculations", "🪪 Points de Permis", "💰 Banque"])
@@ -72,7 +72,6 @@ with tabs[0]:
         
         st.markdown("### 🛠️ Gérer mes fiches")
         for idx, row in display_df.iterrows():
-            # CORRECTION SYNTAXE LIGNE 75
             label_expander = f"⚙️ Modifier / Supprimer : {row.get('Numéro de la plaque')} ({row.get('Nom d\'utilisateur ROBLOX')})"
             with st.expander(label_expander):
                 c_auth = st.text_input("Ton code secret", key=f"auth_{idx}", type="password")
@@ -120,20 +119,31 @@ with tabs[1]:
         df_pts.columns = [str(c).strip() for c in df_pts.columns]
     except: df_pts = pd.DataFrame()
 
-    search_p = st.text_input("🔍 Rechercher conducteur (Roblox)").strip()
+    # --- RECHERCHE PAR ROBLOX OU DISCORD ---
+    search_p = st.text_input("🔍 Rechercher conducteur (Nom Roblox ou Pseudo Discord)").strip()
+    
     if not df_pts.empty and search_p:
-        mask_p = (df_pts["Nom Roblox"].astype(str).str.contains(search_p, case=False, na=False))
-        res = df_pts[mask_p]
+        # On cherche dans les deux colonnes possibles
+        mask_roblox = df_pts["Nom Roblox"].astype(str).str.contains(search_p, case=False, na=False)
+        mask_discord = pd.Series([False] * len(df_pts)) # Par défaut si la colonne n'existe pas
+        
+        if "Utilisateur Discord" in df_pts.columns:
+            mask_discord = df_pts["Utilisateur Discord"].astype(str).str.contains(search_p, case=False, na=False)
+            
+        res = df_pts[mask_roblox | mask_discord]
+        
         for idx, row in res.iterrows():
             try: pts_actuels = int(row.get("PTS", 0))
             except: pts_actuels = 0
             
-            # --- CORRECTION VISUELLE STATUT ---
             if pts_actuels >= 14: st_label, st_icon, st_color = "VALIDE", "✅", "green"
             elif pts_actuels >= 1: st_label, st_icon, st_color = "DANGER", "⚠️", "orange"
             else: st_label, st_icon, st_color = "INVALIDE", "❌", "red"
             
             st.markdown(f"### 👤 {row.get('Nom Roblox')}")
+            if "Utilisateur Discord" in row:
+                st.caption(f"Discord: {row.get('Utilisateur Discord')}")
+                
             col1, col2, col3 = st.columns([1, 1, 1])
             col1.metric("Points", f"{pts_actuels}/25")
             
@@ -141,7 +151,7 @@ with tabs[1]:
             elif st_color == "orange": col3.warning(f"{st_icon} {st_label}")
             else: col3.error(f"{st_icon} {st_label}")
 
-            with st.expander(f"⚙️ Modifier les points de {row.get('Nom Roblox')}"):
+            with st.expander(f"⚙️ Modifier les points"):
                 with st.form(key=f"f_pts_{idx}"):
                     auth = st.text_input("Code Admin", type="password")
                     nb = st.number_input("Nombre de points", min_value=1, max_value=25, value=1)
@@ -150,7 +160,6 @@ with tabs[1]:
                     add = cb2.form_submit_button("➕ Ajouter")
                     if (sub or add) and auth == CODE_ADMIN_GENERAL:
                         nouveau = max(0, pts_actuels - nb) if sub else min(25, pts_actuels + nb)
-                        # Calcul statut pour Google Sheets
                         if nouveau >= 14: n_statut = "VALIDE"
                         elif nouveau >= 1: n_statut = "DANGER"
                         else: n_statut = "INVALIDE"
@@ -217,5 +226,5 @@ with tabs[2]:
                     elif (ret_b or dep_b): st.error("Code Admin incorrect")
             st.divider()
 
-# --- VERSION v3.8 ---
-st.markdown("<div style='position: fixed; left: 10px; bottom: 10px; color: grey; font-size: 12px;'>Version v3.8 - Fix Syntax & Icons</div>", unsafe_allow_html=True)
+# --- VERSION v3.9 ---
+st.markdown("<div style='position: fixed; left: 10px; bottom: 10px; color: grey; font-size: 12px;'>Version v3.9 - Recherche Discord & Suppression Global</div>", unsafe_allow_html=True)
