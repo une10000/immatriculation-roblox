@@ -7,7 +7,7 @@ import time
 # Configuration de la page
 st.set_page_config(page_title="RCRP - Fichier Central", layout="wide")
 
-# --- LOGO ET TITRE (RÉPARÉ) ---
+# --- LOGO ET TITRE ---
 st.image("https://cdn.discordapp.com/attachments/1441508709024006315/1467106550656270484/Capture_decran_2025-12-01_a_21.03.31.png?ex=697f2cf3&is=697ddb73&hm=dccb2edf0897deb4ccbdee22b3221134415bfed15b2cc808e439232c6f18bcab&", width=200)
 
 st.title("🚓 Fichier Central & 🏦 Banque")
@@ -111,13 +111,20 @@ with tabs[1]:
             new_roblox = st.text_input("Nom Roblox")
             new_pts = st.number_input("Points de départ", min_value=0, max_value=25, value=25)
             admin_code = st.text_input("Code Admin requis", type="password")
+            
             if st.form_submit_button("Créer le dossier"):
-                if admin_code == CODE_ADMIN_GENERAL and new_roblox:
-                    val_label = "VALIDE" if new_pts >= 14 else ("OUI" if new_pts >= 1 else "NON")
-                    new_driver = pd.DataFrame([{"Nom Discord": new_discord, "Nom Roblox": new_roblox, "PTS": new_pts, "Validité": val_label}])
-                    conn.update(worksheet=nom_feuille_pts, data=pd.concat([df_pts, new_driver], ignore_index=True))
-                    st.success("Dossier créé !")
-                    time.sleep(1); st.rerun()
+                if admin_code == CODE_ADMIN_GENERAL:
+                    if new_roblox:
+                        val_label = "VALIDE" if new_pts >= 14 else ("OUI" if new_pts >= 1 else "NON")
+                        new_driver = pd.DataFrame([{"Nom Discord": new_discord, "Nom Roblox": new_roblox, "PTS": new_pts, "Validité": val_label}])
+                        conn.update(worksheet=nom_feuille_pts, data=pd.concat([df_pts, new_driver], ignore_index=True))
+                        st.success(f"Dossier créé pour {new_roblox} !")
+                        time.sleep(1); st.rerun()
+                    else:
+                        st.warning("Veuillez saisir au moins le nom Roblox.")
+                else:
+                    # CORRECTION : Message d'erreur si le code admin est faux
+                    st.error("❌ Code Admin incorrect.")
 
     st.divider()
     search_p = st.text_input("🔍 Rechercher par Nom Roblox ou Nom Discord").strip()
@@ -143,16 +150,20 @@ with tabs[1]:
                         a = st.text_input("Code Admin", type="password")
                         nb = st.number_input("Points", 1, 25, 1)
                         b1, b2 = st.columns(2)
-                        if b1.form_submit_button("➖ Retirer") and a == CODE_ADMIN_GENERAL:
-                            n = max(0, pts_actuels - nb)
-                            df_pts.at[idx, "PTS"] = n
-                            df_pts.at[idx, "Validité"] = "VALIDE" if n >= 14 else ("OUI" if n >= 1 else "NON")
-                            conn.update(worksheet=nom_feuille_pts, data=df_pts); st.rerun()
-                        if b2.form_submit_button("➕ Ajouter") and a == CODE_ADMIN_GENERAL:
-                            n = min(25, pts_actuels + nb)
-                            df_pts.at[idx, "PTS"] = n
-                            df_pts.at[idx, "Validité"] = "VALIDE" if n >= 14 else ("OUI" if n >= 1 else "NON")
-                            conn.update(worksheet=nom_feuille_pts, data=df_pts); st.rerun()
+                        if b1.form_submit_button("➖ Retirer"):
+                            if a == CODE_ADMIN_GENERAL:
+                                n = max(0, pts_actuels - nb)
+                                df_pts.at[idx, "PTS"] = n
+                                df_pts.at[idx, "Validité"] = "VALIDE" if n >= 14 else ("OUI" if n >= 1 else "NON")
+                                conn.update(worksheet=nom_feuille_pts, data=df_pts); st.rerun()
+                            else: st.error("Code incorrect")
+                        if b2.form_submit_button("➕ Ajouter"):
+                            if a == CODE_ADMIN_GENERAL:
+                                n = min(25, pts_actuels + nb)
+                                df_pts.at[idx, "PTS"] = n
+                                df_pts.at[idx, "Validité"] = "VALIDE" if n >= 14 else ("OUI" if n >= 1 else "NON")
+                                conn.update(worksheet=nom_feuille_pts, data=df_pts); st.rerun()
+                            else: st.error("Code incorrect")
 
             with c_del:
                 if st.button(f"🗑️ Supprimer Profil", key=f"pre_del_{idx}"):
@@ -167,6 +178,7 @@ with tabs[1]:
                             conn.update(worksheet=nom_feuille_pts, data=df_pts.drop(idx))
                             st.session_state[f"confirm_delete_{idx}"] = False
                             st.rerun()
+                        else: st.error("Code Admin incorrect")
                     if cb2.button("NON", key=f"cancel_{idx}"):
                         st.session_state[f"confirm_delete_{idx}"] = False
                         st.rerun()
@@ -205,12 +217,16 @@ with tabs[2]:
                     a_b = st.text_input("Code Admin", type="password")
                     m_b = st.number_input("Montant", min_value=0.0, step=500.0)
                     col_b1, col_b2 = st.columns(2)
-                    if col_b1.form_submit_button("📉 Retirer") and a_b == CODE_ADMIN_GENERAL:
-                        df_bank.at[idx, "Solde"] = solde - m_b
-                        conn.update(worksheet=nom_feuille_banque, data=df_bank); st.rerun()
-                    if col_b2.form_submit_button("📈 Ajouter") and a_b == CODE_ADMIN_GENERAL:
-                        df_bank.at[idx, "Solde"] = solde + m_b
-                        conn.update(worksheet=nom_feuille_banque, data=df_bank); st.rerun()
+                    if col_b1.form_submit_button("📉 Retirer"):
+                        if a_b == CODE_ADMIN_GENERAL:
+                            df_bank.at[idx, "Solde"] = solde - m_b
+                            conn.update(worksheet=nom_feuille_banque, data=df_bank); st.rerun()
+                        else: st.error("Code Admin incorrect")
+                    if col_b2.form_submit_button("📈 Ajouter"):
+                        if a_b == CODE_ADMIN_GENERAL:
+                            df_bank.at[idx, "Solde"] = solde + m_b
+                            conn.update(worksheet=nom_feuille_banque, data=df_bank); st.rerun()
+                        else: st.error("Code Admin incorrect")
             st.divider()
 
-st.markdown("<div style='position: fixed; left: 10px; bottom: 10px; color: grey; font-size: 12px;'>Version v4.3 - Logo Fixed & Admin UI</div>", unsafe_allow_html=True)
+st.markdown("<div style='position: fixed; left: 10px; bottom: 10px; color: grey; font-size: 12px;'>Version v4.4 - Admin Feedback Fixed</div>", unsafe_allow_html=True)
