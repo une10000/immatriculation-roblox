@@ -22,7 +22,7 @@ CODE_ADMIN_GENERAL = "RCRPFR-25-26"
 # --- LISTES ---
 liste_etats = sorted(["Alberta", "Beautiful British Columbia", "California", "Colorado", "Connecticut", "Delaware", "Washington", "Florida", "Indiana", "Kansas", "Maine", "Manitoba", "Maryland", "Massachusetts", "Michigan", "Mississippi", "Montana", "New Brunswick", "New Hampshire", "New Jersey", "New York", "Newfoundland Labrador", "Nova Scotia", "Nuvanut", "Ohio", "Oklahoma", "Ontario", "Pennsylvania", "Prince Edward Island", "Quebec", "Rhode Island", "Saskatchewan", "South Carolina", "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Wisconsin", "Yukon"])
 liste_marques = sorted(["Altstadt", "Bremen", "Comrader", "Delton", "Envy", "Eva", "Gam", "Gemini", "Hamotsu", "Katzmann", "Koritsu", "Land treker", "Lexima", "Linco", "Lyon", "Marshall", "Mita", "Mizuhara", "Nesumi", "Neptune", "Revasser", "Revolt", "Roamer", "Senseon", "Shatoku", "Sternauster", "Turismo", "Yosurai"])
-liste_assurances = ["Non assuré", "RCT", "Averis"] # Global Assurance supprimé
+liste_assurances = ["Non assuré", "RCT", "Averis"]
 
 # --- NAVIGATION PAR ONGLETS ---
 tabs = st.tabs(["🚗 Immatriculations", "🪪 Points de Permis", "💰 Banque"])
@@ -44,7 +44,7 @@ with tabs[0]:
             e_reg = st.selectbox("État", liste_etats)
             p_reg = st.text_input("Numéro de la plaque")
             a_reg = st.selectbox("Assurance", liste_assurances)
-            c_reg = st.text_input("Code secret (pour suppression/modification)", type="password")
+            c_reg = st.text_input("Code secret", type="password")
             
             if st.form_submit_button("Valider"):
                 if u_reg and p_reg and c_reg:
@@ -72,8 +72,10 @@ with tabs[0]:
         
         st.markdown("### 🛠️ Gérer mes fiches")
         for idx, row in display_df.iterrows():
-            label_expander = f"⚙️ Modifier / Supprimer : {row.get('Numéro de la plaque')} ({row.get('Nom d\'utilisateur ROBLOX')})"
-            with st.expander(label_expander):
+            # Correction de la syntaxe pour éviter l'erreur d'exécution
+            plaque_label = str(row.get('Numéro de la plaque', 'Inconnue'))
+            user_label = str(row.get("Nom d'utilisateur ROBLOX", 'Inconnu'))
+            with st.expander(f"⚙️ Modifier / Supprimer : {plaque_label} ({user_label})"):
                 c_auth = st.text_input("Ton code secret", key=f"auth_{idx}", type="password")
                 
                 col_mod1, col_mod2 = st.columns(2)
@@ -88,7 +90,7 @@ with tabs[0]:
                     new_a = st.selectbox("Assurance", liste_assurances, index=liste_assurances.index(a_val) if a_val in liste_assurances else 0, key=f"a_{idx}")
                 
                 b1, b2 = st.columns(2)
-                if b1.button("💾 Enregistrer modifications", key=f"save_{idx}"):
+                if b1.button("💾 Enregistrer", key=f"save_{idx}"):
                     if c_auth == str(row.get("CODE")):
                         df.at[idx, 'Marque du véhicule'] = new_m
                         df.at[idx, "L'état de la plaque"] = new_e
@@ -100,7 +102,7 @@ with tabs[0]:
                         st.rerun()
                     else: st.error("Code incorrect")
                 
-                if b2.button("🗑️ Supprimer la fiche", key=f"del_{idx}"):
+                if b2.button("🗑️ Supprimer", key=f"del_{idx}"):
                     if c_auth == str(row.get("CODE")):
                         conn.update(worksheet=nom_feuille_immat, data=df.drop(idx))
                         st.toast("Fiche supprimée")
@@ -119,15 +121,14 @@ with tabs[1]:
         df_pts.columns = [str(c).strip() for c in df_pts.columns]
     except: df_pts = pd.DataFrame()
 
-    # --- RECHERCHE PAR ROBLOX OU DISCORD ---
-    search_p = st.text_input("🔍 Rechercher conducteur (Nom Roblox ou Pseudo Discord)").strip()
+    search_p = st.text_input("🔍 Rechercher par Nom Roblox ou Nom Discord").strip()
     
     if not df_pts.empty and search_p:
-        # On cherche dans les deux colonnes possibles
+        # Recherche croisée : Nom Roblox OU Nom Discord (Colonne A de ton tableau)
         mask_roblox = df_pts["Nom Roblox"].astype(str).str.contains(search_p, case=False, na=False)
-        mask_discord = pd.Series([False] * len(df_pts)) # Par défaut si la colonne n'existe pas
+        mask_discord = pd.Series([False] * len(df_pts))
         
-        if "Utilisateur Discord" in df_pts.columns:
+        if "Nom Discord" in df_pts.columns:
             mask_discord = df_pts["Nom Discord"].astype(str).str.contains(search_p, case=False, na=False)
             
         res = df_pts[mask_roblox | mask_discord]
@@ -141,8 +142,8 @@ with tabs[1]:
             else: st_label, st_icon, st_color = "INVALIDE", "❌", "red"
             
             st.markdown(f"### 👤 {row.get('Nom Roblox')}")
-            if "Utilisateur Discord" in row:
-                st.caption(f"Discord: {row.get('Utilisateur Discord')}")
+            if "Nom Discord" in df_pts.columns:
+                st.caption(f"🆔 Discord : {row.get('Nom Discord')}")
                 
             col1, col2, col3 = st.columns([1, 1, 1])
             col1.metric("Points", f"{pts_actuels}/25")
@@ -160,16 +161,14 @@ with tabs[1]:
                     add = cb2.form_submit_button("➕ Ajouter")
                     if (sub or add) and auth == CODE_ADMIN_GENERAL:
                         nouveau = max(0, pts_actuels - nb) if sub else min(25, pts_actuels + nb)
-                        if nouveau >= 14: n_statut = "VALIDE"
-                        elif nouveau >= 1: n_statut = "DANGER"
-                        else: n_statut = "INVALIDE"
+                        # On garde tes textes de validité OUI/NON/VALIDE selon ton tableau
+                        n_statut = "VALIDE" if nouveau >= 14 else ("OUI" if nouveau >= 1 else "NON")
                         df_pts.at[idx, "PTS"] = nouveau
                         df_pts.at[idx, "Validité"] = n_statut
                         conn.update(worksheet=nom_feuille_pts, data=df_pts)
-                        st.toast("Succès", icon="✅")
+                        st.toast("Mise à jour effectuée !")
                         time.sleep(0.5)
                         st.rerun()
-                    elif (sub or add): st.error("Code Admin incorrect")
             st.divider()
 
 # ==========================================
@@ -183,7 +182,7 @@ with tabs[2]:
         df_bank.columns = [str(c).strip() for c in df_bank.columns]
     except: df_bank = pd.DataFrame(columns=["Nom Roblox", "Solde"])
 
-    with st.expander("✨ Pas encore de compte ? Ouvre le tien ici !"):
+    with st.expander("✨ Créer un compte bancaire (+15 000 $)"):
         with st.form("pub_reg"):
             n_u = st.text_input("Nom Roblox").strip()
             if st.form_submit_button("Confirmer"):
@@ -203,8 +202,7 @@ with tabs[2]:
         mask_b = df_bank["Nom Roblox"].astype(str).str.contains(search_b, case=False, na=False)
         res_b = df_bank[mask_b]
         for idx, row in res_b.iterrows():
-            try: solde_actuel = float(row.get("Solde", 0))
-            except: solde_actuel = 0.0
+            solde_actuel = float(row.get("Solde", 0))
             st.markdown(f"### 👤 {row.get('Nom Roblox')}")
             st.metric("Solde", f"{solde_actuel:,.0f} $".replace(",", " "))
             
@@ -220,11 +218,10 @@ with tabs[2]:
                         n_solde = solde_actuel - m_b if ret_b else solde_actuel + m_b
                         df_bank.at[idx, "Solde"] = n_solde
                         conn.update(worksheet=nom_feuille_banque, data=df_bank)
-                        st.toast("Transaction effectuée")
+                        st.toast("Transaction validée")
                         time.sleep(0.5)
                         st.rerun()
-                    elif (ret_b or dep_b): st.error("Code Admin incorrect")
             st.divider()
 
-# --- VERSION v3.9 ---
-st.markdown("<div style='position: fixed; left: 10px; bottom: 10px; color: grey; font-size: 12px;'>Version v3.9 - Recherche Discord & Suppression Global</div>", unsafe_allow_html=True)
+# --- VERSION v3.9 FINAL ---
+st.markdown("<div style='position: fixed; left: 10px; bottom: 10px; color: grey; font-size: 12px;'>Version v3.9 - Fix Search & Syntax</div>", unsafe_allow_html=True)
