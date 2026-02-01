@@ -72,7 +72,6 @@ with tabs[0]:
         
         st.markdown("### 🛠️ Gérer mes fiches")
         for idx, row in display_df.iterrows():
-            # Correction de la syntaxe pour éviter l'erreur d'exécution
             plaque_label = str(row.get('Numéro de la plaque', 'Inconnue'))
             user_label = str(row.get("Nom d'utilisateur ROBLOX", 'Inconnu'))
             with st.expander(f"⚙️ Modifier / Supprimer : {plaque_label} ({user_label})"):
@@ -121,10 +120,36 @@ with tabs[1]:
         df_pts.columns = [str(c).strip() for c in df_pts.columns]
     except: df_pts = pd.DataFrame()
 
+    # --- NOUVEAUTÉ : AJOUTER UN CONDUCTEUR VIA LE SITE ---
+    with st.expander("👤 [ADMIN] Ajouter un nouveau conducteur"):
+        with st.form("admin_add_driver"):
+            new_discord = st.text_input("Nom Discord")
+            new_roblox = st.text_input("Nom Roblox")
+            new_pts = st.number_input("Points de départ", min_value=0, max_value=25, value=25)
+            admin_code = st.text_input("Code Admin requis", type="password")
+            
+            if st.form_submit_button("Créer le dossier"):
+                if admin_code == CODE_ADMIN_GENERAL:
+                    if new_roblox and new_discord:
+                        # Calcul automatique de la validité
+                        val_label = "VALIDE" if new_pts >= 14 else ("OUI" if new_pts >= 1 else "NON")
+                        new_driver = pd.DataFrame([{
+                            "Nom Discord": new_discord,
+                            "Nom Roblox": new_roblox,
+                            "PTS": new_pts,
+                            "Validité": val_label
+                        }])
+                        conn.update(worksheet=nom_feuille_pts, data=pd.concat([df_pts, new_driver], ignore_index=True))
+                        st.success(f"Dossier créé pour {new_roblox} !")
+                        time.sleep(1)
+                        st.rerun()
+                    else: st.error("Remplis tous les champs !")
+                else: st.error("Code Admin incorrect.")
+
+    st.divider()
     search_p = st.text_input("🔍 Rechercher par Nom Roblox ou Nom Discord").strip()
     
     if not df_pts.empty and search_p:
-        # Recherche croisée : Nom Roblox OU Nom Discord (Colonne A de ton tableau)
         mask_roblox = df_pts["Nom Roblox"].astype(str).str.contains(search_p, case=False, na=False)
         mask_discord = pd.Series([False] * len(df_pts))
         
@@ -161,7 +186,6 @@ with tabs[1]:
                     add = cb2.form_submit_button("➕ Ajouter")
                     if (sub or add) and auth == CODE_ADMIN_GENERAL:
                         nouveau = max(0, pts_actuels - nb) if sub else min(25, pts_actuels + nb)
-                        # On garde tes textes de validité OUI/NON/VALIDE selon ton tableau
                         n_statut = "VALIDE" if nouveau >= 14 else ("OUI" if nouveau >= 1 else "NON")
                         df_pts.at[idx, "PTS"] = nouveau
                         df_pts.at[idx, "Validité"] = n_statut
@@ -223,5 +247,5 @@ with tabs[2]:
                         st.rerun()
             st.divider()
 
-# --- VERSION v3.9 FINAL ---
-st.markdown("<div style='position: fixed; left: 10px; bottom: 10px; color: grey; font-size: 12px;'>Version v3.9 - Fix Search & Syntax</div>", unsafe_allow_html=True)
+# --- VERSION v4.0 ---
+st.markdown("<div style='position: fixed; left: 10px; bottom: 10px; color: grey; font-size: 12px;'>Version v4.0 - Admin Driver Panel</div>", unsafe_allow_html=True)
