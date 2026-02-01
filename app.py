@@ -120,7 +120,6 @@ with tabs[1]:
         df_pts.columns = [str(c).strip() for c in df_pts.columns]
     except: df_pts = pd.DataFrame()
 
-    # --- NOUVEAUTÉ : AJOUTER UN CONDUCTEUR VIA LE SITE ---
     with st.expander("👤 [ADMIN] Ajouter un nouveau conducteur"):
         with st.form("admin_add_driver"):
             new_discord = st.text_input("Nom Discord")
@@ -131,7 +130,6 @@ with tabs[1]:
             if st.form_submit_button("Créer le dossier"):
                 if admin_code == CODE_ADMIN_GENERAL:
                     if new_roblox and new_discord:
-                        # Calcul automatique de la validité
                         val_label = "VALIDE" if new_pts >= 14 else ("OUI" if new_pts >= 1 else "NON")
                         new_driver = pd.DataFrame([{
                             "Nom Discord": new_discord,
@@ -152,7 +150,6 @@ with tabs[1]:
     if not df_pts.empty and search_p:
         mask_roblox = df_pts["Nom Roblox"].astype(str).str.contains(search_p, case=False, na=False)
         mask_discord = pd.Series([False] * len(df_pts))
-        
         if "Nom Discord" in df_pts.columns:
             mask_discord = df_pts["Nom Discord"].astype(str).str.contains(search_p, case=False, na=False)
             
@@ -177,22 +174,40 @@ with tabs[1]:
             elif st_color == "orange": col3.warning(f"{st_icon} {st_label}")
             else: col3.error(f"{st_icon} {st_label}")
 
-            with st.expander(f"⚙️ Modifier les points"):
-                with st.form(key=f"f_pts_{idx}"):
-                    auth = st.text_input("Code Admin", type="password")
-                    nb = st.number_input("Nombre de points", min_value=1, max_value=25, value=1)
-                    cb1, cb2 = st.columns(2)
-                    sub = cb1.form_submit_button("➖ Retirer")
-                    add = cb2.form_submit_button("➕ Ajouter")
-                    if (sub or add) and auth == CODE_ADMIN_GENERAL:
-                        nouveau = max(0, pts_actuels - nb) if sub else min(25, pts_actuels + nb)
-                        n_statut = "VALIDE" if nouveau >= 14 else ("OUI" if nouveau >= 1 else "NON")
-                        df_pts.at[idx, "PTS"] = nouveau
-                        df_pts.at[idx, "Validité"] = n_statut
-                        conn.update(worksheet=nom_feuille_pts, data=df_pts)
-                        st.toast("Mise à jour effectuée !")
-                        time.sleep(0.5)
-                        st.rerun()
+            # SECTION MODIFICATION & SUPPRESSION
+            col_admin1, col_admin2 = st.columns(2)
+            
+            with col_admin1:
+                with st.expander(f"⚙️ Gérer les points"):
+                    with st.form(key=f"f_pts_{idx}"):
+                        auth = st.text_input("Code Admin", type="password")
+                        nb = st.number_input("Nombre de points", min_value=1, max_value=25, value=1)
+                        cb1, cb2 = st.columns(2)
+                        sub = cb1.form_submit_button("➖ Retirer")
+                        add = cb2.form_submit_button("➕ Ajouter")
+                        if (sub or add) and auth == CODE_ADMIN_GENERAL:
+                            nouveau = max(0, pts_actuels - nb) if sub else min(25, pts_actuels + nb)
+                            n_statut = "VALIDE" if nouveau >= 14 else ("OUI" if nouveau >= 1 else "NON")
+                            df_pts.at[idx, "PTS"] = nouveau
+                            df_pts.at[idx, "Validité"] = n_statut
+                            conn.update(worksheet=nom_feuille_pts, data=df_pts)
+                            st.toast("Mise à jour effectuée !")
+                            time.sleep(0.5)
+                            st.rerun()
+
+            with col_admin2:
+                with st.expander("🗑️ Supprimer le profil"):
+                    auth_del = st.text_input("Code Admin", type="password", key=f"del_code_{idx}")
+                    # Double vérification avec un état de session
+                    if st.button("❌ Effacer le profil", key=f"btn_del_{idx}"):
+                        if auth_del == CODE_ADMIN_GENERAL:
+                            st.warning("⚠️ Es-tu vraiment sûr de vouloir supprimer ce dossier ?")
+                            if st.button("🔥 CONFIRMER LA SUPPRESSION", key=f"btn_confirm_{idx}"):
+                                conn.update(worksheet=nom_feuille_pts, data=df_pts.drop(idx))
+                                st.error("Profil supprimé.")
+                                time.sleep(1)
+                                st.rerun()
+                        else: st.error("Code Admin incorrect.")
             st.divider()
 
 # ==========================================
@@ -247,5 +262,5 @@ with tabs[2]:
                         st.rerun()
             st.divider()
 
-# --- VERSION v4.0 ---
-st.markdown("<div style='position: fixed; left: 10px; bottom: 10px; color: grey; font-size: 12px;'>Version v4.0 - Admin Driver Panel</div>", unsafe_allow_html=True)
+# --- VERSION v4.1 ---
+st.markdown("<div style='position: fixed; left: 10px; bottom: 10px; color: grey; font-size: 12px;'>Version v4.1 - Double Confirmation Delete</div>", unsafe_allow_html=True)
