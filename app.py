@@ -7,8 +7,8 @@ import time
 # Configuration de la page
 st.set_page_config(page_title="RCRP - Fichier Central", layout="wide")
 
-# --- LOGO ET TITRE ---
-st.image("https://cdn.discordapp.com/attachments/1441508709024006315/1467106550656270484/Capture_decran_2025-12-01_a_21.03.31.png", width=200)
+# --- LOGO ET TITRE (RÉPARÉ) ---
+st.image("https://cdn.discordapp.com/attachments/1441508709024006315/1467106550656270484/Capture_decran_2025-12-01_a_21.03.31.png?ex=697f2cf3&is=697ddb73&hm=dccb2edf0897deb4ccbdee22b3221134415bfed15b2cc808e439232c6f18bcab&", width=200)
 
 st.title("🚓 Fichier Central & 🏦 Banque")
 st.write("### RCRPFR - Base de données officielle")
@@ -155,7 +155,6 @@ with tabs[1]:
                             conn.update(worksheet=nom_feuille_pts, data=df_pts); st.rerun()
 
             with c_del:
-                # SUPPRESSION ROBUSTE AVEC SESSION STATE
                 if st.button(f"🗑️ Supprimer Profil", key=f"pre_del_{idx}"):
                     st.session_state[f"confirm_delete_{idx}"] = True
                 
@@ -214,4 +213,4 @@ with tabs[2]:
                         conn.update(worksheet=nom_feuille_banque, data=df_bank); st.rerun()
             st.divider()
 
-st.markdown("<div style='position: fixed; left: 10px; bottom: 10px; color: grey; font-size: 12px;'>Version v4.2 - Full Control</div>", unsafe_allow_html=True)
+st.markdown("<div style='position: fixed; left: 10px; bottom: 10px; color: grey; font-size: 12px;'>Version v4.3 - Logo Fixed & Admin UI</div>", unsafe_allow_html=True)
