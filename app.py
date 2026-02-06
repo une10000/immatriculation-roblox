@@ -16,20 +16,28 @@ st.title("🚓 Fichier Central & 🏦 Banque")
 conn = st.connection("gsheets", type=GSheetsConnection)
 CODE_ADMIN_GENERAL = "RCRPFR-25-26"
 
-# --- FONCTION DE LOGGING ---
+# --- FONCTION DE LOGGING (CORRIGÉE) ---
 def log_action(admin_name, action, cible):
     try:
-        df_logs = conn.read(worksheet="Logs", ttl=0)
-    except:
-        df_logs = pd.DataFrame(columns=["Horodateur", "Admin", "Action", "Cible"])
-    
-    new_log = pd.DataFrame([{
-        "Horodateur": (datetime.now() + timedelta(hours=1)).strftime("%d/%m/%Y %H:%M"),
-        "Admin": str(admin_name),
-        "Action": str(action),
-        "Cible": str(cible)
-    }])
-    conn.update(worksheet="Logs", data=pd.concat([df_logs, new_log], ignore_index=True))
+        # On essaie de lire, si ça échoue on crée un DF vide avec les bonnes colonnes
+        try:
+            df_logs = conn.read(worksheet="Logs", ttl=0)
+        except:
+            df_logs = pd.DataFrame(columns=["Horodateur", "Admin", "Action", "Cible"])
+        
+        new_log = pd.DataFrame([{
+            "Horodateur": (datetime.now() + timedelta(hours=1)).strftime("%d/%m/%Y %H:%M"),
+            "Admin": str(admin_name),
+            "Action": str(action),
+            "Cible": str(cible)
+        }])
+        
+        # Nettoyage des colonnes pour éviter les erreurs de fusion
+        df_logs.columns = [str(c).strip() for c in df_logs.columns]
+        updated_logs = pd.concat([df_logs, new_log], ignore_index=True)
+        conn.update(worksheet="Logs", data=updated_logs)
+    except Exception as e:
+        st.error(f"Erreur Log: {e}")
 
 # --- LISTES ---
 liste_etats = sorted(["Alberta", "Beautiful British Columbia", "California", "Colorado", "Connecticut", "Delaware", "Washington", "Florida", "Indiana", "Kansas", "Maine", "Manitoba", "Maryland", "Massachusetts", "Michigan", "Mississippi", "Montana", "New Brunswick", "New Hampshire", "New Jersey", "New York", "Newfoundland Labrador", "Nova Scotia", "Nuvanut", "Ohio", "Oklahoma", "Ontario", "Pennsylvania", "Prince Edward Island", "Quebec", "Rhode Island", "Saskatchewan", "South Carolina", "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Wisconsin", "Yukon"])
@@ -61,6 +69,7 @@ with tabs[0]:
                     h = (datetime.now() + timedelta(hours=1)).strftime("%d/%m/%Y %H:%M")
                     new_row = pd.DataFrame([{"Horodateur": h, "Nom d'utilisateur ROBLOX": u_reg, "Marque du véhicule": m_reg, "L'état de la plaque": e_reg, "Numéro de la plaque": p_reg, "Assurance": a_reg, "CODE": str(c_reg)}])
                     conn.update(worksheet=nom_feuille_immat, data=pd.concat([df_immat, new_row], ignore_index=True))
+                    log_action(u_reg, "Immatriculation Véhicule", p_reg) # Log de l'immat
                     st.success("✅ Véhicule enregistré !")
                     time.sleep(1); st.rerun()
 
@@ -96,11 +105,8 @@ with tabs[1]:
                         new_driver = pd.DataFrame([{"Nom Discord": new_discord, "Nom Roblox": new_roblox, "PTS": new_pts, "Validité": v_label}])
                         conn.update(worksheet=nom_feuille_pts, data=pd.concat([df_pts, new_driver], ignore_index=True))
                         
-                        existing_users = []
-                        if not df_bank.empty and "Nom Roblox" in df_bank.columns:
-                            existing_users = df_bank["Nom Roblox"].astype(str).str.lower().values
-                        
-                        if new_roblox.lower() not in existing_users:
+                        # Banque Auto
+                        if new_roblox.lower() not in df_bank["Nom Roblox"].astype(str).str.lower().values if not df_bank.empty else [True]:
                             new_b = pd.DataFrame([{"Solde": 15000.0, "Nom Roblox": new_roblox, "Pseudo Admin": adm_name}])
                             conn.update(worksheet=nom_feuille_banque, data=pd.concat([df_bank, new_b], ignore_index=True))
                         
@@ -138,7 +144,6 @@ with tabs[1]:
 # ==========================================
 with tabs[2]:
     st.subheader("💰 Banque Centrale")
-    # PHRASE ASTUCE MISE À JOUR v5.1
     st.info("💡 **Astuce :** un compte bancaire est automatiquement crée avec un solde de 15'000$ par mois, lorsque votre permis est réussie")
     
     try: 
@@ -178,14 +183,13 @@ with tabs[3]:
             df_l = conn.read(worksheet="Logs", ttl=0)
             st.success("🔓 Accès autorisé")
             st.dataframe(df_l.iloc[::-1], use_container_width=True)
-        except: st.warning("Feuille 'Logs' non trouvée.")
+        except:
+            st.warning("⚠️ La feuille 'Logs' est vide ou introuvable. Effectuez une action admin pour l'initialiser.")
     elif unlock != "":
-        # ÉMOJI CADENAS APPLE (STYLE)
         st.markdown("<h1 style='text-align: center; font-size: 100px;'>🔒</h1>", unsafe_allow_html=True)
         st.error("ACCÈS REFUSÉ")
     else:
-        # ÉMOJI CADENAS PAR DÉFAUT
         st.markdown("<h1 style='text-align: center; font-size: 80px; opacity: 0.5;'>🔒</h1>", unsafe_allow_html=True)
         st.info("Veuillez entrer le code Admin.")
 
-st.markdown("<div style='position: fixed; left: 10px; bottom: 10px; color: grey; font-size: 12px;'>Version v5.1 - Final Style</div>", unsafe_allow_html=True)
+st.markdown("<div style='position: fixed; left: 10px; bottom: 10px; color: grey; font-size: 12px;'>Version v5.2 - Verified & Secure</div>", unsafe_allow_html=True)
