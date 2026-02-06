@@ -138,8 +138,8 @@ with tabs[1]:
 # ==========================================
 with tabs[2]:
     st.subheader("💰 Banque Centrale")
-    # TRUC ASTUCES RÉINTÉGRÉ
-    st.info("💡 **Astuce :** Un compte bancaire est automatiquement créé avec un solde de 15 000 $ dès qu'un profil est enregistré dans l'onglet 'Points de Permis'.")
+    # NOUVELLE ASTUCE MISE À JOUR v5.0
+    st.info("💡 **Astuce :** Un compte bancaire est automatiquement crée avec un solde de 15'000$ par mois, lorsque votre permis est réussie.")
     
     try: 
         df_bank = conn.read(worksheet="Banque", ttl=0)
@@ -180,12 +180,10 @@ with tabs[3]:
             st.dataframe(df_l.iloc[::-1], use_container_width=True)
         except: st.warning("Feuille 'Logs' non trouvée.")
     elif unlock != "":
-        # GROS CADENAS SI FAUX
         st.markdown("<h1 style='text-align: center; font-size: 100px;'>🔒</h1>", unsafe_allow_html=True)
         st.error("ACCÈS REFUSÉ : Code Admin incorrect.")
     else:
-        # CADENAS PAR DÉFAUT
         st.markdown("<h1 style='text-align: center; font-size: 80px; filter: grayscale(100%); opacity: 0.5;'>🔒</h1>", unsafe_allow_html=True)
         st.info("Veuillez entrer le code de sécurité pour consulter les logs.")
 
-st.markdown("<div style='position: fixed; left: 10px; bottom: 10px; color: grey; font-size: 12px;'>Version v4.9 - Security UI & Tips</div>", unsafe_allow_html=True)
+st.markdown("<div style='position: fixed; left: 10px; bottom: 10px; color: grey; font-size: 12px;'>Version v5.0 - Final UI Update</div>", unsafe_allow_html=True)
