@@ -16,7 +16,7 @@ st.title("🚓 Fichier Central & 🏦 Banque")
 conn = st.connection("gsheets", type=GSheetsConnection)
 CODE_ADMIN_GENERAL = "RCRPFR-25-26"
 
-# --- FONCTION DE LOGGING AMÉLIORÉE ---
+# --- FONCTION DE LOGGING ---
 def log_action(admin_name, action, cible):
     try:
         df_logs = conn.read(worksheet="Logs", ttl=0)
@@ -25,9 +25,9 @@ def log_action(admin_name, action, cible):
     
     new_log = pd.DataFrame([{
         "Horodateur": (datetime.now() + timedelta(hours=1)).strftime("%d/%m/%Y %H:%M"),
-        "Admin": admin_name,
-        "Action": action,
-        "Cible": cible
+        "Admin": str(admin_name),
+        "Action": str(action),
+        "Cible": str(cible)
     }])
     conn.update(worksheet="Logs", data=pd.concat([df_logs, new_log], ignore_index=True))
 
@@ -80,11 +80,11 @@ with tabs[1]:
         df_pts = conn.read(worksheet=nom_feuille_pts, ttl=0)
         df_bank = conn.read(worksheet=nom_feuille_banque, ttl=0)
     except: 
-        df_pts = pd.DataFrame(); df_bank = pd.DataFrame(columns=["Nom Roblox", "Solde"])
+        df_pts = pd.DataFrame(); df_bank = pd.DataFrame()
 
     with st.expander("👤 [ADMIN] Ajouter un nouveau conducteur"):
         with st.form("admin_add_driver"):
-            adm_name = st.text_input("Ton Nom/Matricule (Admin)")
+            adm_name = st.text_input("Ton Nom Admin")
             new_discord = st.text_input("Nom Discord")
             new_roblox = st.text_input("Nom Roblox")
             new_pts = st.number_input("Points", 0, 25, 25)
@@ -95,10 +95,15 @@ with tabs[1]:
                         v_label = "VALIDE" if new_pts >= 14 else ("OUI" if new_pts >= 1 else "NON")
                         new_driver = pd.DataFrame([{"Nom Discord": new_discord, "Nom Roblox": new_roblox, "PTS": new_pts, "Validité": v_label}])
                         conn.update(worksheet=nom_feuille_pts, data=pd.concat([df_pts, new_driver], ignore_index=True))
-                        # Banque Auto
-                        if new_roblox.lower() not in df_bank["Nom Roblox"].astype(str).str.lower().values:
-                            new_b = pd.DataFrame([{"Nom Roblox": new_roblox, "Solde": 15000.0}])
+                        
+                        existing_users = []
+                        if not df_bank.empty and "Nom Roblox" in df_bank.columns:
+                            existing_users = df_bank["Nom Roblox"].astype(str).str.lower().values
+                        
+                        if new_roblox.lower() not in existing_users:
+                            new_b = pd.DataFrame([{"Solde": 15000.0, "Nom Roblox": new_roblox, "Pseudo Admin": adm_name}])
                             conn.update(worksheet=nom_feuille_banque, data=pd.concat([df_bank, new_b], ignore_index=True))
+                        
                         log_action(adm_name, "Création Dossier + Banque", new_roblox)
                         st.success("✅ Fait !"); time.sleep(1); st.rerun()
                 else: st.error("❌ Code ou Nom Admin manquant")
@@ -109,73 +114,78 @@ with tabs[1]:
         res = df_pts[df_pts["Nom Roblox"].astype(str).str.contains(search_p, case=False, na=False)]
         for idx, row in res.iterrows():
             st.markdown(f"### 👤 {row.get('Nom Roblox')}")
-            col_m, col_d = st.columns(2)
-            with col_m:
-                with st.expander("⚙️ Modifier"):
-                    with st.form(key=f"p_{idx}"):
-                        adm_n = st.text_input("Ton Nom Admin", key=f"an_{idx}")
-                        ac = st.text_input("Code Admin", type="password")
-                        n_p = st.number_input("Points", 0, 25, int(row.get("PTS", 0)))
-                        if st.form_submit_button("Sauver"):
-                            if ac == CODE_ADMIN_GENERAL and adm_n:
-                                df_pts.at[idx, "PTS"] = n_p
-                                df_pts.at[idx, "Validité"] = "VALIDE" if n_p >= 14 else ("OUI" if n_p >= 1 else "NON")
-                                conn.update(worksheet=nom_feuille_pts, data=df_pts)
-                                log_action(adm_n, f"Points -> {n_p}", row.get('Nom Roblox'))
-                                st.rerun()
-            with col_d:
-                if st.button("🗑️ Supprimer", key=f"pre_{idx}"): st.session_state[f"d_{idx}"] = True
-                if st.session_state.get(f"d_{idx}", False):
-                    adm_del = st.text_input("Ton Nom Admin", key=f"adn_{idx}")
-                    dc = st.text_input("Code Admin", type="password", key=f"c_{idx}")
-                    if st.button("🔥 CONFIRMER", key=f"r_{idx}") and dc == CODE_ADMIN_GENERAL and adm_del:
-                        log_action(adm_del, "Suppression Profil", row.get('Nom Roblox'))
-                        conn.update(worksheet=nom_feuille_pts, data=df_pts.drop(idx))
-                        st.session_state[f"d_{idx}"] = False; st.rerun()
+            with st.expander("⚙️ Modifier / Supprimer"):
+                with st.form(key=f"p_{idx}"):
+                    adm_n = st.text_input("Ton Nom Admin")
+                    ac = st.text_input("Code Admin", type="password")
+                    n_p = st.number_input("Points", 0, 25, int(row.get("PTS", 0)))
+                    col_b1, col_b2 = st.columns(2)
+                    if col_b1.form_submit_button("Sauver"):
+                        if ac == CODE_ADMIN_GENERAL and adm_n:
+                            df_pts.at[idx, "PTS"] = n_p
+                            df_pts.at[idx, "Validité"] = "VALIDE" if n_p >= 14 else ("OUI" if n_p >= 1 else "NON")
+                            conn.update(worksheet=nom_feuille_pts, data=df_pts)
+                            log_action(adm_n, f"Points -> {n_p}", row.get('Nom Roblox'))
+                            st.rerun()
+                    if col_b2.form_submit_button("🗑️ SUPPRIMER"):
+                        if ac == CODE_ADMIN_GENERAL and adm_n:
+                            log_action(adm_n, "Suppression Profil", row.get('Nom Roblox'))
+                            conn.update(worksheet=nom_feuille_pts, data=df_pts.drop(idx))
+                            st.rerun()
 
 # ==========================================
 # ONGLET 3 : BANQUE
 # ==========================================
 with tabs[2]:
     st.subheader("💰 Banque Centrale")
-    try: df_bank = conn.read(worksheet="Banque", ttl=0)
+    # TRUC ASTUCES RÉINTÉGRÉ
+    st.info("💡 **Astuce :** Un compte bancaire est automatiquement créé avec un solde de 15 000 $ dès qu'un profil est enregistré dans l'onglet 'Points de Permis'.")
+    
+    try: 
+        df_bank = conn.read(worksheet="Banque", ttl=0)
     except: df_bank = pd.DataFrame()
     
-    sb = st.text_input("🔍 Chercher compte").strip()
+    sb = st.text_input("🔍 Rechercher compte").strip()
     if not df_bank.empty and sb:
         res_b = df_bank[df_bank["Nom Roblox"].astype(str).str.contains(sb, case=False, na=False)]
         for idx, row in res_b.iterrows():
-            st.metric(row.get('Nom Roblox'), f"{float(row.get('Solde', 0)):,.0f} $")
+            current_solde = float(row.get('Solde', 0))
+            st.metric(row.get('Nom Roblox'), f"{current_solde:,.0f} $")
             with st.expander("🛡️ Transaction Admin"):
                 with st.form(key=f"bt_{idx}"):
                     adm_b = st.text_input("Ton Nom Admin")
                     abc = st.text_input("Code Admin", type="password")
                     mnt = st.number_input("Montant", step=500.0)
-                    col1, col2 = st.columns(2)
-                    if col1.form_submit_button("📉 Retirer") and abc == CODE_ADMIN_GENERAL and adm_b:
-                        df_bank.at[idx, "Solde"] = float(row.get('Solde')) - mnt
+                    c1, c2 = st.columns(2)
+                    if c1.form_submit_button("📉 Retirer") and abc == CODE_ADMIN_GENERAL and adm_b:
+                        df_bank.at[idx, "Solde"] = current_solde - mnt
                         conn.update(worksheet="Banque", data=df_bank)
                         log_action(adm_b, f"Retrait (-{mnt})", row.get('Nom Roblox')); st.rerun()
-                    if col2.form_submit_button("📈 Ajouter") and abc == CODE_ADMIN_GENERAL and adm_b:
-                        df_bank.at[idx, "Solde"] = float(row.get('Solde')) + mnt
+                    if c2.form_submit_button("📈 Ajouter") and abc == CODE_ADMIN_GENERAL and adm_b:
+                        df_bank.at[idx, "Solde"] = current_solde + mnt
                         conn.update(worksheet="Banque", data=df_bank)
                         log_action(adm_b, f"Ajout (+{mnt})", row.get('Nom Roblox')); st.rerun()
 
 # ==========================================
-# ONGLET 4 : LOGS (VERROUILLÉ)
+# ONGLET 4 : LOGS
 # ==========================================
 with tabs[3]:
-    st.subheader("📜 Accès aux Logs")
-    unlock_code = st.text_input("Entrez le Code Admin pour voir l'historique", type="password")
+    st.subheader("📜 Accès à l'historique des actions")
+    unlock = st.text_input("Code Admin requis pour déverrouiller", type="password")
     
-    if unlock_code == CODE_ADMIN_GENERAL:
+    if unlock == CODE_ADMIN_GENERAL:
         try:
             df_l = conn.read(worksheet="Logs", ttl=0)
-            # On affiche les logs du plus récent au plus ancien
+            st.success("Accès autorisé. Affichage des dernières actions :")
             st.dataframe(df_l.iloc[::-1], use_container_width=True)
-        except:
-            st.warning("Feuille 'Logs' non trouvée.")
-    elif unlock_code != "":
-        st.error("Code incorrect.")
+        except: st.warning("Feuille 'Logs' non trouvée.")
+    elif unlock != "":
+        # GROS CADENAS SI FAUX
+        st.markdown("<h1 style='text-align: center; font-size: 100px;'>🔒</h1>", unsafe_allow_html=True)
+        st.error("ACCÈS REFUSÉ : Code Admin incorrect.")
+    else:
+        # CADENAS PAR DÉFAUT
+        st.markdown("<h1 style='text-align: center; font-size: 80px; filter: grayscale(100%); opacity: 0.5;'>🔒</h1>", unsafe_allow_html=True)
+        st.info("Veuillez entrer le code de sécurité pour consulter les logs.")
 
-st.markdown("<div style='position: fixed; left: 10px; bottom: 10px; color: grey; font-size: 12px;'>Version v4.7 - Secure Logs & Admin IDs</div>", unsafe_allow_html=True)
+st.markdown("<div style='position: fixed; left: 10px; bottom: 10px; color: grey; font-size: 12px;'>Version v4.9 - Security UI & Tips</div>", unsafe_allow_html=True)
