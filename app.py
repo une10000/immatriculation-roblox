@@ -31,7 +31,6 @@ def log_action(admin_name, action, cible):
             "Cible": str(cible)
         }])
         
-        # Nettoyage et mise à jour
         df_logs.columns = [str(c).strip() for c in df_logs.columns]
         updated_logs = pd.concat([df_logs, new_log], ignore_index=True)
         conn.update(worksheet="Logs", data=updated_logs)
@@ -73,25 +72,63 @@ with tabs[0]:
 
     st.divider()
     s_query = st.text_input("🔍 Rechercher une plaque ou un nom").strip().upper()
+    
     if not df_immat.empty:
         mask = df_immat.apply(lambda r: r.astype(str).str.contains(s_query, case=False).any(), axis=1) if s_query else [True]*len(df_immat)
-        st.dataframe(df_immat[mask][[c for c in df_immat.columns if c != "CODE"]], use_container_width=True)
+        res_immat = df_immat[mask]
         
-        # ZONE DE MODIFICATION / SUPPRESSION
-        with st.expander("⚙️ Gérer mon véhicule (Modifier/Supprimer)"):
-            st.info("Utilisez votre code secret défini lors de l'enregistrement.")
-            p_manage = st.text_input("Plaque du véhicule concerné").strip()
-            pass_manage = st.text_input("Code secret véhicule", type="password")
-            
-            if st.button("🗑️ Supprimer définitivement"):
-                if p_manage and pass_manage:
-                    idx_to_drop = df_immat[(df_immat["Numéro de la plaque"] == p_manage) & (df_immat["CODE"].astype(str) == pass_manage)].index
-                    if not idx_to_drop.empty:
-                        df_immat = df_immat.drop(idx_to_drop)
-                        conn.update(worksheet=nom_feuille_immat, data=df_immat)
-                        log_action(p_manage, "Suppression Véhicule", "Propriétaire")
-                        st.success("Véhicule supprimé !"); time.sleep(1); st.rerun()
-                    else: st.error("Combinaison Plaque/Code incorrecte.")
+        for idx, row in res_immat.iterrows():
+            with st.container(border=True):
+                col_info, col_edit, col_del = st.columns([5, 1, 1])
+                
+                with col_info:
+                    st.markdown(f"**{row['Numéro de la plaque']}** — {row['Marque du véhicule']} ({row['L\'état de la plaque']})")
+                    st.caption(f"Propriétaire: {row['Nom d\'utilisateur ROBLOX']} | Assurance: {row['Assurance']}")
+                
+                # Bouton Modifier
+                if col_edit.button("✏️", key=f"edit_btn_{idx}"):
+                    st.session_state[f"edit_mode_{idx}"] = True
+                
+                # Bouton Supprimer
+                if col_del.button("🗑️", key=f"del_btn_{idx}"):
+                    st.session_state[f"del_mode_{idx}"] = True
+
+                # --- FORMULAIRE MODIFICATION ---
+                if st.session_state.get(f"edit_mode_{idx}"):
+                    with st.form(f"form_edit_{idx}"):
+                        st.write("🔧 Modification du véhicule")
+                        new_plate = st.text_input("Nouveau numéro de plaque", value=row['Numéro de la plaque'])
+                        new_assur = st.selectbox("Nouvelle Assurance", liste_assurances, index=liste_assurances.index(row['Assurance']))
+                        confirm_code = st.text_input("Code secret véhicule", type="password")
+                        c1, c2 = st.columns(2)
+                        if c1.form_submit_button("✅ Sauvegarder"):
+                            if confirm_code == str(row['CODE']):
+                                df_immat.at[idx, 'Numéro de la plaque'] = new_plate
+                                df_immat.at[idx, 'Assurance'] = new_assur
+                                conn.update(worksheet=nom_feuille_immat, data=df_immat)
+                                log_action(row['Nom d\'utilisateur ROBLOX'], f"Modif Plaque {row['Numéro de la plaque']} -> {new_plate}", "Véhicule")
+                                st.success("Modifié !"); time.sleep(0.5); st.rerun()
+                            else: st.error("Code incorrect")
+                        if c2.form_submit_button("❌ Annuler"):
+                            st.session_state[f"edit_mode_{idx}"] = False
+                            st.rerun()
+
+                # --- FORMULAIRE SUPPRESSION ---
+                if st.session_state.get(f"del_mode_{idx}"):
+                    with st.form(f"form_del_{idx}"):
+                        st.warning(f"Supprimer le véhicule {row['Numéro de la plaque']} ?")
+                        del_code = st.text_input("Code secret véhicule", type="password")
+                        d1, d2 = st.columns(2)
+                        if d1.form_submit_button("🗑️ CONFIRMER SUPPRESSION"):
+                            if del_code == str(row['CODE']):
+                                df_immat = df_immat.drop(idx)
+                                conn.update(worksheet=nom_feuille_immat, data=df_immat)
+                                log_action(row['Nom d\'utilisateur ROBLOX'], "Suppression Véhicule", row['Numéro de la plaque'])
+                                st.success("Supprimé !"); time.sleep(0.5); st.rerun()
+                            else: st.error("Code incorrect")
+                        if d2.form_submit_button("Annuler"):
+                            st.session_state[f"del_mode_{idx}"] = False
+                            st.rerun()
 
 # ==========================================
 # ONGLET 2 : POINTS DE PERMIS
@@ -119,7 +156,6 @@ with tabs[1]:
                         new_driver = pd.DataFrame([{"Nom Discord": new_discord, "Nom Roblox": new_roblox, "PTS": new_pts, "Validité": v_label}])
                         conn.update(worksheet=nom_feuille_pts, data=pd.concat([df_pts, new_driver], ignore_index=True))
                         
-                        # Banque Auto
                         if new_roblox.lower() not in df_bank["Nom Roblox"].astype(str).str.lower().values if not df_bank.empty else [True]:
                             new_b = pd.DataFrame([{"Solde": 15000.0, "Nom Roblox": new_roblox, "Pseudo Admin": adm_name}])
                             conn.update(worksheet=nom_feuille_banque, data=pd.concat([df_bank, new_b], ignore_index=True))
@@ -131,23 +167,23 @@ with tabs[1]:
     st.divider()
     search_p = st.text_input("🔍 Chercher conducteur").strip()
     if not df_pts.empty and search_p:
-        res = df_pts[df_pts["Nom Roblox"].astype(str).str.contains(search_p, case=False, na=False)]
-        for idx, row in res.iterrows():
+        res_p = df_pts[df_pts["Nom Roblox"].astype(str).str.contains(search_p, case=False, na=False)]
+        for idx, row in res_p.iterrows():
             st.markdown(f"### 👤 {row.get('Nom Roblox')}")
             with st.expander("⚙️ Modifier / Supprimer"):
-                with st.form(key=f"p_{idx}"):
+                with st.form(key=f"p_edit_{idx}"):
                     adm_n = st.text_input("Ton Nom Admin")
                     ac = st.text_input("Code Admin", type="password")
                     n_p = st.number_input("Points", 0, 25, int(row.get("PTS", 0)))
-                    c_b1, c_b2 = st.columns(2)
-                    if c_b1.form_submit_button("Sauver"):
+                    col1, col2 = st.columns(2)
+                    if col1.form_submit_button("Sauver"):
                         if ac == CODE_ADMIN_GENERAL and adm_n:
                             df_pts.at[idx, "PTS"] = n_p
                             df_pts.at[idx, "Validité"] = "VALIDE" if n_p >= 14 else ("OUI" if n_p >= 1 else "NON")
                             conn.update(worksheet=nom_feuille_pts, data=df_pts)
                             log_action(adm_n, f"Points -> {n_p}", row.get('Nom Roblox'))
                             st.rerun()
-                    if c_b2.form_submit_button("🗑️ SUPPRIMER"):
+                    if col2.form_submit_button("🗑️ SUPPRIMER"):
                         if ac == CODE_ADMIN_GENERAL and adm_n:
                             log_action(adm_n, "Suppression Profil", row.get('Nom Roblox'))
                             conn.update(worksheet=nom_feuille_pts, data=df_pts.drop(idx))
@@ -171,16 +207,16 @@ with tabs[2]:
             current_solde = float(row.get('Solde', 0))
             st.metric(row.get('Nom Roblox'), f"{current_solde:,.0f} $")
             with st.expander("🛡️ Transaction Admin"):
-                with st.form(key=f"bt_{idx}"):
+                with st.form(key=f"bank_t_{idx}"):
                     adm_b = st.text_input("Ton Nom Admin")
                     abc = st.text_input("Code Admin", type="password")
                     mnt = st.number_input("Montant", step=500.0)
-                    c_1, c_2 = st.columns(2)
-                    if c_1.form_submit_button("📉 Retirer") and abc == CODE_ADMIN_GENERAL:
+                    b1, b2 = st.columns(2)
+                    if b1.form_submit_button("📉 Retirer") and abc == CODE_ADMIN_GENERAL:
                         df_bank.at[idx, "Solde"] = current_solde - mnt
                         conn.update(worksheet="Banque", data=df_bank)
                         log_action(adm_b, f"Retrait (-{mnt})", row.get('Nom Roblox')); st.rerun()
-                    if c_2.form_submit_button("📈 Ajouter") and abc == CODE_ADMIN_GENERAL:
+                    if b2.form_submit_button("📈 Ajouter") and abc == CODE_ADMIN_GENERAL:
                         df_bank.at[idx, "Solde"] = current_solde + mnt
                         conn.update(worksheet="Banque", data=df_bank)
                         log_action(adm_b, f"Ajout (+{mnt})", row.get('Nom Roblox')); st.rerun()
@@ -197,12 +233,12 @@ with tabs[3]:
             df_l = conn.read(worksheet="Logs", ttl=0)
             st.success("🔓 Accès autorisé")
             st.dataframe(df_l.iloc[::-1], use_container_width=True)
-        except: st.warning("Feuille 'Logs' vide ou introuvable.")
+        except: st.warning("Feuille 'Logs' vide.")
     elif unlock != "":
         st.markdown("<h1 style='text-align: center; font-size: 100px;'>🔒</h1>", unsafe_allow_html=True)
         st.error("ACCÈS REFUSÉ")
     else:
         st.markdown("<h1 style='text-align: center; font-size: 80px; opacity: 0.5;'>🔒</h1>", unsafe_allow_html=True)
-        st.info("Entrez le code pour consulter l'historique.")
+        st.info("Entrez le code Admin pour voir l'historique.")
 
-st.markdown("<div style='position: fixed; left: 10px; bottom: 10px; color: grey; font-size: 12px;'>Version v5.3 - Final Release</div>", unsafe_allow_html=True)
+st.markdown("<div style='position: fixed; left: 10px; bottom: 10px; color: grey; font-size: 12px;'>Version v5.4 - Interactive UI</div>", unsafe_allow_html=True)
