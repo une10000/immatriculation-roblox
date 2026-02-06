@@ -138,8 +138,8 @@ with tabs[1]:
 # ==========================================
 with tabs[2]:
     st.subheader("💰 Banque Centrale")
-    # NOUVELLE ASTUCE MISE À JOUR v5.0
-    st.info("💡 **Astuce :** Un compte bancaire est automatiquement crée avec un solde de 15'000$ par mois, lorsque votre permis est réussie.")
+    # PHRASE ASTUCE MISE À JOUR v5.1
+    st.info("💡 **Astuce :** un compte bancaire est automatiquement crée avec un solde de 15'000$ par mois, lorsque votre permis est réussie")
     
     try: 
         df_bank = conn.read(worksheet="Banque", ttl=0)
@@ -170,20 +170,22 @@ with tabs[2]:
 # ONGLET 4 : LOGS
 # ==========================================
 with tabs[3]:
-    st.subheader("📜 Accès à l'historique des actions")
-    unlock = st.text_input("Code Admin requis pour déverrouiller", type="password")
+    st.subheader("📜 Accès aux Logs")
+    unlock = st.text_input("Code de sécurité requis", type="password")
     
     if unlock == CODE_ADMIN_GENERAL:
         try:
             df_l = conn.read(worksheet="Logs", ttl=0)
-            st.success("Accès autorisé. Affichage des dernières actions :")
+            st.success("🔓 Accès autorisé")
             st.dataframe(df_l.iloc[::-1], use_container_width=True)
         except: st.warning("Feuille 'Logs' non trouvée.")
     elif unlock != "":
+        # ÉMOJI CADENAS APPLE (STYLE)
         st.markdown("<h1 style='text-align: center; font-size: 100px;'>🔒</h1>", unsafe_allow_html=True)
-        st.error("ACCÈS REFUSÉ : Code Admin incorrect.")
+        st.error("ACCÈS REFUSÉ")
     else:
-        st.markdown("<h1 style='text-align: center; font-size: 80px; filter: grayscale(100%); opacity: 0.5;'>🔒</h1>", unsafe_allow_html=True)
-        st.info("Veuillez entrer le code de sécurité pour consulter les logs.")
+        # ÉMOJI CADENAS PAR DÉFAUT
+        st.markdown("<h1 style='text-align: center; font-size: 80px; opacity: 0.5;'>🔒</h1>", unsafe_allow_html=True)
+        st.info("Veuillez entrer le code Admin.")
 
-st.markdown("<div style='position: fixed; left: 10px; bottom: 10px; color: grey; font-size: 12px;'>Version v5.0 - Final UI Update</div>", unsafe_allow_html=True)
+st.markdown("<div style='position: fixed; left: 10px; bottom: 10px; color: grey; font-size: 12px;'>Version v5.1 - Final Style</div>", unsafe_allow_html=True)
