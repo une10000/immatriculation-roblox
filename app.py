@@ -37,7 +37,7 @@ liste_assurances = ["Non assuré", "RCT", "Averis"]
 tabs = st.tabs(["🚗 Immatriculations", "🪪 Points de Permis", "💰 Banque", "📜 Logs"])
 
 # ==========================================
-# ONGLET 1 : IMMATRICULATIONS (UI AMÉLIORÉE)
+# ONGLET 1 : IMMATRICULATIONS
 # ==========================================
 with tabs[0]:
     nom_feuille_immat = "Copie de Immatriculations"
@@ -71,57 +71,48 @@ with tabs[0]:
         for idx, row in res_immat.iterrows():
             with st.container(border=True):
                 col_info, col_actions = st.columns([3, 2])
-                
                 with col_info:
                     st.markdown(f"### 🚗 {row['Numéro de la plaque']}")
                     st.markdown(f"**Modèle :** {row['Marque du véhicule']} | **État :** {row['L\'état de la plaque']}")
-                    st.markdown(f"👤 **Propriétaire :** {row['Nom d\'utilisateur ROBLOX']}")
-                    st.markdown(f"🛡️ **Assurance :** `{row['Assurance']}`")
+                    st.markdown(f"👤 **Propriétaire :** {row['Nom d\'utilisateur ROBLOX']} | 🛡️ **Assurance :** `{row['Assurance']}`")
                 
                 with col_actions:
-                    st.write(" ") # Espace
                     if st.button(f"✏️ Modifier le véhicule", key=f"edit_{idx}", use_container_width=True):
                         st.session_state[f"mode_edit_{idx}"] = True
-                    
-                    if st.button(f"🗑️ Supprimer le véhicule", key=f"del_{idx}", use_container_width=True, type="secondary"):
+                    if st.button(f"🗑️ Supprimer le véhicule", key=f"del_{idx}", use_container_width=True):
                         st.session_state[f"mode_del_{idx}"] = True
 
-                # --- FORMULAIRE MODIF ---
                 if st.session_state.get(f"mode_edit_{idx}"):
                     with st.form(f"f_edit_{idx}"):
-                        st.subheader("🔧 Modification")
                         new_plate = st.text_input("Nouvelle Plaque", value=row['Numéro de la plaque'])
                         new_assur = st.selectbox("Assurance", liste_assurances, index=liste_assurances.index(row['Assurance']))
                         v_code = st.text_input("Code secret véhicule", type="password")
                         c1, c2 = st.columns(2)
-                        if c1.form_submit_button("Sauvegarder les changements"):
+                        if c1.form_submit_button("Sauvegarder"):
                             if v_code == str(row['CODE']):
                                 df_immat.at[idx, 'Numéro de la plaque'] = new_plate
                                 df_immat.at[idx, 'Assurance'] = new_assur
                                 conn.update(worksheet=nom_feuille_immat, data=df_immat)
                                 log_action(row['Nom d\'utilisateur ROBLOX'], f"Modif Plaque -> {new_plate}", "Véhicule")
                                 st.success("C'est fait !"); time.sleep(0.5); st.rerun()
-                            else: st.error("Code secret incorrect")
+                            else: st.error("Code incorrect")
                         if c2.form_submit_button("Annuler"):
-                            st.session_state[f"mode_edit_{idx}"] = False
-                            st.rerun()
+                            st.session_state[f"mode_edit_{idx}"] = False; st.rerun()
 
-                # --- FORMULAIRE SUPPR ---
                 if st.session_state.get(f"mode_del_{idx}"):
                     with st.form(f"f_del_{idx}"):
-                        st.error(f"⚠️ Action irréversible : Supprimer {row['Numéro de la plaque']} ?")
-                        del_code = st.text_input("Entrez le code secret pour confirmer", type="password")
+                        st.error(f"Supprimer {row['Numéro de la plaque']} ?")
+                        del_code = st.text_input("Code secret", type="password")
                         d1, d2 = st.columns(2)
-                        if d1.form_submit_button("🗑️ OUI, SUPPRIMER"):
+                        if d1.form_submit_button("🗑️ CONFIRMER"):
                             if del_code == str(row['CODE']):
                                 df_immat = df_immat.drop(idx)
                                 conn.update(worksheet=nom_feuille_immat, data=df_immat)
                                 log_action(row['Nom d\'utilisateur ROBLOX'], "Suppression", row['Numéro de la plaque'])
                                 st.success("Supprimé !"); time.sleep(0.5); st.rerun()
-                            else: st.error("Code secret incorrect")
+                            else: st.error("Code incorrect")
                         if d2.form_submit_button("Annuler"):
-                            st.session_state[f"mode_del_{idx}"] = False
-                            st.rerun()
+                            st.session_state[f"mode_del_{idx}"] = False; st.rerun()
 
 # ==========================================
 # ONGLET 2 : POINTS DE PERMIS
@@ -132,35 +123,35 @@ with tabs[1]:
     except: df_pts = pd.DataFrame()
 
     with st.expander("👤 [ADMIN] Enregistrer un nouveau conducteur"):
-        with st.form("admin_add"):
+        st.info("💡 **INFO ADMIN :** Lors de la création d'un dossier, un compte bancaire est automatiquement créé avec un solde initial de **15'000$**.")
+        with st.form("admin_add_v57"):
             adm_n = st.text_input("Nom Admin")
             r_name = st.text_input("Nom Roblox")
             d_name = st.text_input("Nom Discord")
             pts_val = st.number_input("Points", 0, 25, 25)
             a_code = st.text_input("Code Admin", type="password")
-            if st.form_submit_button("Valider le dossier"):
+            if st.form_submit_button("Valider et Créer le dossier"):
                 if a_code == CODE_ADMIN_GENERAL and adm_n and r_name:
                     v_label = "VALIDE" if pts_val >= 14 else ("OUI" if pts_val >= 1 else "NON")
                     new_d = pd.DataFrame([{"Nom Discord": d_name, "Nom Roblox": r_name, "PTS": pts_val, "Validité": v_label}])
                     conn.update(worksheet=nom_feuille_pts, data=pd.concat([df_pts, new_d], ignore_index=True))
-                    # Création Banque Auto
                     try:
                         df_b = conn.read(worksheet="Banque", ttl=0)
-                        if r_name.lower() not in df_b["Nom Roblox"].astype(str).str.lower().values:
+                        if r_name.lower() not in df_b["Nom Roblox"].astype(str).str.lower().values if not df_b.empty else [True]:
                             new_b = pd.DataFrame([{"Solde": 15000.0, "Nom Roblox": r_name, "Pseudo Admin": adm_n}])
                             conn.update(worksheet="Banque", data=pd.concat([df_b, new_b], ignore_index=True))
                     except: pass
-                    log_action(adm_n, "Nouveau Dossier", r_name)
-                    st.success("Dossier créé !"); time.sleep(1); st.rerun()
+                    log_action(adm_n, "Nouveau Dossier + Banque Auto", r_name)
+                    st.success(f"Dossier de {r_name} créé !"); time.sleep(1); st.rerun()
 
     st.divider()
-    search_p = st.text_input("🔍 Chercher un conducteur").strip()
+    search_p = st.text_input("🔍 Rechercher un conducteur (Roblox ou Discord)").strip()
     if not df_pts.empty and search_p:
-        res_p = df_pts[df_pts["Nom Roblox"].astype(str).str.contains(search_p, case=False, na=False)]
+        res_p = df_pts[df_pts.apply(lambda r: r.astype(str).str.contains(search_p, case=False).any(), axis=1)]
         for idx, row in res_p.iterrows():
-            st.markdown(f"### 👤 {row.get('Nom Roblox')}")
+            st.markdown(f"### 👤 {row.get('Nom Roblox')} (@{row.get('Nom Discord')})")
             st.write(f"Points: **{row.get('PTS')}** | Validité: **{row.get('Validité')}**")
-            with st.expander("⚙️ Modifier Points / Supprimer"):
+            with st.expander("⚙️ Modifier / Supprimer"):
                 with st.form(key=f"p_edit_{idx}"):
                     adm_auth = st.text_input("Nom Admin")
                     code_auth = st.text_input("Code Admin", type="password")
@@ -180,22 +171,52 @@ with tabs[1]:
                             st.rerun()
 
 # ==========================================
-# ONGLET 3 : BANQUE
+# ONGLET 3 : BANQUE (RECHERCHE DISCORD AJOUTÉE)
 # ==========================================
 with tabs[2]:
     st.subheader("💰 Banque Centrale")
-    st.info("💡 **Astuce :** un compte bancaire est automatiquement crée avec un solde de 15'000$ par mois, lorsque votre permis est réussie")
-    try: df_bank = conn.read(worksheet="Banque", ttl=0)
-    except: df_bank = pd.DataFrame()
+    st.info("💡 **Note aux Citoyens :** Un compte bancaire est automatiquement créé dès l'obtention de votre dossier de conduite.")
     
-    sb = st.text_input("🔍 Rechercher un compte bancaire").strip()
+    try: 
+        df_bank = conn.read(worksheet="Banque", ttl=0)
+        df_pts_ref = conn.read(worksheet="Points Permis", ttl=0) # Pour le lien Discord
+    except: 
+        df_bank = pd.DataFrame()
+        df_pts_ref = pd.DataFrame()
+    
+    sb = st.text_input("🔍 Rechercher un compte (Nom Roblox ou Nom Discord)").strip()
+    
     if not df_bank.empty and sb:
-        res_b = df_bank[df_bank["Nom Roblox"].astype(str).str.contains(sb, case=False, na=False)]
+        # 1. On cherche d'abord les correspondances directes Roblox dans la Banque
+        mask_rob = df_bank["Nom Roblox"].astype(str).str.contains(sb, case=False, na=False)
+        
+        # 2. On cherche si 'sb' correspond à un Nom Discord dans Points Permis
+        roblox_names_from_discord = []
+        if not df_pts_ref.empty:
+            match_discord = df_pts_ref[df_pts_ref["Nom Discord"].astype(str).str.contains(sb, case=False, na=False)]
+            roblox_names_from_discord = match_discord["Nom Roblox"].tolist()
+        
+        mask_disc = df_bank["Nom Roblox"].isin(roblox_names_from_discord)
+        
+        # On combine les deux recherches
+        res_b = df_bank[mask_rob | mask_disc]
+        
+        if res_b.empty:
+            st.warning("Aucun compte trouvé pour cette recherche.")
+        
         for idx, row in res_b.iterrows():
             curr_s = float(row.get('Solde', 0))
-            st.metric(row.get('Nom Roblox'), f"{curr_s:,.0f} $")
+            # Affichage du pseudo Discord s'il existe pour plus de clarté
+            discord_tag = ""
+            if not df_pts_ref.empty:
+                d_match = df_pts_ref[df_pts_ref["Nom Roblox"] == row['Nom Roblox']]
+                if not d_match.empty:
+                    discord_tag = f" (@{d_match.iloc[0]['Nom Discord']})"
+            
+            st.metric(f"{row.get('Nom Roblox')}{discord_tag}", f"{curr_s:,.0f} $")
+            
             with st.expander("🛡️ Actions Administratives"):
-                with st.form(key=f"b_t_{idx}"):
+                with st.form(key=f"b_t_v57_{idx}"):
                     adm_b = st.text_input("Nom Admin")
                     code_b = st.text_input("Code Admin", type="password")
                     montant = st.number_input("Montant", step=500.0)
@@ -215,18 +236,10 @@ with tabs[2]:
 # ONGLET 4 : LOGS
 # ==========================================
 with tabs[3]:
-    st.subheader("📜 Historique des Actions")
-    unlock = st.text_input("Code de sécurité requis pour les logs", type="password")
+    st.subheader("📜 Historique")
+    unlock = st.text_input("Code Admin", type="password")
     if unlock == CODE_ADMIN_GENERAL:
-        try:
-            st.success("🔓 Accès autorisé")
-            st.dataframe(conn.read(worksheet="Logs", ttl=0).iloc[::-1], use_container_width=True)
+        try: st.dataframe(conn.read(worksheet="Logs", ttl=0).iloc[::-1], use_container_width=True)
         except: st.warning("Logs vides.")
-    elif unlock != "":
-        st.markdown("<h1 style='text-align: center; font-size: 100px;'>🔒</h1>", unsafe_allow_html=True)
-        st.error("ACCÈS REFUSÉ")
-    else:
-        st.markdown("<h1 style='text-align: center; font-size: 80px; opacity: 0.5;'>🔒</h1>", unsafe_allow_html=True)
-        st.info("Veuillez entrer le code Admin.")
 
-st.markdown("<div style='position: fixed; left: 10px; bottom: 10px; color: grey; font-size: 12px;'>Version v5.5 - Enhanced UI</div>", unsafe_allow_html=True)
+st.markdown("<div style='position: fixed; left: 10px; bottom: 10px; color: grey; font-size: 12px;'>Version v5.7 - Discord Search Support</div>", unsafe_allow_html=True)
