@@ -99,7 +99,7 @@ with tabs[2]:
         df_pts_ref = conn.read(worksheet="Points Permis", ttl=0)
     except: df_bank = pd.DataFrame(); df_pts_ref = pd.DataFrame()
     
-    sb = st.text_input("🔍 Rechercher (Roblox ou Discord)").strip()
+    sb = st.text_input("🔍 Rechercher compte bancaire (Roblox ou Discord)").strip()
     if not df_bank.empty and sb:
         # Recherche intelligente : regarde dans Nom Roblox OU Nom Discord
         mask = (df_bank["Nom Roblox"].astype(str).str.contains(sb, case=False, na=False)) | \
