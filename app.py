@@ -81,7 +81,6 @@ with tabs[0]:
                 if st.session_state.get(f"em_{idx}"):
                     with st.form(f"fe_{idx}"):
                         np = st.text_input("Plaque", value=row['Numéro de la plaque'])
-                        na = st.selectbox("Assurance", liste_assurances, index=liste_assurances.index(row['Assurance']))
                         v_c = st.text_input("Code secret", type="password")
                         if st.form_submit_button("Sauvegarder"):
                             if v_c == str(row['CODE']):
