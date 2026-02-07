@@ -169,7 +169,7 @@ with tabs[2]:
             st.metric(f"👤 {row['Nom Roblox']}", f"{s_val:,.0f} $")
             with st.expander("🛡️ Transaction"):
                 with st.form(f"tr_v72_{idx}"):
-                    a_b = st.text_input("Admin"); c_b = st.text_input("Code", type="password")
+                    a_b = st.text_input("Nom de l'Admin"); c_b = st.text_input("Code ADMIN", type="password")
                     mnt = st.number_input("Montant", step=500.0)
                     col1, col2 = st.columns(2)
                     if col1.form_submit_button("📉 Retirer") and c_b == CODE_ADMIN_GENERAL:
