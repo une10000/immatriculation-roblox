@@ -281,7 +281,6 @@ with target_tab_permis:
 
             # --- CALCULATRICE FINANCIÈRE ET PAIEMENT ---
             cost_ville, cost_rct, cost_averis, cost_jeune = 175, 0, 0, 0
-            
             if user_select != "---":
                 user_data = df_users[df_users["Nom Roblox"] == user_select]
                 if not user_data.empty:
