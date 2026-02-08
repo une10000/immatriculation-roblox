@@ -241,6 +241,10 @@ with tabs[1 if st.session_state.role != "Staff" else 2]:
 # 🪪 & 📜 SECTIONS STAFF
 # ==========================================
 if st.session_state.role == "Staff":
+
+
+
+    
         st.divider()
     st.subheader("👤 Création d’un profil citoyen")
 
