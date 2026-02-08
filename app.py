@@ -4,7 +4,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 import time
 
-# --- 1. CONFIGURATION PAGE (FIX TABS COUPÉS) ---
+# --- 1. CONFIGURATION PAGE (FIX DES TABS COUPÉS) ---
 st.set_page_config(page_title="RCRP - Système Intégral", layout="wide")
 
 # --- 2. STYLE CSS COMPLET (LOGO, TABS ET REÇU) ---
@@ -15,7 +15,7 @@ st.markdown("""
         padding-top: 6rem !important; 
     }
     
-    /* Fix Logo Sidebar - Taille stable */
+    /* Fix Logo Sidebar - Taille stable 250px */
     [data-testid="stSidebar"] img { 
         border-radius: 12px; 
         width: 250px !important; 
@@ -54,7 +54,7 @@ TARGET_RCT = "une10000"
 TARGET_AVERIS = "Moune2010"
 CODE_ADMIN = "RCRPFR-25-26" 
 CODE_PRO = "RCT-26-RCRPFR"
-LOGO_URL = "https://media.discordapp.net/attachments/1441508709024006315/1467106550656270484/Capture_decran_2025-12-01_a_21.03.31.png?ex=6989b8f3&is=69886773&hm=29c056c7c305026ba05077deb91af1f7a838c8e409cbbaba0d94b41076cefa62&=&format=webp&quality=lossless&width=2732&height=1508"
+LOGO_URL = "https://media.discordapp.net/attachments/1441508709024006315/1467106550656270484/Capture_decran_2025-12-01_a_21.03.31.png?format=webp&quality=lossless&width=2732&height=1508"
 
 def get_data(sheet_name):
     st.cache_data.clear()
@@ -118,30 +118,28 @@ with st.sidebar:
 # Navigation par Onglets
 tabs = st.tabs(["🚗 Immatriculations", "🪪 Dossiers & Points", "💰 Banque"])
 
-# --- ONGLET 1 : IMMATRICULATIONS (ACCÈS TOTAL) ---
+# --- ONGLET 1 : IMMATRICULATIONS (RESTAURATION COMPLÈTE) ---
 with tabs[0]:
     st.header("🚗 Registre des Véhicules")
     
-    # Formulaire d'immatriculation accessible à TOUS
     with st.expander("➕ Enregistrer un véhicule", expanded=True):
-        with st.form("form_immat_integral"):
+        with st.form("form_immat_integral_restored"):
             user_select = st.selectbox("Propriétaire", ["---"] + df_banque["Nom Roblox"].tolist())
             marque_v = st.text_input("Marque / Modèle")
             plaque_v = st.text_input("Plaque (ex: ABC-123)")
             assu_select = st.selectbox("Assurance", ["Aucune", "AVERIS (130$)", "RCT (150$)"])
-            code_v = st.text_input("🔑 Code Secret (pour gérer le véhicule plus tard)", type="password")
+            code_v = st.text_input("🔑 Code Secret", type="password")
             
-            # Calculs des coûts
+            # Logique de calcul interne au formulaire
             cost_ville = 175
             cost_assu = 130 if "AVERIS" in assu_select else 150 if "RCT" in assu_select else 0
             
-            # Promo Trio RCT (le 3ème est gratuit)
+            # Promo Trio RCT
             rct_count = len(df_im[(df_im["Nom d'utilisateur ROBLOX"] == user_select) & (df_im["Assurance"].str.contains("RCT"))])
             if "RCT" in assu_select and rct_count >= 2:
                 cost_assu = 0
-                st.info("🎁 Offre Trio : Assurance gratuite pour ce véhicule !")
-
-            # Taxe Jeune Conducteur (-1 mois)
+            
+            # Taxe Jeune
             cost_jeune = 0
             if user_select != "---":
                 u_row = df_banque[df_banque["Nom Roblox"] == user_select]
@@ -157,7 +155,7 @@ with tabs[0]:
             
             st.markdown(f"""
             <div class="ticket-fix">
-                <b>📄 FACTURE DÉTAILLÉE</b><br>
+                <b>📄 FACTURE OFFICIELLE</b><br>
                 ----------------------------<br>
                 Immatriculation Ville : 175$<br>
                 Service Assurance : {cost_assu}$<br>
@@ -173,10 +171,8 @@ with tabs[0]:
                     current_solde = float(df_banque.at[idx_user, "Solde"])
                     
                     if current_solde >= total_facture:
-                        # Prélèvement citoyen
                         df_banque.at[idx_user, "Solde"] = current_solde - total_facture
                         
-                        # Virement Assurance
                         if "AVERIS" in assu_select:
                             idx_dest = df_banque[df_banque["Nom Roblox"] == TARGET_AVERIS].index[0]
                             df_banque.at[idx_dest, "Solde"] = float(df_banque.at[idx_dest, "Solde"]) + cost_assu
@@ -184,7 +180,6 @@ with tabs[0]:
                             idx_dest = df_banque[df_banque["Nom Roblox"] == TARGET_RCT].index[0]
                             df_banque.at[idx_dest, "Solde"] = float(df_banque.at[idx_dest, "Solde"]) + cost_assu
                         
-                        # Mise à jour Immat
                         new_immat = pd.DataFrame([{
                             "Horodateur": datetime.now().strftime("%d/%m/%Y"),
                             "Nom d'utilisateur ROBLOX": user_select,
@@ -196,15 +191,15 @@ with tabs[0]:
                         
                         conn.update(worksheet="Banque", data=df_banque)
                         conn.update(worksheet="Copie de Immatriculations", data=pd.concat([df_im, new_immat], ignore_index=True))
-                        st.success("Véhicule immatriculé avec succès !")
+                        st.success("Immatriculation réussie !")
                         time.sleep(1)
                         st.rerun()
                     else:
-                        st.error("Solde bancaire insuffisant pour cette opération.")
+                        st.error("Solde insuffisant.")
                 else:
-                    st.warning("Veuillez remplir tous les champs (Propriétaire, Plaque, Code Secret).")
+                    st.warning("Veuillez remplir tous les champs.")
 
-    # Liste des immatriculations avec recherche
+    # Liste des immatriculations
     st.divider()
     search_query = st.text_input("🔍 Rechercher une Plaque ou un Nom").lower()
     if not df_im.empty:
@@ -214,63 +209,59 @@ with tabs[0]:
                 st.markdown(f"<span class='badge-assu'>{row['Assurance']}</span>", unsafe_allow_html=True)
                 st.write(f"🚗 **{row['Numéro de la plaque']}** | 👤 {row['Nom d\'utilisateur ROBLOX']} ({row['Marque du véhicule']})")
                 
-                with st.expander("⚙️ Options de gestion"):
-                    check_code = st.text_input("Code Secret du véhicule", type="password", key=f"check_{i}")
+                with st.expander("⚙️ Options"):
+                    check_code = st.text_input("Code Secret", type="password", key=f"check_{i}")
                     if check_code == str(row['CODE']) or st.session_state.role == "Staff":
-                        if st.button("🗑️ Supprimer l'immatriculation", key=f"del_{i}"):
-                            updated_immat = df_im.drop(i)
-                            conn.update(worksheet="Copie de Immatriculations", data=updated_immat)
-                            st.success("Supprimé !")
+                        if st.button("🗑️ Supprimer", key=f"del_{i}"):
+                            conn.update(worksheet="Copie de Immatriculations", data=df_im.drop(i))
                             st.rerun()
 
-# --- ONGLET 2 : POINTS & DOSSIERS ---
+# --- ONGLET 2 : POINTS (SANS SOLDE) ---
 with tabs[1]:
     st.header("🪪 Dossiers Citoyens")
-    search_name = st.text_input("🔍 Tapez un Nom Roblox pour voir les points et le solde").lower()
-    
+    search_name = st.text_input("🔍 Rechercher un Nom").lower()
     if search_name:
-        # Affichage Points
         res_pts = df_pts[df_pts["Nom Roblox"].str.lower().str.contains(search_name, na=False)]
         if not res_pts.empty:
             for _, r in res_pts.iterrows():
                 st.metric(f"Points de {r['Nom Roblox']}", f"{r['PTS']} / 25")
-        
-        # Affichage Solde (Accessible Civils)
-        res_bq = df_banque[df_banque["Nom Roblox"].str.lower().str.contains(search_name, na=False)]
-        if not res_bq.empty:
-            st.metric(f"Solde Bancaire de {res_bq.iloc[0]['Nom Roblox']}", f"{float(res_bq.iloc[0]['Solde']):,.0f} $")
+        else:
+            st.warning("Dossier introuvable.")
     
     if st.session_state.role == "Staff":
         st.divider()
-        st.subheader("🛠️ Administration Staff")
         with st.expander("👤 Créer un nouveau profil"):
-            with st.form("new_profile_form"):
-                new_roblox = st.text_input("Pseudo Roblox")
-                new_discord = st.text_input("Pseudo Discord")
-                if st.form_submit_button("🚀 Créer le Dossier"):
-                    creation_date = datetime.now().strftime("%d/%m/%Y")
-                    # Ajout Banque
-                    row_b = pd.DataFrame([{"Solde": 15000, "Nom Discord": new_discord, "Nom Roblox": new_roblox, "Date d'arrivée": creation_date}])
-                    # Ajout Points
-                    row_p = pd.DataFrame([{"Nom Roblox": new_roblox, "PTS": 25}])
-                    
+            with st.form("new_profile"):
+                n_roblox = st.text_input("Pseudo Roblox")
+                n_discord = st.text_input("Pseudo Discord")
+                if st.form_submit_button("🚀 Créer"):
+                    c_date = datetime.now().strftime("%d/%m/%Y")
+                    row_b = pd.DataFrame([{"Solde": 15000, "Nom Discord": n_discord, "Nom Roblox": n_roblox, "Date d'arrivée": c_date}])
+                    row_p = pd.DataFrame([{"Nom Roblox": n_roblox, "PTS": 25}])
                     conn.update(worksheet="Banque", data=pd.concat([df_banque, row_b], ignore_index=True))
                     conn.update(worksheet="Points Permis", data=pd.concat([df_pts, row_p], ignore_index=True))
-                    st.success("Profil créé avec succès !")
+                    st.success("Profil créé !")
                     st.rerun()
 
-# --- ONGLET 3 : BANQUE ---
+# --- ONGLET 3 : BANQUE (SOLDE + POINTS) ---
 with tabs[2]:
     st.header("💰 État de la Banque")
-    if not search_name:
-        st.info("Utilisez la barre de recherche dans l'onglet 'Dossiers & Points' pour consulter un compte.")
+    if search_name:
+        res_bq = df_banque[df_banque["Nom Roblox"].str.lower().str.contains(search_name, na=False)]
+        res_pts2 = df_pts[df_pts["Nom Roblox"].str.lower().str.contains(search_name, na=False)]
+        if not res_bq.empty:
+            col_b1, col_b2 = st.columns(2)
+            with col_b1:
+                st.metric(f"Solde de {res_bq.iloc[0]['Nom Roblox']}", f"{float(res_bq.iloc[0]['Solde']):,.0f} $")
+            with col_b2:
+                if not res_pts2.empty:
+                    st.metric("Points Permis", f"{res_pts2.iloc[0]['PTS']} / 25")
+            st.write(f"📅 Arrivée en ville : {res_bq.iloc[0]['Date d\'arrivée']}")
+        else:
+            st.warning("Aucun compte trouvé.")
     else:
-        # Doublon d'affichage ici pour plus de clarté
-        res_bq_full = df_banque[df_banque["Nom Roblox"].str.lower().str.contains(search_name, na=False)]
-        if not res_bq_full.empty:
-            st.write(f"### Détails du compte : {res_bq_full.iloc[0]['Nom Roblox']}")
-            st.write(f"💳 Solde : **{float(res_bq_full.iloc[0]['Solde']):,.0f} $**")
-            st.write(f"📅 Arrivée : {res_bq_full.iloc[0]['Date d\'arrivée']}")
+        st.info("Recherchez un nom pour voir le solde et les points.")
 
 st.markdown("---")
-st.markdown("<center><small>RCRP Système v12.7 | 2026</small></center>", unsafe_allow_html=True)
+st.markdown("<center><small>RCRP Système v12.9 | 2026</small></center>", unsafe_allow_html=True)
+st.markdown("<center><small>RCRP Système v12.8 | 2026</small></center>", unsafe_allow_html=True)
