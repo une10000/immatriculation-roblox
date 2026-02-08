@@ -277,8 +277,6 @@ with target_tab_permis:
     else:
         st.write("### 🪪 Registre National des Permis")
         df_permis = load_table("Points Permis")
-  # --- REMPLACE LE BLOC DU BOUTON VALIDER (Lignes 280 à 356 environ) PAR CECI ---
-
             # --- CALCULATRICE FINANCIÈRE ET PAIEMENT ---
             cost_ville, cost_rct, cost_averis, cost_jeune = 175, 0, 0, 0
             if user_select != "---":
