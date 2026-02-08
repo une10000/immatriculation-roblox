@@ -65,7 +65,7 @@ CODE_ADMIN = "RCRPFR-25-26"
 CODE_PRO = "RCT-26-RCRPFR"
 
 # Lien Image Logo
-LOGO_URL = "https://media.discordapp.net/attachments/1441508709024006315/1467106550656270484/Capture_decran_2025-12-01_a_21.03.31.png?format=webp&quality=lossless&width=2732&height=1508"
+LOGO_URL = "https://media.discordapp.net/attachments/1441508709024006315/1467106550656270484/Capture_decran_2025-12-01_a_21.03.31.png?ex=6989b8f3&is=69886773&hm=29c056c7c305026ba05077deb91af1f7a838c8e409cbbaba0d94b41076cefa62&=&format=webp&quality=lossless&width=2732&height=1508"
 
 # Fonction de récupération des données
 def get_data(sheet_name):
