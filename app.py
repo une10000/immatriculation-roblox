@@ -70,6 +70,7 @@ if st.session_state.role is None:
         with st.container(border=True):
             st.markdown("### 👤 Citoyen")
             st.write("Accès public pour consulter vos véhicules, votre solde bancaire et vos points de permis de conduire.")
+            # AJOUT DE L'ESPACEUR POUR ALIGNER LES BOUTONS
             st.markdown("<div style='height: 125px;'></div>", unsafe_allow_html=True) 
             if st.button("Accès Public", use_container_width=True):
                 st.session_state.role = "Civil"; st.rerun()
@@ -260,4 +261,4 @@ if st.session_state.role == "Staff":
         st.dataframe(get_data("Logs").iloc[::-1], use_container_width=True)
 
 st.markdown("---")
-st.markdown("<center><small>RCRP FR | Système de Gestion Intégral v9.29</small></center>", unsafe_allow_html=True)
+st.markdown("<center><small>RCRP FR | Système de Gestion Intégral v9.31</small></center>", unsafe_allow_html=True)
