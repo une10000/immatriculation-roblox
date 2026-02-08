@@ -130,19 +130,25 @@ if st.session_state.role is None:
     st.stop()
 
 # ==============================================================================
-# 6. NAVIGATION LATÉRALE (SIDEBAR)
+# 6. NAVIGATION LATÉRALE (SIDEBAR) AVEC HEURE
 # ==============================================================================
 with st.sidebar:
     st.image(LOGO_URL, use_container_width=True)
-    st.info(f"Session actuelle : **{st.session_state.role}**")
     
-    if st.button("🚪 Déconnexion du système", use_container_width=True):
-        st.session_state.role = None
+    # --- C'EST ICI QUE L'HEURE EST AJOUTÉE ---
+    st.markdown("---")
+    maintenant = datetime.now()
+    st.markdown(f"📅 **Date :** {maintenant.strftime('%d/%m/%Y')}")
+    st.markdown(f"⏰ **Heure :** {maintenant.strftime('%H:%M:%S')}") # <--- L'HEURE EST LÀ
+    
+    if st.button("🔄 Actualiser l'heure"): # Petit bouton pour mettre à jour sans bug
         st.rerun()
-        
-    st.divider()
-    st.write(f"📅 **Date :** {datetime.now().strftime('%d/%m/%Y')}")
-    st.caption("RCRP Management System v14.9")
+    st.markdown("---")
+    # ----------------------------------------
+
+    st.info(f"Rôle : **{st.session_state.role}**")
+    if st.button("🚪 Déconnexion", use_container_width=True):
+        st.session_state.role = None; st.rerun()
 
 # ==============================================================================
 # 7. GESTION DES ONGLETS PRINCIPAUX
