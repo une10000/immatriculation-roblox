@@ -368,7 +368,7 @@ if st.button("💳 Procéder au Paiement et à l'Enregistrement", use_container_
                         
     # SECTION 1.2 : AFFICHAGE ET RECHERCHE DANS LE REGISTRE
     
-    st.divider()
+st.divider()
     st.subheader("🔍 Consultation du Registre Public")
     
     # Barre de recherche dynamique
