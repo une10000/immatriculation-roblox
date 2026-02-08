@@ -277,83 +277,91 @@ with target_tab_permis:
     else:
         st.write("### 🪪 Registre National des Permis")
         df_permis = load_table("Points Permis")
-        
-        # Barre de recherche (si pas déjà remplie par le contexte global, on redemande)
-        search_permis = st.text_input("🔍 Vérification Permis (Nom Roblox ou Discord)", key="s_permis").lower()
-        
-        if search_permis:
-            # On doit d'abord trouver le nom Roblox si l'utilisateur a tapé son Discord
-            # On utilise la table Banque pour faire la correspondance
-            df_ref = load_table("Banque")
-            users_matches = df_ref[(df_ref["Nom Roblox"].str.lower().str.contains(search_permis)) | 
-                                   (df_ref["Nom Discord"].str.lower().str.contains(search_permis))]
+  # --- REMPLACE LE BLOC DU BOUTON VALIDER (Lignes 280 à 356 environ) PAR CECI ---
+
+            # --- CALCULATRICE FINANCIÈRE ET PAIEMENT ---
+            cost_ville, cost_rct, cost_averis, cost_jeune = 175, 0, 0, 0
             
-            if not users_matches.empty:
-                target_names = users_matches["Nom Roblox"].tolist()
-                # Maintenant on cherche dans la table Permis
-                res_p = df_permis[df_permis["Nom Roblox"].isin(target_names)]
-                
-                if not res_p.empty:
-                    for ip, lp in res_p.iterrows():
-                        pts = int(lp['PTS'])
+            if user_select != "---":
+                user_data = df_users[df_users["Nom Roblox"] == user_select]
+                if not user_data.empty:
+                    # 1. Taxe Jeune Conducteur (< 30 jours)
+                    try:
+                        date_str = str(user_data.iloc[0]["Date d'arrivée"])
+                        date_obj = datetime.strptime(date_str, "%d/%m/%Y")
+                        if datetime.now() - date_obj < timedelta(days=30):
+                            cost_jeune = 50
+                    except: pass
+                    
+                    # 2. Frais Assurance
+                    if assurance_type == "Averis":
+                        cost_averis = 130
+                    elif assurance_type == "RCT":
+                        # Vérif si premier véhicule RCT pour ce proprio
+                        nb_cars_rct = df_immat[(df_immat["Nom d'utilisateur ROBLOX"] == user_select) & (df_immat["Assurance"] == "RCT")].shape[0]
+                        if nb_cars_rct < 1: # Si c'est son premier (ou 0), il paye
+                            cost_rct = 150
+
+            total_bill = cost_ville + cost_rct + cost_averis + cost_jeune
+            
+            st.markdown(f"""
+            <div class='transaction-ticket'>
+                <b>FACTURE OFFICIELLE</b><br>
+                <small>Détail des frais appliqués</small>
+                <hr style='border: 0.5px dashed gray'>
+                Frais Administratifs : {cost_ville} $<br>
+                {f"Frais RCT (Contrat initial) : {cost_rct} $<br>" if cost_rct > 0 else ""}
+                {f"Frais Averis : {cost_averis} $<br>" if cost_averis > 0 else ""}
+                {f"Majoration Jeune Permis : {cost_jeune} $<br>" if cost_jeune > 0 else ""}
+                <hr>
+                <b style='font-size:1.2em'>TOTAL À PAYER : {total_bill} $</b>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            if st.form_submit_button("💳 Valider la transaction"):
+                if user_select != "---" and plate_num and secret_code:
+                    u_row = df_users[df_users["Nom Roblox"] == user_select]
+                    current_solde = float(u_row.iloc[0]["Solde"])
+                    
+                    if current_solde >= total_bill:
+                        # 1. Débit total du Client
+                        df_users.at[u_row.index[0], "Solde"] = current_solde - total_bill
                         
-                        # LOGIQUE VISUELLE (COULEURS)
-                        if pts >= 15:
-                            color = "#2ecc71" # Vert
-                            msg = "PERMIS VALIDE - Conduite Exemplaire"
-                        elif pts >= 6:
-                            color = "#f1c40f" # Orange
-                            msg = "PERMIS VALIDE - Attention"
-                        else:
-                            color = "#e74c3c" # Rouge
-                            msg = "PERMIS SUSPENDU - Danger"
+                        # 2. Virement vers RCT (une10000)
+                        if cost_rct > 0:
+                            t_rct = df_users[df_users["Nom Roblox"] == TARGET_RCT]
+                            if not t_rct.empty:
+                                df_users.at[t_rct.index[0], "Solde"] = float(t_rct.iloc[0]["Solde"]) + cost_rct
                         
-                        st.markdown(f"""
-                        <div class="license-box" style="border: 2px solid {color}; box-shadow: 0 0 10px {color};">
-                            <h1 style="color:{color}; margin:0;">{pts} / 25</h1>
-                            <h4 style="color:white;">{lp['Nom Roblox']}</h4>
-                            <p style="color:{color}; font-weight:bold;">{msg}</p>
-                        </div>
-                        """, unsafe_allow_html=True)
+                        # 3. Virement vers Averis (Moune2010)
+                        if cost_averis > 0:
+                            t_ave = df_users[df_users["Nom Roblox"] == TARGET_AVERIS]
+                            if not t_ave.empty:
+                                df_users.at[t_ave.index[0], "Solde"] = float(t_ave.iloc[0]["Solde"]) + cost_averis
                         
-                        # Actions Staff
-                        if st.session_state.role == "Staff":
-                            st.write("---")
-                            new_pts = st.slider(f"Modifier les points de {lp['Nom Roblox']}", 0, 25, pts, key=f"sl_{ip}")
-                            if st.button("Sauvegarder Points", key=f"btn_p_{ip}"):
-                                df_permis.at[ip, 'PTS'] = new_pts
-                                conn.update(worksheet="Points Permis", data=df_permis)
-                                commit_log("Staff", "PERMIS", f"Mis à {new_pts} pts pour {lp['Nom Roblox']}")
-                                st.rerun()
+                        # 4. Enregistrement du Véhicule
+                        new_car = pd.DataFrame([{
+                            "Horodateur": datetime.now().strftime("%d/%m/%Y %H:%M"),
+                            "Nom d'utilisateur ROBLOX": user_select,
+                            "Marque du véhicule": car_brand,
+                            "L'état de la plaque": "California",
+                            "Numéro de la plaque": plate_num,
+                            "Assurance": assurance_type,
+                            "CODE": str(secret_code)
+                        }])
+                        
+                        # Mise à jour globale
+                        conn.update(worksheet="Banque", data=df_users)
+                        conn.update(worksheet="Copie de Immatriculations", data=pd.concat([df_immat, new_car], ignore_index=True))
+                        
+                        st.success(f"✅ Véhicule enregistré ! {total_bill}$ prélevés.")
+                        commit_log("Banque", "IMMAT", f"{user_select} : New Immat {plate_num}")
+                        time.sleep(1)
+                        st.rerun()
+                    else:
+                        st.error("❌ Solde insuffisant.")
                 else:
-                    st.info("Utilisateur trouvé en banque, mais aucun dossier Permis existant.")
-            else:
-                st.warning("Aucun citoyen trouvé.")
-
-# ==============================================================================
-# 🚗 MODULE : IMMATRICULATIONS (Transactions & Liste)
-# ==============================================================================
-target_tab_immat = tabs[0] if st.session_state.role != "Civil" else tabs[2]
-
-with target_tab_immat:
-    df_immat = load_table("Copie de Immatriculations")
-    # Pour la liste déroulante des proprios
-    df_users = load_table("Banque")
-    owners_list = sorted(df_users["Nom Roblox"].unique().tolist()) if not df_users.empty else []
-
-   # --- FORMULAIRE D'ENREGISTREMENT (CIVIL OU STAFF) ---
-    with st.expander("➕ Enregistrer un véhicule (Frais applicables)", expanded=False):
-        with st.form("new_car_form"):
-            c1, c2 = st.columns(2)
-            if st.session_state.role == "Civil":
-                # Le civil ne peut choisir que lui-même
-                search_me = c1.text_input("Confirmez votre Nom Roblox")
-                user_select = search_me
-            else:
-                owners_list = sorted(df_users["Nom Roblox"].unique().tolist())
-                user_select = c1.selectbox("Propriétaire", ["---"] + owners_list)
-
-            car_brand = c1.selectbox("Marque", ["Altstadt", "Bremen", "Comrader", "Delton", "Envy", "Eva", "Gam", "Gemini", "Hamotsu", "Katzmann", "Koritsu", "Land treker", "Lexima", "Linco", "Lyon", "Marshall", "Mita", "Mizuhara", "Nesumi", "Neptune", "Revasser", "Revolt", "Roamer", "Senseon", "Shatoku", "Sternauster", "Turismo", "Yosurai"])
+                    st.error("❌ Remplissez tous les champs (Plaque, Code, Nom).")
             plate_num = c2.text_input("Numéro de Plaque (Ex: ABC-123)")
             assurance_type = c1.selectbox("Contrat Assurance", ["Non assuré", "RCT", "Averis"])
             secret_code = c2.text_input("Créer un CODE SECRET (pour modifier/supprimer)", type="password", help="Obligatoire pour gérer votre véhicule plus tard.")
