@@ -432,51 +432,45 @@ with target_tab_immat:
                         else:
                             st.error("❌ Solde insuffisant sur le compte du citoyen.")
 
-    # --- LISTE DES VÉHICULES (POUR TOUS) ---
-    st.write("### 🚔 Base de Données Véhicules")
-    q_veh = st.text_input("Rechercher par Plaque, Marque ou Propriétaire").lower()
+    # --- RECHERCHE ET AFFICHAGE DES VÉHICULES ---
+    q_veh = st.text_input("🔍 Rechercher par Plaque, Marque ou Propriétaire").lower()
     
     if q_veh:
-        # Recherche simple
+        # Recherche simple dans toute la ligne
         res_v = df_immat[df_immat.apply(lambda r: q_veh in str(r).lower(), axis=1)]
-        # Recherche croisée via Discord si besoin (comme pour les permis)
+        
+        # Recherche croisée via Discord pour les civils
         if st.session_state.role == "Civil":
-             # Si le civil tape son discord, on veut qu'il trouve ses voitures
-          # ... (Le code juste avant : q_veh = st.text_input...)
+            res_d = df_u[df_u["Nom Discord"].str.lower().str.contains(q_veh)]
+            if not res_d.empty:
+                names = res_d["Nom Roblox"].tolist()
+                res_v = pd.concat([res_v, df_immat[df_immat["Nom d'utilisateur ROBLOX"].isin(names)]]).drop_duplicates()
 
-    if q_veh:
-        # Recherche simple
-        res_v = df_immat[df_immat.apply(lambda r: q_veh in str(r).lower(), axis=1)]
-        # Recherche croisée via Discord
-        if st.session_state.role == "Civil":
-             res_d = df_users[df_users["Nom Discord"].str.lower().str.contains(q_veh)]
-             if not res_d.empty:
-                 names = res_d["Nom Roblox"].tolist()
-                 res_v = pd.concat([res_v, df_immat[df_immat["Nom d'utilisateur ROBLOX"].isin(names)]]).drop_duplicates()
-
+        # Boucle d'affichage corrigée
         for iv, rv in res_v.iterrows():
             with st.container(border=True):
-                # CORRECTION ICI : On sort la variable avant pour éviter le bug de l'apostrophe
+                # Correction de l'apostrophe : on utilise des doubles guillemets
                 proprio = rv["Nom d'utilisateur ROBLOX"]
+                plaque = rv["Numéro de la plaque"]
+                marque = rv["Marque du véhicule"]
+                assurance = rv["Assurance"]
                 
-                st.markdown(f"**🚗 {rv['Marque du véhicule']}** | Plaque : `{rv['Numéro de la plaque']}`")
-                st.caption(f"Propriétaire : {proprio} | Assurance : {rv['Assurance']}")
+                st.markdown(f"**🚗 {marque}** | Plaque : `{plaque}`")
+                st.caption(f"👤 Propriétaire : {proprio} | 🛡️ Assurance : {assurance}")
                 
-                # Options de gestion (Staff/Pro)
+                # Options de gestion pour Staff et Pro
                 if st.session_state.role != "Civil":
-                    if st.button("Modifier Assurance", key=f"btn_m_{iv}"):
-                        st.session_state[f"edit_v_{iv}"] = True
+                    if st.button("Modifier l'assurance", key=f"btn_edit_{iv}"):
+                        st.session_state[f"edit_mode_{iv}"] = True
                     
-                    if st.session_state.get(f"edit_v_{iv}", False):
-                        verif = st.text_input("Code Sécurité requis", type="password", key=f"verif_{iv}")
-                        if st.session_state.role == "Staff" or verif == str(rv['CODE']):
-                            new_assu = st.selectbox("Nouvelle Assurance", ["Non assuré", "RCT", "Averis"], key=f"sel_{iv}")
-                            if st.button("Valider Modification", key=f"save_{iv}"):
+                    if st.session_state.get(f"edit_mode_{iv}", False):
+                        v_code = st.text_input("Code de sécurité véhicule", type="password", key=f"v_code_{iv}")
+                        if st.session_state.role == "Staff" or v_code == str(rv.get('CODE', '')):
+                            new_assu = st.selectbox("Nouveau contrat", ["Non assuré", "RCT", "Averis"], key=f"new_a_{iv}")
+                            if st.button("Confirmer le changement", key=f"save_v_{iv}"):
                                 df_immat.at[iv, 'Assurance'] = new_assu
                                 conn.update(worksheet="Copie de Immatriculations", data=df_immat)
-                                st.rerun()
-                            if st.button("🗑️ Supprimer le véhicule", key=f"del_{iv}"):
-                                conn.update(worksheet="Copie de Immatriculations", data=df_immat.drop(iv))
+                                st.success("Mise à jour effectuée !")
                                 st.rerun()
 # ==============================================================================
 # ➕ MODULE STAFF : CRÉATION PROFILS & JUSTICE
