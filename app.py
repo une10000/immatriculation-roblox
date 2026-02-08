@@ -254,4 +254,4 @@ if st.session_state.role == "Staff":
         st.dataframe(get_data("Logs").iloc[::-1], use_container_width=True)
 
 st.markdown("---")
-st.markdown("<center><small>République de Californie RP | Système de Gestion Intégral v9.26</small></center>", unsafe_allow_html=True)
+st.markdown("<center><small>RCRP FR | Système de Gestion Intégral v9.26</small></center>", unsafe_allow_html=True)
