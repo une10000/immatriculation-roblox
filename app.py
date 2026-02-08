@@ -442,6 +442,13 @@ with target_tab_immat:
         # Recherche croisée via Discord si besoin (comme pour les permis)
         if st.session_state.role == "Civil":
              # Si le civil tape son discord, on veut qu'il trouve ses voitures
+          # ... (Le code juste avant : q_veh = st.text_input...)
+
+    if q_veh:
+        # Recherche simple
+        res_v = df_immat[df_immat.apply(lambda r: q_veh in str(r).lower(), axis=1)]
+        # Recherche croisée via Discord
+        if st.session_state.role == "Civil":
              res_d = df_users[df_users["Nom Discord"].str.lower().str.contains(q_veh)]
              if not res_d.empty:
                  names = res_d["Nom Roblox"].tolist()
@@ -449,8 +456,11 @@ with target_tab_immat:
 
         for iv, rv in res_v.iterrows():
             with st.container(border=True):
+                # CORRECTION ICI : On sort la variable avant pour éviter le bug de l'apostrophe
+                proprio = rv["Nom d'utilisateur ROBLOX"]
+                
                 st.markdown(f"**🚗 {rv['Marque du véhicule']}** | Plaque : `{rv['Numéro de la plaque']}`")
-                st.caption(f"Propriétaire : {rv['Nom d'utilisateur ROBLOX']} | Assurance : {rv['Assurance']}")
+                st.caption(f"Propriétaire : {proprio} | Assurance : {rv['Assurance']}")
                 
                 # Options de gestion (Staff/Pro)
                 if st.session_state.role != "Civil":
@@ -468,7 +478,6 @@ with target_tab_immat:
                             if st.button("🗑️ Supprimer le véhicule", key=f"del_{iv}"):
                                 conn.update(worksheet="Copie de Immatriculations", data=df_immat.drop(iv))
                                 st.rerun()
-
 # ==============================================================================
 # ➕ MODULE STAFF : CRÉATION PROFILS & JUSTICE
 # ==============================================================================
