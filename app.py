@@ -242,7 +242,6 @@ if st.session_state.role == "Staff":
     with tabs[1]:
         st.write("### 🪪 Gestion des Permis de Conduire")
         df_pts = get_data("Points Permis")
-        # On ne met pas le dataframe ici pour épurer
         search_p = st.text_input("🔍 Rechercher un citoyen pour ses points").strip().lower()
         if search_p:
             res_p_staff = df_pts[df_pts.apply(lambda r: search_p in str(r).lower(), axis=1)]
