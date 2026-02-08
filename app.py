@@ -7,14 +7,28 @@ import time
 # --- CONFIGURATION PAGE ---
 st.set_page_config(page_title="RCRP - Portail Officiel", layout="wide")
 
-# --- STYLE CSS (LOGO & ALIGNEMENT) ---
+# --- STYLE CSS AVANCÉ (FIX LOGO & BLOCS) ---
 st.markdown("""
     <style>
-    .block-container { padding-top: 1rem; padding-bottom: 0rem; }
-    div[data-testid="stExpander"] { border: 1px solid #f0f2f6; border-radius: 10px; }
+    .block-container { padding-top: 1.5rem; padding-bottom: 0rem; }
+    
+    /* Force les boîtes de connexion à avoir la même hauteur */
+    [data-testid="stVerticalBlockBorderWrapper"] {
+        height: 100%;
+    }
+    div[data-testid="stColumn"] > div {
+        height: 100%;
+    }
+    
+    /* Style des cartes de connexion */
+    .connection-card {
+        height: 320px; /* Hauteur fixe pour l'alignement */
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
     .stMetric { background-color: #f8f9fb; padding: 10px; border-radius: 10px; border: 1px solid #e0e0e0; }
-    /* Aligner horizontalement le header */
-    [data-testid="stHorizontalBlock"] { align-items: center; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -38,39 +52,46 @@ def get_data(sheet_name):
     except: return pd.DataFrame()
 
 # ==========================================
-# 🚪 PAGE DE CONNEXION
+# 🚪 PAGE DE CONNEXION (LAYOUT FIXÉ)
 # ==========================================
 if st.session_state.role is None:
-    # Logo à gauche, Texte à droite
-    c_img, c_txt = st.columns([1, 3])
-    with c_img:
-        st.image(LOGO_URL, use_container_width=True)
-    with c_txt:
-        st.markdown("<h1 style='margin:0;'>🏛️ Portail des Services RCRP</h1>", unsafe_allow_html=True)
-        st.markdown("<p style='font-size: 20px; margin:0;'>Sélectionnez votre accès pour continuer</p>", unsafe_allow_html=True)
+    # Header en HTML pour éviter le redimensionnement forcé de Streamlit
+    st.markdown(f"""
+        <div style="display: flex; align-items: center; margin-bottom: 20px;">
+            <img src="{LOGO_URL}" style="height: 120px; width: auto; margin-right: 25px; border-radius: 5px;">
+            <div>
+                <h1 style="margin:0;">🏛️ Portail des Services RCRP</h1>
+                <p style="font-size: 20px; color: #555; margin:0;">Sélectionnez votre accès pour continuer</p>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
     
-    st.write("") 
+    st.divider()
 
     col1, col2, col3 = st.columns(3)
+    
     with col1:
         with st.container(border=True):
-            st.write("### 👤 Citoyen")
-            st.write("Consulter les registres et vos informations personnelles.")
+            st.markdown("### 👤 Citoyen")
+            st.write("Consulter les registres publics et vos informations personnelles (Solde & Points).")
+            st.write("") # Espace pour égaliser
             if st.button("Accès Public", use_container_width=True):
                 st.session_state.role = "Civil"; st.rerun()
+
     with col2:
         with st.container(border=True):
-            st.write("### 🛠️ Entreprise (RCT)")
-            st.write("Interface de facturation et gestion professionnelle.")
+            st.markdown("### 🛠️ Entreprise (RCT)")
+            st.write("Interface de facturation et gestion professionnelle des dossiers.")
             c_rct = st.text_input("Code RCT", type="password", key="log_rct")
             if st.button("Connexion Pro", use_container_width=True):
                 if c_rct == CODE_ENTREPRISE:
                     st.session_state.role = "RCT"; st.rerun()
                 else: st.error("❌ Code incorrect.")
+
     with col3:
         with st.container(border=True):
-            st.write("### 👮 Autorités / Staff")
-            st.write("Gestion totale et accès aux archives.")
+            st.markdown("### 👮 Autorités / Staff")
+            st.write("Gestion totale du fichier central et accès aux archives sécurisées.")
             c_pol = st.text_input("Code Autorisation", type="password", key="log_pol")
             if st.button("Connexion Sécurisée", use_container_width=True):
                 if c_pol == CODE_ADMIN_GENERAL:
@@ -81,34 +102,23 @@ if st.session_state.role is None:
 # ==========================================
 # 🖥️ INTERFACE CONNECTÉE
 # ==========================================
-
-# Header interface : Logo à gauche, Espace Rôle à droite
-h_img, h_txt = st.columns([1, 5])
-with h_img:
-    st.image(LOGO_URL, use_container_width=True)
-with h_txt:
-    st.title(f"🏛️ Espace {st.session_state.role}")
+# Header de l'interface interne (Aussi en HTML pour la stabilité)
+st.markdown(f"""
+    <div style="display: flex; align-items: center; margin-bottom: 10px;">
+        <img src="{LOGO_URL}" style="height: 80px; width: auto; margin-right: 20px; border-radius: 5px;">
+        <h1 style="margin:0;">🏛️ Espace {st.session_state.role}</h1>
+    </div>
+""", unsafe_allow_html=True)
 
 with st.sidebar:
     st.write(f"🎭 Session : **{st.session_state.role}**")
     if st.button("🚪 Déconnexion", use_container_width=True):
         st.session_state.role = None; st.rerun()
     st.divider()
-    st.info(f"Connecté le {datetime.now().strftime('%d/%m/%Y')}")
+    st.info(f"📅 {datetime.now().strftime('%d/%m/%Y')}")
 
-# --- LISTES ---
-liste_etats = sorted(["Alberta", "Beautiful British Columbia", "California", "Colorado", "Connecticut", "Delaware", "Washington", "Florida", "Indiana", "Kansas", "Maine", "Manitoba", "Maryland", "Massachusetts", "Michigan", "Mississippi", "Montana", "New Brunswick", "New Hampshire", "New Jersey", "New York", "Newfoundland Labrador", "Nova Scotia", "Nuvanut", "Ohio", "Oklahoma", "Ontario", "Pennsylvania", "Prince Edward Island", "Quebec", "Rhode Island", "Saskatchewan", "South Carolina", "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Wisconsin", "Yukon"])
-liste_marques = sorted(["Altstadt", "Bremen", "Comrader", "Delton", "Envy", "Eva", "Gam", "Gemini", "Hamotsu", "Katzmann", "Koritsu", "Land treker", "Lexima", "Linco", "Lyon", "Marshall", "Mita", "Mizuhara", "Nesumi", "Neptune", "Revasser", "Revolt", "Roamer", "Senseon", "Shatoku", "Sternauster", "Turismo", "Yosurai"])
-liste_assurances = ["Non assuré", "RCT", "Averis"]
-
-# --- ONGLETS ---
-if st.session_state.role == "Staff":
-    tabs = st.tabs(["🚗 Immatriculations", "🪪 Dossiers Permis", "💰 Banque Centrale", "📜 Archives Logs"])
-elif st.session_state.role == "RCT":
-    tabs = st.tabs(["🚗 Immatriculations", "💰 Facturation RCT Business"])
-else:
-    tabs = st.tabs(["🚗 Registre Véhicules", "💰 Mon Compte (Solde & Points)"])
-
+# --- RESTE DU CODE (ONGLETS) ---
+# ... (Gardez ici la logique des onglets de la V9.12 pour les points, banque et immatriculations)
 # ==========================================
 # 🚗 ONGLET 1 : IMMATRICULATIONS
 # ==========================================
