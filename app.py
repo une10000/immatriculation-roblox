@@ -484,187 +484,159 @@ with tab_dos:
                     st.rerun()
 
     # SECTION 2.2 : RECHERCHE DE DOSSIER (HYBRIDE ROBLOX / DISCORD)
-    
-    st.divider()
-    st.subheader("🔍 Consultation des Dossiers Citoyens")
-    
-    # Barre de recherche hybride (Permet de chercher par Discord également)
-    search_dos = st.text_input("Saisir le Nom Roblox ou le Pseudo Discord à rechercher", key="search_dos_input").lower()
-    
-    if search_dos:
-        # Création du masque de recherche sur deux colonnes
-        mask_dos = (df_banque["Nom Roblox"].str.lower().str.contains(search_dos, na=False)) | \
-                   (df_banque["Nom Discord"].str.lower().str.contains(search_dos, na=False))
-        
-        resultats_dossiers = df_banque[mask_dos]
-        
-        if not resultats_dossiers.empty:
-            for idx, citoyen_row in resultats_dossiers.iterrows():
-                with st.container(border=True):
-                    # Titre du dossier
-                    st.subheader(f"Dossier Civil de : {citoyen_row['Nom Roblox']}")
-                    
-                    col_d1, col_d2 = st.columns(2)
-                    
-                    with col_d1:
-                        st.write(f"🆔 **Pseudo Discord :** {citoyen_row['Nom Discord']}")
-                        st.write(f"📌 **Emploiement :** {citoyen_row['Emploiement']}")
-                    
-                    with col_d2:
-                        st.write(f"📅 **Date d'arrivée en ville :** {citoyen_row['Date d\'arrivée']}")
-                        st.write(f"💰 **Solde Bancaire Actuel :** {float(citoyen_row['Solde']):,.0f} $")
-                    
-                    st.divider()
-                    
-                    # SYSTÈME DE POINTS DE PERMIS (RECUPÉRATION)
-                    permis_record = df_pts[df_pts["Nom Roblox"] == citoyen_row["Nom Roblox"]]
-                    
-                    if not permis_record.empty:
-                        points_actuels = permis_record.iloc[0]['PTS']
-                        
-                        # Affichage du score
-                        st.metric("Points de Permis de Conduire (sur 25)", f"{points_actuels} / 25")
-                        
-                        # Modification des points (Staff uniquement)
-                        if st.session_state.role == "Staff":
-                            with st.expander("✏️ Modifier le capital de points"):
-                                new_pts_val = st.number_input("Nouveau solde de points", min_value=0, max_value=25, value=int(points_actuels), key=f"pts_edit_{idx}")
-                                if st.button("Sauvegarder les points", key=f"pts_save_{idx}"):
-                                    # Mise à jour locale
-                                    df_pts.loc[df_pts["Nom Roblox"] == citoyen_row["Nom Roblox"], "PTS"] = new_pts_val
-                                    # Mise à jour GSheet
-                                    conn.update(worksheet="Points Permis", data=df_pts)
-                                    st.success("Capital de points mis à jour dans la base de données.")
-                                    st.rerun()
-        else:
-            st.info("Aucun citoyen trouvé avec ces critères de recherche.")
+st.divider()
+st.subheader("🔍 Consultation du Registre Public")
 
-    # SECTION 2.3 : CRÉATION DE PROFIL (STAFF UNIQUEMENT)
+# Barre de recherche dynamique
+search_query = st.text_input("Rechercher par Numéro de Plaque ou par Nom de Propriétaire", key="search_reg_main").lower()
+
+# Parcours et affichage des véhicules
+for i, row in df_im.iterrows():
+    nom_db = str(row['Nom d\'utilisateur ROBLOX']).lower()
+    plaque_db = str(row['Numéro de la plaque']).lower()
     
-    if st.session_state.role == "Staff":
-        st.divider()
-        with st.expander("👤 Ajouter un Nouveau Citoyen à la Base de Données"):
-            st.write("Ce formulaire crée un compte bancaire et un dossier de permis.")
+    if not search_query or search_query in nom_db or search_query in plaque_db:
+        with st.container(border=True):
+            col_i1, col_i2, col_i3 = st.columns([2, 2, 1])
             
-            with st.form("form_creation_citoyen"):
-                f_nom_rob = st.text_input("Nom d'utilisateur Roblox (Identifiant exact)")
-                f_nom_dis = st.text_input("Identifiant Discord")
-                f_job = st.selectbox("Type d'emploiement", ["Civil", "Agent RCT", "Staff Gouvernement"])
-                
-                if st.form_submit_button("Valider la Création du Profil"):
-                    if f_nom_rob and f_nom_dis:
-                        # AJOUT AUTOMATIQUE DE LA DATE DE CRÉATION
-                        date_creation_auto = now.strftime("%d/%m/%Y")
-                        
-                        # A. Préparation de l'entrée Banque (Prime d'arrivée de 15,000$)
-                        new_bank_line = pd.DataFrame([{
-                            "Solde": 15000,
-                            "Nom Discord": f_nom_dis,
-                            "Nom Roblox": f_nom_rob,
-                            "Date d'arrivée": date_creation_auto,
-                            "Emploiement": f_job
-                        }])
-                        
-                        # B. Préparation de l'entrée Permis (25 points de base)
-                        new_pts_line = pd.DataFrame([{
-                            "Nom Roblox": f_nom_rob,
-                            "PTS": 25
-                        }])
-                        
-                        # C. Envoi vers GSheets
-                        conn.update(worksheet="Banque", data=pd.concat([df_banque, new_bank_line], ignore_index=True))
-                        conn.update(worksheet="Points Permis", data=pd.concat([df_pts, new_pts_line], ignore_index=True))
-                        
-                        st.success(f"Profil créé avec succès pour {f_nom_rob} ! Date enregistrée : {date_creation_auto}")
-                        time.sleep(1.5)
-                        st.rerun()
-                    else:
-                        st.error("Veuillez remplir les informations obligatoires.")
+            with col_i1:
+                st.write(f"🆔 **PLAQUE : {row['Numéro de la plaque']}**")
+                st.write(f"🚗 Marque : {row['Marque du véhicule']}")
+            
+            with col_i2:
+                st.write(f"👤 Propriétaire : **{row['Nom d\'utilisateur ROBLOX']}**")
+                st.write(f"📅 Enregistré le : {row['Horodateur']}")
+            
+            with col_i3:
+                st.markdown(f"<span class='badge-assu'>{row['Assurance']}</span>", unsafe_allow_html=True)
+            
+            # SECTION DE RADIATION
+            with st.expander("⚙️ Options de gestion du véhicule"):
+                st.write("Pour radier un véhicule, veuillez saisir son code secret.")
+                col_rad_1, col_rad_2 = st.columns(2)
+                with col_rad_1:
+                    check_code_sec = st.text_input("Code Secret", type="password", key=f"del_key_{i}")
+                with col_rad_2:
+                    if st.button("🚫 Confirmer la Radiation", key=f"del_btn_{i}", use_container_width=True):
+                        if check_code_sec == str(row['CODE']) or st.session_state.role == "Staff":
+                            updated_immat_df = df_im.drop(i)
+                            conn.update(worksheet="Copie de Immatriculations", data=updated_immat_df)
+                            st.success("Le véhicule a été retiré du registre.")
+                            time.sleep(1)
+                            st.rerun()
+                        else:
+                            st.error("Code incorrect.")
 
 # --------------------------------------------------------------------------------------
-# ONGLET 3 : BANQUE CENTRALE (OPÉRATIONS FINANCIÈRES)
+# ONGLET 2 : DOSSIERS CITOYENS
+# --------------------------------------------------------------------------------------
+
+with tab_dos:
+    st.header("🪪 Dossiers Administratifs des Citoyens")
+    
+    if st.session_state.role == "Staff":
+        with st.container(border=True):
+            st.subheader("🏦 Console de Paye")
+            if st.button("🧧 EXECUTER LA PROCÉDURE DE PAYE TOTALE", use_container_width=True):
+                with st.status("Transactions en cours..."):
+                    # Distribution Salaires
+                    for idx, citoyen in df_banque.iterrows():
+                        poste = str(citoyen["Emploiement"]).upper()
+                        montant_salaire = 17000 if "RCT" in poste else 15000
+                        try:
+                            v_solde = str(citoyen["Solde"]).replace('$', '').replace(' ', '').replace(',', '')
+                            df_banque.at[idx, "Solde"] = (float(v_solde) if v_solde != "" else 0.0) + montant_salaire
+                        except:
+                            df_banque.at[idx, "Solde"] = montant_salaire
+                    
+                    # Prélèvements Assurances
+                    compteur_rct_paye = {}
+                    for _, vehicule in df_im.iterrows():
+                        proprio = vehicule["Nom d'utilisateur ROBLOX"]
+                        if proprio in df_banque["Nom Roblox"].values:
+                            idx_b = df_banque[df_banque["Nom Roblox"] == proprio].index[0]
+                            type_assu = vehicule["Assurance"]
+                            
+                            if "RCT" in type_assu:
+                                compteur_rct_paye[proprio] = compteur_rct_paye.get(proprio, 0) + 1
+                                if compteur_rct_paye[proprio] <= 2:
+                                    df_banque.at[idx_b, "Solde"] -= 150
+                                    df_banque.loc[df_banque["Nom Roblox"] == TARGET_RCT, "Solde"] += 150
+                            elif "AVERIS" in type_assu:
+                                df_banque.at[idx_b, "Solde"] -= 130
+                                df_banque.loc[df_banque["Nom Roblox"] == TARGET_AVERIS, "Solde"] += 130
+
+                    conn.update(worksheet="Banque", data=df_banque)
+                    st.success("Paye effectuée !")
+                    st.rerun()
+
+    st.divider()
+    search_dos = st.text_input("Saisir Nom Roblox ou Discord", key="search_dos_input").lower()
+    if search_dos:
+        mask_dos = (df_banque["Nom Roblox"].str.lower().str.contains(search_dos, na=False)) | \
+                   (df_banque["Nom Discord"].str.lower().str.contains(search_dos, na=False))
+        resultats_dossiers = df_banque[mask_dos]
+        for idx, citoyen_row in resultats_dossiers.iterrows():
+            with st.container(border=True):
+                st.subheader(f"Dossier de : {citoyen_row['Nom Roblox']}")
+                col_d1, col_d2 = st.columns(2)
+                with col_d1:
+                    st.write(f"🆔 **Discord :** {citoyen_row['Nom Discord']}")
+                    st.write(f"📌 **Emploi :** {citoyen_row['Emploiement']}")
+                with col_d2:
+                    st.write(f"📅 **Arrivée :** {citoyen_row['Date d\'arrivée']}")
+                    try:
+                        v_b = str(citoyen_row['Solde']).replace('$', '').replace(' ', '').replace(',', '')
+                        st.write(f"💰 **Solde :** {float(v_b):,.0f} $")
+                    except: st.write("💰 **Solde :** Erreur format")
+
+    if st.session_state.role == "Staff":
+        st.divider()
+        with st.expander("👤 Ajouter un Nouveau Citoyen"):
+            with st.form("form_creation_citoyen"):
+                f_nom_rob = st.text_input("Nom Roblox")
+                f_nom_dis = st.text_input("Discord")
+                f_job = st.selectbox("Emploi", ["Civil", "Agent RCT", "Staff"])
+                if st.form_submit_button("Créer Profil"):
+                    date_auto = datetime.now().strftime("%d/%m/%Y")
+                    new_b = pd.DataFrame([{"Solde": 15000, "Nom Discord": f_nom_dis, "Nom Roblox": f_nom_rob, "Date d'arrivée": date_auto, "Emploiement": f_job}])
+                    conn.update(worksheet="Banque", data=pd.concat([df_banque, new_b], ignore_index=True))
+                    st.success(f"Profil créé le {date_auto}")
+                    st.rerun()
+
+# --------------------------------------------------------------------------------------
+# ONGLET 3 : BANQUE CENTRALE
 # --------------------------------------------------------------------------------------
 
 with tab_ban:
-    st.header("💰 Gestion Bancaire et Flux Financiers")
-    st.write("Interface de contrôle des comptes et des transactions inter-organisations.")
-    
-    # RECHERCHE HYBRIDE BANQUE
-    search_bank_main = st.text_input("🔍 Rechercher un compte (Nom Roblox ou Discord)", key="bank_search_main").lower()
-    
+    st.header("💰 Gestion Bancaire")
+    search_bank_main = st.text_input("🔍 Rechercher un compte", key="bank_search_main").lower()
     if search_bank_main:
-        # Masque de recherche hybride sur les deux colonnes
-        mask_bank_search = (df_banque["Nom Roblox"].str.lower().str.contains(search_bank_main, na=False)) | \
-                           (df_banque["Nom Discord"].str.lower().str.contains(search_bank_main, na=False))
-        
-        resultats_banque = df_banque[mask_bank_search]
-        
-        for idx, bank_row in resultats_banque.iterrows():
+        mask_b = (df_banque["Nom Roblox"].str.lower().str.contains(search_bank_main, na=False))
+        for idx, bank_row in df_banque[mask_b].iterrows():
             with st.container(border=True):
-                # Affichage des informations bancaires
-                st.subheader(f"Compte de : {bank_row['Nom Roblox']}")
+                st.subheader(f"Compte : {bank_row['Nom Roblox']}")
+                try:
+                    v_s = str(bank_row['Solde']).replace('$', '').replace(' ', '').replace(',', '')
+                    st.metric("Solde", f"{float(v_s):,.0f} $")
+                except: st.write("Erreur Solde")
                 
-                # Metric pour le solde
-                st.metric("Solde Bancaire Disponible", f"{float(bank_row['Solde']):,.0f} $")
-                
-                # SECTION DES OPÉRATIONS (RESERVÉ RCT ET STAFF)
                 if st.session_state.role in ["RCT", "Staff"]:
-                    with st.expander("⚙️ Effectuer une Opération Financière (Débit)"):
-                        st.write("Saisissez les détails de l'opération ci-dessous.")
-                        
-                        col_ban_1, col_ban_2 = st.columns(2)
-                        
-                        with col_ban_1:
-                            montant_operation = st.number_input("Montant à débiter ($)", min_value=1, key=f"tx_val_{idx}")
-                            motif_operation = st.text_input("Motif du prélèvement", placeholder="Ex: Amende, Taxes spéciales...", key=f"tx_mot_{idx}")
-                            
-                        with col_ban_2:
-                            plaque_concernee = st.text_input("Numéro de Plaque (Si applicable)", key=f"tx_pla_{idx}")
-                            st.write("L'argent sera automatiquement redirigé vers le compte organisationnel.")
-                        
-                        if st.button("Confirmer le Débit", key=f"tx_btn_{idx}", use_container_width=True):
-                            # Étape 1 : Calcul et mise à jour locale du solde
-                            ancien_solde = float(bank_row["Solde"])
-                            nouveau_solde = ancien_solde - montant_operation
-                            df_banque.at[idx, "Solde"] = nouveau_solde
-                            
-                            # Texte de statut pour le reçu
-                            statut_transfert = "Fonds retirés / Détruits"
-                            
-                            # Étape 2 : Virement RCT automatique (Si l'agent est RCT)
-                            if st.session_state.role == "RCT":
-                                # Redirection vers le compte une10000
-                                df_banque.loc[df_banque["Nom Roblox"] == TARGET_RCT, "Solde"] += montant_operation
-                                statut_transfert = f"Virement automatique vers compte RCT ({TARGET_RCT})"
-                            
-                            # Étape 3 : Mise à jour GSheet
-                            conn.update(worksheet="Banque", data=df_banque)
-                            
-                            # Étape 4 : GÉNÉRATION DU REÇU NOIR (STYLE TICKET)
-                            st.markdown(f"""
-                            <div class="ticket-fix">
-                                🧾 <b>REÇU OFFICIEL DE TRANSACTION BANCAIRE</b><br>
-                                ------------------------------------------------<br>
-                                Titulaire du compte : {bank_row['Nom Roblox']}<br>
-                                Montant débité : {montant_operation}$<br>
-                                Motif : {motif_operation}<br>
-                                Référence Plaque : {plaque_concernee}<br>
-                                ------------------------------------------------<br>
-                                Statut : {statut_transfert}<br>
-                                Horodatage : {datetime.now().strftime('%H:%M:%S')}<br>
-                                Signature : Administration RCRP
-                            </div>
-                            """, unsafe_allow_html=True)
-                            
-                            time.sleep(2)
-                            st.rerun()
-
-# ======================================================================================
-# 8. PIED DE PAGE ET INFORMATIONS LÉGALES
-# ======================================================================================
+                    with st.expander("⚙️ Débiter"):
+                        montant = st.number_input("Montant ($)", min_value=1, key=f"tx_val_{idx}")
+                        motif = st.text_input("Motif", key=f"tx_mot_{idx}")
+                        if st.button("Confirmer Débit", key=f"tx_btn_{idx}"):
+                            try:
+                                curr_s = float(str(bank_row["Solde"]).replace('$', '').replace(' ', '').replace(',', ''))
+                                df_banque.at[idx, "Solde"] = curr_s - montant
+                                if st.session_state.role == "RCT":
+                                    idx_rct = df_banque[df_banque["Nom Roblox"] == TARGET_RCT].index[0]
+                                    v_rct = float(str(df_banque.at[idx_rct, "Solde"]).replace('$', '').replace(' ', '').replace(',', ''))
+                                    df_banque.at[idx_rct, "Solde"] = v_rct + montant
+                                conn.update(worksheet="Banque", data=df_banque)
+                                st.success("Débit effectué")
+                                st.rerun()
+                            except: st.error("Erreur transaction")
 
 st.markdown("---")
-st.markdown("<center><small>RCRP Management System v16.7 | Base de Données Sécurisée | Propriété du Gouvernement RCRP 2026</small></center>", unsafe_allow_html=True)
-st.markdown("<center><small>Toute utilisation frauduleuse est passible de sanctions administratives.</small></center>", unsafe_allow_html=True)
-
-# FIN DU SCRIPT (TOTAL 485 LIGNES)
+st.markdown("<center><small>RCRP System 2026 | Propriété de Moune2010 & une10000</small></center>", unsafe_allow_html=True)
