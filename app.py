@@ -360,11 +360,10 @@ with tab_dossier:
                         n_dis = st.text_input("Nom Discord")
                         n_job = st.selectbox("Poste Occupé", ["Civil", "Agent RCT", "Gouvernement"])
                         
-                if st.form_submit_button("Valider la création"):
-                    d_creation = datetime.now().strftime("%d/%m/%Y") # Date automatique 2026-02-08
+if st.form_submit_button("Valider la création"):
+                    d_creation = datetime.now().strftime("%d/%m/%Y")
                     
-                    # 1. PRÉPARATION DE LA LIGNE POUR L'ONGLET "BANQUE"
-                    # On met les 15k et les infos de base
+                    # 1. LIGNE POUR L'ONGLET BANQUE
                     new_bank_row = pd.DataFrame([{
                         "Solde": 15000, 
                         "Emploiement": n_job,
@@ -374,32 +373,29 @@ with tab_dossier:
                         "Date d'arrivée": d_creation
                     }])
                     
-                    # 2. PRÉPARATION DE LA LIGNE POUR L'ONGLET "POINTS PERMIS"
-                    # On crée le permis avec 25 points par défaut
+                    # 2. LIGNE POUR L'ONGLET POINTS PERMIS
                     new_permis_row = pd.DataFrame([{
-                        "Nom Discord": n_dis,        # Colonne A
-                        "Nom Roblox": n_rob,         # Colonne B
-                        "Points": 25,                # Colonne C
-                        "Statut": "OUI"              # Colonne D
+                        "Nom Discord": n_dis,
+                        "Nom Roblox": n_rob,
+                        "Points": 25,
+                        "Statut": "OUI"
                     }])
                     
                     try:
-                        # MISE À JOUR DE L'ONGLET BANQUE
+                        # Enregistrement Banque
                         df_banque_updated = pd.concat([df_banque, new_bank_row], ignore_index=True)
                         conn.update(worksheet="Banque", data=df_banque_updated)
                         
-                        # MISE À JOUR DE L'ONGLET POINTS PERMIS
-                        # On charge l'onglet permis actuel pour ajouter la ligne sans rien effacer
+                        # Enregistrement Permis
                         df_permis = conn.read(worksheet="Points Permis", ttl=0).dropna(how='all').fillna("")
                         df_permis_updated = pd.concat([df_permis, new_permis_row], ignore_index=True)
                         conn.update(worksheet="Points Permis", data=df_permis_updated)
                         
-                        st.success(f"✅ Profil complet créé pour {n_rob} (Banque + Permis) !")
+                        st.success(f"✅ Profil de {n_rob} créé (Banque + Permis) !")
                         time.sleep(1.5)
                         st.rerun()
-                        
                     except Exception as e:
-                        st.error(f"❌ Erreur lors de la double création : {e}")
+                        st.error(f"❌ Erreur API : {e}")
 
     st.divider()
     
