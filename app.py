@@ -365,9 +365,6 @@ if st.button("💳 Procéder au Paiement et à l'Enregistrement", use_container_
                             st.error(f"Erreur lors de l'envoi vers Google Sheets : {e}")
                     else:
                         st.error("Transaction échouée : Votre solde bancaire est insuffisant.")
-
-# --- ON SORT DE TOUS LES BLOCS : RETOUR AU BORD GAUCHE ---
-
 st.divider()
 st.subheader("🔍 Consultation du Registre Public")
 
