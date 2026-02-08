@@ -241,11 +241,7 @@ with tabs[1 if st.session_state.role != "Staff" else 2]:
 # 🪪 & 📜 SECTIONS STAFF
 # ==========================================
 if st.session_state.role == "Staff":
-
-
-
-    
-        st.divider()
+    st.divider()
     st.subheader("👤 Création d’un profil citoyen")
 
     with st.expander("➕ Créer un nouveau citoyen"):
@@ -269,11 +265,9 @@ if st.session_state.role == "Staff":
                     df_banque = get_data("Banque")
                     df_pts = get_data("Points Permis")
 
-                    # --- Vérification doublon ---
                     if not df_banque.empty and nom_roblox.lower() in df_banque["Nom Roblox"].astype(str).str.lower().values:
                         st.error("⚠️ Ce profil Roblox existe déjà dans la banque.")
                     else:
-                        # --- Création compte bancaire ---
                         new_bank = pd.DataFrame([{
                             "Nom Discord": nom_discord,
                             "Nom Roblox": nom_roblox,
@@ -281,10 +275,11 @@ if st.session_state.role == "Staff":
                             "Date d'arrivée": datetime.now().strftime("%d/%m/%Y")
                         }])
 
-                        df_banque = pd.concat([df_banque, new_bank], ignore_index=True)
-                        conn.update(worksheet="Banque", data=df_banque)
+                        conn.update(
+                            worksheet="Banque",
+                            data=pd.concat([df_banque, new_bank], ignore_index=True)
+                        )
 
-                        # --- Création dossier permis ---
                         new_pts = pd.DataFrame([{
                             "Nom Discord": nom_discord,
                             "Nom Roblox": nom_roblox,
@@ -294,10 +289,11 @@ if st.session_state.role == "Staff":
                             "UserID RBLX": ""
                         }])
 
-                        df_pts = pd.concat([df_pts, new_pts], ignore_index=True)
-                        conn.update(worksheet="Points Permis", data=df_pts)
+                        conn.update(
+                            worksheet="Points Permis",
+                            data=pd.concat([df_pts, new_pts], ignore_index=True)
+                        )
 
-                        # --- Log système ---
                         df_logs = get_data("Logs")
                         new_log = pd.DataFrame([{
                             "Horodateur": datetime.now().strftime("%d/%m/%Y %H:%M"),
@@ -314,6 +310,7 @@ if st.session_state.role == "Staff":
                         st.success(f"🎉 Profil créé pour {nom_roblox} avec {solde_initial}$")
                         time.sleep(1)
                         st.rerun()
+
 
 
 st.markdown("---")
