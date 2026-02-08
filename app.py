@@ -64,7 +64,7 @@ def get_data(sheet_name):
 # ==========================================
 if st.session_state.role is None:
     st.title("🏛️ Portail des Services RCRP")
-    st.markdown("<p style='font-size: 20px; color: #555;'>République de Californie - Système Centralisé de Gestion</p>", unsafe_allow_html=True)
+    st.markdown("<p style='font-size: 20px; color: #555;'>Rensselaer County Roleplay FR - Système Centralisé de Gestion</p>", unsafe_allow_html=True)
     
     st.divider()
     col1, col2, col3 = st.columns(3)
