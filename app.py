@@ -1,6 +1,7 @@
 # ======================================================================================
-# RCRP PRISMA OS | VERSION 4000.0.0
-# DESIGN : MINIMALIST PREMIUM / GLASSMORPHISM
+# RCRP APEX ENGINE | VERSION 5000.0.0
+# ARCHITECTURE : ENTERPRISE ROLEPLAY MANAGEMENT SYSTEM
+# DÉVELOPPÉ POUR : RENSSELAER COUNTY RP
 # ======================================================================================
 
 import streamlit as st
@@ -8,318 +9,358 @@ from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 from datetime import datetime
 import time
+import plotly.graph_objects as go
+import random
 
 # --------------------------------------------------------------------------------------
-# [SECTION 1] : LE DESIGN "WOW" (STYLES CSS AVANCÉS)
+# [SECTION 1] : DESIGN SYSTEM - "APEX DARK" (CSS ULTRA-LOURD)
 # --------------------------------------------------------------------------------------
-st.set_page_config(page_title="RCRP PRISMA", page_icon="💎", layout="wide")
+st.set_page_config(page_title="RCRP APEX", page_icon="🏎️", layout="wide")
 
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=JetBrains+Mono:wght@400&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;600;800&display=swap');
 
-    /* FOND D'ÉCRAN PROFOND */
+    /* FOND ET TEXTE */
     .stApp {
-        background: #000000;
-        font-family: 'Inter', sans-serif;
+        background: #050505;
         color: #FFFFFF;
+        font-family: 'Inter', sans-serif;
     }
 
-    /* EFFET DE VERRE (GLASSMORPHISM) */
-    .glass-card {
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 20px;
-        padding: 25px;
-        backdrop-filter: blur(10px);
-        margin-bottom: 20px;
-    }
-
-    /* TITRES ÉPURÉS */
-    h1 {
-        font-weight: 800 !important;
-        letter-spacing: -2px !important;
-        background: linear-gradient(90deg, #FFFFFF, #666666);
+    /* TITRE APEX */
+    .apex-title {
+        font-family: 'Orbitron', sans-serif;
+        font-weight: 800;
+        background: linear-gradient(180deg, #FFFFFF 0%, #333333 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-        font-size: 3.5rem !important;
-        margin-bottom: 0px !important;
+        font-size: 4rem;
+        letter-spacing: 5px;
+        margin-bottom: 0px;
     }
 
-    /* BOUTONS PREMIUM */
+    /* CARTE GLASSMORPHISM V2 */
+    .st-emotion-cache-12w0qpk { /* Container Streamlit */
+        background: rgba(20, 20, 20, 0.7) !important;
+        border: 1px solid rgba(255, 255, 255, 0.05) !important;
+        border-radius: 15px !important;
+    }
+
+    .card {
+        background: rgba(255, 255, 255, 0.02);
+        border-left: 4px solid #FFFFFF;
+        padding: 20px;
+        margin: 10px 0px;
+        border-radius: 0px 10px 10px 0px;
+        transition: 0.3s;
+    }
+    .card:hover {
+        background: rgba(255, 255, 255, 0.05);
+        border-left: 4px solid #58a6ff;
+    }
+
+    /* BOUTONS TACTIQUES */
     .stButton>button {
-        background: #FFFFFF !important;
-        color: #000000 !important;
-        border-radius: 50px !important;
-        border: none !important;
-        padding: 12px 30px !important;
-        font-weight: 600 !important;
-        transition: 0.4s cubic-bezier(0.165, 0.84, 0.44, 1) !important;
+        width: 100%;
+        background: transparent !important;
+        color: #FFFFFF !important;
+        border: 1px solid #FFFFFF !important;
+        border-radius: 0px !important;
+        padding: 15px !important;
+        font-family: 'Orbitron', sans-serif !important;
+        font-size: 0.7rem !important;
+        transition: 0.3s !important;
         text-transform: uppercase;
-        font-size: 0.8rem !important;
-        letter-spacing: 1px;
     }
     .stButton>button:hover {
-        transform: scale(1.05);
-        box-shadow: 0 10px 30px rgba(255, 255, 255, 0.2) !important;
+        background: #FFFFFF !important;
+        color: #000000 !important;
+        box-shadow: 0px 0px 20px rgba(255, 255, 255, 0.3) !important;
     }
 
-    /* INPUTS MINIMALISTES */
-    .stTextInput>div>div>input, .stSelectbox>div>div>div {
-        background-color: rgba(255, 255, 255, 0.05) !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
-        border-radius: 12px !important;
+    /* BADGES */
+    .badge {
+        padding: 5px 12px;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: bold;
+        text-transform: uppercase;
+    }
+    .badge-rct { background: #0052FF; color: white; }
+    .badge-staff { background: #FF004D; color: white; }
+    .badge-civ { background: #333; color: #AAA; }
+
+    /* INPUTS */
+    input, select, textarea {
+        background: #111 !important;
+        border: 1px solid #333 !important;
         color: white !important;
-        padding: 10px 15px !important;
     }
-
-    /* TABS STYLISÉS */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 20px;
-        background-color: transparent;
-    }
-    .stTabs [data-baseweb="tab"] {
-        height: 50px;
-        background-color: transparent !important;
-        border: none !important;
-        color: #666 !important;
-        font-weight: 600;
-    }
-    .stTabs [aria-selected="true"] {
-        color: #FFFFFF !important;
-        border-bottom: 2px solid #FFFFFF !important;
-    }
-
-    /* METRICS */
-    div[data-testid="stMetricValue"] {
-        font-weight: 700 !important;
-        font-family: 'JetBrains Mono', monospace !important;
-        color: #FFFFFF !important;
-    }
-
-    /* SCROLLBAR */
-    ::-webkit-scrollbar { width: 5px; }
-    ::-webkit-scrollbar-track { background: #000; }
-    ::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
     </style>
     """, unsafe_allow_html=True)
 
 # --------------------------------------------------------------------------------------
-# [SECTION 2] : CONFIGURATION & FLUX (TES RÈGLES)
+# [SECTION 2] : LOGIQUE CORE & CONSTANTES
 # --------------------------------------------------------------------------------------
-if 'auth' not in st.session_state: st.session_state.auth = None
-if 'logs' not in st.session_state: st.session_state.logs = []
-
-RULES = {
-    "RCT_CPT": "une10000",
-    "AVE_CPT": "Moune2010",
-    "TAXE": 175,
-    "PRICE_RCT": 150,
-    "PRICE_AVE": 130,
+CONFIG = {
+    "CPT_MOUNE": "Moune2010",
+    "CPT_UNE": "une10000",
+    "TAXE_DMV": 175,
+    "INS_RCT": 150,
+    "INS_AVE": 130,
     "PWD_RCT": "RCT-26-RCRPFR",
     "PWD_STAFF": "RCRPFR-25-26",
-    "MARQUES": sorted(["Acura", "Alfa Romeo", "Aston Martin", "Audi", "Bentley", "BMW", "Bugatti", "Cadillac", "Chevrolet", "Dodge", "Ferrari", "Ford", "GMC", "Honda", "Hyundai", "Jaguar", "Jeep", "Lamborghini", "Land Rover", "Lexus", "Maserati", "Mazda", "McLaren", "Mercedes-Benz", "Nissan", "Porsche", "Rolls-Royce", "Tesla", "Toyota", "Volkswagen", "Volvo"])
+    "MARQUES": sorted(["Acura", "Audi", "BMW", "Bentley", "Bugatti", "Cadillac", "Chevrolet", "Dodge", "Ferrari", "Ford", "GMC", "Honda", "Hyundai", "Jaguar", "Jeep", "Lamborghini", "Land Rover", "Lexus", "Maserati", "Mazda", "McLaren", "Mercedes-Benz", "Nissan", "Porsche", "Rolls-Royce", "Tesla", "Toyota", "Volkswagen", "Volvo"])
 }
 
+# Initialisation Session State
+if 'page' not in st.session_state: st.session_state.page = "Login"
+if 'user' not in st.session_state: st.session_state.user = None
+if 'role' not in st.session_state: st.session_state.role = None
+if 'logs' not in st.session_state: st.session_state.logs = []
+
 # --------------------------------------------------------------------------------------
-# [SECTION 3] : MOTEUR DATA
+# [SECTION 3] : MOTEUR DE DONNÉES (GOOGLE SHEETS)
 # --------------------------------------------------------------------------------------
-def load_prisma_db():
+def connect_db():
     try:
         conn = st.connection("gsheets", type=GSheetsConnection)
         b = conn.read(worksheet="Banque", ttl=0).dropna(how='all').fillna("")
         i = conn.read(worksheet="Copie de Immatriculations", ttl=0).dropna(how='all').fillna("")
         p = conn.read(worksheet="Points Permis", ttl=0).dropna(how='all').fillna("")
         return conn, b, i, p
-    except:
-        st.error("DATABASE OFFLINE"); return None, None, None, None
+    except Exception as e:
+        st.error(f"DATABASE CONNECTION ERROR: {e}")
+        return None, None, None, None
 
-def push_log(msg):
-    st.session_state.logs.insert(0, f"{datetime.now().strftime('%H:%M')} — {msg}")
+def save_log(msg):
+    st.session_state.logs.insert(0, f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
 
-def clean_cash(val):
+def to_cash(val):
     try: return float(str(val).replace('$', '').replace(' ', '').replace(',', ''))
     except: return 0.0
 
 # --------------------------------------------------------------------------------------
-# [SECTION 4] : PORTAIL D'ENTRÉE (LOOK WOW)
+# [SECTION 4] : SYSTÈME DE FACTURATION & REDIRECTION (TON LOGO + TES COMPTES)
 # --------------------------------------------------------------------------------------
-if st.session_state.auth is None:
-    st.markdown("<br><br><br>", unsafe_allow_html=True)
-    col1, col2, col3 = st.columns([1, 2, 1])
+def process_transaction(conn, df_bank, df_immat, civil, marque, plaque, assurance):
+    """Gère le débit, les taxes et les virements vers toi ou Moune"""
     
-    with col2:
-        st.markdown("<h1>PRISMA OS</h1>", unsafe_allow_html=True)
-        st.markdown("<p style='color:#666; font-size:1.2rem; margin-top:-10px;'>RENSSELAER COUNTY ADMINISTRATION</p>", unsafe_allow_html=True)
+    # 1. Calcul du prix
+    total = CONFIG["TAXE_DMV"]
+    if "RCT" in assurance: total += CONFIG["INS_RCT"]
+    if "AVERIS" in assurance: total += CONFIG["INS_AVE"]
+    
+    # 2. Vérification solde
+    idx_civ = df_bank[df_bank["Nom Roblox"] == civil].index[0]
+    solde_civ = to_cash(df_bank.at[idx_civ, "Solde"])
+    
+    if solde_civ < total:
+        return False, "Solde insuffisant pour cette opération."
+    
+    # 3. Exécution débit
+    df_bank.at[idx_civ, "Solde"] = solde_civ - total
+    
+    # 4. REDIRECTIONS
+    if "RCT" in assurance:
+        idx_u = df_bank[df_bank["Nom Roblox"] == CONFIG["CPT_UNE"]].index[0]
+        df_bank.at[idx_u, "Solde"] = to_cash(df_bank.at[idx_u, "Solde"]) + 150
+        save_log(f"Virement Assurance RCT (150$) -> {CONFIG['CPT_UNE']}")
         
-        with st.container():
-            st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-            mode = st.selectbox("IDENTIFICATION", ["Citoyen", "Agent RCT", "Administrateur Staff"])
+    if "AVERIS" in assurance:
+        idx_m = df_bank[df_bank["Nom Roblox"] == CONFIG["CPT_MOUNE"]].index[0]
+        df_bank.at[idx_m, "Solde"] = to_cash(df_bank.at[idx_m, "Solde"]) + 130
+        save_log(f"Virement Assurance Averis (130$) -> {CONFIG['CPT_MOUNE']}")
+        
+    # 5. Enregistrement Immatriculation
+    new_veh = pd.DataFrame([{
+        "Horodateur": datetime.now().strftime("%d/%m/%Y"),
+        "Nom d'utilisateur ROBLOX": civil,
+        "Marque du véhicule": marque,
+        "Numéro de la plaque": plaque,
+        "Assurance": assurance
+    }])
+    
+    # 6. Push Google Sheets
+    conn.update(worksheet="Banque", data=df_bank)
+    conn.update(worksheet="Copie de Immatriculations", data=pd.concat([df_immat, new_veh]))
+    
+    return True, "Succès : Immatriculation et flux financiers validés."
+
+# --------------------------------------------------------------------------------------
+# [SECTION 5] : INTERFACE DE CONNEXION APEX
+# --------------------------------------------------------------------------------------
+if st.session_state.role is None:
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    c1, c2, c3 = st.columns([1, 2, 1])
+    
+    with c2:
+        st.markdown("<h1 class='apex-title'>APEX ENGINE</h1>", unsafe_allow_html=True)
+        st.markdown("<p style='letter-spacing:10px; color:#555;'>RENSSELAER COUNTY</p>", unsafe_allow_html=True)
+        
+        with st.container(border=True):
+            mode = st.radio("SÉLECTIONNER LE PORTAIL", ["CIVIL", "RCT AGENT", "STAFF ADMIN"], horizontal=True)
             
-            if mode == "Citoyen":
-                if st.button("ACCÉDER AU TERMINAL"):
-                    st.session_state.auth = "Civil"; st.rerun()
+            if mode == "CIVIL":
+                if st.button("ACCÈS LIBRE"):
+                    st.session_state.role = "Civil"; st.rerun()
             
-            elif mode == "Agent RCT":
-                key = st.text_input("BADGE ID", type="password")
+            elif mode == "RCT AGENT":
+                pwd = st.text_input("BADGE AUTH", type="password")
+                if st.button("VÉRIFIER"):
+                    if pwd == CONFIG["PWD_RCT"]:
+                        st.session_state.role = "RCT"; st.rerun()
+                    else: st.error("ACCÈS REFUSÉ")
+            
+            elif mode == "STAFF ADMIN":
+                pwd = st.text_input("ROOT ACCESS", type="password")
                 if st.button("DÉVERROUILLER"):
-                    if key == RULES["PWD_RCT"]: st.session_state.auth = "RCT"; st.rerun()
-                    else: st.error("IDENTIFIANT INCORRECT")
-            
-            elif mode == "Administrateur Staff":
-                key = st.text_input("ROOT KEY", type="password")
-                if st.button("DÉVERROUILLER SYSTEM"):
-                    if key == RULES["PWD_STAFF"]: st.session_state.auth = "Staff"; st.rerun()
-                    else: st.error("ACCÈS RÉVOQUÉ")
-            st.markdown("</div>", unsafe_allow_html=True)
+                    if pwd == CONFIG["PWD_STAFF"]:
+                        st.session_state.role = "Staff"; st.rerun()
+                    else: st.error("CRITICAL ERROR")
     st.stop()
 
 # --------------------------------------------------------------------------------------
-# [SECTION 5] : CORE INTERFACE
+# [SECTION 6] : CHARGEMENT ET DASHBOARD
 # --------------------------------------------------------------------------------------
-conn, df_b, df_i, df_p = load_prisma_db()
+conn, df_b, df_i, df_p = connect_db()
 
-# HEADER
-col_h1, col_h2 = st.columns([3, 1])
-with col_h1:
-    st.markdown(f"<h1>{st.session_state.auth.upper()} PORTAL</h1>", unsafe_allow_html=True)
-with col_h2:
-    if st.button("DÉCONNEXION"): st.session_state.auth = None; st.rerun()
+# Barre latérale tactique
+with st.sidebar:
+    st.markdown(f"### 🎖️ {st.session_state.role}")
+    st.markdown("---")
+    st.markdown("### 📊 ÉCONOMIE")
+    total_val = sum([to_cash(x) for x in df_b["Solde"]])
+    st.metric("Masse Monétaire", f"{total_val:,.0f} $")
+    
+    st.markdown("---")
+    if st.button("🚪 QUITTER LE SYSTÈME"):
+        st.session_state.role = None; st.rerun()
 
-st.markdown("<br>", unsafe_allow_html=True)
+# CONTENU PRINCIPAL
+t1, t2, t3, t4, t5 = st.tabs(["💎 DASHBOARD", "🏦 BANQUE", "🚔 DMV", "🛡️ PERMIS", "⚙️ SYSTEM"])
 
-# STATS RAPIDES (LOOK FINTECH)
-m1, m2, m3 = st.columns(3)
-with m1:
-    st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-    st.metric("TOTAL CIRCULATION", f"{len(df_i)} UNITÉS")
-    st.markdown("</div>", unsafe_allow_html=True)
-with m2:
-    st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-    total_val = sum([clean_cash(x) for x in df_b["Solde"]])
-    st.metric("LIQUIDITÉS COMTÉ", f"{total_val:,.0f} $")
-    st.markdown("</div>", unsafe_allow_html=True)
-with m3:
-    st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-    st.metric("STATUS", "OPÉRATIONNEL", "LIVE")
-    st.markdown("</div>", unsafe_allow_html=True)
+# --- TAB DASHBOARD (NOUVEAU: Graphiques Wow) ---
+with t1:
+    st.markdown("## VUE D'ENSEMBLE DU COMTÉ")
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.markdown("<div class='card'>", unsafe_allow_html=True)
+        st.metric("CITOYENS", len(df_b))
+        st.markdown("</div>", unsafe_allow_html=True)
+    with col2:
+        st.markdown("<div class='card'>", unsafe_allow_html=True)
+        st.metric("FLOTTE TOTALE", len(df_i))
+        st.markdown("</div>", unsafe_allow_html=True)
+    with col3:
+        st.markdown("<div class='card'>", unsafe_allow_html=True)
+        avg_bal = total_val / len(df_b) if len(df_b) > 0 else 0
+        st.metric("SOLDE MOYEN", f"{avg_bal:,.0f} $")
+        st.markdown("</div>", unsafe_allow_html=True)
 
-# NAVIGATION
-tabs = st.tabs(["FINANCES", " DMV REGISTRY", " CONDUCTEURS", "ADMINISTRATION"])
+    # Graphique de répartition des richesses
+    st.markdown("### RÉPARTITION DES CAPITAUX")
+    fig = go.Figure(data=[go.Pie(labels=df_b["Nom Roblox"][:10], values=[to_cash(x) for x in df_b["Solde"]][:10], hole=.4)])
+    fig.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+    st.plotly_chart(fig, use_container_width=True)
 
-# --- ONGLETS BANQUE ---
-with tabs[0]:
-    st.markdown("### RECHERCHE DE COMPTE")
-    search = st.text_input("Nom de l'utilisateur...", label_visibility="collapsed")
+# --- TAB BANQUE (NOUVEAU: Système de facturation) ---
+with t2:
+    st.markdown("## GESTION DES FLUX FINANCIERS")
+    search_b = st.text_input("🔍 Rechercher un compte...", placeholder="Entrez un pseudo...")
     
     for idx, r in df_b.iterrows():
-        if search.lower() in str(r["Nom Roblox"]).lower():
-            st.markdown(f"""
-                <div class="glass-card">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <div>
-                            <span style="color:#666; font-size:0.8rem;">PROFIL CITOYEN</span><br>
-                            <span style="font-size:1.5rem; font-weight:700;">{r['Nom Roblox']}</span><br>
-                            <span style="color:#666;">{r['Emploiement']}</span>
-                        </div>
-                        <div style="text-align:right;">
-                            <span style="color:#666; font-size:0.8rem;">SOLDE ACTUEL</span><br>
-                            <span style="font-size:2rem; font-weight:800;">{clean_cash(r['Solde']):,.0f} $</span>
-                        </div>
+        if search_b.lower() in str(r["Nom Roblox"]).lower():
+            with st.container():
+                st.markdown(f"""
+                <div class="card">
+                    <div style="display:flex; justify-content:space-between;">
+                        <span style="font-size:1.2rem; font-weight:800;">{r['Nom Roblox']}</span>
+                        <span style="font-family:'Orbitron'; font-size:1.5rem;">{to_cash(r['Solde']):,.0f} $</span>
                     </div>
+                    <span style="color:#555;">ID Discord: {r['Nom Discord']} | Arrivée: {r.get("Date d'arrivée", "Inconnue")}</span>
                 </div>
-            """, unsafe_allow_html=True)
-            
-            if st.session_state.auth in ["RCT", "Staff"]:
-                c1, c2, c3 = st.columns([2, 1, 1])
-                amt = c1.number_input("Somme à débiter ($)", min_value=0.0, key=f"deb_{idx}")
-                if c2.button("CONFIRMER LE DÉBIT", key=f"btn_d_{idx}"):
-                    curr = clean_cash(df_b.at[idx, "Solde"])
-                    if curr >= amt:
-                        df_b.at[idx, "Solde"] = curr - amt
-                        conn.update(worksheet="Banque", data=df_b)
-                        push_log(f"Prélèvement de {amt}$ sur {r['Nom Roblox']}")
-                        st.rerun()
-
-# --- ONGLET DMV (LA LOGIQUE DE PRIX WOW) ---
-with tabs[1]:
-    if st.session_state.auth in ["RCT", "Staff"]:
-        st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-        st.markdown("### NOUVEL ENREGISTREMENT")
-        with st.form("dmv_prisma"):
-            ca1, ca2 = st.columns(2)
-            u_name = ca1.selectbox("PROPRIÉTAIRE", df_b["Nom Roblox"].tolist())
-            u_brand = ca1.selectbox("MARQUE", RULES["MARQUES"])
-            u_plate = ca2.text_input("PLAQUE")
-            u_assu = ca2.selectbox("ASSURANCE", ["AUCUNE", "AVERIS (130$)", "RCT (150$)"])
-            
-            # CALCULS
-            total = RULES["TAXE"]
-            if "RCT" in u_assu: total += RULES["PRICE_RCT"]
-            if "AVERIS" in u_assu: total += RULES["PRICE_AVE"]
-            
-            st.markdown(f"#### TOTAL : {total}$")
-            
-            if st.form_submit_button("ÉMETTRE L'IMMATRICULATION"):
-                idx_u = df_b[df_b["Nom Roblox"] == u_name].index[0]
-                solde_u = clean_cash(df_b.at[idx_u, "Solde"])
+                """, unsafe_allow_html=True)
                 
-                if solde_u >= total:
-                    # 1. Débit
-                    df_bank_new = df_b.copy()
-                    df_bank_new.at[idx_u, "Solde"] = solde_u - total
-                    
-                    # 2. Redirection RCT -> une10000
-                    if "RCT" in u_assu:
-                        idx_r = df_bank_new[df_bank_new["Nom Roblox"] == RULES["RCT_CPT"]].index[0]
-                        df_bank_new.at[idx_r, "Solde"] = clean_cash(df_bank_new.at[idx_r, "Solde"]) + 150
-                    
-                    # 3. Redirection Averis -> Moune2010
-                    if "AVERIS" in u_assu:
-                        idx_m = df_bank_new[df_bank_new["Nom Roblox"] == RULES["AVE_CPT"]].index[0]
-                        df_bank_new.at[idx_m, "Solde"] = clean_cash(df_bank_new.at[idx_m, "Solde"]) + 130
-                        
-                    new_v = pd.DataFrame([{"Horodateur": datetime.now().strftime("%d/%m/%Y"), "Nom d'utilisateur ROBLOX": u_name, "Marque du véhicule": u_brand, "Numéro de la plaque": u_plate, "Assurance": u_assu}])
-                    conn.update(worksheet="Banque", data=df_bank_new)
-                    conn.update(worksheet="Copie de Immatriculations", data=pd.concat([df_i, new_v]))
-                    push_log(f"Nouvelle plaque {u_plate} pour {u_name}")
-                    st.success("ENREGISTRÉ"); st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
-    
-    st.markdown("### VÉHICULES ENREGISTRÉS")
-    st.dataframe(df_i, use_container_width=True)
+                if st.session_state.role in ["RCT", "Staff"]:
+                    with st.expander("🛠️ OPÉRATIONS"):
+                        c_a, c_b = st.columns(2)
+                        amt = c_a.number_input("Montant", min_value=0.0, key=f"amt_{idx}")
+                        reason = c_b.text_input("Raison", key=f"rs_{idx}")
+                        if st.button("APPLIQUER TAXE / AMENDE", key=f"tax_{idx}"):
+                            df_b.at[idx, "Solde"] = to_cash(df_b.at[idx, "Solde"]) - amt
+                            conn.update(worksheet="Banque", data=df_b)
+                            save_log(f"Amende de {amt}$ appliquée à {r['Nom Roblox']} pour {reason}")
+                            st.success("Transaction effectuée."); st.rerun()
 
-# --- ONGLET CONDUCTEURS ---
-with tabs[2]:
-    st.markdown("### DOSSIERS PERMIS")
+# --- TAB DMV (NOUVEAU: Garage personnel) ---
+with t3:
+    st.markdown("## DÉPARTEMENT DES VÉHICULES")
+    
+    if st.session_state.role in ["RCT", "Staff"]:
+        with st.container(border=True):
+            st.markdown("### 📝 NOUVELLE IMMATRICULATION")
+            with st.form("dmv_apex"):
+                f1, f2 = st.columns(2)
+                f_civ = f1.selectbox("PROPRIÉTAIRE", df_b["Nom Roblox"].tolist())
+                f_mar = f1.selectbox("MARQUE", CONFIG["MARQUES"])
+                f_pla = f2.text_input("PLAQUE")
+                f_ass = f2.selectbox("FORMULE", ["AUCUNE", "AVERIS (130$)", "RCT (150$)"])
+                
+                if st.form_submit_button("VALIDER LE DOSSIER"):
+                    ok, msg = process_transaction(conn, df_b, df_i, f_civ, f_mar, f_pla, f_ass)
+                    if ok:
+                        save_log(f"Immat {f_pla} ({f_mar}) pour {f_civ}")
+                        st.success(msg); time.sleep(1); st.rerun()
+                    else: st.error(msg)
+    
+    st.markdown("### 📂 REGISTRE NATIONAL")
+    search_i = st.text_input("Rechercher Plaque/Proprio", key="si")
+    res_i = df_i[df_i.astype(str).apply(lambda x: x.str.contains(search_i, case=False)).any(axis=1)]
+    st.dataframe(res_i, use_container_width=True)
+
+# --- TAB PERMIS (Barre de progression visuelle) ---
+with t4:
+    st.markdown("## ÉTAT DES LICENCES")
     for i, r in df_p.iterrows():
         with st.container():
+            pts = int(r["PTS"]) if str(r["PTS"]).isdigit() else 0
+            color = "#00FF00" if pts > 15 else "#FFA500" if pts > 5 else "#FF0000"
+            
+            st.markdown(f"**{r['Nom Roblox']}**")
             st.markdown(f"""
-                <div class="glass-card" style="padding:15px; margin-bottom:10px;">
-                    <div style="display:flex; justify-content:space-between;">
-                        <span>{r['Nom Roblox']}</span>
-                        <span style="font-weight:700;">{r['PTS']} POINTS</span>
-                    </div>
-                </div>
+            <div style="background:#222; width:100%; height:10px; border-radius:5px;">
+                <div style="background:{color}; width:{pts*4}%; height:10px; border-radius:5px;"></div>
+            </div>
+            <span style="font-size:10px; color:#555;">{pts} / 25 POINTS</span>
             """, unsafe_allow_html=True)
+            
+            if st.session_state.role in ["RCT", "Staff"]:
+                if st.button(f"RETIRER 1 POINT ({r['Nom Roblox']})"):
+                    df_p.at[i, "PTS"] = max(0, pts - 1)
+                    conn.update(worksheet="Points Permis", data=df_p)
+                    st.rerun()
 
-# --- ONGLET ADMIN (GREFFE + LOGS) ---
-with tabs[3]:
-    if st.session_state.auth == "Staff":
-        with st.expander("🔨 GREFFE - CRÉER UN CITOYEN"):
-            with st.form("new_cit"):
-                nc1, nc2 = st.columns(2)
-                rob = nc1.text_input("PSEUDO ROBLOX")
-                dis = nc2.text_input("PSEUDO DISCORD")
-                if st.form_submit_button("CRÉER LE DOSSIER"):
-                    d_sys = datetime.now().strftime("%d/%m/%Y")
-                    nb = pd.DataFrame([{"Solde": 15000, "Emploiement": "Civil", "Nom Discord": dis, "Nom Roblox": rob, "Date d'arrivée": d_sys}])
-                    np = pd.DataFrame([{"Nom Discord": dis, "Nom Roblox": rob, "PTS": 25, "Validité": "OUI"}])
-                    conn.update(worksheet="Banque", data=pd.concat([df_b, nb]))
-                    conn.update(worksheet="Points Permis", data=pd.concat([df_p, np]))
-                    push_log(f"Nouveau citoyen : {rob}")
-                    st.success("CITOYEN CRÉÉ"); st.rerun()
-    
-    st.markdown("### JOURNAL SYSTÈME")
+# --- TAB SYSTEM (GREFFE AUTO-DATE + LOGS) ---
+with t5:
+    if st.session_state.role == "Staff":
+        st.markdown("## 🔨 ADMINISTRATION DU GREFFE")
+        with st.form("greffe_form"):
+            st.markdown("### CRÉATION DE PROFIL CITOYEN")
+            g1, g2 = st.columns(2)
+            g_rob = g1.text_input("NOM ROBLOX")
+            g_dis = g2.text_input("NOM DISCORD")
+            if st.form_submit_button("VALIDER L'IDENTITÉ"):
+                d_sys = datetime.now().strftime("%d/%m/%Y")
+                new_b = pd.DataFrame([{"Solde": 15000, "Emploiement": "Civil", "Nom Discord": g_dis, "Nom Roblox": g_rob, "Date d'arrivée": d_sys}])
+                new_p = pd.DataFrame([{"Nom Discord": g_dis, "Nom Roblox": g_rob, "PTS": 25, "Validité": "OUI"}])
+                conn.update(worksheet="Banque", data=pd.concat([df_b, new_b]))
+                conn.update(worksheet="Points Permis", data=pd.concat([df_p, new_p]))
+                save_log(f"NOUVEAU CITOYEN : {g_rob} ({d_sys})")
+                st.success(f"Dossier créé le {d_sys}"); st.rerun()
+
+    st.markdown("## 📜 LOGS SÉCURISÉS")
     for log in st.session_state.logs:
-        st.markdown(f"<p style='color:#666; font-family:monospace;'>{log}</p>", unsafe_allow_html=True)
+        st.markdown(f"<div style='font-family:monospace; color:#444;'>{log}</div>", unsafe_allow_html=True)family:monospace;'>{log}</p>", unsafe_allow_html=True)
