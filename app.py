@@ -7,12 +7,14 @@ import time
 # --- CONFIGURATION PAGE ---
 st.set_page_config(page_title="RCRP - Portail Officiel", layout="wide")
 
-# --- STYLE CSS (SUPPRESSION VIDE EN HAUT) ---
+# --- STYLE CSS (LOGO & ALIGNEMENT) ---
 st.markdown("""
     <style>
     .block-container { padding-top: 1rem; padding-bottom: 0rem; }
     div[data-testid="stExpander"] { border: 1px solid #f0f2f6; border-radius: 10px; }
-    .stMetric { background-color: #f8f9fb; padding: 10px; border-radius: 10px; }
+    .stMetric { background-color: #f8f9fb; padding: 10px; border-radius: 10px; border: 1px solid #e0e0e0; }
+    /* Aligner horizontalement le header */
+    [data-testid="stHorizontalBlock"] { align-items: center; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -25,8 +27,6 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 CODE_ADMIN_GENERAL = "RCRPFR-25-26" 
 CODE_ENTREPRISE = "RCT-26-RCRPFR" 
 MON_PSEUDO_ROBLOX = "une10000"
-
-# TON NOUVEAU LIEN D'IMAGE ICI
 LOGO_URL = "https://media.discordapp.net/attachments/1441508709024006315/1467106550656270484/Capture_decran_2025-12-01_a_21.03.31.png?ex=6989b8f3&is=69886773&hm=29c056c7c305026ba05077deb91af1f7a838c8e409cbbaba0d94b41076cefa62&=&format=webp&quality=lossless&width=1100&height=608"
 
 # --- FONCTION LECTURE ---
@@ -41,11 +41,13 @@ def get_data(sheet_name):
 # 🚪 PAGE DE CONNEXION
 # ==========================================
 if st.session_state.role is None:
-    _, center_col, _ = st.columns([1, 2, 1])
-    with center_col:
+    # Logo à gauche, Texte à droite
+    c_img, c_txt = st.columns([1, 3])
+    with c_img:
         st.image(LOGO_URL, use_container_width=True)
-        st.markdown("<h1 style='text-align: center;'>🏛️ Portail des Services RCRP</h1>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align: center;'>Sélectionnez votre accès pour continuer</p>", unsafe_allow_html=True)
+    with c_txt:
+        st.markdown("<h1 style='margin:0;'>🏛️ Portail des Services RCRP</h1>", unsafe_allow_html=True)
+        st.markdown("<p style='font-size: 20px; margin:0;'>Sélectionnez votre accès pour continuer</p>", unsafe_allow_html=True)
     
     st.write("") 
 
@@ -53,7 +55,7 @@ if st.session_state.role is None:
     with col1:
         with st.container(border=True):
             st.write("### 👤 Citoyen")
-            st.write("Consulter les registres et enregistrer un véhicule.")
+            st.write("Consulter les registres et vos informations personnelles.")
             if st.button("Accès Public", use_container_width=True):
                 st.session_state.role = "Civil"; st.rerun()
     with col2:
@@ -80,17 +82,19 @@ if st.session_state.role is None:
 # 🖥️ INTERFACE CONNECTÉE
 # ==========================================
 
-# Barre latérale (Sidebar)
-with st.sidebar:
+# Header interface : Logo à gauche, Espace Rôle à droite
+h_img, h_txt = st.columns([1, 5])
+with h_img:
     st.image(LOGO_URL, use_container_width=True)
+with h_txt:
+    st.title(f"🏛️ Espace {st.session_state.role}")
+
+with st.sidebar:
     st.write(f"🎭 Session : **{st.session_state.role}**")
     if st.button("🚪 Déconnexion", use_container_width=True):
         st.session_state.role = None; st.rerun()
     st.divider()
     st.info(f"Connecté le {datetime.now().strftime('%d/%m/%Y')}")
-
-# Titre principal
-st.title(f"🏛️ Espace {st.session_state.role}")
 
 # --- LISTES ---
 liste_etats = sorted(["Alberta", "Beautiful British Columbia", "California", "Colorado", "Connecticut", "Delaware", "Washington", "Florida", "Indiana", "Kansas", "Maine", "Manitoba", "Maryland", "Massachusetts", "Michigan", "Mississippi", "Montana", "New Brunswick", "New Hampshire", "New Jersey", "New York", "Newfoundland Labrador", "Nova Scotia", "Nuvanut", "Ohio", "Oklahoma", "Ontario", "Pennsylvania", "Prince Edward Island", "Quebec", "Rhode Island", "Saskatchewan", "South Carolina", "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Wisconsin", "Yukon"])
@@ -103,14 +107,14 @@ if st.session_state.role == "Staff":
 elif st.session_state.role == "RCT":
     tabs = st.tabs(["🚗 Immatriculations", "💰 Facturation RCT Business"])
 else:
-    tabs = st.tabs(["🚗 Registre Véhicules", "💰 Mon Compte"])
+    tabs = st.tabs(["🚗 Registre Véhicules", "💰 Mon Compte (Solde & Points)"])
 
 # ==========================================
 # 🚗 ONGLET 1 : IMMATRICULATIONS
 # ==========================================
 with tabs[0]:
     df_im = get_data("Copie de Immatriculations")
-    st.metric("🚗 Nombre de véhicules enregistrés", len(df_im))
+    st.metric("🚗 Véhicules enregistrés", len(df_im))
     
     with st.expander("➕ Enregistrer un nouveau véhicule"):
         with st.form("add_vfinal"):
@@ -126,7 +130,6 @@ with tabs[0]:
                     new_r = pd.DataFrame([{"Horodateur": (datetime.now() + timedelta(hours=1)).strftime("%d/%m/%Y %H:%M"), "Nom d'utilisateur ROBLOX": u, "Marque du véhicule": m, "L'état de la plaque": e, "Numéro de la plaque": p, "Assurance": a, "CODE": str(c)}])
                     conn.update(worksheet="Copie de Immatriculations", data=pd.concat([df_im, new_r], ignore_index=True))
                     st.success("🎉 Enregistrement validé !"); time.sleep(1); st.rerun()
-                else: st.error("⚠️ Veuillez remplir tous les champs.")
 
     st.divider()
     sq = st.text_input("🔍 Rechercher une plaque ou un propriétaire").strip().upper()
@@ -155,17 +158,28 @@ with tabs[0]:
                             else: st.error("❌ Code secret incorrect.")
 
 # ==========================================
-# 💰 ONGLET BANQUE
+# 💰 ONGLET BANQUE & POINTS
 # ==========================================
 with tabs[1]:
-    df_b = get_data("Banque")
     if st.session_state.role == "Civil":
-        nom = st.text_input("Entrez votre Pseudo exact pour voir votre solde").strip().lower()
+        nom = st.text_input("Entrez votre Pseudo exact pour voir votre solde et vos points").strip().lower()
         if nom:
-            res = df_b[df_b['Nom Roblox'].str.lower() == nom]
-            if not res.empty: st.metric(f"Solde de {nom}", f"{float(res.iloc[0]['Solde']):,.0f} $")
-            else: st.error("❌ Compte introuvable.")
+            c1, c2 = st.columns(2)
+            # Solde
+            df_b = get_data("Banque")
+            res_b = df_b[df_b['Nom Roblox'].str.lower() == nom]
+            if not res_b.empty: 
+                c1.metric("💵 Votre Solde", f"{float(res_b.iloc[0]['Solde']):,.0f} $")
+            else: c1.error("❌ Compte bancaire introuvable.")
+            
+            # Points
+            df_p = get_data("Points Permis")
+            res_p = df_p[df_p['Nom Roblox'].str.lower() == nom]
+            if not res_p.empty:
+                c2.metric("🪪 Points Permis", f"{res_p.iloc[0]['Points']} / 12")
+            else: c2.error("❌ Dossier permis introuvable.")
     else:
+        df_b = get_data("Banque")
         sb = st.text_input("🔍 Rechercher un compte citoyen").strip().lower()
         if not df_b.empty and sb:
             res_b = df_b[df_b.apply(lambda r: sb in str(r).lower(), axis=1)]
@@ -202,11 +216,10 @@ if st.session_state.role == "Staff":
     with tabs[2]:
         df_p = get_data("Points Permis")
         st.write("### 🪪 Gestion des Permis")
-        # Interface permis...
         st.dataframe(df_p, use_container_width=True)
     with tabs[3]:
         st.write("### 📜 Archives du Système")
         st.dataframe(get_data("Logs").iloc[::-1], use_container_width=True)
 
 st.markdown("---")
-st.markdown("<center><small>République de Californie RP | Système v9.8</small></center>", unsafe_allow_html=True)
+st.markdown("<center><small>RCRP FR | Système v9.12</small></center>", unsafe_allow_html=True)
