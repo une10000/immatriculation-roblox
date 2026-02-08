@@ -387,33 +387,6 @@ with target_tab_immat:
                         time.sleep(1); st.rerun()
                     else: st.error("Solde insuffisant.")
                 else: st.error("Champs manquants ou utilisateur inconnu.")
-
-    # --- RECHERCHE ET GESTION ---
-    search_v = st.text_input("🔍 Rechercher un véhicule (Plaque ou Nom)").lower()
-    if search_v:
-        res_v = df_immat[df_immat.apply(lambda r: search_v in str(r).lower(), axis=1)]
-        for iv, rv in res_v.iterrows():
-            with st.container(border=True):
-                st.markdown(f"**{rv['Marque du véhicule']}** | `{rv['Numéro de la plaque']}`")
-                st.caption(f"Propriétaire: {rv['Nom d\'utilisateur ROBLOX']} | Assurance: {rv['Assurance']}")
-                
-                col1, col2 = st.columns(2)
-                # Zone de modification sécurisée par code
-                with col1:
-                    with st.popover("⚙️ Modifier / Supprimer"):
-                        input_code = st.text_input("Entrez le CODE SECRET", type="password", key=f"code_{iv}")
-                        if input_code == str(rv.get('CODE', '')) or st.session_state.role == "Staff":
-                            new_assu = st.selectbox("Changer Assurance", ["Non assuré", "RCT", "Averis"], key=f"assu_{iv}")
-                            if st.button("Sauvegarder", key=f"save_{iv}"):
-                                df_immat.at[iv, 'Assurance'] = new_assu
-                                conn.update(worksheet="Copie de Immatriculations", data=df_immat)
-                                st.rerun()
-                            if st.button("🗑️ Supprimer l'immatriculation", key=f"del_{iv}"):
-                                df_immat = df_immat.drop(iv)
-                                conn.update(worksheet="Copie de Immatriculations", data=df_immat)
-                                st.rerun()
-                        elif input_code != "":
-                            st.error("Code incorrect")
                 
                 # --- CALCULATRICE FINANCIÈRE ---
                 cost_ville, cost_rct, cost_averis, cost_jeune = 175, 0, 0, 0
