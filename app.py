@@ -341,16 +341,79 @@ with target_tab_immat:
     df_users = load_table("Banque")
     owners_list = sorted(df_users["Nom Roblox"].unique().tolist()) if not df_users.empty else []
 
-    # --- FORMULAIRE D'AJOUT (PRO & STAFF SEULEMENT) ---
-    if st.session_state.role != "Civil":
-        with st.expander("➕ Enregistrer une nouvelle immatriculation", expanded=True):
-            with st.form("form_new_immat"):
-                c1, c2 = st.columns(2)
-                user_select = c1.selectbox("Propriétaire du véhicule", ["---"] + owners_list)
-                car_brand = c1.selectbox("Marque", sorted(["Altstadt", "Bremen", "Comrader", "Delton", "Envy", "Eva", "Gam", "Gemini", "Hamotsu", "Katzmann", "Koritsu", "Land treker", "Lexima", "Linco", "Lyon", "Marshall", "Mita", "Mizuhara", "Nesumi", "Neptune", "Revasser", "Revolt", "Roamer", "Senseon", "Shatoku", "Sternauster", "Turismo", "Yosurai"]))
-                plate_num = c2.text_input("Numéro de Plaque")
-                assurance_type = c1.selectbox("Contrat Assurance", ["Non assuré", "RCT", "Averis"])
-                secret_code = c2.text_input("Code Secret Véhicule", type="password")
+   # --- FORMULAIRE D'ENREGISTREMENT (CIVIL OU STAFF) ---
+    with st.expander("➕ Enregistrer un véhicule (Frais applicables)", expanded=False):
+        with st.form("new_car_form"):
+            c1, c2 = st.columns(2)
+            if st.session_state.role == "Civil":
+                # Le civil ne peut choisir que lui-même
+                search_me = c1.text_input("Confirmez votre Nom Roblox")
+                user_select = search_me
+            else:
+                owners_list = sorted(df_users["Nom Roblox"].unique().tolist())
+                user_select = c1.selectbox("Propriétaire", ["---"] + owners_list)
+
+            car_brand = c1.selectbox("Marque", ["Altstadt", "Bremen", "Comrader", "Delton", "Envy", "Eva", "Gam", "Gemini", "Hamotsu", "Katzmann", "Koritsu", "Land treker", "Lexima", "Linco", "Lyon", "Marshall", "Mita", "Mizuhara", "Nesumi", "Neptune", "Revasser", "Revolt", "Roamer", "Senseon", "Shatoku", "Sternauster", "Turismo", "Yosurai"])
+            plate_num = c2.text_input("Numéro de Plaque (Ex: ABC-123)")
+            assurance_type = c1.selectbox("Contrat Assurance", ["Non assuré", "RCT", "Averis"])
+            secret_code = c2.text_input("Créer un CODE SECRET (pour modifier/supprimer)", type="password", help="Obligatoire pour gérer votre véhicule plus tard.")
+
+            # Calcul des frais
+            cost_total = 175 # Base
+            if assurance_type == "RCT": cost_total += 150
+            if assurance_type == "Averis": cost_total += 130
+            
+            st.warning(f"Total à payer : {cost_total}$ (Débité de votre compte)")
+            
+            if st.form_submit_button("✅ Valider l'immatriculation"):
+                user_data = df_users[df_users["Nom Roblox"] == user_select]
+                if not user_data.empty and plate_num and secret_code:
+                    current_solde = float(user_data.iloc[0]["Solde"])
+                    if current_solde >= cost_total:
+                        # Débit
+                        df_users.at[user_data.index[0], "Solde"] = current_solde - cost_total
+                        # Ajout véhicule
+                        new_row = pd.DataFrame([{
+                            "Horodateur": datetime.now().strftime("%d/%m/%Y %H:%M"),
+                            "Nom d'utilisateur ROBLOX": user_select,
+                            "Marque du véhicule": car_brand,
+                            "Numéro de la plaque": plate_num,
+                            "Assurance": assurance_type,
+                            "CODE": str(secret_code)
+                        }])
+                        conn.update(worksheet="Banque", data=df_users)
+                        conn.update(worksheet="Copie de Immatriculations", data=pd.concat([df_immat, new_row], ignore_index=True))
+                        st.success("Véhicule enregistré !")
+                        time.sleep(1); st.rerun()
+                    else: st.error("Solde insuffisant.")
+                else: st.error("Champs manquants ou utilisateur inconnu.")
+
+    # --- RECHERCHE ET GESTION ---
+    search_v = st.text_input("🔍 Rechercher un véhicule (Plaque ou Nom)").lower()
+    if search_v:
+        res_v = df_immat[df_immat.apply(lambda r: search_v in str(r).lower(), axis=1)]
+        for iv, rv in res_v.iterrows():
+            with st.container(border=True):
+                st.markdown(f"**{rv['Marque du véhicule']}** | `{rv['Numéro de la plaque']}`")
+                st.caption(f"Propriétaire: {rv['Nom d\'utilisateur ROBLOX']} | Assurance: {rv['Assurance']}")
+                
+                col1, col2 = st.columns(2)
+                # Zone de modification sécurisée par code
+                with col1:
+                    with st.popover("⚙️ Modifier / Supprimer"):
+                        input_code = st.text_input("Entrez le CODE SECRET", type="password", key=f"code_{iv}")
+                        if input_code == str(rv.get('CODE', '')) or st.session_state.role == "Staff":
+                            new_assu = st.selectbox("Changer Assurance", ["Non assuré", "RCT", "Averis"], key=f"assu_{iv}")
+                            if st.button("Sauvegarder", key=f"save_{iv}"):
+                                df_immat.at[iv, 'Assurance'] = new_assu
+                                conn.update(worksheet="Copie de Immatriculations", data=df_immat)
+                                st.rerun()
+                            if st.button("🗑️ Supprimer l'immatriculation", key=f"del_{iv}"):
+                                df_immat = df_immat.drop(iv)
+                                conn.update(worksheet="Copie de Immatriculations", data=df_immat)
+                                st.rerun()
+                        elif input_code != "":
+                            st.error("Code incorrect")
                 
                 # --- CALCULATRICE FINANCIÈRE ---
                 cost_ville, cost_rct, cost_averis, cost_jeune = 175, 0, 0, 0
