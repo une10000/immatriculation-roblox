@@ -361,25 +361,45 @@ with tab_dossier:
                         n_job = st.selectbox("Poste Occupé", ["Civil", "Agent RCT", "Gouvernement"])
                         
                         if st.form_submit_button("Valider la création"):
-                            # DATE AUTOMATIQUE (Ajoutée ici)
-                            d_creation = datetime.now().strftime("%d/%m/%Y")
-                            
-                            # CRUCIAL : J'ai mis "Nom d'utilisateur ROBLOX" pour coller à ton Sheets
-                            new_citizen = pd.DataFrame([{
-                                "Solde": 15000, 
-                                "Nom Discord": n_dis, 
-                                "Nom d'utilisateur ROBLOX": n_rob, 
-                                "Date d'arrivée": d_creation, 
-                                "Emploiement": n_job
-                            }])
-                            
-                            # Mise à jour
-                            df_updated = pd.concat([df_banque, new_citizen], ignore_index=True)
-                            conn.update(worksheet="Banque", data=df_updated)
-                            
-                            st.success(f"✅ Citoyen {n_rob} enregistré avec succès le {d_creation}")
-                            time.sleep(1)
-                            st.rerun()
+                    d_creation = datetime.now().strftime("%d/%m/%Y") # Date automatique 2026-02-08
+                    
+                    # 1. PRÉPARATION DE LA LIGNE POUR L'ONGLET "BANQUE"
+                    # On met les 15k et les infos de base
+                    new_bank_row = pd.DataFrame([{
+                        "Solde": 15000, 
+                        "Emploiement": n_job,
+                        "Nom Discord": n_dis, 
+                        "Nom Roblox": n_rob, 
+                        "Pseudo Admin": "System",
+                        "Date d'arrivée": d_creation
+                    }])
+                    
+                    # 2. PRÉPARATION DE LA LIGNE POUR L'ONGLET "POINTS PERMIS"
+                    # On crée le permis avec 25 points par défaut
+                    new_permis_row = pd.DataFrame([{
+                        "Nom Discord": n_dis,        # Colonne A
+                        "Nom Roblox": n_rob,         # Colonne B
+                        "Points": 25,                # Colonne C
+                        "Statut": "OUI"              # Colonne D
+                    }])
+                    
+                    try:
+                        # MISE À JOUR DE L'ONGLET BANQUE
+                        df_banque_updated = pd.concat([df_banque, new_bank_row], ignore_index=True)
+                        conn.update(worksheet="Banque", data=df_banque_updated)
+                        
+                        # MISE À JOUR DE L'ONGLET POINTS PERMIS
+                        # On charge l'onglet permis actuel pour ajouter la ligne sans rien effacer
+                        df_permis = conn.read(worksheet="Points Permis", ttl=0).dropna(how='all').fillna("")
+                        df_permis_updated = pd.concat([df_permis, new_permis_row], ignore_index=True)
+                        conn.update(worksheet="Points Permis", data=df_permis_updated)
+                        
+                        st.success(f"✅ Profil complet créé pour {n_rob} (Banque + Permis) !")
+                        time.sleep(1.5)
+                        st.rerun()
+                        
+                    except Exception as e:
+                        st.error(f"❌ Erreur lors de la double création : {e}")
 
     st.divider()
     
