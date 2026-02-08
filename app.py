@@ -7,20 +7,20 @@ import time
 # --- CONFIGURATION PAGE ---
 st.set_page_config(page_title="RCRP - Portail Officiel", layout="wide")
 
-# --- STYLE CSS (LOGO SIDEBAR & ALIGNEMENT BLOCS) ---
+# --- STYLE CSS (FIX COMPLET : LOGO SIDEBAR & ALIGNEMENT) ---
 st.markdown("""
     <style>
     .block-container { padding-top: 1.5rem; padding-bottom: 0rem; }
     
-    /* Force les boîtes de connexion à être identiques en hauteur */
+    /* Aligne les 3 colonnes de connexion pour qu'elles aient la même hauteur */
     [data-testid="stVerticalBlockBorderWrapper"] {
-        min-height: 400px !important;
+        min-height: 420px !important;
         display: flex;
         flex-direction: column;
         justify-content: space-between;
     }
 
-    /* Style des métriques citoyen */
+    /* Style des cartes de métriques */
     .stMetric { 
         background-color: #f8f9fb; 
         padding: 15px; 
@@ -28,9 +28,10 @@ st.markdown("""
         border: 1px solid #e0e0e0; 
     }
     
-    /* Logo dans la sidebar */
+    /* Logo dans la barre latérale (Sidebar) */
     [data-testid="stSidebar"] img {
         border-radius: 10px;
+        margin-bottom: 15px;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -39,14 +40,13 @@ st.markdown("""
 if "role" not in st.session_state:
     st.session_state.role = None
 
-# --- PARAMÈTRES ET CODES ---
+# --- PARAMÈTRES ET CONNEXION ---
 conn = st.connection("gsheets", type=GSheetsConnection)
 CODE_ADMIN_GENERAL = "RCRPFR-25-26" 
 CODE_ENTREPRISE = "RCT-26-RCRPFR" 
 MON_PSEUDO_ROBLOX = "une10000"
 LOGO_URL = "https://media.discordapp.net/attachments/1441508709024006315/1467106550656270484/Capture_decran_2025-12-01_a_21.03.31.png?ex=6989b8f3&is=69886773&hm=29c056c7c305026ba05077deb91af1f7a838c8e409cbbaba0d94b41076cefa62&=&format=webp&quality=lossless&width=1100&height=608"
 
-# --- FONCTION LECTURE ---
 def get_data(sheet_name):
     st.cache_data.clear()
     try:
@@ -67,10 +67,9 @@ if st.session_state.role is None:
     with col1:
         with st.container(border=True):
             st.markdown("### 👤 Citoyen")
-            st.write("Vérifiez vos immatriculations, votre solde bancaire et vos points de permis restants.")
-            st.write("") # Espacement pour aligner les boutons
-            st.write("")
-            st.write("")
+            st.write("Accès public : vérifiez vos immatriculations, votre solde bancaire et vos points de permis.")
+            # Espaces pour forcer l'alignement du bouton vers le bas
+            for _ in range(5): st.write("")
             if st.button("Accès Public", use_container_width=True):
                 st.session_state.role = "Civil"; st.rerun()
 
@@ -99,7 +98,7 @@ if st.session_state.role is None:
 # 🖥️ INTERFACE CONNECTÉE
 # ==========================================
 
-# LOGO DANS LA SIDEBAR
+# LOGO DANS LA SIDEBAR (SECTION "A")
 with st.sidebar:
     st.image(LOGO_URL, use_container_width=True)
     st.write(f"🎭 Session : **{st.session_state.role}**")
@@ -115,7 +114,7 @@ liste_assurances = ["Non assuré", "RCT", "Averis"]
 liste_etats = sorted(["Alberta", "Beautiful British Columbia", "California", "Colorado", "Connecticut", "Delaware", "Washington", "Florida", "Indiana", "Kansas", "Maine", "Manitoba", "Maryland", "Massachusetts", "Michigan", "Mississippi", "Montana", "New Brunswick", "New Hampshire", "New Jersey", "New York", "Newfoundland Labrador", "Nova Scotia", "Nuvanut", "Ohio", "Oklahoma", "Ontario", "Pennsylvania", "Prince Edward Island", "Quebec", "Rhode Island", "Saskatchewan", "South Carolina", "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Wisconsin", "Yukon"])
 liste_marques = sorted(["Altstadt", "Bremen", "Comrader", "Delton", "Envy", "Eva", "Gam", "Gemini", "Hamotsu", "Katzmann", "Koritsu", "Land treker", "Lexima", "Linco", "Lyon", "Marshall", "Mita", "Mizuhara", "Nesumi", "Neptune", "Revasser", "Revolt", "Roamer", "Senseon", "Shatoku", "Sternauster", "Turismo", "Yosurai"])
 
-# --- ONGLETS ---
+# --- ONGLETS DYNAMIQUES ---
 if st.session_state.role == "Staff":
     tabs = st.tabs(["🚗 Immatriculations", "🪪 Dossiers Permis", "💰 Banque Centrale", "📜 Logs"])
 elif st.session_state.role == "RCT":
@@ -139,21 +138,21 @@ with tabs[0]:
             e = c2.selectbox("📍 État", liste_etats)
             a = c1.selectbox("🛡️ Assurance", liste_assurances)
             c = c2.text_input("🔑 Code secret véhicule", type="password")
-            if st.form_submit_button("✅ Valider l'enregistrement"):
+            if st.form_submit_button("✅ Valider"):
                 if u and p and c:
                     new_r = pd.DataFrame([{"Horodateur": (datetime.now() + timedelta(hours=1)).strftime("%d/%m/%Y %H:%M"), "Nom d'utilisateur ROBLOX": u, "Marque du véhicule": m, "L'état de la plaque": e, "Numéro de la plaque": p, "Assurance": a, "CODE": str(c)}])
                     conn.update(worksheet="Copie de Immatriculations", data=pd.concat([df_im, new_r], ignore_index=True))
                     st.success("🎉 Enregistré !"); time.sleep(1); st.rerun()
 
     st.divider()
-    sq = st.text_input("🔍 Rechercher une plaque ou un propriétaire").strip().upper()
+    sq = st.text_input("🔍 Rechercher une plaque ou un nom").strip().upper()
     if not df_im.empty:
         mask = df_im.apply(lambda r: sq in str(r).upper(), axis=1) if sq else [True]*len(df_im)
         for idx, row in df_im[mask].iterrows():
             with st.container(border=True):
                 co1, co2 = st.columns([3, 1])
                 co1.markdown(f"### 🚗 {row['Numéro de la plaque']} — {row['Marque du véhicule']}")
-                co1.write(f"👤 **{row['Nom d\'utilisateur ROBLOX']}** | 📍 {row['L\'état de la plaque']} | 🛡️ {row['Assurance']}")
+                co1.write(f"👤 {row['Nom d\'utilisateur ROBLOX']} | 🛡️ {row['Assurance']}")
                 
                 if st.session_state.role in ["Staff", "RCT"]:
                     if co2.button(f"⚙️ Gérer", key=f"g_{idx}"):
@@ -174,17 +173,19 @@ with tabs[1]:
         nom_c = st.text_input("Entrez votre Pseudo Roblox exact").strip().lower()
         if nom_c:
             m1, m2 = st.columns(2)
-            # Solde
+            # Section Solde
             df_b = get_data("Banque")
             res_b = df_b[df_b['Nom Roblox'].str.lower() == nom_c]
-            if not res_b.empty: m1.metric("💵 Votre Solde", f"{float(res_b.iloc[0]['Solde']):,.0f} $")
-            else: m1.warning("Compte bancaire non trouvé.")
-            # Points
+            if not res_b.empty: m1.metric("💵 Solde Bancaire", f"{float(res_b.iloc[0]['Solde']):,.0f} $")
+            else: m1.info("Compte non trouvé.")
+            
+            # Section Points
             df_p = get_data("Points Permis")
             res_p = df_p[df_p['Nom Roblox'].str.lower() == nom_c]
             if not res_p.empty: m2.metric("🪪 Points de Permis", f"{res_p.iloc[0]['Points']} / 12")
-            else: m2.warning("Dossier permis non trouvé.")
+            else: m2.info("Dossier permis non trouvé.")
     else:
+        # Interface de gestion pour Staff/RCT
         df_b = get_data("Banque")
         sb = st.text_input("🔍 Rechercher un citoyen").strip().lower()
         if not df_b.empty and sb:
@@ -204,16 +205,12 @@ with tabs[1]:
                                     im = df_b[mask].index[0]
                                     df_b.at[im, "Solde"] = float(df_b.at[im, "Solde"]) + mt
                                     conn.update(worksheet="Banque", data=df_b)
-                                    st.success("💸 Payé !"); time.sleep(1); st.rerun()
-                            elif st.session_state.role == "Staff":
-                                df_b.at[idx, "Solde"] = solde - mt
-                                conn.update(worksheet="Banque", data=df_b)
-                                st.success("📈 Retrait effectué."); time.sleep(1); st.rerun()
+                                    st.success("Virement effectué !"); time.sleep(1); st.rerun()
                         if c_aj.form_submit_button("📈 AJOUTER"):
                             if st.session_state.role == "Staff":
                                 df_b.at[idx, "Solde"] = solde + mt
                                 conn.update(worksheet="Banque", data=df_b)
-                                st.success("📈 Ajout effectué."); time.sleep(1); st.rerun()
+                                st.success("Ajouté !"); time.sleep(1); st.rerun()
 
 # ==========================================
 # 🪪 & 📜 STAFF ONLY
@@ -227,4 +224,4 @@ if st.session_state.role == "Staff":
         st.dataframe(get_data("Logs").iloc[::-1], use_container_width=True)
 
 st.markdown("---")
-st.markdown("<center><small>RCRP FR| Système v9.17</small></center>", unsafe_allow_html=True)
+st.markdown("<center><small>République de Californie RP | Système v9.19</small></center>", unsafe_allow_html=True)
