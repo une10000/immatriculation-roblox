@@ -241,25 +241,76 @@ with tabs[1 if st.session_state.role != "Staff" else 2]:
 # 🪪 & 📜 SECTIONS STAFF
 # ==========================================
 if st.session_state.role == "Staff":
-    with tabs[1]:
-        st.write("### 🪪 Gestion des Permis de Conduire")
-        df_pts = get_data("Points Permis")
-        search_p = st.text_input("🔍 Rechercher un citoyen pour ses points").strip().lower()
-        if search_p:
-            res_p_staff = df_pts[df_pts.apply(lambda r: search_p in str(r).lower(), axis=1)]
-            for idx, row in res_p_staff.iterrows():
-                with st.container(border=True):
-                    st.write(f"👤 **{row['Nom Roblox']}** | Points actuels : **{row['PTS']}/25**")
-                    with st.form(f"pts_edit_{idx}"):
-                        new_pts = st.number_input("Nouveau solde PTS", 0, 25, value=int(row['PTS']))
-                        if st.form_submit_button("Mettre à jour PTS"):
-                            df_pts.at[idx, 'PTS'] = new_pts
-                            conn.update(worksheet="Points Permis", data=df_pts)
-                            st.success("Points mis à jour !"); time.sleep(1); st.rerun()
-                    
-    with tabs[3]:
-        st.write("### 📜 Archives des Logs Système")
-        st.dataframe(get_data("Logs").iloc[::-1], use_container_width=True)
+        st.divider()
+    st.subheader("👤 Création d’un profil citoyen")
+
+    with st.expander("➕ Créer un nouveau citoyen"):
+        with st.form("create_citizen"):
+            c1, c2 = st.columns(2)
+
+            nom_discord = c1.text_input("Nom Discord")
+            nom_roblox = c2.text_input("Nom Roblox")
+
+            pts = c1.number_input("Points de permis", min_value=0, max_value=25, value=25)
+            validite = c2.selectbox("Validité du permis", ["OUI", "NON", "VALIDE"])
+
+            solde_initial = 15000
+
+            submit = st.form_submit_button("✅ Créer le profil")
+
+            if submit:
+                if not nom_discord or not nom_roblox:
+                    st.error("❌ Tous les champs doivent être remplis.")
+                else:
+                    df_banque = get_data("Banque")
+                    df_pts = get_data("Points Permis")
+
+                    # --- Vérification doublon ---
+                    if not df_banque.empty and nom_roblox.lower() in df_banque["Nom Roblox"].astype(str).str.lower().values:
+                        st.error("⚠️ Ce profil Roblox existe déjà dans la banque.")
+                    else:
+                        # --- Création compte bancaire ---
+                        new_bank = pd.DataFrame([{
+                            "Nom Discord": nom_discord,
+                            "Nom Roblox": nom_roblox,
+                            "Solde": solde_initial,
+                            "Date d'arrivée": datetime.now().strftime("%d/%m/%Y")
+                        }])
+
+                        df_banque = pd.concat([df_banque, new_bank], ignore_index=True)
+                        conn.update(worksheet="Banque", data=df_banque)
+
+                        # --- Création dossier permis ---
+                        new_pts = pd.DataFrame([{
+                            "Nom Discord": nom_discord,
+                            "Nom Roblox": nom_roblox,
+                            "PTS": pts,
+                            "Validité": validite,
+                            "UserID DISC": "",
+                            "UserID RBLX": ""
+                        }])
+
+                        df_pts = pd.concat([df_pts, new_pts], ignore_index=True)
+                        conn.update(worksheet="Points Permis", data=df_pts)
+
+                        # --- Log système ---
+                        df_logs = get_data("Logs")
+                        new_log = pd.DataFrame([{
+                            "Horodateur": datetime.now().strftime("%d/%m/%Y %H:%M"),
+                            "Action": "Création profil citoyen",
+                            "Cible": nom_roblox,
+                            "Par": "Staff"
+                        }])
+
+                        conn.update(
+                            worksheet="Logs",
+                            data=pd.concat([df_logs, new_log], ignore_index=True)
+                        )
+
+                        st.success(f"🎉 Profil créé pour {nom_roblox} avec {solde_initial}$")
+                        time.sleep(1)
+                        st.rerun()
+
 
 st.markdown("---")
 st.markdown("<center><small>RCRP FR | Système de Gestion Intégral v9.32</small></center>", unsafe_allow_html=True)
