@@ -366,15 +366,13 @@ if st.button("💳 Procéder au Paiement et à l'Enregistrement", use_container_
                     else:
                         st.error("Transaction échouée : Votre solde bancaire est insuffisant.")
 
-# --- ON SORT DE TOUS LES BLOCS PRÉCÉDENTS : RETOUR À LA LIGNE ZÉRO ---
+# --- ON SORT DE TOUS LES BLOCS : RETOUR AU BORD GAUCHE ---
 
 st.divider()
 st.subheader("🔍 Consultation du Registre Public")
 
 # Barre de recherche dynamique
 search_query = st.text_input("Rechercher par Numéro de Plaque ou par Nom de Propriétaire").lower()
-    # Barre de recherche dynamique
-    search_query = st.text_input("Rechercher par Numéro de Plaque ou par Nom de Propriétaire").lower()
     
     # Parcours et affichage des véhicules
     for i, row in df_im.iterrows():
