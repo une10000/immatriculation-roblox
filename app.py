@@ -106,7 +106,7 @@ if st.session_state.role is None:
                 
     with col_pro:
         with st.container(border=True):
-            st.subheader("🛠️ Secteur Professionnel")
+            st.subheader("🛠️ Secteur RCT")
             input_pro = st.text_input("Code Employé", type="password", key="login_p")
             if st.button("Authentification Pro", use_container_width=True):
                 if input_pro == CODE_PRO:
