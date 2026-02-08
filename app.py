@@ -1,11 +1,11 @@
 import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime
 import time
 
 # ==============================================================================
-# 1. CONFIGURATION DE LA PAGE ET INTERFACE
+# 1. CONFIGURATION DE LA PAGE
 # ==============================================================================
 st.set_page_config(
     page_title="RCRP - Système Intégral Professionnel",
@@ -18,10 +18,12 @@ st.set_page_config(
 # ==============================================================================
 st.markdown("""
     <style>
+    /* Ajustement de l'espace haut */
     .block-container { 
         padding-top: 6rem !important; 
     }
     
+    /* Style du Logo dans la Sidebar */
     [data-testid="stSidebar"] img { 
         border-radius: 15px; 
         width: 250px !important; 
@@ -32,6 +34,7 @@ st.markdown("""
         border: 1px solid #333;
     }
 
+    /* Style des badges Assurance */
     .badge-assu {
         background-color: #ff4b4b;
         color: white;
@@ -42,6 +45,7 @@ st.markdown("""
         box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
     }
 
+    /* Style du Reçu Noir "Ticket" */
     .ticket-fix { 
         background-color: #0d0d0d !important; 
         color: #00ff00 !important; 
@@ -56,102 +60,126 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # ==============================================================================
-# 3. VARIABLES DE SÉCURITÉ ET CONSTANTES
+# 3. INITIALISATION DES VARIABLES ET CONSTANTES
 # ==============================================================================
+# Gestion de la session
 if "role" not in st.session_state:
     st.session_state.role = None
 
+# Connexion Google Sheets
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-# Cibles de virement
+# Paramètres de redirection bancaire
 TARGET_RCT = "une10000"
 TARGET_AVERIS = "Moune2010"
 
-# Codes d'accès
+# Codes de sécurité
 CODE_ADMIN = "RCRPFR-25-26" 
 CODE_PRO = "RCT-26-RCRPFR"
 
-# Logo officiel
+# Logo URL (Averis / RCT)
 LOGO_URL = "https://media.discordapp.net/attachments/1441508709024006315/1467106550656270484/Capture_decran_2025-12-01_a_21.03.31.png?ex=6989b8f3&is=69886773&hm=29c056c7c305026ba05077deb91af1f7a838c8e409cbbaba0d94b41076cefa62&=&format=webp&quality=lossless&width=2732&height=1508"
 
 # ==============================================================================
-# 4. FONCTIONS DE CHARGEMENT (GSHEETS)
+# 4. FONCTION DE CHARGEMENT DES DONNÉES
 # ==============================================================================
-def get_data(sheet_name):
+def load_all_data():
+    """Charge toutes les feuilles du Google Sheet"""
     st.cache_data.clear()
     try:
-        data = conn.read(worksheet=sheet_name, ttl=0)
-        return data.dropna(how='all').fillna("")
+        # Lecture feuille Banque
+        bank_data = conn.read(worksheet="Banque", ttl=0)
+        bank_df = bank_data.dropna(how='all').fillna("")
+        
+        # Lecture feuille Immatriculations
+        immat_data = conn.read(worksheet="Copie de Immatriculations", ttl=0)
+        immat_df = immat_data.dropna(how='all').fillna("")
+        
+        # Lecture feuille Points Permis
+        points_data = conn.read(worksheet="Points Permis", ttl=0)
+        points_df = points_data.dropna(how='all').fillna("")
+        
+        return bank_df, immat_df, points_df
     except Exception as e:
-        st.error(f"Erreur lors du chargement de {sheet_name}")
-        return pd.DataFrame()
+        st.error(f"Erreur de connexion : {e}")
+        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
-# Chargement initial
-df_banque = get_data("Banque")
-df_im = get_data("Copie de Immatriculations")
-df_pts = get_data("Points Permis")
+# Chargement effectif
+df_banque, df_im, df_pts = load_all_data()
 
 # ==============================================================================
-# 5. SYSTÈME D'AUTHENTIFICATION (PORTAIL)
+# 5. PORTAIL DE CONNEXION (ACCUEIL)
 # ==============================================================================
 if st.session_state.role is None:
-    st.title("🏛️ Système de Gestion RCRP - Accès")
+    st.title("🏛️ Système de Gestion RCRP - Portail de Sécurité")
+    st.write("Veuillez sélectionner votre secteur d'activité.")
     
     col_civ, col_pro, col_staff = st.columns(3)
     
     with col_civ:
         with st.container(border=True):
             st.subheader("👤 Secteur Civil")
-            if st.button("Accès Portail Public", use_container_width=True):
+            st.write("Accès au registre et services publics.")
+            if st.button("Ouvrir le Portail Civil", use_container_width=True):
                 st.session_state.role = "Civil"
                 st.rerun()
                 
     with col_pro:
         with st.container(border=True):
-            st.subheader("🛠️ Professionnel")
-            in_pro = st.text_input("Saisir Code RCT", type="password")
+            st.subheader("🛠️ Corps Professionnel")
+            st.write("Accès réservé aux employés RCT.")
+            input_rct = st.text_input("Code d'accès RCT", type="password")
             if st.button("Authentification RCT", use_container_width=True):
-                if in_pro == CODE_PRO:
+                if input_rct == CODE_PRO:
                     st.session_state.role = "RCT"
                     st.rerun()
                 else:
-                    st.error("Code erroné.")
+                    st.error("Identifiant incorrect.")
                     
     with col_staff:
         with st.container(border=True):
             st.subheader("👮 Gouvernement")
-            in_staff = st.text_input("Saisir Code Staff", type="password")
+            st.write("Accès Haute Administration.")
+            input_staff = st.text_input("Code d'accès Staff", type="password")
             if st.button("Authentification Staff", use_container_width=True):
-                if in_staff == CODE_ADMIN:
+                if input_staff == CODE_ADMIN:
                     st.session_state.role = "Staff"
                     st.rerun()
                 else:
-                    st.error("Code erroné.")
+                    st.error("Identifiant incorrect.")
     st.stop()
 
 # ==============================================================================
-# 6. NAVIGATION LATÉRALE (SIDEBAR) AVEC HEURE
+# 6. NAVIGATION LATÉRALE (SIDEBAR)
 # ==============================================================================
 with st.sidebar:
+    # Logo
     st.image(LOGO_URL, use_container_width=True)
     
-    # --- C'EST ICI QUE L'HEURE EST AJOUTÉE ---
+    # Horloge et Date
     st.markdown("---")
     maintenant = datetime.now()
-    st.markdown(f"📅 **Date :** {maintenant.strftime('%d/%m/%Y')}")
-    st.markdown(f"⏰ **Heure :** {maintenant.strftime('%H:%M:%S')}") # <--- L'HEURE EST LÀ
+    st.markdown(f"📅 **Date du jour :** {maintenant.strftime('%d/%m/%Y')}")
+    st.markdown(f"⏰ **Heure système :** {maintenant.strftime('%H:%M:%S')}")
     
-    if st.button("🔄 Actualiser l'heure"): # Petit bouton pour mettre à jour sans bug
+    if st.button("🔄 Mettre à jour l'heure"):
         st.rerun()
+    
     st.markdown("---")
-    # ----------------------------------------
-
-    st.info(f"Rôle : **{st.session_state.role}**")
-    if st.button("🚪 Déconnexion", use_container_width=True):
-        st.session_state.role = None; st.rerun()
+    
+    # Infos Session
+    st.info(f"Connecté en tant que : **{st.session_state.role}**")
+    
+    if st.button("🚪 Se déconnecter", use_container_width=True):
+        st.session_state.role = None
+        st.rerun()
+    
+    st.divider()
+    st.caption("RCRP Management System v15.3")
+    st.caption("Propriété de l'Administration RCRP")
 
 # ==============================================================================
-# 7. GESTION DES ONGLETS PRINCIPAUX
+# 7. INTERFACE PRINCIPALE (ONGLETS)
 # ==============================================================================
 tab_immat, tab_dossier, tab_banque = st.tabs([
     "🚗 Registre National", 
@@ -163,78 +191,83 @@ tab_immat, tab_dossier, tab_banque = st.tabs([
 # ONGLET 1 : IMMATRICULATIONS
 # ------------------------------------------------------------------------------
 with tab_immat:
-    st.header("🚗 Registre des Véhicules")
+    st.header("🚗 Registre National des Véhicules")
     
-    # Formulaire Civil
+    # Formulaire d'achat (Uniquement pour les Civils)
     if st.session_state.role not in ["RCT", "Staff"]:
         with st.expander("➕ Enregistrer un nouveau véhicule", expanded=True):
-            col_f1, col_f2 = st.columns(2)
+            col1, col2 = st.columns(2)
             
-            with col_f1:
-                proprio = st.selectbox("Sélectionner le Propriétaire", ["---"] + df_banque["Nom Roblox"].tolist())
-                marque = st.text_input("Marque et Modèle du véhicule")
-                plaque_in = st.text_input("Numéro de la Plaque")
-                
-            with col_f2:
-                assurance = st.selectbox("Type d'Assurance", ["Aucune", "AVERIS (130$)", "RCT (150$)"])
-                code_sec = st.text_input("Définir un Code Secret", type="password")
+            with col1:
+                proprio = st.selectbox("Choisir le Titulaire", ["---"] + df_banque["Nom Roblox"].tolist())
+                marque = st.text_input("Marque et Modèle")
+                plaque_in = st.text_input("Numéro de Plaque")
             
-            # Calcul des frais détaillés
-            f_fixe = 175
-            f_assu = 0
-            f_jeune = 0
+            with col2:
+                assurance = st.selectbox("Formule Assurance", ["Aucune", "AVERIS (130$)", "RCT (150$)"])
+                code_sec = st.text_input("Définir un Code Secret de radiation", type="password")
             
+            # --- LOGIQUE DE CALCUL DES FRAIS ---
+            frais_dossier = 175
+            frais_assu = 0
+            taxe_jeune = 0
+            
+            # Calcul Assurance
             if "AVERIS" in assurance:
-                f_assu = 130
+                frais_assu = 130
             elif "RCT" in assurance:
-                f_assu = 150
+                frais_assu = 150
+            
+            # Logique Offre Trio RCT (2 achetées, la 3ème offerte)
+            nombre_assu_rct = len(df_im[(df_im["Nom d'utilisateur ROBLOX"] == proprio) & (df_im["Assurance"].str.contains("RCT"))])
+            if "RCT" in assurance and nombre_assu_rct >= 2:
+                frais_assu = 0
+                st.success("🎉 Offre TRIO appliquée : Assurance gratuite !")
                 
-            # Logique Offre Trio RCT (2 payantes, la 3ème gratuite)
-            rct_count = len(df_im[(df_im["Nom d'utilisateur ROBLOX"] == proprio) & (df_im["Assurance"].str.contains("RCT"))])
-            if "RCT" in assurance and rct_count >= 2:
-                f_assu = 0
-                
-            # Logique Taxe Jeune Conducteur
+            # Logique Jeune Conducteur (-30 jours de présence)
             if proprio != "---":
-                u_d = df_banque[df_banque["Nom Roblox"] == proprio]
+                user_row = df_banque[df_banque["Nom Roblox"] == proprio]
                 try:
-                    d_arr = datetime.strptime(str(u_d.iloc[0]["Date d'arrivée"]), "%d/%m/%Y")
-                    if (datetime.now() - d_arr).days < 30:
-                        f_jeune = 50
+                    date_arrivee = datetime.strptime(str(user_row.iloc[0]["Date d'arrivée"]), "%d/%m/%Y")
+                    difference = (datetime.now() - date_arrivee).days
+                    if difference < 30:
+                        taxe_jeune = 50
                 except:
                     pass
             
-            total_t = f_fixe + f_assu + f_jeune
+            total_facture = frais_dossier + frais_assu + taxe_jeune
             
-            # Affichage du reçu avant validation
+            # Affichage du Ticket
             st.markdown(f"""
             <div class="ticket-fix">
-                🧾 <b>PRÉ-VISUALISATION FACTURE</b><br>
-                Propriétaire: {proprio}<br>
-                Frais Dossier: 175$<br>
-                Assurance: {f_assu}$<br>
-                Taxe Jeune: {f_jeune}$<br>
+                🧾 <b>BON DE COMMANDE IMMATRICULATION</b><br>
+                Propriétaire : {proprio}<br>
+                Frais d'immatriculation : 175$<br>
+                Frais d'Assurance : {frais_assu}$<br>
+                Taxe Nouveau Citoyen : {taxe_jeune}$<br>
                 -------------------------<br>
-                <b>MONTANT À DÉBITER: {total_t}$</b>
+                <b>MONTANT TOTAL : {total_facture}$</b>
             </div>
             """, unsafe_allow_html=True)
             
-            if st.button("✅ Valider l'enregistrement et le paiement"):
+            if st.button("💳 Valider et Payer"):
                 if proprio != "---" and plaque_in and code_sec:
-                    idx_b = df_banque[df_banque["Nom Roblox"] == proprio].index[0]
-                    if float(df_banque.at[idx_b, "Solde"]) >= total_t:
-                        # Débit citoyen
-                        df_banque.at[idx_b, "Solde"] -= total_t
+                    index_b = df_banque[df_banque["Nom Roblox"] == proprio].index[0]
+                    solde_actuel = float(df_banque.at[index_b, "Solde"])
+                    
+                    if solde_actuel >= total_facture:
+                        # 1. Débit du citoyen
+                        df_banque.at[index_b, "Solde"] = solde_actuel - total_facture
                         
-                        # Virement entreprise
-                        if f_assu > 0:
+                        # 2. Virement vers l'assurance (Redirection automatique)
+                        if frais_assu > 0:
                             cible = TARGET_AVERIS if "AVERIS" in assurance else TARGET_RCT
-                            idx_target = df_banque[df_banque["Nom Roblox"] == cible].index[0]
-                            df_banque.at[idx_target, "Solde"] = float(df_banque.at[idx_target, "Solde"]) + f_assu
+                            idx_cible = df_banque[df_banque["Nom Roblox"] == cible].index[0]
+                            df_banque.at[idx_cible, "Solde"] = float(df_banque.at[idx_cible, "Solde"]) + frais_assu
                         
-                        # Ajout au registre
-                        new_v = pd.DataFrame([{
-                            "Horodateur": datetime.now().strftime("%d/%m/%Y"), 
+                        # 3. Création de la ligne véhicule
+                        nouvelle_immat = pd.DataFrame([{
+                            "Horodateur": maintenant.strftime("%d/%m/%Y"), 
                             "Nom d'utilisateur ROBLOX": proprio, 
                             "Marque du véhicule": marque, 
                             "Numéro de la plaque": plaque_in, 
@@ -242,149 +275,198 @@ with tab_immat:
                             "CODE": str(code_sec)
                         }])
                         
+                        # 4. Mise à jour Database
                         conn.update(worksheet="Banque", data=df_banque)
-                        conn.update(worksheet="Copie de Immatriculations", data=pd.concat([df_im, new_v], ignore_index=True))
-                        st.success("Opération terminée avec succès !"); time.sleep(1); st.rerun()
+                        conn.update(worksheet="Copie de Immatriculations", data=pd.concat([df_im, nouvelle_immat], ignore_index=True))
+                        st.success("Véhicule enregistré et facture payée !"); time.sleep(1); st.rerun()
                     else:
-                        st.error("Solde insuffisant pour cette opération.")
+                        st.error("Solde bancaire insuffisant.")
     else:
-        st.info("⚠️ Le registre est en mode consultation pour les autorités.")
+        st.info("⚠️ Vous êtes en mode Autorité. Seuls les civils peuvent enregistrer des véhicules.")
 
-    # Affichage des plaques enregistrées
+    # Liste des plaques et Recherche
     st.divider()
-    search_p = st.text_input("🔍 Rechercher une Plaque ou un Propriétaire").lower()
+    recherche_plaque = st.text_input("🔍 Rechercher par Plaque ou par Nom").lower()
     
-    for i, r in df_im.iterrows():
-        if search_p in str(r['Numéro de la plaque']).lower() or search_p in str(r['Nom d\'utilisateur ROBLOX']).lower():
+    for i, row in df_im.iterrows():
+        nom_proprio = str(row['Nom d\'utilisateur ROBLOX']).lower()
+        num_plaque = str(row['Numéro de la plaque']).lower()
+        
+        if recherche_plaque in num_plaque or recherche_plaque in nom_proprio:
             with st.container(border=True):
-                c1, c2, c3 = st.columns([2,2,1])
-                c1.write(f"🆔 **PLAQUE : {r['Numéro de la plaque']}**")
-                c2.write(f"👤 Propriétaire : {r['Nom d\'utilisateur ROBLOX']}")
-                c3.markdown(f"<span class='badge-assu'>{r['Assurance']}</span>", unsafe_allow_html=True)
+                c_p1, c_p2, c_p3 = st.columns([2,2,1])
+                c_p1.write(f"🆔 **PLAQUE : {row['Numéro de la plaque']}**")
+                c_p2.write(f"👤 Propriétaire : {row['Nom d\'utilisateur ROBLOX']}")
+                c_p3.markdown(f"<span class='badge-assu'>{row['Assurance']}</span>", unsafe_allow_html=True)
                 
-                with st.expander("🗑️ Radier le véhicule"):
-                    input_code = st.text_input("Saisir Code Secret", type="password", key=f"del_{i}")
-                    if input_code == str(r['CODE']) or st.session_state.role == "Staff":
-                        if st.button("Confirmer la suppression", key=f"btn_{i}"):
+                # Option de radiation (Suppression)
+                with st.expander("🗑️ Radier ce véhicule"):
+                    code_verif = st.text_input("Saisir Code Secret", type="password", key=f"v_{i}")
+                    if code_verif == str(row['CODE']) or st.session_state.role == "Staff":
+                        if st.button("Confirmer la radiation définitive", key=f"btn_v_{i}"):
                             conn.update(worksheet="Copie de Immatriculations", data=df_im.drop(i))
-                            st.success("Véhicule radié."); time.sleep(1); st.rerun()
+                            st.success("Véhicule radié du registre."); time.sleep(1); st.rerun()
 
 # ------------------------------------------------------------------------------
-# ONGLET 2 : DOSSIERS & PAYE
+# ONGLET 2 : DOSSIERS & PAYE AUTOMATISÉE
 # ------------------------------------------------------------------------------
 with tab_dossier:
     st.header("🪪 Gestion des Dossiers Citoyens")
     
+    # Outil de Paye (Uniquement pour le Staff)
     if st.session_state.role == "Staff":
         with st.container(border=True):
-            st.subheader("🏦 Script de Paye Mensuelle & Prélèvements")
-            st.write("Distribution : **15,000$** (Civils) | **17,000$** (RCT)")
+            st.subheader("🏦 Console de Paye et Prélèvements")
+            st.write("Distribution automatique : 15k Civil / 17k RCT")
             
-            if st.button("🧧 EXÉCUTER LA PAYE GLOBALE", use_container_width=True):
-                with st.status("Traitement en cours..."):
-                    # 1. Traitement des salaires via colonne Emploiement
-                    for idx, row in df_banque.iterrows():
-                        montant = 15000
-                        if "RCT" in str(row["Emploiement"]).upper():
-                            montant = 17000
-                            st.write(f"💸 {row['Nom Roblox']} (Employé) : +17k")
-                        else:
-                            st.write(f"👤 {row['Nom Roblox']} (Civil) : +15k")
-                        df_banque.at[idx, "Solde"] = float(row["Solde"]) + montant
+            if st.button("🧧 LANCER LA PAYE GLOBALE", use_container_width=True):
+                with st.status("Exécution du script de paye..."):
                     
-                    # 2. Prélèvement des assurances (vers une10000 / Moune2010)
-                    track_rct = {}
-                    for _, v in df_im.iterrows():
-                        own = v["Nom d'utilisateur ROBLOX"]
-                        if own in df_banque["Nom Roblox"].values:
-                            idx_b = df_banque[df_banque["Nom Roblox"] == own].index[0]
-                            if "RCT" in v["Assurance"]:
-                                track_rct[own] = track_rct.get(own, 0) + 1
-                                if track_rct[own] <= 2:
+                    # --- ÉTAPE 1 : SALAIRES ---
+                    for idx, citoyen in df_banque.iterrows():
+                        poste = str(citoyen["Emploiement"]).upper()
+                        if "RCT" in poste:
+                            salaire = 17000
+                            st.write(f"✅ Paye RCT : {citoyen['Nom Roblox']} (+17,000$)")
+                        else:
+                            salaire = 15000
+                            st.write(f"👤 Paye Civil : {citoyen['Nom Roblox']} (+15,000$)")
+                        
+                        df_banque.at[idx, "Solde"] = float(citoyen["Solde"]) + salaire
+                    
+                    # --- ÉTAPE 2 : PRÉLÈVEMENTS ASSURANCES ---
+                    compteur_rct = {}
+                    for _, voiture in df_im.iterrows():
+                        nom_v = voiture["Nom d'utilisateur ROBLOX"]
+                        
+                        if nom_v in df_banque["Nom Roblox"].values:
+                            idx_b = df_banque[df_banque["Nom Roblox"] == nom_v].index[0]
+                            type_assu = voiture["Assurance"]
+                            
+                            # Si c'est RCT
+                            if "RCT" in type_assu:
+                                compteur_rct[nom_v] = compteur_rct.get(nom_v, 0) + 1
+                                if compteur_rct[nom_v] <= 2: # On ne prélève pas si c'est la 3ème
                                     df_banque.at[idx_b, "Solde"] -= 150
+                                    # Redirection vers une10000
                                     df_banque.loc[df_banque["Nom Roblox"] == TARGET_RCT, "Solde"] += 150
-                            elif "AVERIS" in v["Assurance"]:
+                            
+                            # Si c'est AVERIS
+                            elif "AVERIS" in type_assu:
                                 df_banque.at[idx_b, "Solde"] -= 130
+                                # Redirection vers Moune2010
                                 df_banque.loc[df_banque["Nom Roblox"] == TARGET_AVERIS, "Solde"] += 130
                                 
+                    # Sauvegarde finale
                     conn.update(worksheet="Banque", data=df_banque)
-                    st.success("Distribution et facturation terminées !"); time.sleep(1); st.rerun()
+                    st.success("Opération de paye terminée !"); time.sleep(1); st.rerun()
 
-    # Barre de recherche de dossier
-    search_d = st.text_input("🔍 Rechercher un Dossier Citoyen").lower()
-    if search_d:
-        res = df_banque[df_banque["Nom Roblox"].str.lower().str.contains(search_d, na=False)]
-        for _, c in res.iterrows():
+    # Recherche de dossier Citoyen
+    st.divider()
+    recherche_dossier = st.text_input("🔍 Rechercher un Dossier (Nom Roblox)").lower()
+    
+    if recherche_dossier:
+        resultats_d = df_banque[df_banque["Nom Roblox"].str.lower().str.contains(recherche_dossier, na=False)]
+        
+        for _, c in resultats_d.iterrows():
             with st.container(border=True):
-                st.subheader(f"Citoyen : {c['Nom Roblox']}")
-                st.write(f"🛡️ Poste : {c['Emploiement']}")
-                p_row = df_pts[df_pts["Nom Roblox"] == c["Nom Roblox"]]
-                if not p_row.empty:
-                    st.metric("Points Permis", f"{p_row.iloc[0]['PTS']} / 25")
-
-    # Création de profil (Staff uniquement)
-    if st.session_state.role == "Staff":
-        with st.expander("👤 Créer un nouveau profil citoyen"):
-            with st.form("new_cit_form"):
-                nr = st.text_input("Nom Roblox")
-                nd = st.text_input("Pseudo Discord")
-                if st.form_submit_button("Enregistrer le citoyen"):
-                    dt_now = datetime.now().strftime("%d/%m/%Y")
-                    # Ajout banque (avec date auto)
-                    new_b = pd.DataFrame([{"Solde": 15000, "Nom Discord": nd, "Nom Roblox": nr, "Date d'arrivée": dt_now, "Emploiement": "Civil"}])
-                    # Ajout points
-                    new_p = pd.DataFrame([{"Nom Roblox": nr, "PTS": 25}])
+                st.subheader(f"Dossier de {c['Nom Roblox']}")
+                st.write(f"🆔 Discord : {c['Nom Discord']}")
+                st.write(f"📌 Poste Actuel : {c['Emploiement']}")
+                st.write(f"📅 Arrivée : {c['Date d\'arrivée']}")
+                
+                # Affichage des points de permis
+                pts_row = df_pts[df_pts["Nom Roblox"] == c["Nom Roblox"]]
+                if not pts_row.empty:
+                    val_pts = pts_row.iloc[0]['PTS']
+                    st.metric("Points de Permis", f"{val_pts} / 25")
                     
-                    conn.update(worksheet="Banque", data=pd.concat([df_banque, new_b], ignore_index=True))
-                    conn.update(worksheet="Points Permis", data=pd.concat([df_pts, new_p], ignore_index=True))
-                    st.success("Profil créé !"); time.sleep(1); st.rerun()
+                    # Modifier les points (Staff uniquement)
+                    if st.session_state.role == "Staff":
+                        new_pts = st.number_input("Changer les points", value=int(val_pts), key=f"pts_{c['Nom Roblox']}")
+                        if st.button("Mettre à jour les points", key=f"btn_pts_{c['Nom Roblox']}"):
+                            df_pts.loc[df_pts["Nom Roblox"] == c["Nom Roblox"], "PTS"] = new_pts
+                            conn.update(worksheet="Points Permis", data=df_pts)
+                            st.success("Points mis à jour."); st.rerun()
+
+    # Création de Profil (Staff uniquement)
+    if st.session_state.role == "Staff":
+        with st.expander("👤 Créer un nouveau profil"):
+            with st.form("creation_form"):
+                new_roblox = st.text_input("Nom d'utilisateur ROBLOX")
+                new_discord = st.text_input("Pseudo Discord")
+                if st.form_submit_button("Enregistrer"):
+                    date_creation = maintenant.strftime("%d/%m/%Y") # Date automatique
+                    
+                    # Ajout Banque
+                    new_bank_row = pd.DataFrame([{"Solde": 15000, "Nom Discord": new_discord, "Nom Roblox": new_roblox, "Date d'arrivée": date_creation, "Emploiement": "Civil"}])
+                    # Ajout Permis
+                    new_pts_row = pd.DataFrame([{"Nom Roblox": new_roblox, "PTS": 25}])
+                    
+                    conn.update(worksheet="Banque", data=pd.concat([df_banque, new_bank_row], ignore_index=True))
+                    conn.update(worksheet="Points Permis", data=pd.concat([df_pts, new_pts_row], ignore_index=True))
+                    st.success("Profil créé avec succès !"); time.sleep(1); st.rerun()
 
 # ------------------------------------------------------------------------------
-# ONGLET 3 : BANQUE CENTRALE
+# ONGLET 3 : BANQUE CENTRALE (RECHERCHE HYBRIDE)
 # ------------------------------------------------------------------------------
 with tab_banque:
     st.header("💰 Gestion Bancaire Centrale")
     
-    search_b = st.text_input("🔍 Rechercher un compte (Nom Roblox)").lower()
-    if search_b:
-        res_b = df_banque[df_banque["Nom Roblox"].str.lower().str.contains(search_b, na=False)]
-        for idx, row in res_b.iterrows():
+    # Recherche Hybride (Roblox ou Discord)
+    recherche_banque = st.text_input("🔍 Rechercher un compte (Nom Roblox ou Pseudo Discord)").lower()
+    
+    if recherche_banque:
+        # Masque de recherche sur deux colonnes
+        masque_hybride = (df_banque["Nom Roblox"].str.lower().str.contains(recherche_banque, na=False)) | \
+                         (df_banque["Nom Discord"].str.lower().str.contains(recherche_banque, na=False))
+        resultats_b = df_banque[masque_hybride]
+        
+        for idx, compte in resultats_b.iterrows():
             with st.container(border=True):
-                st.subheader(f"Compte : {row['Nom Roblox']}")
-                st.metric("Solde actuel", f"{float(row['Solde']):,.0f} $")
+                st.subheader(f"Compte de {compte['Nom Roblox']}")
+                st.write(f"🆔 Pseudo Discord : {compte['Nom Discord']}")
+                st.metric("Solde actuel", f"{float(compte['Solde']):,.0f} $")
                 
+                # Opérations bancaires (RCT et Staff)
                 if st.session_state.role in ["RCT", "Staff"]:
-                    with st.expander("⚙️ Effectuer une opération financière"):
-                        m_val = st.number_input("Montant de la transaction ($)", min_value=1, key=f"m_{idx}")
-                        r_val = st.text_input("Motif de l'opération", key=f"r_{idx}")
-                        p_val = st.text_input("Numéro de plaque (Si amende)", key=f"p_{idx}")
+                    with st.expander("⚙️ Effectuer un Retrait / Virement"):
+                        montant_op = st.number_input("Montant de la transaction ($)", min_value=1, key=f"m_op_{idx}")
+                        motif_op = st.text_input("Motif officiel", key=f"r_op_{idx}")
+                        plaque_op = st.text_input("Plaque du véhicule (si applicable)", key=f"p_op_{idx}")
                         
-                        if st.button("Valider la transaction", key=f"btn_op_{idx}"):
-                            # Débit
-                            df_banque.at[idx, "Solde"] -= m_val
+                        if st.button("Confirmer l'opération financière", key=f"btn_op_{idx}"):
+                            # 1. Débit du compte
+                            df_banque.at[idx, "Solde"] = float(compte["Solde"]) - montant_op
                             
-                            action_txt = "Fonds retirés du circuit"
+                            # 2. Logique de destination
+                            action_status = "Fonds détruits (Amende)"
                             if st.session_state.role == "RCT":
-                                # Virement vers RCT
-                                df_banque.loc[df_banque["Nom Roblox"] == TARGET_RCT, "Solde"] += m_val
-                                action_txt = f"Virement vers compte {TARGET_RCT}"
+                                # Redirection vers la banque RCT
+                                df_banque.loc[df_banque["Nom Roblox"] == TARGET_RCT, "Solde"] += montant_op
+                                action_status = f"Virement vers compte {TARGET_RCT}"
                             
+                            # 3. Mise à jour Database
                             conn.update(worksheet="Banque", data=df_banque)
                             
-                            # GÉNÉRATION DU REÇU NOIR
+                            # 4. Affichage du Reçu Noir "Ticket"
                             st.markdown(f"""
                             <div class="ticket-fix">
-                                🧾 <b>REÇU DE TRANSACTION OFFICIEL</b><br>
-                                Porteur: {row['Nom Roblox']}<br>
-                                Montant: {m_val}$<br>
-                                Motif: {r_val}<br>
-                                Plaque: {p_val}<br>
-                                Statut: {action_txt}<br>
-                                Date: {datetime.now().strftime('%H:%M:%S')}
+                                🧾 <b>REÇU DE TRANSACTION BANCAIRE</b><br>
+                                Titulaire : {compte['Nom Roblox']}<br>
+                                Montant débité : {montant_op}$<br>
+                                Motif : {motif_op}<br>
+                                Plaque : {plaque_op}<br>
+                                Statut : {action_status}<br>
+                                Heure de transaction : {datetime.now().strftime('%H:%M:%S')}
                             </div>
                             """, unsafe_allow_html=True)
-                            time.sleep(1); st.rerun()
+                            
+                            time.sleep(1)
+                            st.rerun()
 
-# Pied de page
+# ==============================================================================
+# PIED DE PAGE
+# ==============================================================================
 st.markdown("---")
-st.markdown("<center><small>RCRP Management System v14.9 | Technologie GSheets Intégrée</small></center>", unsafe_allow_html=True)
+st.markdown("<center><small>RCRP Management System v15.3 | 2026 | Administration Gouvernementale</small></center>", unsafe_allow_html=True)
