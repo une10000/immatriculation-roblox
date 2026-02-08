@@ -360,7 +360,7 @@ with tab_dossier:
                         n_dis = st.text_input("Nom Discord")
                         n_job = st.selectbox("Poste Occupé", ["Civil", "Agent RCT", "Gouvernement"])
                         
-                        if st.form_submit_button("Valider la création"):
+                if st.form_submit_button("Valider la création"):
                     d_creation = datetime.now().strftime("%d/%m/%Y") # Date automatique 2026-02-08
                     
                     # 1. PRÉPARATION DE LA LIGNE POUR L'ONGLET "BANQUE"
