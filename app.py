@@ -25,7 +25,9 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 CODE_ADMIN_GENERAL = "RCRPFR-25-26" 
 CODE_ENTREPRISE = "RCT-26-RCRPFR" 
 MON_PSEUDO_ROBLOX = "une10000"
-LOGO_URL = "https://cdn.discordapp.com/attachments/1441508709024006315/1467106550656270484/Capture_decran_2025-12-01_a_21.03.31.png"
+
+# TON NOUVEAU LIEN D'IMAGE ICI
+LOGO_URL = "https://media.discordapp.net/attachments/1441508709024006315/1467106550656270484/Capture_decran_2025-12-01_a_21.03.31.png?ex=6989b8f3&is=69886773&hm=29c056c7c305026ba05077deb91af1f7a838c8e409cbbaba0d94b41076cefa62&=&format=webp&quality=lossless&width=1100&height=608"
 
 # --- FONCTION LECTURE ---
 def get_data(sheet_name):
@@ -57,7 +59,7 @@ if st.session_state.role is None:
     with col2:
         with st.container(border=True):
             st.write("### 🛠️ Entreprise (RCT)")
-            st.write("Interface de facturation et gestion business.")
+            st.write("Interface de facturation et gestion professionnelle.")
             c_rct = st.text_input("Code RCT", type="password", key="log_rct")
             if st.button("Connexion Pro", use_container_width=True):
                 if c_rct == CODE_ENTREPRISE:
@@ -99,7 +101,7 @@ liste_assurances = ["Non assuré", "RCT", "Averis"]
 if st.session_state.role == "Staff":
     tabs = st.tabs(["🚗 Immatriculations", "🪪 Dossiers Permis", "💰 Banque Centrale", "📜 Archives Logs"])
 elif st.session_state.role == "RCT":
-    tabs = st.tabs(["🚗 Immatriculations", "💰 Facturation RCT"])
+    tabs = st.tabs(["🚗 Immatriculations", "💰 Facturation RCT Business"])
 else:
     tabs = st.tabs(["🚗 Registre Véhicules", "💰 Mon Compte"])
 
@@ -199,11 +201,12 @@ with tabs[1]:
 if st.session_state.role == "Staff":
     with tabs[2]:
         df_p = get_data("Points Permis")
-        st.write("### Gestion des Dossiers")
-        # Interface permis identique...
+        st.write("### 🪪 Gestion des Permis")
+        # Interface permis...
+        st.dataframe(df_p, use_container_width=True)
     with tabs[3]:
-        st.write("### Archives du Système")
+        st.write("### 📜 Archives du Système")
         st.dataframe(get_data("Logs").iloc[::-1], use_container_width=True)
 
 st.markdown("---")
-st.markdown("<center><small>République de Californie RP | Système Centralisé v9.7</small></center>", unsafe_allow_html=True)
+st.markdown("<center><small>République de Californie RP | Système v9.8</small></center>", unsafe_allow_html=True)
