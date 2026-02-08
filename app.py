@@ -99,8 +99,8 @@ if st.session_state.role is None:
                 
     with col2:
         with st.container(border=True):
-            st.subheader("🛠️ Professionnel")
-            kp = st.text_input("Code Pro", type="password", key="p_login")
+            st.subheader("🛠️ Employés RCT")
+            kp = st.text_input("Code d'accès", type="password", key="p_login")
             if st.button("Connexion Pro", use_container_width=True):
                 if kp == CODE_PRO:
                     st.session_state.role = "RCT"
@@ -110,8 +110,8 @@ if st.session_state.role is None:
                     
     with col3:
         with st.container(border=True):
-            st.subheader("👮 Staff")
-            ks = st.text_input("Code Staff", type="password", key="s_login")
+            st.subheader("👮 Gouvernement")
+            ks = st.text_input("Code d'accès", type="password", key="s_login")
             if st.button("Connexion Staff", use_container_width=True):
                 if ks == CODE_ADMIN:
                     st.session_state.role = "Staff"
