@@ -5,15 +5,11 @@ from datetime import datetime, timedelta
 import time
 
 # --- CONFIGURATION PAGE ---
-st.set_page_config(page_title="RCRP - Système Intégral v9.3", layout="wide")
+st.set_page_config(page_title="RCRP - Portail Officiel", layout="wide")
 
-# --- STYLE CSS POUR LES CONTENEURS ---
-st.markdown("""
-    <style>
-    .stDeployButton {display:none;}
-    .reportview-container .main .block-container{ padding-top: 1rem; }
-    </style>
-    """, unsafe_allow_html=True)
+# --- INITIALISATION SESSION ---
+if "role" not in st.session_state:
+    st.session_state.role = None
 
 # --- PARAMÈTRES ET CODES ---
 conn = st.connection("gsheets", type=GSheetsConnection)
@@ -21,98 +17,170 @@ CODE_ADMIN_GENERAL = "RCRPFR-25-26"
 CODE_ENTREPRISE = "RCT-26-RCRPFR" 
 MON_PSEUDO_ROBLOX = "une10000"
 
-# --- LISTES COMPLÈTES ---
-liste_etats = sorted(["Alberta", "Beautiful British Columbia", "California", "Colorado", "Connecticut", "Delaware", "Washington", "Florida", "Indiana", "Kansas", "Maine", "Manitoba", "Maryland", "Massachusetts", "Michigan", "Mississippi", "Montana", "New Brunswick", "New Hampshire", "New Jersey", "New York", "Newfoundland Labrador", "Nova Scotia", "Nuvanut", "Ohio", "Oklahoma", "Ontario", "Pennsylvania", "Prince Edward Island", "Quebec", "Rhode Island", "Saskatchewan", "South Carolina", "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Wisconsin", "Yukon"])
-liste_marques = sorted(["Altstadt", "Bremen", "Comrader", "Delton", "Envy", "Eva", "Gam", "Gemini", "Hamotsu", "Katzmann", "Koritsu", "Land treker", "Lexima", "Linco", "Lyon", "Marshall", "Mita", "Mizuhara", "Nesumi", "Neptune", "Revasser", "Revolt", "Roamer", "Senseon", "Shatoku", "Sternauster", "Turismo", "Yosurai"])
-liste_assurances = ["Non assuré", "RCT", "Averis"]
-
 def get_data(sheet_name):
     st.cache_data.clear()
     try:
         data = conn.read(worksheet=sheet_name, ttl=0)
         return data.dropna(how='all').fillna("")
-    except:
-        return pd.DataFrame()
-
-# --- HEADER AVEC STATS GLOBALES ---
-col_l, col_r = st.columns([1, 4])
-with col_l:
-    st.image("https://cdn.discordapp.com/attachments/1441508709024006315/1467106550656270484/Capture_decran_2025-12-01_a_21.03.31.png", width=150)
-with col_r:
-    st.title("🚓 Système Centralisé RCRP")
-    st.write(f"Connecté en tant que : **Gestionnaire RCT** | 📅 {datetime.now().strftime('%d/%m/%Y')}")
-
-# --- NAVIGATION ---
-tabs = st.tabs(["🚗 Fichier des Véhicules", "🪪 Registre des Permis", "💰 Gestion Bancaire", "📜 Archives Logs"])
+    except: return pd.DataFrame()
 
 # ==========================================
-# 🚗 ONGLET 1 : IMMATRICULATIONS
+# 🚪 PAGE DE CONNEXION (S'AFFICHE SI ROLE EST VIDE)
+# ==========================================
+if st.session_state.role is None:
+    st.image("https://cdn.discordapp.com/attachments/1441508709024006315/1467106550656270484/Capture_decran_2025-12-01_a_21.03.31.png", width=150)
+    st.title("🏛️ Bienvenue sur le Portail RCRP")
+    st.subheader("Veuillez sélectionner votre mode d'accès")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        with st.container(border=True):
+            st.write("### 👤 Civil")
+            st.write("Consulter les registres et enregistrer un véhicule.")
+            if st.button("Continuer en tant que Civil", use_container_width=True):
+                st.session_state.role = "Civil"
+                st.rerun()
+                
+    with col2:
+        with st.container(border=True):
+            st.write("### 🛠️ Entreprise (RCT)")
+            st.write("Accès aux services de facturation et gestion business.")
+            code_rct = st.text_input("Code Entreprise", type="password", key="c_rct")
+            if st.button("Connexion RCT", use_container_width=True):
+                if code_rct == CODE_ENTREPRISE:
+                    st.session_state.role = "RCT"
+                    st.rerun()
+                else: st.error("Code invalide.")
+
+    with col3:
+        with st.container(border=True):
+            st.write("### 👮 Police / Staff")
+            st.write("Accès complet aux fichiers et à la gestion des permis.")
+            code_pol = st.text_input("Code Autorisation", type="password", key="c_pol")
+            if st.button("Connexion Autorités", use_container_width=True):
+                if code_pol == CODE_ADMIN_GENERAL:
+                    st.session_state.role = "Staff"
+                    st.rerun()
+                else: st.error("Code invalide.")
+    st.stop() # Arrête le code ici tant qu'on n'a pas choisi de rôle
+
+# ==========================================
+# 🖥️ INTERFACE UNE FOIS CONNECTÉ
+# ==========================================
+
+# Bouton de déconnexion en haut
+if st.sidebar.button("🚪 Déconnexion"):
+    st.session_state.role = None
+    st.rerun()
+
+st.sidebar.write(f"Connecté en tant que : **{st.session_state.role}**")
+
+# On définit les onglets selon le rôle
+if st.session_state.role == "Staff":
+    tabs = st.tabs(["🚗 Immatriculations", "🪪 Permis", "💰 Banque", "📜 Logs"])
+elif st.session_state.role == "RCT":
+    tabs = st.tabs(["🚗 Immatriculations", "💰 Facturation RCT"])
+else: # Civil
+    tabs = st.tabs(["🚗 Registre Véhicules", "💰 Mon Solde"])
+
+# --- LISTES (Identiques) ---
+liste_etats = sorted(["Alberta", "Beautiful British Columbia", "California", "Colorado", "Connecticut", "Delaware", "Washington", "Florida", "Indiana", "Kansas", "Maine", "Manitoba", "Maryland", "Massachusetts", "Michigan", "Mississippi", "Montana", "New Brunswick", "New Hampshire", "New Jersey", "New York", "Newfoundland Labrador", "Nova Scotia", "Nuvanut", "Ohio", "Oklahoma", "Ontario", "Pennsylvania", "Prince Edward Island", "Quebec", "Rhode Island", "Saskatchewan", "South Carolina", "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Wisconsin", "Yukon"])
+liste_marques = sorted(["Altstadt", "Bremen", "Comrader", "Delton", "Envy", "Eva", "Gam", "Gemini", "Hamotsu", "Katzmann", "Koritsu", "Land treker", "Lexima", "Linco", "Lyon", "Marshall", "Mita", "Mizuhara", "Nesumi", "Neptune", "Revasser", "Revolt", "Roamer", "Senseon", "Shatoku", "Sternauster", "Turismo", "Yosurai"])
+liste_assurances = ["Non assuré", "RCT", "Averis"]
+
+# ==========================================
+# 🚗 ONGLET 1 : IMMATRICULATIONS (TOUS)
 # ==========================================
 with tabs[0]:
-    df_immat = get_data("Copie de Immatriculations")
+    df_im = get_data("Copie de Immatriculations")
+    st.metric("🚗 Véhicules en base", len(df_im))
     
-    # --- Barre de Stats ---
-    s1, s2, s3, s4 = st.columns(4)
-    s1.metric("🚗 Véhicules Total", len(df_immat))
-    s2.metric("🛡️ Assurés RCT", len(df_immat[df_immat['Assurance'] == "RCT"]))
-    s3.metric("⚠️ Non Assurés", len(df_immat[df_immat['Assurance'] == "Non assuré"]))
-    s4.info("Utilisez cet onglet pour l'enregistrement et la recherche de plaques.")
-
-    with st.expander("➕ Enregistrer un nouveau véhicule dans la base"):
-        with st.form("f_add_v93"):
-            c1, c2 = st.columns(2)
-            u = c1.text_input("👤 Pseudo Roblox")
-            m = c1.selectbox("🚘 Marque", liste_marques)
-            e = c2.selectbox("📍 État", liste_etats)
-            p = c2.text_input("🔢 Plaque")
-            a = c1.selectbox("🛡️ Assurance", liste_assurances)
-            c = c2.text_input("🔑 Code secret véhicule", type="password", help="Indispensable pour modifier plus tard")
-            
-            if st.form_submit_button("✅ Valider l'enregistrement"):
+    with st.expander("➕ Enregistrer un véhicule"):
+        with st.form("add_v95"):
+            u = st.text_input("👤 Pseudo Roblox"); m = st.selectbox("🚘 Marque", liste_marques)
+            e = st.selectbox("📍 État", liste_etats); p = st.text_input("🔢 Plaque")
+            a = st.selectbox("🛡️ Assurance", liste_assurances); c = st.text_input("🔑 Code secret véhicule", type="password")
+            if st.form_submit_button("Valider"):
                 if u and p and c:
-                    fresh = get_data("Copie de Immatriculations")
                     new_r = pd.DataFrame([{"Horodateur": (datetime.now() + timedelta(hours=1)).strftime("%d/%m/%Y %H:%M"), "Nom d'utilisateur ROBLOX": u, "Marque du véhicule": m, "L'état de la plaque": e, "Numéro de la plaque": p, "Assurance": a, "CODE": str(c)}])
-                    conn.update(worksheet="Copie de Immatriculations", data=pd.concat([fresh, new_r], ignore_index=True))
-                    st.success("🎉 Véhicule enregistré !"); time.sleep(1); st.rerun()
-                else: st.error("⚠️ Champs manquants.")
+                    conn.update(worksheet="Copie de Immatriculations", data=pd.concat([df_im, new_r], ignore_index=True))
+                    st.success("Enregistré !"); time.sleep(1); st.rerun()
 
     st.divider()
-    sq = st.text_input("🔍 Recherche rapide (Plaque, Citoyen, Marque)").strip().upper()
-    
-    if not df_immat.empty:
-        mask = df_immat.apply(lambda r: sq in str(r).upper(), axis=1) if sq else [True]*len(df_immat)
-        # Affichage en grille de 2 colonnes pour les résultats
-        res_df = df_immat[mask]
-        for idx, row in res_df.iterrows():
+    sq = st.text_input("🔍 Recherche").strip().upper()
+    if not df_im.empty:
+        mask = df_im.apply(lambda r: sq in str(r).upper(), axis=1) if sq else [True]*len(df_im)
+        for idx, row in df_im[mask].iterrows():
             with st.container(border=True):
-                col1, col2 = st.columns([3, 1])
-                col1.markdown(f"### 🚗 {row['Numéro de la plaque']} — **{row['Marque du véhicule']}**")
-                col1.write(f"👤 **Propriétaire :** {row['Nom d\'utilisateur ROBLOX']} | 📍 **{row['L\'état de la plaque']}** | 🛡️ **Assurance :** {row['Assurance']}")
+                c1, c2 = st.columns([3, 1])
+                c1.markdown(f"### 🚗 {row['Numéro de la plaque']} — {row['Marque du véhicule']}")
+                c1.write(f"👤 {row['Nom d\'utilisateur ROBLOX']} | 📍 {row['L\'état de la plaque']} | 🛡️ {row['Assurance']}")
                 
-                if col2.button(f"⚙️ Gérer", key=f"g_{idx}"): st.session_state[f"op_{idx}"] = not st.session_state.get(f"op_{idx}", False)
+                # SEULS STAFF ET RCT (ou civil avec code secret) PEUVENT GERER
+                if st.session_state.role in ["Staff", "RCT"]:
+                    if c2.button(f"⚙️ Gérer", key=f"g_{idx}"): st.session_state[f"op_{idx}"] = not st.session_state.get(f"op_{idx}", False)
                 
                 if st.session_state.get(f"op_{idx}"):
                     with st.form(f"fo_{idx}"):
-                        st.write("---")
-                        np = st.text_input("🔢 Nouvelle Plaque", value=row['Numéro de la plaque'])
-                        na = st.selectbox("🛡️ Nouvelle Assurance", liste_assurances, index=liste_assurances.index(row['Assurance']))
-                        vc = st.text_input("🔑 Code secret", type="password")
-                        c_save, c_del, c_ann = st.columns(3)
-                        if c_save.form_submit_button("💾 Sauver"):
-                            if vc == str(row['CODE']):
-                                df_immat.at[idx, 'Numéro de la plaque'] = np
-                                df_immat.at[idx, 'Assurance'] = na
-                                conn.update(worksheet="Copie de Immatriculations", data=df_immat)
-                                st.success("Mis à jour !"); time.sleep(1); st.rerun()
-                            else: st.error("Code faux.")
-                        if c_del.form_submit_button("🗑️ Supprimer"):
-                            if vc == str(row['CODE']):
-                                fresh_c = get_data("Copie de Immatriculations")
-                                updated = fresh_c[fresh_c['Numéro de la plaque'] != row['Numéro de la plaque']]
-                                conn.update(worksheet="Copie de Immatriculations", data=updated)
-                                st.success("Supprimé"); time.sleep(1); st.rerun()
-                        if c_ann.form_submit_button("❌ Annuler"): st.session_state[f"op_{idx}"] = False; st.rerun()
+                        np = st.text_input("Plaque", value=row['Numéro de la plaque'])
+                        na = st.selectbox("Assurance", liste_assurances, index=liste_assurances.index(row['Assurance']))
+                        vc = st.text_input("Code secret véhicule", type="password")
+                        if st.form_submit_button("Sauvegarder"):
+                            if vc == str(row['CODE']) or st.session_state.role == "Staff":
+                                df_im.at[idx, 'Numéro de la plaque'] = np
+                                df_im.at[idx, 'Assurance'] = na
+                                conn.update(worksheet="Copie de Immatriculations", data=df_im)
+                                st.success("OK !"); time.sleep(1); st.rerun()
+                            else: st.error("Code secret faux.")
 
+# ==========================================
+# 💰 ONGLET BANQUE (SELON ROLE)
+# ==========================================
+with tabs[1]:
+    df_b = get_data("Banque")
+    if st.session_state.role == "Civil":
+        st.write("### 🏦 Consultez votre solde")
+        nom = st.text_input("Entrez votre Pseudo exact").strip().lower()
+        if nom:
+            res = df_b[df_b['Nom Roblox'].str.lower() == nom]
+            if not res.empty:
+                st.metric(f"Solde de {nom}", f"{float(res.iloc[0]['Solde']):,.0f} $")
+            else: st.error("Compte introuvable.")
+
+    else: # Staff ou RCT
+        st.write(f"### 💰 Interface de Paiement ({st.session_state.role})")
+        sb = st.text_input("🔍 Rechercher un compte").strip().lower()
+        if not df_b.empty and sb:
+            res_b = df_b[df_b.apply(lambda r: sb in str(r).lower(), axis=1)]
+            for idx, row in res_b.iterrows():
+                solde = float(row.get('Solde', 0))
+                with st.container(border=True):
+                    st.metric(f"👤 {row['Nom Roblox']}", f"{solde:,.0f} $")
+                    with st.form(f"fb_{idx}"):
+                        mt = st.number_input("Montant", min_value=0.0, step=100.0)
+                        c_ret, c_aj = st.columns(2)
+                        if c_ret.form_submit_button("📉 RETIRER / FACTURER"):
+                            if st.session_state.role == "RCT":
+                                if solde >= mt:
+                                    df_b.at[idx, "Solde"] = solde - mt
+                                    mask = df_b['Nom Roblox'].str.lower() == MON_PSEUDO_ROBLOX.lower()
+                                    if mask.any():
+                                        df_b.at[df_b[mask].index[0], "Solde"] = float(df_b[df_b[mask].index[0]]["Solde"]) + mt
+                                        conn.update(worksheet="Banque", data=df_b)
+                                        st.success("Virement RCT OK !"); time.sleep(1); st.rerun()
+                            else: # Staff
+                                df_b.at[idx, "Solde"] = solde - mt
+                                conn.update(worksheet="Banque", data=df_b)
+                                st.success("Amende effectuée."); time.sleep(1); st.rerun()
+                        if c_aj.form_submit_button("📈 AJOUTER (Police/Staff)"):
+                            if st.session_state.role == "Staff":
+                                df_b.at[idx, "Solde"] = solde + mt
+                                conn.update(worksheet="Banque", data=df_b)
+                                st.success("Ajout OK."); time.sleep(1); st.rerun()
+                            else: st.error("Action réservée au Staff.")
+
+# Les onglets Permis (tabs[2]) et Logs (tabs[3]) pour le Staff sont à la suite...
 # ==========================================
 # 🪪 ONGLET 2 : POINTS DE PERMIS
 # ==========================================
