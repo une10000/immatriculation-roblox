@@ -365,12 +365,14 @@ if st.button("💳 Procéder au Paiement et à l'Enregistrement", use_container_
                             st.error(f"Erreur lors de l'envoi vers Google Sheets : {e}")
                     else:
                         st.error("Transaction échouée : Votre solde bancaire est insuffisant.")
-                        
-    # SECTION 1.2 : AFFICHAGE ET RECHERCHE DANS LE REGISTRE
-    
+
+# --- ON SORT DE TOUS LES BLOCS PRÉCÉDENTS : RETOUR À LA LIGNE ZÉRO ---
+
 st.divider()
-    st.subheader("🔍 Consultation du Registre Public")
-    
+st.subheader("🔍 Consultation du Registre Public")
+
+# Barre de recherche dynamique
+search_query = st.text_input("Rechercher par Numéro de Plaque ou par Nom de Propriétaire").lower()
     # Barre de recherche dynamique
     search_query = st.text_input("Rechercher par Numéro de Plaque ou par Nom de Propriétaire").lower()
     
