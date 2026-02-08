@@ -70,7 +70,6 @@ if st.session_state.role is None:
         with st.container(border=True):
             st.markdown("### 👤 Citoyen")
             st.write("Accès public pour consulter vos véhicules, votre solde bancaire et vos points de permis de conduire.")
-            # Compensation pour l'absence d'input afin d'aligner les boutons du bas
             st.markdown("<div style='height: 125px;'></div>", unsafe_allow_html=True) 
             if st.button("Accès Public", use_container_width=True):
                 st.session_state.role = "Civil"; st.rerun()
@@ -191,7 +190,7 @@ with tabs[0]:
 # ==========================================
 # 💰 ONGLET 2 : BANQUE & GESTION FINANCIÈRE
 # ==========================================
-with tabs[1]:
+with tabs[1 if st.session_state.role != "Staff" else 2]:
     df_b = get_data("Banque")
     
     if st.session_state.role == "Civil":
@@ -204,14 +203,13 @@ with tabs[1]:
                 df_p = get_data("Points Permis")
                 res_p = df_p[df_p.apply(lambda r: nom_c in str(r).lower(), axis=1)]
                 if not res_p.empty:
-                    # CORRECTION : Utilisation de la colonne 'PTS' présente dans ton Sheets
                     pts_val = res_p.iloc[0]['PTS']
                     c2.metric("🪪 Points de Permis", f"{pts_val} / 25")
             else: st.info("Aucun compte trouvé.")
     
     else:
         st.write("### 💳 Gestion Financière Centrale")
-        s_staff = st.text_input("🔍 Rechercher un compte citoyen pour facturer").strip().lower()
+        s_staff = st.text_input("🔍 Rechercher un compte citoyen pour facturer/amender").strip().lower()
         if s_staff:
             res_s = df_b[df_b.apply(lambda r: s_staff in str(r).lower(), axis=1)]
             for idx, row in res_s.iterrows():
@@ -223,10 +221,8 @@ with tabs[1]:
                         montant = st.number_input("Montant de la transaction", min_value=0.0)
                         btn_fact, btn_add = st.columns(2)
                         
-                        # LOGIQUE DE PAIEMENT / FACTURATION
-                        if btn_fact.form_submit_button("📉 Facturer (Débiter)"):
+                        if btn_fact.form_submit_button("📉 Facturer / Amende"):
                             df_b.at[idx, 'Solde'] = cur_solde - montant
-                            # Si c'est le RCT, l'argent va sur ton compte entreprise
                             if st.session_state.role == "RCT":
                                 rct_idx = df_b[df_b['Nom Roblox'].str.lower() == MON_PSEUDO_ROBLOX.lower()].index
                                 if not rct_idx.empty:
@@ -234,44 +230,35 @@ with tabs[1]:
                             conn.update(worksheet="Banque", data=df_b)
                             st.success(f"Transaction de {montant}$ effectuée !"); time.sleep(1); st.rerun()
                             
-                        if btn_add.form_submit_button("📈 Ajouter (Créditer)") and st.session_state.role == "Staff":
+                        if btn_add.form_submit_button("📈 Ajouter (Staff uniquement)") and st.session_state.role == "Staff":
                             df_b.at[idx, 'Solde'] = cur_solde + montant
                             conn.update(worksheet="Banque", data=df_b)
                             st.success(f"Compte crédité de {montant}$ !"); time.sleep(1); st.rerun()
+
 # ==========================================
-# 🪪 & 📜 SECTIONS STAFF (RÉALIGNÉES)
+# 🪪 & 📜 SECTIONS STAFF
 # ==========================================
 if st.session_state.role == "Staff":
     with tabs[1]:
-        st.write("### 🪪 Base des Permis de Conduire")
-        # On affiche la feuille des points ici
-        df_pts_view = get_data("Points Permis")
-        st.dataframe(df_pts_view, use_container_width=True)
-        
-        with st.expander("Modifier les points d'un citoyen"):
-            with st.form("edit_points"):
-                target = st.text_input("Pseudo exact (Roblox)")
-                new_pts = st.number_input("Nouveau solde PTS", 0, 25)
-                if st.form_submit_button("Mettre à jour PTS"):
-                    df_pts_view.loc[df_pts_view['Nom Roblox'].str.lower() == target.lower(), 'PTS'] = new_pts
-                    conn.update(worksheet="Points Permis", data=df_pts_view)
-                    st.success("Points mis à jour !"); time.sleep(1); st.rerun()
-
-    with tabs[2]:
-        st.write("### 💰 Gestion de la Banque Centrale")
-        # On affiche la feuille Banque ici
-        df_banque_view = get_data("Banque")
-        st.dataframe(df_banque_view, use_container_width=True)
-        
-        s_admin = st.text_input("🔍 Rechercher un compte pour ajustement manuel").strip().lower()
-        if s_admin:
-            res_admin = df_banque_view[df_banque_view['Nom Roblox'].str.lower().str.contains(s_admin)]
-            for idx, row in res_admin.iterrows():
+        st.write("### 🪪 Gestion des Permis de Conduire")
+        df_pts = get_data("Points Permis")
+        # On ne met pas le dataframe ici pour épurer
+        search_p = st.text_input("🔍 Rechercher un citoyen pour ses points").strip().lower()
+        if search_p:
+            res_p_staff = df_pts[df_pts.apply(lambda r: search_p in str(r).lower(), axis=1)]
+            for idx, row in res_p_staff.iterrows():
                 with st.container(border=True):
-                    st.write(f"👤 **Compte : {row['Nom Roblox']}** | Solde : {row['Solde']}$")
-                    # Formulaire de modification directe pour le staff
-                    new_solde = st.number_input("Nouveau Solde total", value=float(row['Solde']), key=f"adj_{idx}")
-                    if st.button("Confirmer l'ajustement", key=f"btn_adj_{idx}"):
-                        df_banque_view.at[idx, 'Solde'] = new_solde
-                        conn.update(worksheet="Banque", data=df_banque_view)
-                        st.success("Solde mis à jour !"); time.sleep(1); st.rerun()
+                    st.write(f"👤 **{row['Nom Roblox']}** | Points actuels : **{row['PTS']}/25**")
+                    with st.form(f"pts_edit_{idx}"):
+                        new_pts = st.number_input("Nouveau solde PTS", 0, 25, value=int(row['PTS']))
+                        if st.form_submit_button("Mettre à jour PTS"):
+                            df_pts.at[idx, 'PTS'] = new_pts
+                            conn.update(worksheet="Points Permis", data=df_pts)
+                            st.success("Points mis à jour !"); time.sleep(1); st.rerun()
+                    
+    with tabs[3]:
+        st.write("### 📜 Archives des Logs Système")
+        st.dataframe(get_data("Logs").iloc[::-1], use_container_width=True)
+
+st.markdown("---")
+st.markdown("<center><small>RCRP FR | Système de Gestion Intégral v9.29</small></center>", unsafe_allow_html=True)
