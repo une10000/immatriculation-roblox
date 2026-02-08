@@ -312,28 +312,37 @@ with tab_reg:
             </div>
             """, unsafe_allow_html=True)
             
-            # --- PROCÉDURE DE VALIDATION DU PAIEMENT ---
-            
-            if st.button("💳 Procéder au Paiement et à l'Enregistrement", use_container_width=True):
+if st.button("💳 Procéder au Paiement et à l'Enregistrement", use_container_width=True):
                 # Vérification que les champs sont remplis
                 if sel_proprio == "---" or not in_plaque or not in_code:
                     st.error("Erreur : Veuillez remplir tous les champs du formulaire.")
                 else:
-                    # Récupération du solde du citoyen
+                    # Récupération sécurisée du solde
                     idx_b = df_banque[df_banque["Nom Roblox"] == sel_proprio].index[0]
-                    solde_actuel = float(df_banque.at[idx_b, "Solde"])
+                    
+                    try:
+                        # Nettoyage des caractères invisibles (fréquent sur Mac)
+                        val_brute = str(df_banque.at[idx_b, "Solde"]).replace('$', '').replace(' ', '').replace(',', '')
+                        solde_actuel = float(val_brute) if val_brute != "" else 0.0
+                    except:
+                        st.error("⚠️ Format bancaire invalide dans le GSheet (caractères non numériques).")
+                        st.stop()
                     
                     if solde_actuel >= total_facture:
                         # ÉTAPE A : Débit du compte du citoyen
                         df_banque.at[idx_b, "Solde"] = solde_actuel - total_facture
                         
-                        # ÉTAPE B : Virement vers le compte de l'assurance correspondante
+                        # ÉTAPE B : Virement vers l'assurance correspondante
                         if frais_assurance > 0:
-                            # Détermination de la cible (Averis -> Moune2010 | RCT -> une10000)
                             target_compte = TARGET_AVERIS if "AVERIS" in sel_assu else TARGET_RCT
-                            idx_target = df_banque[df_banque["Nom Roblox"] == target_compte].index[0]
-                            # Crédit du compte cible
-                            df_banque.at[idx_target, "Solde"] = float(df_banque.at[idx_target, "Solde"]) + frais_assurance
+                            if target_compte in df_banque["Nom Roblox"].values:
+                                idx_target = df_banque[df_banque["Nom Roblox"] == target_compte].index[0]
+                                try:
+                                    val_cible = str(df_banque.at[idx_target, "Solde"]).replace('$', '').replace(' ', '').replace(',', '')
+                                    solde_cible = float(val_cible) if val_cible != "" else 0.0
+                                    df_banque.at[idx_target, "Solde"] = solde_cible + frais_assurance
+                                except:
+                                    df_banque.at[idx_target, "Solde"] = frais_assurance
                         
                         # ÉTAPE C : Création de la nouvelle ligne dans le registre immat
                         new_vehicule_entry = pd.DataFrame([{
@@ -346,12 +355,14 @@ with tab_reg:
                         }])
                         
                         # ÉTAPE D : Synchronisation avec Google Sheets
-                        conn.update(worksheet="Banque", data=df_banque)
-                        conn.update(worksheet="Copie de Immatriculations", data=pd.concat([df_im, new_vehicule_entry], ignore_index=True))
-                        
-                        st.success("Transaction terminée ! Votre véhicule est désormais enregistré.")
-                        time.sleep(1.5)
-                        st.rerun()
+                        try:
+                            conn.update(worksheet="Banque", data=df_banque)
+                            conn.update(worksheet="Copie de Immatriculations", data=pd.concat([df_im, new_vehicule_entry], ignore_index=True))
+                            st.success("Transaction terminée ! Votre véhicule est désormais enregistré.")
+                            time.sleep(1.5)
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Erreur lors de l'envoi vers Google Sheets : {e}")
                     else:
                         st.error("Transaction échouée : Votre solde bancaire est insuffisant.")
 
