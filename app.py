@@ -170,7 +170,7 @@ with tabs[0]:
     for idx, row in df_im.iterrows():
         if search.lower() in str(row).lower():
             with st.container(border=True):
-                st.write(f"🚗 **{row['Numéro de la plaque']}** — {row['Nom d'utilisateur ROBLOX']}")
+               st.write(f"🚗 **{row['Numéro de la plaque']}** — {row[\"Nom d'utilisateur ROBLOX\"]}")
                 st.write(f"{row['Marque du véhicule']} | {row['Assurance']}")
 
 # =============================
