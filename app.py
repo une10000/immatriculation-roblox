@@ -7,17 +7,21 @@ import time
 # --- CONFIGURATION PAGE ---
 st.set_page_config(page_title="RCRP - Portail Officiel", layout="wide")
 
-# --- STYLE CSS (LOGO SIDEBAR & ALIGNEMENT STRICT) ---
+# --- STYLE CSS (LOGO & ALIGNEMENT FORCE) ---
 st.markdown("""
     <style>
     .block-container { padding-top: 1.5rem; padding-bottom: 0rem; }
     
-    /* Alignement parfait des 3 boîtes de connexion sur l'accueil */
+    /* Force les conteneurs à avoir la même hauteur et aligne les boutons en bas */
     div[data-testid="stVerticalBlockBorderWrapper"] {
         display: flex;
         flex-direction: column;
         height: 520px !important;
-        justify-content: space-between;
+    }
+    
+    /* Cible spécifiquement le bouton dans chaque conteneur pour le pousser vers le bas */
+    div[data-testid="stVerticalBlockBorderWrapper"] .stButton {
+        margin-top: auto !important;
     }
 
     .stMetric { 
@@ -27,7 +31,6 @@ st.markdown("""
         border: 1px solid #e0e0e0; 
     }
     
-    /* Correction du logo dans la sidebar */
     [data-testid="stSidebar"] img {
         border-radius: 10px;
         margin-bottom: 15px;
@@ -57,7 +60,7 @@ def get_data(sheet_name):
         return pd.DataFrame()
 
 # ==========================================
-# 🚪 PAGE DE CONNEXION (ALIGNEMENT RÉTABLI)
+# 🚪 PAGE DE CONNEXION (LOGIQUE ALIGNEMENT)
 # ==========================================
 if st.session_state.role is None:
     st.title("🏛️ Portail des Services RCRP")
@@ -70,8 +73,6 @@ if st.session_state.role is None:
         with st.container(border=True):
             st.markdown("### 👤 Citoyen")
             st.write("Accès public pour consulter vos véhicules, votre solde bancaire et vos points de permis de conduire.")
-            # AJOUT DE L'ESPACEUR POUR ALIGNER LES BOUTONS
-            st.markdown("<div style='height: 125px;'></div>", unsafe_allow_html=True) 
             if st.button("Accès Public", use_container_width=True):
                 st.session_state.role = "Civil"; st.rerun()
 
@@ -261,4 +262,4 @@ if st.session_state.role == "Staff":
         st.dataframe(get_data("Logs").iloc[::-1], use_container_width=True)
 
 st.markdown("---")
-st.markdown("<center><small>RCRP FR | Système de Gestion Intégral v9.31</small></center>", unsafe_allow_html=True)
+st.markdown("<center><small>RCRP FR | Système de Gestion Intégral v9.32</small></center>", unsafe_allow_html=True)
