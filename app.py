@@ -356,21 +356,29 @@ with tab_dossier:
             with col_s2:
                 with st.expander("👤 Créer un nouveau profil citoyen"):
                     with st.form("new_cit_form"):
-                        n_rob = st.text_input("Nom Roblox")
+                        n_rob = st.text_input("Nom d'utilisateur ROBLOX")
                         n_dis = st.text_input("Nom Discord")
                         n_job = st.selectbox("Poste Occupé", ["Civil", "Agent RCT", "Gouvernement"])
+                        
                         if st.form_submit_button("Valider la création"):
-                            # DATE AUTOMATIQUE DEMANDÉE
+                            # DATE AUTOMATIQUE (Ajoutée ici)
                             d_creation = datetime.now().strftime("%d/%m/%Y")
+                            
+                            # CRUCIAL : J'ai mis "Nom d'utilisateur ROBLOX" pour coller à ton Sheets
                             new_citizen = pd.DataFrame([{
                                 "Solde": 15000, 
                                 "Nom Discord": n_dis, 
-                                "Nom Roblox": n_rob, 
+                                "Nom d'utilisateur ROBLOX": n_rob, 
                                 "Date d'arrivée": d_creation, 
                                 "Emploiement": n_job
                             }])
-                            conn.update(worksheet="Banque", data=pd.concat([df_banque, new_citizen], ignore_index=True))
-                            st.success(f"✅ Citoyen enregistré le {d_creation}")
+                            
+                            # Mise à jour
+                            df_updated = pd.concat([df_banque, new_citizen], ignore_index=True)
+                            conn.update(worksheet="Banque", data=df_updated)
+                            
+                            st.success(f"✅ Citoyen {n_rob} enregistré avec succès le {d_creation}")
+                            time.sleep(1)
                             st.rerun()
 
     st.divider()
