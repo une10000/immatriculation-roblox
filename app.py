@@ -279,25 +279,49 @@ with target_tab_permis:
         df_permis = load_table("Points Permis")
             # --- CALCULATRICE FINANCIÈRE ET PAIEMENT ---
             cost_ville, cost_rct, cost_averis, cost_jeune = 175, 0, 0, 0
-            if user_select != "---":
+            if st.form_submit_button("✅ Valider l'immatriculation"):
                 user_data = df_users[df_users["Nom Roblox"] == user_select]
-                if not user_data.empty:
-                    # 1. Taxe Jeune Conducteur (< 30 jours)
-                    try:
-                        date_str = str(user_data.iloc[0]["Date d'arrivée"])
-                        date_obj = datetime.strptime(date_str, "%d/%m/%Y")
-                        if datetime.now() - date_obj < timedelta(days=30):
-                            cost_jeune = 50
-                    except: pass
+                
+                if not user_data.empty and plate_num and secret_code:
+                    current_solde = float(user_data.iloc[0]["Solde"])
                     
-                    # 2. Frais Assurance
-                    if assurance_type == "Averis":
-                        cost_averis = 130
-                    elif assurance_type == "RCT":
-                        # Vérif si premier véhicule RCT pour ce proprio
-                        nb_cars_rct = df_immat[(df_immat["Nom d'utilisateur ROBLOX"] == user_select) & (df_immat["Assurance"] == "RCT")].shape[0]
-                        if nb_cars_rct < 1: # Si c'est son premier (ou 0), il paye
-                            cost_rct = 150
+                    if current_solde >= cost_total:
+                        # 1. DÉBIT DU CLIENT
+                        df_users.at[user_data.index[0], "Solde"] = current_solde - cost_total
+                        
+                        # 2. VIREMENT RCT (une10000)
+                        if assurance_type == "RCT":
+                            t_rct = df_users[df_users["Nom Roblox"] == TARGET_RCT]
+                            if not t_rct.empty:
+                                df_users.at[t_rct.index[0], "Solde"] = float(t_rct.iloc[0]["Solde"]) + 150
+                        
+                        # 3. VIREMENT AVERIS (Moune2010)
+                        if assurance_type == "Averis":
+                            t_ave = df_users[df_users["Nom Roblox"] == TARGET_AVERIS]
+                            if not t_ave.empty:
+                                df_users.at[t_ave.index[0], "Solde"] = float(t_ave.iloc[0]["Solde"]) + 130
+                        
+                        # 4. ENREGISTREMENT VÉHICULE
+                        new_row = pd.DataFrame([{
+                            "Horodateur": datetime.now().strftime("%d/%m/%Y %H:%M"),
+                            "Nom d'utilisateur ROBLOX": user_select,
+                            "Marque du véhicule": car_brand,
+                            "Numéro de la plaque": plate_num,
+                            "Assurance": assurance_type,
+                            "CODE": str(secret_code)
+                        }])
+                        
+                        # SAUVEGARDE GLOBALE
+                        conn.update(worksheet="Banque", data=df_users)
+                        conn.update(worksheet="Copie de Immatriculations", data=pd.concat([df_immat, new_row], ignore_index=True))
+                        
+                        st.success(f"✅ Véhicule immatriculé ! Argent envoyé à {assurance_type if assurance_type != 'Non assuré' else 'la Ville'}")
+                        time.sleep(1)
+                        st.rerun()
+                    else:
+                        st.error("❌ Solde insuffisant.")
+                else:
+                    st.error("❌ Champs manquants ou utilisateur inconnu.")
 
             total_bill = cost_ville + cost_rct + cost_averis + cost_jeune
             
