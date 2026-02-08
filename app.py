@@ -238,27 +238,40 @@ with tabs[1]:
                             df_b.at[idx, 'Solde'] = cur_solde + montant
                             conn.update(worksheet="Banque", data=df_b)
                             st.success(f"Compte crédité de {montant}$ !"); time.sleep(1); st.rerun()
-
 # ==========================================
-# 🪪 & 📜 SECTIONS STAFF
+# 🪪 & 📜 SECTIONS STAFF (RÉALIGNÉES)
 # ==========================================
 if st.session_state.role == "Staff":
-    with tabs[2]:
+    with tabs[1]:
         st.write("### 🪪 Base des Permis de Conduire")
-        df_pts = get_data("Points Permis")
-        st.dataframe(df_pts, use_container_width=True)
+        # On affiche la feuille des points ici
+        df_pts_view = get_data("Points Permis")
+        st.dataframe(df_pts_view, use_container_width=True)
+        
         with st.expander("Modifier les points d'un citoyen"):
             with st.form("edit_points"):
                 target = st.text_input("Pseudo exact (Roblox)")
                 new_pts = st.number_input("Nouveau solde PTS", 0, 25)
                 if st.form_submit_button("Mettre à jour PTS"):
-                    df_pts.loc[df_pts['Nom Roblox'].str.lower() == target.lower(), 'PTS'] = new_pts
-                    conn.update(worksheet="Points Permis", data=df_pts)
+                    df_pts_view.loc[df_pts_view['Nom Roblox'].str.lower() == target.lower(), 'PTS'] = new_pts
+                    conn.update(worksheet="Points Permis", data=df_pts_view)
                     st.success("Points mis à jour !"); time.sleep(1); st.rerun()
-                    
-    with tabs[3]:
-        st.write("### 📜 Archives des Logs Système")
-        st.dataframe(get_data("Logs").iloc[::-1], use_container_width=True)
 
-st.markdown("---")
-st.markdown("<center><small>RCRP FR | Système de Gestion Intégral v9.28</small></center>", unsafe_allow_html=True)
+    with tabs[2]:
+        st.write("### 💰 Gestion de la Banque Centrale")
+        # On affiche la feuille Banque ici
+        df_banque_view = get_data("Banque")
+        st.dataframe(df_banque_view, use_container_width=True)
+        
+        s_admin = st.text_input("🔍 Rechercher un compte pour ajustement manuel").strip().lower()
+        if s_admin:
+            res_admin = df_banque_view[df_banque_view['Nom Roblox'].str.lower().str.contains(s_admin)]
+            for idx, row in res_admin.iterrows():
+                with st.container(border=True):
+                    st.write(f"👤 **Compte : {row['Nom Roblox']}** | Solde : {row['Solde']}$")
+                    # Formulaire de modification directe pour le staff
+                    new_solde = st.number_input("Nouveau Solde total", value=float(row['Solde']), key=f"adj_{idx}")
+                    if st.button("Confirmer l'ajustement", key=f"btn_adj_{idx}"):
+                        df_banque_view.at[idx, 'Solde'] = new_solde
+                        conn.update(worksheet="Banque", data=df_banque_view)
+                        st.success("Solde mis à jour !"); time.sleep(1); st.rerun()
