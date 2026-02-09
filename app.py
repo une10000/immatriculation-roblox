@@ -1,7 +1,7 @@
 # ======================================================================================
-# PROJECT       : RCRP FR OS - ULTIMATE TOTAL EDITION
-# VERSION       : 14.5.0
-# BUILD DATE    : 09/02/2026
+# PROJECT       : RCRP FR OS - ULTIMATE TOTAL EDITION
+# VERSION       : 14.5.1
+# BUILD DATE    : 09/02/2026
 # ======================================================================================
 
 import streamlit as st
@@ -11,16 +11,12 @@ from datetime import datetime
 import time
 import random
 
-# ======================================================================================
-# 1. INTERFACE & DESIGN SYSTEM (BORDURES NOIRES 2PX)
-# ======================================================================================
-
+# 1. INTERFACE & DESIGN
 st.set_page_config(
-    page_title="RCRP FR OS - SYSTÈME NATIONAL",
-    page_icon="🏛️",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+    page_title="RCRP FR OS - SYSTÈME NATIONAL",
+    page_icon="🏛️",
+    layout="wide",
+    initial_sidebar_state="expanded"
 
 st.markdown("""
     <style>
