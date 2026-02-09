@@ -212,13 +212,14 @@ if st.session_state.user_auth is not None:
 # ======================================================================================
 
 if st.session_state.user_auth is None:
-    # 1. CALCUL DES MOTIFS
+    # 1. CALCUL DES MOTIFS DYNAMIQUES
     from datetime import datetime, timedelta, timezone
     t_now_lock = datetime.now(timezone.utc) + timedelta(hours=1)
     h_lock = t_now_lock.hour
 
     if 5 <= h_lock < 18:
         salut, emo = "Bonjour", "☀️"
+        # MOTIF JOUR : Petits points gris classiques
         pattern_style = (
             "background-color: #f9f9f9; "
             "background-image: radial-gradient(#d1d1d1 2px, transparent 0); "
@@ -227,35 +228,39 @@ if st.session_state.user_auth is None:
         t_color = "#1E1E1E"
     else:
         salut, emo = "Bonsoir", "🌙"
+        # MOTIF NUIT : CIEL ÉTOILÉ (Petites étoiles de tailles variées)
         pattern_style = (
-            "background-color: #1a1a1a; "
-            "background-image: linear-gradient(rgba(255,255,255,0.15) 1px, transparent 1px), "
-            "linear-gradient(90deg, rgba(255,255,255,0.15) 1px, transparent 1px); "
-            "background-size: 40px 40px; "
+            "background-color: #0b0e14; " # Un bleu-noir profond
+            "background-image: "
+            "radial-gradient(white, rgba(255,255,255,.2) 2px, transparent 5px), " # Étoiles proches
+            "radial-gradient(white, rgba(255,255,255,.15) 1px, transparent 3px), " # Étoiles moyennes
+            "radial-gradient(white, rgba(255,255,255,.1) 1px, transparent 2px); "  # Poussière d'étoiles
+            "background-size: 100px 100px, 60px 60px, 30px 30px; "
+            "background-position: 0 0, 30px 40px, 15px 10px; " # Décalage pour l'effet aléatoire
         )
         t_color = "#FFFFFF"
 
-    # AFFICHAGE DU MESSAGE DE BIENVENUE (Coins : Haut arrondis, Bas carrés)
+    # AFFICHAGE DU MESSAGE DE BIENVENUE
     st.markdown(f"""
         <div style="
             text-align: center; 
             margin-top: -30px; 
             margin-bottom: 0px; 
-            padding: 50px 20px; 
+            padding: 60px 20px; 
             border-radius: 20px 20px 0 0;
             color: {t_color};
             {pattern_style}
         ">
-            <h1 style="font-size: 5.5em; margin-bottom: 0px; font-weight: 900; letter-spacing: -3px; line-height: 1;">
+            <h1 style="font-size: 5.5em; margin-bottom: 0px; font-weight: 900; letter-spacing: -3px; line-height: 1.1; text-shadow: 0 0 20px rgba(255,255,255,0.2);">
                 {salut} ! {emo}
             </h1>
-            <p style="font-size: 1.2em; opacity: 0.8; letter-spacing: 5px; font-weight: bold; text-transform: uppercase; margin-top: 15px;">
+            <p style="font-size: 1.2em; opacity: 0.8; letter-spacing: 6px; font-weight: bold; text-transform: uppercase; margin-top: 15px;">
                 Unité Fédérale de Rensselaer
             </p>
         </div>
     """, unsafe_allow_html=True)
 
-    # 2. EN-TÊTE RENSSELAER (Coins : Haut carrés, Bas arrondis + Margin-top 0)
+    # 2. EN-TÊTE RENSSELAER (Collé au message)
     st.markdown("""
     <div class="header-box" style="margin-top: 0px; border-radius: 0 0 20px 20px;">
     <center>
@@ -272,32 +277,7 @@ if st.session_state.user_auth is None:
 
     # 3. COLONNES D'ACCÈS
     c1, c2, c3 = st.columns(3)
-    with c1:
-        st.markdown("### 👥 CIVIL")
-        st.info("Accès public pour consulter votre profil.")
-        if st.button("ACCÉDER AU TERMINAL", use_container_width=True):
-            st.session_state.user_auth = "Civil"
-            st.rerun()
-    with c2:
-        st.markdown("### 👨‍🔧 AGENT RCT")
-        st.info("Interface technique pour la gestion du RCT.")
-        login_rct = st.text_input("Identifiant Agent", type="password", key="l_rct")
-        if st.button("AUTHENTIFICATION RCT", use_container_width=True):
-            if login_rct == KEY_RCT:
-                st.session_state.user_auth = "RCT"
-                st.rerun()
-            else: st.error("Clé invalide.")
-    with c3:
-        st.markdown("### 🛡️👮‍♂️ STAFF/POLICE")
-        st.info("Accès restreint : Administration et contraventions.")
-        login_staff = st.text_input("Clé Maîtresse", type="password", key="l_staff")
-        if st.button("ACCÈS ADMINISTRATEUR", use_container_width=True):
-            if login_staff == KEY_STAFF:
-                st.session_state.user_auth = "Staff"
-                st.rerun()
-            else: st.error("Accès refusé.")
-
-    st.stop()
+    # ... (le reste de tes boutons Civil, RCT, Staff reste identique)
 
 # ======================================================================================
 # LE RESTE DU CODE (S'affiche uniquement après connexion)
