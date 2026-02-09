@@ -590,15 +590,15 @@ new_row = {
     "Statut": "EN ATTENTE"
 }
                                 
-                                df_factures = pd.concat([df_factures, pd.DataFrame([new_row])], ignore_index=True)
-                                cloud_conn.update(worksheet="Factures", data=df_factures)
+df_factures = pd.concat([df_factures, pd.DataFrame([new_row])], ignore_index=True)
+cloud_conn.update(worksheet="Factures", data=df_factures)
                                 
-                                st.success("✅ Facture envoyée avec succès !")
-                                st.cache_data.clear()
-                                time.sleep(1)
-                                st.rerun()
-                        else:
-                            st.error("Motif obligatoire.")
+st.success("✅ Facture envoyée avec succès !")
+st.cache_data.clear()
+time.sleep(1)
+st.rerun()
+else:
+st.error("Motif obligatoire.")
             # 2. AU MILIEU : APERÇU TICKET
             with col_ticket:
                 st.markdown("### 🖼️ Aperçu Live")
