@@ -567,32 +567,13 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
             # --- STRUCTURE EN 3 COLONNES ---
             col_saisie, col_ticket, col_vehicules = st.columns([1, 1, 1])
 
-            # 1. À GAUCHE : LE FORMULAIRE
-            with col_saisie:
-                st.markdown("### 📝 Saisie")
-                with st.container(border=True):
-                    f_val = st.number_input("Montant de l'amende ($)", min_value=0, step=50, key="f_val_fix")
-                    f_pts = st.number_input("Points à retirer", min_value=0, max_value=12, step=1, key="f_pts_fix")
-                    f_motif = st.text_input("Motif", placeholder="ex: Conduite dangereuse", key="f_mot_fix")
-                    
-                    v_list = ["AUCUN / PIÉTON"] + df_i[df_i["Nom d'utilisateur ROBLOX"] == target]["Numéro de la plaque"].tolist()
-                    f_plate_link = st.selectbox("Plaque concernée :", v_list, key="f_plate_link")
-                    
-# --- BOUTON DYNAMIQUE SELON LE GRADE ---
-                    label_btn = "🚨 ENVOYER & DÉBITER POINTS" if st.session_state.user_auth == "Staff" else "🚨 ENVOYER LA FACTURE (RCT)"
-                    
-                    if st.button(label_btn, use_container_width=True):
-                        if f_motif:
-                            with st.spinner("Mise à jour..."):
-                                # 1. Retrait des points : UNIQUEMENT pour le Staff
-                                if f_pts > 0:
-                                    if st.session_state.user_auth == "Staff":
-                                        idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
-                                        df_p.at[idx_p, "PTS"] = max(0, int(df_p.at[idx_p, "PTS"]) - f_pts)
-                                        cloud_conn.update(worksheet="Points Permis", data=df_p)
-                                    else:
-                                        st.error("⛔ Action refusée : Seul le Staff peut retirer des points.")
-                                        st.stop()
+           # On ajoute 'disabled' pour que le RCT ne puisse même pas cliquer sur le champ
+f_pts = st.number_input("Points à retirer", 
+                        min_value=0, 
+                        max_value=12, 
+                        step=1, 
+                        key="f_pts_fix", 
+                        disabled=(st.session_state.user_auth == "RCT"))
                                 
                                 # 2. Création de la Facture : Autorisé pour tous (RCT et Staff)
                                 df_factures = cloud_conn.read(worksheet="Factures")
