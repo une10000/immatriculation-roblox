@@ -232,20 +232,56 @@ with st.container():
     if target != "---":
         col1, col2, col3 = st.columns(3)
         
+        # --- COLONNE 1 : PERMIS (FILIGRANE ROUGE) ---
         with col1:
             p_data = df_p[df_p["Nom Roblox"] == target]
             if not p_data.empty:
                 pts_val = int(p_data.iloc[0]["PTS"])
-                st.metric("POINTS PERMIS", f"{pts_val}/25")
-                status_color = "green" if pts_val > 0 else "red"
-                st.markdown(f"Statut : <b style='color:{status_color};'>{'VALIDE' if pts_val > 0 else 'SUSPENDU'}</b>", unsafe_allow_html=True)
+                
+                # Container pour aligner texte à gauche et filigrane à droite
+                c_pts, c_motif_p = st.columns([2, 1])
+                with c_pts:
+                    st.metric("POINTS PERMIS", f"{pts_val}/25")
+                    status_color = "green" if pts_val > 0 else "red"
+                    st.markdown(f"Statut : <b style='color:{status_color};'>{'VALIDE' if pts_val > 0 else 'SUSPENDU'}</b>", unsafe_allow_html=True)
+                
+                with c_motif_p:
+                    # FILIGRANE PERMIS
+                    st.markdown("""
+                        <div style="text-align: right; line-height: 1; padding-top: 5px;">
+                            <div style="opacity: 0.15; font-size: 40px; margin-bottom: -10px;">🛡️</div>
+                            <div style="opacity: 0.1; font-size: 50px; margin-bottom: -10px;">🚗</div>
+                            <p style="font-size: 8px; opacity: 0.3; font-family: monospace; margin: 0;">DRIVER LICENSE<br>SECURITY</p>
+                        </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.error("Aucun permis trouvé.")
 
+        # --- COLONNE 2 : BANQUE (FILIGRANE NOIR) ---
         with col2:
             b_data = df_b[df_b["Nom Roblox"] == target]
             if not b_data.empty:
-                st.metric("SOLDE BANCAIRE", f"{b_data.iloc[0]['Solde']}$")
-                st.write(f"🏢 Métier : **{b_data.iloc[0]['Emploiement']}**")
-                st.caption(f"📅 Arrivée : {b_data.iloc[0]['Date d\'arrivée']}")
+                c_info, c_motif_b = st.columns([2, 1])
+                with c_info:
+                    st.metric("SOLDE BANCAIRE", f"{b_data.iloc[0]['Solde']}$")
+                    st.write(f"🏢 **{b_data.iloc[0]['Emploiement']}**")
+                    st.caption(f"📅 Arrivée : {b_data.iloc[0]['Date d\'arrivée']}")
+                
+                with c_motif_b:
+                    # FILIGRANE BANQUE
+                    st.markdown("""
+                        <div style="text-align: right; line-height: 1; padding-top: 5px;">
+                            <div style="opacity: 0.15; font-size: 40px; margin-bottom: -10px;">🏛️</div>
+                            <div style="opacity: 0.1; font-size: 50px; margin-bottom: -10px;">💳</div>
+                            <p style="font-size: 8px; opacity: 0.3; font-family: monospace; margin: 0;">OFFICIAL BANK<br>DATA</p>
+                        </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.error("Aucun compte trouvé.")
+
+        # --- COLONNE 3 : VIDE OU INFO SUPP ---
+        with col3:
+            st.write("") # Espace libre pour équilibrer
 
         # --- SECTION VÉHICULES CORRIGÉE ---
         st.write(f"🚘 **VÉHICULES ENREGISTRÉS**")
