@@ -214,71 +214,40 @@ if st.session_state.user_auth is None:
     st.stop()
 
 # ======================================================================================
-# 6. MODULE : DOSSIER CITOYEN UNIFIÉ (AVEC FILIGRANES)
+# 6. MODULE : DOSSIER CITOYEN UNIFIÉ (VISIBILITÉ TOTALE)
 # ======================================================================================
 
 st.markdown('<div class="header-box"><h2>📂 REGISTRE NATIONAL DES CITOYENS</h2></div>', unsafe_allow_html=True)
 
 with st.container():
+    st.markdown("""
+    <div class="info-card">
+        <b>GUIDE DE RECHERCHE :</b> Sélectionnez un nom dans la liste déroulante pour extraire instantanément le dossier financier...
+    </div>
+    """, unsafe_allow_html=True)
+    
     search_list = ["---"] + sorted(df_b["Nom Roblox"].unique().tolist())
     target = st.selectbox("Sélectionner un citoyen :", search_list)
     
     if target != "---":
         col1, col2, col3 = st.columns(3)
         
-        # --- COLONNE 1 : PERMIS (FILIGRANE ROUGE) ---
         with col1:
             p_data = df_p[df_p["Nom Roblox"] == target]
             if not p_data.empty:
                 pts_val = int(p_data.iloc[0]["PTS"])
-                
-                # Container pour aligner texte à gauche et filigrane à droite
-                c_pts, c_motif_p = st.columns([2, 1])
-                with c_pts:
-                    st.metric("POINTS PERMIS", f"{pts_val}/25")
-                    status_color = "green" if pts_val > 0 else "red"
-                    st.markdown(f"Statut : <b style='color:{status_color};'>{'VALIDE' if pts_val > 0 else 'SUSPENDU'}</b>", unsafe_allow_html=True)
-                
-                with c_motif_p:
-                    # FILIGRANE PERMIS
-                    st.markdown("""
-                        <div style="text-align: right; line-height: 1; padding-top: 5px;">
-                            <div style="opacity: 0.15; font-size: 40px; margin-bottom: -10px;">🛡️</div>
-                            <div style="opacity: 0.1; font-size: 50px; margin-bottom: -10px;">🚗</div>
-                            <p style="font-size: 8px; opacity: 0.3; font-family: monospace; margin: 0;">DRIVER LICENSE<br>SECURITY</p>
-                        </div>
-                    """, unsafe_allow_html=True)
-            else:
-                st.error("Aucun permis trouvé.")
+                st.metric("POINTS PERMIS", f"{pts_val}/25")
+                status_color = "green" if pts_val > 0 else "red"
+                st.markdown(f"Statut : <b style='color:{status_color};'>{'VALIDE' if pts_val > 0 else 'SUSPENDU'}</b>", unsafe_allow_html=True)
 
-        # --- COLONNE 2 : BANQUE (FILIGRANE NOIR) ---
         with col2:
             b_data = df_b[df_b["Nom Roblox"] == target]
             if not b_data.empty:
-                c_info, c_motif_b = st.columns([2, 1])
-                with c_info:
-                    st.metric("SOLDE BANCAIRE", f"{b_data.iloc[0]['Solde']}$")
-                    st.write(f"🏢 **{b_data.iloc[0]['Emploiement']}**")
-                    st.caption(f"📅 Arrivée : {b_data.iloc[0]['Date d\'arrivée']}")
-                
-                with c_motif_b:
-                    # FILIGRANE BANQUE
-                    st.markdown("""
-                        <div style="text-align: right; line-height: 1; padding-top: 5px;">
-                            <div style="opacity: 0.15; font-size: 40px; margin-bottom: -10px;">🏛️</div>
-                            <div style="opacity: 0.1; font-size: 50px; margin-bottom: -10px;">💳</div>
-                            <p style="font-size: 8px; opacity: 0.3; font-family: monospace; margin: 0;">OFFICIAL BANK<br>DATA</p>
-                        </div>
-                    """, unsafe_allow_html=True)
-            else:
-                st.error("Aucun compte trouvé.")
+                st.metric("SOLDE BANCAIRE", f"{b_data.iloc[0]['Solde']}$")
+                st.write(f"🏢 Métier : **{b_data.iloc[0]['Emploiement']}**")
+                st.caption(f"📅 Arrivée : {b_data.iloc[0]['Date d\'arrivée']}")
 
-        # --- COLONNE 3 : VIDE OU INFO SUPP ---
-        with col3:
-            st.write("") # Espace libre pour équilibrer
-
-        # --- AFFICHAGE DES VÉHICULES EN DESSOUS ---
-        st.divider()
+        # --- SECTION VÉHICULES CORRIGÉE ---
         st.write(f"🚘 **VÉHICULES ENREGISTRÉS**")
         v_data = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
         
@@ -297,104 +266,34 @@ with st.container():
                         </div>
                         """, unsafe_allow_html=True)
                         
+                        # Utilisation d'une clé unique basée sur la plaque ET l'index pour éviter le "Duplicate Key"
                         with st.expander("🗑️ Radier"):
-                            r_cod_check = st.text_input("Code Secret", type="password", key=f"rad_v6_{veh['Numéro de la plaque']}_{i}")
-                            if st.button("CONFIRMER", key=f"btn_v6_{veh['Numéro de la plaque']}_{i}", use_container_width=True):
+                            r_cod_check = st.text_input("Code Secret", type="password", key=f"rad_input_{veh['Numéro de la plaque']}_{i}")
+                            if st.button("CONFIRMER", key=f"btn_confirm_{veh['Numéro de la plaque']}_{i}", use_container_width=True):
                                 if str(r_cod_check) == str(veh['CODE']) or st.session_state.user_auth == "Staff":
-                                    df_all = cloud_conn.read(worksheet="Copie de Immatriculations")
-                                    df_upd = df_all[df_all["Numéro de la plaque"] != veh['Numéro de la plaque']]
-                                    cloud_conn.update(worksheet="Copie de Immatriculations", data=df_upd)
+                                    # Logique de suppression
+                                    df_all_immat = cloud_conn.read(worksheet="Copie de Immatriculations")
+                                    df_updated = df_all_immat[df_all_immat["Numéro de la plaque"] != veh['Numéro de la plaque']]
+                                    cloud_conn.update(worksheet="Copie de Immatriculations", data=df_updated)
                                     st.cache_data.clear()
                                     st.success("Radié !")
                                     time.sleep(1)
                                     st.rerun()
+                                else:
+                                    st.error("Code incorrect")
         else:
-            st.info("Aucun véhicule enregistré.")
+            st.info("Aucun véhicule.")
+
 # ======================================================================================
-# --- ONGLET 2 : SERVICES AGENT (AMENDES / POINTS / CONSULTATION) ---
+# 7. LOGIQUE DES ONGLETS (RESTRUCTURED)
 # ======================================================================================
-if st.session_state.user_auth in ["RCT", "Staff"]:
-    with tabs[1]:
-        st.markdown("### 👮 Interface de Service RCT / Staff")
-        
-        if target == "---":
-            st.warning("⚠️ Veuillez sélectionner un citoyen dans le dossier en haut pour agir.")
-        else:
-            # BANDEAU D'IDENTITÉ
-            st.markdown(f"""
-                <div style="background-color: #000; padding: 20px; border-radius: 10px; border-left: 10px solid #d32f2f; margin-bottom: 20px;">
-                    <h1 style="color: white; margin: 0; letter-spacing: 2px; font-size: 2.5em;">👤 {target.upper()}</h1>
-                    <p style="color: #d32f2f; font-weight: bold; margin: 0;">UNITÉ D'INTERVENTION - ACCÈS AUTORISÉ</p>
-                </div>
-            """, unsafe_allow_html=True)
+# Assure-toi que tout ce qui suit est bien aligné à gauche (pas d'indentation inutile)
+tab_labels = ["🚗 IMMATRICULATION"]
+if st.session_state.user_auth in ["RCT", "Staff"]: tab_labels.append("👮 SERVICES AGENT")
+if st.session_state.user_auth == "Staff": tab_labels.append("🛠️ ADMINISTRATION")
 
-            col_fine, col_pts, col_veh = st.columns([1, 1, 1.3])
-
-            with col_fine:
-                st.subheader("💰 Amendes")
-                with st.container(border=True):
-                    tax_val = st.number_input("Montant ($)", min_value=0, step=50, key="fine_val_agent")
-                    if st.button("PERCEVOIR", use_container_width=True, key="btn_fine_agent"):
-                        if tax_val > 0:
-                            idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
-                            curr_solde = float(str(df_b.at[idx_b, "Solde"]).replace('$', ''))
-                            df_b.at[idx_b, "Solde"] = curr_solde - tax_val
-                            rct_idx = df_b[df_b["Nom Roblox"] == ACC_RCT].index[0]
-                            df_b.at[rct_idx, "Solde"] = float(str(df_b.at[rct_idx, "Solde"]).replace('$', '')) + tax_val
-                            cloud_conn.update(worksheet="Banque", data=df_b)
-                            record_log(st.session_state.user_auth, f"Amende {tax_val}$ sur {target}")
-                            st.cache_data.clear(); st.success("Fait."); time.sleep(0.5); st.rerun()
-
-            with col_pts:
-                st.subheader("⚖️ Permis")
-                with st.container(border=True):
-                    p_loss = st.number_input("Points à retirer", min_value=0, max_value=25, step=1, key="pts_loss_agent")
-                    if st.button("RETIRER POINTS", use_container_width=True, key="btn_pts_agent"):
-                        idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
-                        new_pts = max(0, int(df_p.at[idx_p, "PTS"]) - p_loss)
-                        df_p.at[idx_p, "PTS"] = new_pts
-                        if new_pts == 0: df_p.at[idx_p, "Validité"] = "NON"
-                        cloud_conn.update(worksheet="Points Permis", data=df_p)
-                        record_log(st.session_state.user_auth, f"Points -{p_loss} sur {target}")
-                        st.cache_data.clear(); st.success("Fait."); time.sleep(0.5); st.rerun()
-
-            with col_veh:
-                st.subheader("🚗 Titres de Circulation")
-                v_agent = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
-                
-                if v_agent.empty:
-                    st.info("Aucun véhicule.")
-                else:
-                    for i, (_, v) in enumerate(v_agent.iterrows()):
-                        assu = str(v['Assurance'])
-                        
-                        # LOGIQUE DANGER JAUNE (UNIQUEMENT POUR GRADE RCT)
-                        if st.session_state.user_auth == "RCT":
-                            if "RCT" in assu:
-                                s_color, s_txt, t_color = "#2e7d32", "VÉHICULE EN RÈGLE (RCT)", "white"
-                            else:
-                                s_color, s_txt, t_color = "#fbc02d", "⚠️ DANGER : NON-ASSURÉ RCT", "black"
-                        else:
-                            # LOGIQUE POUR STAFF : VERT SI ASSURÉ, ROUGE SI AUCUNE
-                            if assu != "Aucune":
-                                s_color, s_txt, t_color = "#2e7d32", "VÉHICULE EN RÈGLE", "white"
-                            else:
-                                s_color, s_txt, t_color = "#d32f2f", "⚠️ DÉFAUT D'ASSURANCE", "white"
-
-                        st.markdown(f"""
-                        <div style="border: 2px solid #000; padding: 10px; background: white; color: black; font-family: monospace; margin-bottom: 15px; box-shadow: 3px 3px 0px #888;">
-                            <div style="text-align:center; font-weight:bold; font-size:0.9em; border-bottom: 1px solid #000; margin-bottom: 5px;">RÉPUBLIQUE DE RENSSELAER</div>
-                            <div style="font-size: 0.8em; line-height: 1.2;">
-                                <b>DATE :</b> {v['Horodateur']}<br>
-                                <b>MODÈLE :</b> {v['Marque du véhicule']}<br>
-                                <b>PLAQUE :</b> <span style="background:#eee; border:1px solid #000; padding:0 2px;">{v['Numéro de la plaque']}</span><br>
-                                <b>ASSU :</b> {assu}
-                            </div>
-                            <div style="margin-top: 5px; text-align: center; background: {s_color}; color: {t_color}; font-weight: bold; font-size: 0.7em; padding: 4px;">
-                                {s_txt}
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
+tabs = st.tabs(tab_labels)
+# ... la suite du code pour tabs[0], tabs[1] etc.
 # ======================================================================================
 # 7. LOGIQUE DES ONGLETS (CORRIGÉE)
 # ======================================================================================
