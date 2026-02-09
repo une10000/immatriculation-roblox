@@ -339,6 +339,7 @@ if st.session_state.user_auth in ["Staff", "RCT"]:
     st.subheader("🧾 Formulaire de Sanction")
     # Remets tes lignes de number_input ici
 # --- SECTION VÉHICULES CORRIGÉE ---
+# --- SECTION VÉHICULES UNIFORMISÉE ---
 st.write("### 🚗 VÉHICULES ENREGISTRÉS")
 v_data = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
 
@@ -347,31 +348,34 @@ if not v_data.empty:
     for i, (_, veh) in enumerate(v_data.iterrows()):
         with v_cols[i % 3]:
             # Logique de sécurité
-            assu_val = str(veh['Assurance']).upper()
-            is_rct_ok = "RCT" in assu_val
-            is_police_ok = any(x in assu_val for x in ["RCT", "AVERIS"])
+            assu = str(veh['Assurance']).upper()
+            is_rct = "RCT" in assu
+            is_staff_ok = any(x in assu for x in ["RCT", "AVERIS"])
             
-            # Style par défaut
-            bg_color = "#2e7d32" # Vert
-            txt_status = "VÉHICULE EN RÈGLE"
+            color = "#000000" # Noir par défaut
+            status_txt = "CERTIFIÉ CONFORME"
             
-            if st.session_state.user_auth == "RCT" and not is_rct_ok:
-                bg_color = "#d32f2f" # Rouge
-                txt_status = "⚠️ DANGER : NON-ASSURÉ RCT"
-            elif st.session_state.user_auth == "Staff" and not is_police_ok:
-                bg_color = "#d32f2f"
-                txt_status = "⚠️ VÉHICULE NON-ASSURÉ"
+            if st.session_state.user_auth == "RCT" and not is_rct:
+                color = "#d32f2f"
+                status_txt = "⚠️ DANGER : NON-ASSURÉ RCT"
+            elif st.session_state.user_auth == "Staff" and not is_staff_ok:
+                color = "#d32f2f"
+                status_txt = "⚠️ NON-ASSURÉ"
 
-            # Le Ticket Blanc "Nostalgique"
+            # Design style "Reçu" (Capture 16:14:00)
             st.markdown(f"""
-            <div style="border: 2px solid black; padding: 10px; background: white; color: black; font-family: monospace;">
-                <center><b>TITRE DE PROPRIÉTÉ</b></center>
-                <hr style="margin: 5px 0; border-top: 1px solid black;">
-                <b>PLAQUE :</b> {veh['Numéro de la plaque']}<br>
+            <div style="border: 2px solid black; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; line-height: 1.2;">
+                <center><b>TITRE DE CIRCULATION</b><br><small>RÉPUBLIQUE DE RENSSERLAER</small></center>
+                <hr style="border-top: 1px solid #ccc; margin: 10px 0;">
+                <b>DATE :</b> {datetime.now().strftime('%d/%m/%Y')}<br>
+                <b>NOM :</b> {target}<br>
                 <b>MODÈLE :</b> {veh['Marque du véhicule']}<br>
-                <b>ASSUR. :</b> {veh['Assurance']}
-                <div style="background: {bg_color}; color: white; text-align: center; margin-top: 10px; padding: 5px; font-weight: bold; font-size: 0.8em;">
-                    {txt_status}
+                <b>PLAQUE :</b> <span style="border: 1px solid black; padding: 0 3px;">{veh['Numéro de la plaque']}</span><br>
+                <b>ASSURANCE :</b> {veh['Assurance']}
+                <hr style="border-top: 1px solid #ccc; margin: 10px 0;">
+                <div style="text-align: center; color: {color}; font-weight: bold; font-size: 0.8em;">
+                    {status_txt}<br>
+                    <small>Par le Terminal National</small>
                 </div>
             </div>
             """, unsafe_allow_html=True)
