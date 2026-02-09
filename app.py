@@ -243,16 +243,16 @@ if st.session_state.user_auth is None:
             "background-size: 150px 150px, 200px 200px, 250px 250px, 180px 180px, 220px 220px, 130px 130px; "
         )
         t_color = "#FFFFFF"
-        glow = "0 0 15px rgba(255,255,255,0.4)"
+        glow = "0 0 20px rgba(255,255,255,0.4)"
         clock_opacity = "0.7"
 
-    # AFFICHAGE AVEC CENTRAGE CORRIGÉ
+    # AFFICHAGE AVEC CENTRAGE ABSOLU (Flexbox)
     st.markdown(f"""
         <div style="
             text-align: center; 
             margin-top: -30px; 
             margin-bottom: 0px; 
-            padding: 65px 20px 40px 20px; 
+            padding: 70px 20px 45px 20px; 
             border-radius: 20px 20px 0 0;
             color: {t_color};
             {pattern_style}
@@ -261,24 +261,24 @@ if st.session_state.user_auth is None:
             align-items: center;
             justify-content: center;
         ">
-            <div style="display: flex; align-items: center; justify-content: center; gap: 15px;">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 20px; margin-left: 20px;">
                 <h1 style="font-size: 5.5em; margin: 0; font-weight: 900; letter-spacing: -3px; line-height: 1; text-shadow: {glow};">
                     {salut} !
                 </h1>
-                <span style="font-size: 4.5em; line-height: 1;">{emo}</span>
+                <span style="font-size: 4.5em; line-height: 1; filter: drop-shadow({glow});">{emo}</span>
             </div>
             
-            <p style="font-size: 1.1em; opacity: 0.7; letter-spacing: 5px; font-weight: bold; text-transform: uppercase; margin-top: 20px; margin-bottom: 8px;">
+            <p style="font-size: 1.1em; opacity: 0.7; letter-spacing: 5px; font-weight: bold; text-transform: uppercase; margin-top: 25px; margin-bottom: 10px;">
                 Unité Fédérale de Rensselaer
             </p>
             
-            <div style="font-family: 'Courier New', monospace; font-size: 2.2em; letter-spacing: 4px; opacity: {clock_opacity}; font-weight: bold; border-top: 1px solid {t_color}22; display: inline-block; padding-top: 10px; margin-top: 5px;">
+            <div style="font-family: 'Courier New', monospace; font-size: 2.2em; letter-spacing: 5px; opacity: {clock_opacity}; font-weight: bold; border-top: 1px solid {t_color}33; display: inline-block; padding-top: 12px; margin-top: 5px;">
                 {heure_formattee}
             </div>
         </div>
     """, unsafe_allow_html=True)
 
-    # 2. EN-TÊTE RÉPUBLIQUE
+    # 2. EN-TÊTE RÉPUBLIQUE (Fusionné en bas)
     st.markdown("""
     <div class="header-box" style="margin-top: 0px; border-radius: 0 0 20px 20px; border-top: 1px solid rgba(255,255,255,0.05);">
     <center>
@@ -320,6 +320,7 @@ if st.session_state.user_auth is None:
                 st.rerun()
             else: st.error("Accès refusé.")
 
+    # Refresh automatique chaque minute
     time.sleep(60)
     st.rerun()
     st.stop()
