@@ -195,7 +195,7 @@ with c2:
             record_log("RCT", "Connexion Service")
             st.rerun()
         else: st.error("Clé invalide.")
-            
+            
 with c3:
     st.markdown("### 🛡️👮‍♂️ STAFF/POLICE")
     login_staff = st.text_input("Clé Maîtresse", type="password")
@@ -206,7 +206,7 @@ with c3:
             st.rerun()
         else: st.error("Accès refusé.")
             st.stop()
-
+        
 # ======================================================================================
 # 6. MODULE : DOSSIER CITOYEN UNIFIÉ (VISIBILITÉ TOTALE)
 # ======================================================================================
