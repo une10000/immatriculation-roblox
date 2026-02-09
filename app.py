@@ -276,8 +276,9 @@ with st.container():
             else: 
                 st.error("Aucun compte trouvé.") 
 
-        # --- COLONNE 3 : ARCHIVES COMPTABLES ---
-with col3:
+# --- FIN DE LA COLONNE 2 (Vérifie bien que ton code précédent finit ici) ---
+        
+        with col3:
             st.markdown("### 📁 ARCHIVES")
             try:
                 # 1. Lecture des données
@@ -296,26 +297,25 @@ with col3:
                             if st.session_state.user_auth in ["Staff", "Admin"]:
                                 if st.button(f"🔄 Rembourser #{f['ID']}", key=f"refund_{f['ID']}", use_container_width=True):
                                     try:
-                                        # On récupère les données fraîches pour les calculs
+                                        # On récupère les données fraîches
                                         df_b_sync = cloud_conn.read(worksheet="Banque")
                                         df_f_sync = cloud_conn.read(worksheet="Factures")
                                         
                                         idx_civil = df_b_sync[df_b_sync["Nom Roblox"] == target].index[0]
                                         montant = float(str(f['Montant']).replace('$', '').replace(',', ''))
                                         
-                                        # Remboursement du civil
+                                        # Remboursement
                                         solde_c = float(str(df_b_sync.at[idx_civil, "Solde"]).replace('$', ''))
                                         df_b_sync.at[idx_civil, "Solde"] = solde_c + montant
                                         
-                                        # Débit de la RCT
                                         idx_rct = df_b_sync[df_b_sync["Nom Roblox"] == ACC_RCT].index[0]
                                         solde_rct = float(str(df_b_sync.at[idx_rct, "Solde"]).replace('$', ''))
                                         df_b_sync.at[idx_rct, "Solde"] = solde_rct - montant
                                         
-                                        # Mise à jour du statut
+                                        # Mise à jour statut
                                         df_f_sync.loc[df_f_sync["ID"] == f["ID"], "Statut"] = "REMBOURSÉ"
                                         
-                                        # Envoi Google Sheets
+                                        # Envoi groupé
                                         cloud_conn.update(worksheet="Banque", data=df_b_sync)
                                         cloud_conn.update(worksheet="Factures", data=df_f_sync)
                                         
@@ -323,10 +323,10 @@ with col3:
                                         st.cache_data.clear()
                                         time.sleep(1)
                                         st.rerun()
-                                    except Exception as e_refund:
-                                        st.error(f"Erreur remboursement : {e_refund}")
-
-                            # --- AFFICHAGE DU TICKET VERT ---
+                                    except Exception as e_inner:
+                                        st.error(f"Détail erreur : {e_inner}")
+                            
+                            # --- TICKET VISUEL ---
                             st.markdown(f"""
                             <div style="border: 1px solid #000; padding: 10px; background: #f9f9f9; color: black; font-family: 'Courier New', monospace; margin-bottom: 8px; border-left: 5px solid green;">
                                 <div style="display: flex; justify-content: space-between; font-size: 0.8em;">
@@ -342,8 +342,8 @@ with col3:
                             """, unsafe_allow_html=True)
                 else:
                     st.info("Aucun paiement archivé.")
-            except Exception as e_global:
-                st.error(f"Erreur d'accès aux archives : {e_global}")
+            except Exception as e_outer:
+                st.error(f"Erreur d'accès aux archives : {e_outer}")
 # ======================================================================================
 # 7. LOGIQUE DES ONGLETS (CORRIGÉE)
 # ======================================================================================
