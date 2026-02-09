@@ -221,14 +221,9 @@ if st.session_state.user_auth is None:
 
     if 5 <= h_lock < 18:
         salut, emo = "Bonjour", "☀️"
-        pattern_style = (
-            "background-color: #f9f9f9; "
-            "background-image: radial-gradient(#d1d1d1 2px, transparent 0); "
-            "background-size: 24px 24px; "
-        )
+        pattern_style = "background-color: #f9f9f9; background-image: radial-gradient(#d1d1d1 2px, transparent 0); background-size: 24px 24px;"
         t_color = "#1E1E1E"
         glow = "none"
-        clock_opacity = "0.5"
     else:
         salut, emo = "Bonsoir", "🌙"
         pattern_style = (
@@ -238,47 +233,27 @@ if st.session_state.user_auth is None:
             "radial-gradient(1px 1px at 50% 10%, white, transparent), "
             "radial-gradient(2px 2px at 10% 80%, white, transparent), "
             "radial-gradient(1px 1px at 90% 20%, white, transparent), "
-            "radial-gradient(1.5px 1.5px at 70% 60%, white, transparent), "
-            "radial-gradient(1px 1px at 30% 90%, rgba(255,255,255,0.3), transparent); "
-            "background-size: 150px 150px, 200px 200px, 250px 250px, 180px 180px, 220px 220px, 130px 130px; "
+            "radial-gradient(1.5px 1.5px at 70% 60%, white, transparent); "
+            "background-size: 150px 150px, 200px 200px, 250px 250px, 180px 180px, 220px 220px;"
         )
         t_color = "#FFFFFF"
         glow = "0 0 20px rgba(255,255,255,0.4)"
-        clock_opacity = "0.7"
 
-    # AFFICHAGE AVEC CENTRAGE ABSOLU (Flexbox)
+    # AFFICHAGE RÉPARÉ (Plus simple pour éviter le texte brut au milieu)
     st.markdown(f"""
-        <div style="
-            text-align: center; 
-            margin-top: -30px; 
-            margin-bottom: 0px; 
-            padding: 70px 20px 45px 20px; 
-            border-radius: 20px 20px 0 0;
-            color: {t_color};
-            {pattern_style}
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-        ">
-            <div style="display: flex; align-items: center; justify-content: center; gap: 20px; margin-left: 20px;">
-                <h1 style="font-size: 5.5em; margin: 0; font-weight: 900; letter-spacing: -3px; line-height: 1; text-shadow: {glow};">
-                    {salut} !
-                </h1>
-                <span style="font-size: 4.5em; line-height: 1; filter: drop-shadow({glow});">{emo}</span>
+        <div style="text-align: center; margin-top: -30px; padding: 70px 20px 45px 20px; border-radius: 20px 20px 0 0; color: {t_color}; {pattern_style}">
+            <div style="display: inline-block;">
+                <h1 style="font-size: 5.5em; margin: 0; font-weight: 900; letter-spacing: -3px; text-shadow: {glow}; display: inline-block;">{salut} !</h1>
+                <span style="font-size: 4.5em; vertical-align: middle; margin-left: 10px;">{emo}</span>
             </div>
-            
-            <p style="font-size: 1.1em; opacity: 0.7; letter-spacing: 5px; font-weight: bold; text-transform: uppercase; margin-top: 25px; margin-bottom: 10px;">
-                Unité Fédérale de Rensselaer
-            </p>
-            
-            <div style="font-family: 'Courier New', monospace; font-size: 2.2em; letter-spacing: 5px; opacity: {clock_opacity}; font-weight: bold; border-top: 1px solid {t_color}33; display: inline-block; padding-top: 12px; margin-top: 5px;">
+            <p style="font-size: 1.1em; opacity: 0.7; letter-spacing: 5px; font-weight: bold; text-transform: uppercase; margin-top: 20px;">Unité Fédérale de Rensselaer</p>
+            <div style="font-family: monospace; font-size: 2.2em; letter-spacing: 5px; opacity: 0.8; font-weight: bold; border-top: 1px solid {t_color}33; display: inline-block; padding-top: 10px; margin-top: 5px;">
                 {heure_formattee}
             </div>
         </div>
     """, unsafe_allow_html=True)
 
-    # 2. EN-TÊTE RÉPUBLIQUE (Fusionné en bas)
+    # 2. EN-TÊTE RÉPUBLIQUE
     st.markdown("""
     <div class="header-box" style="margin-top: 0px; border-radius: 0 0 20px 20px; border-top: 1px solid rgba(255,255,255,0.05);">
     <center>
@@ -295,13 +270,11 @@ if st.session_state.user_auth is None:
 
     # 3. COLONNES D'ACCÈS
     c1, c2, c3 = st.columns(3)
-    
     with c1:
         st.markdown("### 👥 CIVIL")
         if st.button("ACCÉDER AU TERMINAL", use_container_width=True):
             st.session_state.user_auth = "Civil"
             st.rerun()
-            
     with c2:
         st.markdown("### 👨‍🔧 AGENT RCT")
         login_rct = st.text_input("Identifiant Agent", type="password", key="l_rct")
@@ -310,7 +283,6 @@ if st.session_state.user_auth is None:
                 st.session_state.user_auth = "RCT"
                 st.rerun()
             else: st.error("Clé invalide.")
-                
     with c3:
         st.markdown("### 🛡️ STAFF/POLICE")
         login_staff = st.text_input("Clé Maîtresse", type="password", key="l_staff")
@@ -320,11 +292,9 @@ if st.session_state.user_auth is None:
                 st.rerun()
             else: st.error("Accès refusé.")
 
-    # Refresh automatique chaque minute
     time.sleep(60)
     st.rerun()
     st.stop()
-
 # ======================================================================================
 # LE RESTE DU CODE (S'affiche uniquement après connexion)
 # ======================================================================================
