@@ -288,17 +288,16 @@ with st.container():
                     (df_f_history["Cible"] == target) & 
                     (df_f_history["Statut"] == "PAYÉ")
                 ]
-
-                if not historique.empty:
-                    with st.container(height=400): # Augmenté un peu pour le bouton
-                        for _, f in historique.iterrows():
+                    if not historique.empty:
+                        with st.container(height=400): # Augmenté un peu pour le bouton
+                            for _, f in historique.iterrows():
                             # --- BOUTON DE REMBOURSEMENT ADMIN ---
-                            if st.session_state.user_auth in ["Staff", "Admin"]:
-                                if st.button(f"🔄 Rembourser #{f['ID']}", key=f"refund_{f['ID']}", use_container_width=True):
-                                    try:
+                                if st.session_state.user_auth in ["Staff", "Admin"]:
+                                    if st.button(f"🔄 Rembourser #{f['ID']}", key=f"refund_{f['ID']}", use_container_width=True):
+                                        try:
                                         # Récupération des données fraîches
-                                        df_b_sync = cloud_conn.read(worksheet="Banque")
-                                        df_f_sync = cloud_conn.read(worksheet="Factures")
+                                            df_b_sync = cloud_conn.read(worksheet="Banque")
+                                            df_f_sync = cloud_conn.read(worksheet="Factures")
                                         
                                         # Calcul du remboursement
                                         idx_civil = df_b_sync[df_b_sync["Nom Roblox"] == target].index[0]
