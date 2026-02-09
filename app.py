@@ -211,17 +211,6 @@ if st.session_state.user_auth is not None:
 # 5. LOCKSCREEN (CONNEXION)
 # ======================================================================================
 
-# ======================================================================================
-# 5. LOCKSCREEN (CONNEXION)
-# ======================================================================================
-
-# ======================================================================================
-# 5. LOCKSCREEN (CONNEXION)
-# ======================================================================================
-# ======================================================================================
-# 5. LOCKSCREEN (CONNEXION)
-# ======================================================================================
-
 if st.session_state.user_auth is None:
     # 1. CALCUL DU MOTIF DYNAMIQUE (Basé sur UTC+1)
     from datetime import datetime, timedelta, timezone
@@ -230,16 +219,16 @@ if st.session_state.user_auth is None:
 
     if 5 <= h_lock < 18:
         salut, emo = "Bonjour", "☀️"
-        # MOTIF JOUR : Hachures diagonales (Style Sécurité/Admin)
+        # MOTIF JOUR : Hachures diagonales administratives
         pattern_css = """
             background-color: rgba(255, 215, 0, 0.03);
-            background-image:协议 linear-gradient(45deg, rgba(0,0,0,0.05) 25%, transparent 25%, transparent 50%, rgba(0,0,0,0.05) 50%, rgba(0,0,0,0.05) 75%, transparent 75%, transparent);
+            background-image: linear-gradient(45deg, rgba(0,0,0,0.05) 25%, transparent 25%, transparent 50%, rgba(0,0,0,0.05) 50%, rgba(0,0,0,0.05) 75%, transparent 75%, transparent);
             background-size: 20px 20px;
             border: 2px solid rgba(0,0,0,0.05);
         """
     else:
         salut, emo = "Bonsoir", "🌙"
-        # MOTIF NUIT : Grille tactique (Style Carbone/Technique)
+        # MOTIF NUIT : Grille tactique carbone
         pattern_css = """
             background-color: rgba(0, 0, 0, 0.1);
             background-image: 
@@ -250,7 +239,7 @@ if st.session_state.user_auth is None:
             border: 2px solid rgba(255,255,255,0.05);
         """
 
-    # AFFICHAGE DU MESSAGE DE BIENVENUE
+    # AFFICHAGE DU MESSAGE DE BIENVENUE (Correction du bug d'affichage)
     st.markdown(f"""
         <div style="
             text-align: center; 
@@ -281,7 +270,7 @@ if st.session_state.user_auth is None:
 
     st.write("---")
 
-    # 3. COLONNES D'ACCÈS AVEC TEXT BOX D'INFOS
+    # 3. COLONNES D'ACCÈS
     c1, c2, c3 = st.columns(3)
     
     with c1:
@@ -293,7 +282,7 @@ if st.session_state.user_auth is None:
             
     with c2:
         st.markdown("### 👨‍🔧 AGENT RCT")
-        st.info("Interface technique pour la gestion des plaques et des services du RCT.")
+        st.info("Interface technique pour la gestion du RCT.")
         login_rct = st.text_input("Identifiant Agent", type="password", key="l_rct")
         if st.button("AUTHENTIFICATION RCT", use_container_width=True):
             if login_rct == KEY_RCT:
@@ -303,7 +292,7 @@ if st.session_state.user_auth is None:
                 
     with c3:
         st.markdown("### 🛡️👮‍♂️ STAFF/POLICE")
-        st.info("Accès restreint aux autorités pour l'administration et les contraventions.")
+        st.info("Accès restreint : Administration et contraventions.")
         login_staff = st.text_input("Clé Maîtresse", type="password", key="l_staff")
         if st.button("ACCÈS ADMINISTRATEUR", use_container_width=True):
             if login_staff == KEY_STAFF:
