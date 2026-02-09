@@ -224,7 +224,7 @@ if st.session_state.user_auth is None:
     from datetime import datetime, timedelta, timezone
     
     t_now_lock = datetime.now(timezone.utc) + timedelta(hours=1)
-    h_lock = t_now_lock.hour
+    h_lock = 12
     heure_formattee = t_now_lock.strftime("%H:%M")
     
     # --- LOGIQUE JOUR / NUIT ---
