@@ -105,7 +105,7 @@ except Exception as e:
 # 4. PORTAIL D'AUTHENTIFICATION (ACCUEIL COMPLET)
 # ======================================================================================
 if st.session_state.role is None:
-    st.title("🏛️ Système de Gestion Centralisé - République de Palm City")
+    st.title("🏛️ Système de Gestion Centralisé - Rensselaer County Roleplay FR")
     st.write("---")
     
     # Message d'accueil informatif
@@ -165,7 +165,7 @@ if st.session_state.role is None:
                 st.error("Accès refusé : Accréditation insuffisante.")
 
     st.divider()
-    st.caption("© 2026 Palm City Government - Système de traçage IP activé.")
+    st.caption("© 2026 RCRP FR - Système de traçage IP activé.")
     st.stop()
 
 # ======================================================================================
