@@ -259,26 +259,31 @@ with st.container():
             else:
                 st.error("Aucun permis trouvé.")
 
-        # --- COLONNE 2 : BANQUE (FILIGRANE NOIR) ---
+       # Section Banque avec Bandeau de Sécurité
         with col2:
             b_data = df_b[df_b["Nom Roblox"] == target]
             if not b_data.empty:
-                c_info, c_motif_b = st.columns([2, 1])
-                with c_info:
-                    st.metric("SOLDE BANCAIRE", f"{b_data.iloc[0]['Solde']}$")
-                    st.write(f"🏢 **{b_data.iloc[0]['Emploiement']}**")
-                    st.caption(f"📅 Arrivée : {b_data.iloc[0]['Date d\'arrivée']}")
-                
-                with c_motif_b:
-                    # FILIGRANE BANQUE
-                    st.markdown("""
-                        <div style="text-align: right; line-height: 1; padding-top: 5px;">
-                            <div style="opacity: 0.15; font-size: 40px; margin-bottom: -10px;">🏛️</div>
-                            <div style="opacity: 0.1; font-size: 50px; margin-bottom: -10px;">💳</div>
-                            <p style="font-size: 8px; opacity: 0.3; font-family: monospace; margin: 0;">OFFICIAL BANK<br>DATA</p>
-                        </div>
-                    """, unsafe_allow_html=True)
-            else:
+                # Utilisation d'un container pour regrouper le tout
+                with st.container(border=False):
+                    # On crée 3 colonnes internes pour gérer l'alignement précis
+                    c_info, c_vide, c_motif = st.columns([3, 1, 2])
+                    
+                    with c_info:
+                        st.metric("SOLDE BANCAIRE", f"{b_data.iloc[0]['Solde']}$")
+                        st.write(f"🏢 Métier : **{b_data.iloc[0]['Emploiement']}**")
+                        st.caption(f"📅 Arrivée : {b_data.iloc[0]['Date d\'arrivée']}")
+                    
+                    with c_motif:
+                        # SUPERPOSITION DE MOTIFS (Plus à droite et plus complet)
+                        st.markdown("""
+                            <div style="text-align: right; line-height: 1; padding-top: 5px;">
+                                <div style="opacity: 0.15; font-size: 40px; margin-bottom: -10px;">🏛️</div>
+                                <div style="opacity: 0.1; font-size: 50px; margin-bottom: -10px;">💳</div>
+                                <div style="height: 4px; width: 60px; background: linear-gradient(90deg, transparent, #000); display: inline-block; opacity: 0.2; border-radius: 2px;"></div>
+                                <p style="font-size: 8px; opacity: 0.3; font-family: monospace; margin: 0;">OFFICIAL BANK DATA<br>VERIFIED BY RCRP</p>
+                            </div>
+                        """, unsafe_allow_html=True)
+            else: 
                 st.error("Aucun compte trouvé.")
 
         # --- COLONNE 3 : VIDE OU INFO SUPP ---
