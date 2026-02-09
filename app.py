@@ -376,7 +376,7 @@ with tabs[0]:
 # --- ONGLET 2 : SERVICES AGENT (AMENDES & POINTS) ---
 if st.session_state.user_auth in ["RCT", "Staff"]:
     with tabs[1]:
-        st.markdown("### 👮 Interface de Service RCT / Staff")
+        st.markdown("### 👮 Interface de Service")
         
         if target == "---":
             st.warning("⚠️ Veuillez sélectionner un citoyen dans le dossier en haut pour agir.")
