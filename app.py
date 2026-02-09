@@ -263,17 +263,6 @@ with st.container():
 
 st.divider()
 
-# ======================================================================================
-# 7. LOGIQUE DES ONGLETS (RESTREINTS PAR GRADE)
-# ======================================================================================
-
-# Définition des étiquettes d'onglets selon le grade
-tab_labels = ["🚗 IMMATRICULATION"]
-if st.session_state.user_auth in ["RCT", "Staff"]: tab_labels.append("👮 SERVICES AGENT")
-if st.session_state.user_auth == "Staff": tab_labels.append("🛠️ ADMINISTRATION")
-
-tabs = st.tabs(tab_labels)
-
 # --- ONGLET 1 : IMMATRICULATION & RADIATION ---
 with tabs[0]:
     st.markdown("### 📝 Gestion des Titres de Circulation")
@@ -284,40 +273,50 @@ with tabs[0]:
     with col_f:
         with st.container(border=True):
             # Clés uniques pour éviter les erreurs "Duplicate Key"
-            f_owner = st.selectbox("Propriétaire du véhicule", ["---"] + df_b["Nom Roblox"].tolist(), key="k_owner_new")
-            f_model = st.text_input("Marque & Modèle précis", key="k_model_new")
-            f_plate = st.text_input("Numéro de Plaque souhaité", key="k_plate_new").upper()
-            f_assu = st.selectbox("Type d'Assurance", ["Aucune", "AVERIS (130$)", "RCT (150$)"], key="k_assu_new")
-            f_code = st.text_input("Définir un Code de Radiation (Secret)", type="password", key="k_code_new")
+            f_owner = st.selectbox("Propriétaire du véhicule", ["---"] + df_b["Nom Roblox"].tolist(), key="k_owner_final")
+            f_model = st.text_input("Marque & Modèle précis", key="k_model_final")
+            f_plate = st.text_input("Numéro de Plaque souhaité", key="k_plate_final").upper()
+            f_assu = st.selectbox("Type d'Assurance", ["Aucune", "AVERIS (130$)", "RCT (150$)"], key="k_assu_final")
+            f_code = st.text_input("Définir un Code de Radiation (Secret)", type="password", key="k_code_final")
             
-            # --- DÉTECTION AUTO JEUNE CONDUCTEUR ---
+            # --- DÉTECTION AUTO JEUNE CONDUCTEUR (< 30 jours) ---
             est_jeune = False
             if f_owner != "---":
                 try:
-                    # Lecture de la date dans le Sheets Banque (df_b)
                     date_brute = df_b[df_b["Nom Roblox"] == f_owner]["Date d'arrivée"].values[0]
                     date_arr = datetime.strptime(str(date_brute), "%d/%m/%Y")
                     if (datetime.now() - date_arr).days < 30:
                         est_jeune = True
-                        st.warning("🔰 STATUT : JEUNE CONDUCTEUR")
+                        st.warning("🔰 STATUT : JEUNE CONDUCTEUR (Détecté automatiquement)")
                 except:
                     pass
 
-            # Calcul des prix
+            # --- CALCUL DES PRIX & OFFRE TRIO RCT ---
             taxe_gouv = 175
             taxe_assu = 130 if "AVERIS" in f_assu else (150 if "RCT" in f_assu else 0)
+            
+            # Logique Trio RCT : 3ème voiture = assurance offerte
+            if "RCT" in f_assu and f_owner != "---":
+                # On compte combien de véhicules possède déjà le citoyen
+                nb_deja_possedes = len(df_i[df_i["Nom d'utilisateur ROBLOX"] == f_owner])
+                if nb_deja_possedes >= 2:
+                    taxe_assu = 0
+                    st.success("🎁 OFFRE TRIO : Assurance offerte (3ème véhicule) !")
+
             total_bill = taxe_gouv + taxe_assu
             
-            if st.button(f"S'ACQUITTER DE {total_bill}$ ET ENREGISTRER", use_container_width=True, key="k_btn_save"):
+            if st.button(f"S'ACQUITTER DE {total_bill}$ ET ENREGISTRER", use_container_width=True, key="k_btn_save_final"):
                 if f_owner != "---" and f_plate and f_code:
                     u_idx = df_b[df_b["Nom Roblox"] == f_owner].index[0]
                     u_solde = float(str(df_b.at[u_idx, "Solde"]).replace('$', ''))
                     
                     if u_solde >= total_bill:
-                        # Mise à jour des soldes
+                        # Débit client
                         df_b.at[u_idx, "Solde"] = u_solde - total_bill
+                        
+                        # Crédit Assureur
                         if taxe_assu > 0:
-                            # Averis -> Moune2010 (selon tes infos)
+                            # Averis va à Moune2010
                             target = "Moune2010" if "AVERIS" in f_assu else ACC_RCT
                             a_idx = df_b[df_b["Nom Roblox"] == target].index[0]
                             df_b.at[a_idx, "Solde"] = float(str(df_b.at[a_idx, "Solde"]).replace('$', '')) + taxe_assu
@@ -341,48 +340,47 @@ with tabs[0]:
     with col_t:
         st.markdown("### 🖼️ APERÇU DU TITRE (LIVE)")
         
-        # Sécurité : On affiche des points si c'est vide
         txt_nom = f_owner if f_owner != "---" else ".................."
         txt_mod = f_model if f_model != "" else ".................."
         txt_plq = f_plate if f_plate != "" else ".................."
         
-        # Badge Jeune Conducteur
         badge_html = ""
         if est_jeune:
             badge_html = '<div style="color:red; font-weight:bold; text-align:center; border:2px solid red; padding:5px; margin-bottom:10px;">⚠️ JEUNE CONDUCTEUR ⚠️</div>'
 
-        # LE REÇU (Rendu HTML propre)
-        st.write(f"""
-        <div style="border: 2px solid #000; padding: 15px; background: #fff; color: #000; font-family: monospace;">
-            <div style="text-align:center; font-weight:bold; font-size:1.2em;">TITRE DE CIRCULATION</div>
+        # Bloc HTML sécurisé
+        html_ticket = f"""
+        <div style="border: 2px solid #000; padding: 15px; background: #fff; color: #000; font-family: monospace; line-height: 1.2;">
+            <div style="text-align:center; font-weight:bold; font-size:1.1em;">TITRE DE CIRCULATION</div>
             <center><small>RÉPUBLIQUE DE RENSSELAER</small></center>
-            <hr style="border: 0.5px dashed #000;">
+            <hr style="border: 0.5px dashed #000; margin: 10px 0;">
             {badge_html}
-            <p><b>DATE :</b> {datetime.now().strftime("%d/%m/%Y")}</p>
-            <p><b>NOM :</b> {txt_nom}</p>
-            <p><b>MODÈLE :</b> {txt_mod}</p>
-            <p><b>PLAQUE :</b> <span style="background:#ddd; border:1px solid #000; padding:0 5px;">{txt_plq}</span></p>
-            <p><b>ASSURANCE :</b> {f_assu}</p>
-            <hr style="border: 0.5px dashed #000;">
-            <div style="text-align:right; font-size:1.1em;"><b>TOTAL : {total_bill}$</b></div>
+            <p style="margin: 5px 0;"><b>DATE :</b> {datetime.now().strftime("%d/%m/%Y")}</p>
+            <p style="margin: 5px 0;"><b>NOM :</b> {txt_nom}</p>
+            <p style="margin: 5px 0;"><b>MODÈLE :</b> {txt_mod}</p>
+            <p style="margin: 5px 0;"><b>PLAQUE :</b> <span style="background:#ddd; border:1px solid #000; padding:0 5px;">{txt_plq}</span></p>
+            <p style="margin: 5px 0;"><b>ASSURANCE :</b> {f_assu}</p>
+            <hr style="border: 0.5px dashed #000; margin: 10px 0;">
+            <div style="text-align:right; font-size:1.1em; font-weight:bold;">TOTAL : {total_bill}$</div>
             <br>
-            <center><small>Certifié par le Terminal National</small></center>
+            <center><small style="font-size: 0.8em;">Certifié par le Terminal National</small></center>
         </div>
-        """, unsafe_allow_html=True)
+        """
+        st.markdown(html_ticket, unsafe_allow_html=True)
         
         if st.session_state.last_action:
             st.success("✅ TRANSACTION CONFIRMÉE")
 
-    # SECTION RADIATION (SÉPARÉE POUR ÉVITER LES DOUBLONS)
+    # SECTION RADIATION
     st.divider()
     st.markdown("#### 🗑️ Radiation de Plaque")
     col_r1, col_r2 = st.columns(2)
     with col_r1:
-        r_plq = st.text_input("Plaque à radier", key="k_rad_p").upper()
+        r_plq = st.text_input("Plaque à radier", key="k_rad_p_vfinal").upper()
     with col_r2:
-        r_cod = st.text_input("Code secret", type="password", key="k_rad_c")
+        r_cod = st.text_input("Code secret", type="password", key="k_rad_c_vfinal")
     
-    if st.button("CONFIRMER LA RADIATION", use_container_width=True, key="k_btn_rad"):
+    if st.button("CONFIRMER LA RADIATION", use_container_width=True, key="k_btn_rad_vfinal"):
         match = df_i[df_i["Numéro de la plaque"].astype(str).str.upper() == r_plq]
         if not match.empty:
             if str(r_cod) == str(match.iloc[0]["CODE"]) or st.session_state.user_auth == "Staff":
@@ -391,7 +389,6 @@ with tabs[0]:
                 st.cache_data.clear(); st.success("Plaque radiée."); time.sleep(1); st.rerun()
             else: st.error("Code incorrect.")
         else: st.error("Plaque inconnue.")
-            
 # --- ONGLET 2 : SERVICES RCT (AMENDES & POINTS) ---
 if st.session_state.user_auth in ["RCT", "Staff"]:
     with tabs[1]:
