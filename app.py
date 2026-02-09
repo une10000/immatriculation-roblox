@@ -232,28 +232,24 @@ if st.session_state.user_auth is None:
     t_now_lock = datetime.now(timezone.utc) + timedelta(hours=1)
     h_lock = t_now_lock.hour
     heure_formattee = t_now_lock.strftime("%H:%M")
-
-    if 5 <= h_lock < 24:
+    
+    if 5 <= h_lock < 18:
         salut_complet = "Bonjour☀️"
-        pattern_style = "background-color: #f9f9f9; background-image: radial-gradient(#d1d1d1 2px, transparent 0); background-size: 24px 24px;"
-        t_color = "#1E1E1E"
-        glow = "none"
-    else:
-        # Fusion directe : Bonsoir + Lune ronde, sans espace
-        salut_complet = "Bonsoir🌕"
+        # Design Ciel Bleu avec Nuages en CSS
         pattern_style = (
-            "background-color: #05070a; "
+            "background-color: #87CEEB; "  # Bleu ciel
             "background-image: "
-            "radial-gradient(1px 1px at 25% 35%, white, transparent), "
-            "radial-gradient(1px 1px at 50% 10%, white, transparent), "
-            "radial-gradient(2px 2px at 10% 80%, white, transparent), "
-            "radial-gradient(1px 1px at 90% 20%, white, transparent), "
-            "radial-gradient(1.5px 1.5px at 70% 60%, white, transparent); "
-            "background-size: 150px 150px, 200px 200px, 250px 250px, 180px 180px, 220px 220px;"
+            "radial-gradient(circle at 20% 30%, white 5%, transparent 10%), "
+            "radial-gradient(circle at 25% 35%, white 8%, transparent 15%), "
+            "radial-gradient(circle at 30% 30%, white 5%, transparent 10%), "
+            "radial-gradient(circle at 70% 60%, white 7%, transparent 15%), "
+            "radial-gradient(circle at 75% 65%, white 10%, transparent 20%), "
+            "radial-gradient(circle at 80% 60%, white 7%, transparent 15%); "
+            "background-size: 300px 300px;"
         )
-        t_color = "#FFFFFF"
-        # Glow très fort (Halo blanc puissant)
-        glow = "0 0 40px rgba(255,255,255,0.9), 0 0 80px rgba(255,255,255,0.4)"
+        t_color = "#1E1E1E"
+        # Un léger glow orangé pour simuler le soleil sur le texte
+        glow = "0 0 15px rgba(255, 165, 0, 0.3)"
 
     # AFFICHAGE UNITAIRE (Texte et Lune collés dans le même h1)
     st.markdown(f"""
