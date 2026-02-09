@@ -354,15 +354,15 @@ try:
 
             # --- AJOUT ICI : BOUTON ANNULER POUR LES ADMINS ---
                 if st.session_state.user_auth in ["Staff", "Admin"]:
-                st.write("") # Petit espace
-                if st.button(f"🗑️ ANNULER L'ERREUR (Facture #{fac['ID']})", key=f"admin_del_{fac['ID']}", use_container_width=True):
-                    try:
-                        # 1. On recharge les données pour être sûr de la ligne
-                        df_all_f = cloud_conn.read(worksheet="Factures")
+                    st.write("") # Petit espace
+                    if st.button(f"🗑️ ANNULER L'ERREUR (Facture #{fac['ID']})", key=f"admin_del_{fac['ID']}", use_container_width=True):
+                        try:
+                            # 1. On recharge les données pour être sûr de la ligne
+                            df_all_f = cloud_conn.read(worksheet="Factures")
                         
                         # 2. On trouve la ligne exacte dans Google Sheets
                         # On cherche l'ID de la facture, .index[0] donne la position, +2 pour GSheets
-                        row_to_update = df_all_f[df_all_f["ID"] == fac["ID"]].index[0] + 2
+row_to_update = df_all_f[df_all_f["ID"] == fac["ID"]].index[0] + 2
                         
                         # 3. On change le statut en "ANNULÉ" dans la colonne E (Statut)
                         # Note : Pas de retrait d'argent ici, on change juste le texte.
