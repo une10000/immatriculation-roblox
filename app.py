@@ -381,20 +381,20 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
         if target == "---":
             st.warning("⚠️ Veuillez sélectionner un citoyen dans le dossier en haut pour agir.")
         else:
-            # AFFICHAGE DU NOM EN GRAND
+            # AFFICHAGE DU NOM EN GRAND (Bandeau d'identité)
             st.markdown(f"""
                 <div style="background-color: #000; padding: 20px; border-radius: 10px; border-left: 10px solid #d32f2f; margin-bottom: 20px;">
-                    <h1 style="color: white; margin: 0; letter-spacing: 2px;">👤 {target.upper()}</h1>
+                    <h1 style="color: white; margin: 0; letter-spacing: 2px; font-size: 2.5em;">👤 {target.upper()}</h1>
                     <p style="color: #d32f2f; font-weight: bold; margin: 0;">CITOYEN SOUS SURVEILLANCE NATIONALE</p>
                 </div>
             """, unsafe_allow_html=True)
 
-            # SECTION AMENDES SEULE
+            # SECTION AMENDES
             st.subheader("💰 Amendes de Service")
-            st.info("Le retrait de points est désormais géré exclusivement par le Tribunal Supérieur.")
+            st.info("Note : Le retrait de points est désormais géré exclusivement par le Tribunal Supérieur.")
             
             with st.container(border=True):
-                tax_val = st.number_input("Montant de l'amende ($)", min_value=0, step=50, key="fine_val_final")
+                tax_val = st.number_input("Montant de l'amende ($)", min_value=0, step=50, key="fine_val_final_v8")
                 
                 if st.button("ÉMETTRE L'AMENDE ET PERCEVOIR", use_container_width=True):
                     if tax_val > 0:
@@ -412,31 +412,13 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                         record_log(st.session_state.user_auth, f"Amende {tax_val}$ émise pour {target}")
                         
                         st.cache_data.clear()
-                        st.success(f"✅ Amende de {tax_val}$ enregistrée. Transfert effectué vers le compte RCT.")
+                        st.success(f"✅ Amende de {tax_val}$ enregistrée pour {target}.")
                         time.sleep(1)
                         st.rerun()
                     else:
                         st.error("Veuillez saisir un montant supérieur à 0$.")
-            with c2:
-                st.subheader("💰 Amendes de Service")
-                # Les agents RCT et le Staff peuvent toujours mettre des amendes
-                tax_val = st.number_input("Montant de l'amende ($)", min_value=0, step=50, key="k_tax_fine")
-                if st.button("PERCEVOIR L'AMENDE", use_container_width=True):
-                    idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
-                    curr_solde = float(str(df_b.at[idx_b, "Solde"]).replace('$', ''))
-                    
-                    # Débit du civil
-                    df_b.at[idx_b, "Solde"] = curr_solde - tax_val
-                    
-                    # Versement automatique au compte RCT
-                    rct_idx = df_b[df_b["Nom Roblox"] == ACC_RCT].index[0]
-                    df_b.at[rct_idx, "Solde"] = float(str(df_b.at[rct_idx, "Solde"]).replace('$', '')) + tax_val
-                    
-                    cloud_conn.update(worksheet="Banque", data=df_b)
-                    record_log(st.session_state.user_auth, f"Amende {tax_val}$ sur {target}")
-                    st.cache_data.clear()
-                    st.success("Amende perçue et transférée au compte RCT.")
-                    st.rerun()
+
+# --- ONGLET 3 : ADMINISTRATION (STAFF UNIQUEMENT) ---
 if st.session_state.user_auth == "Staff":
     with tabs[2]:
         st.markdown("### 🛡️ Contrôle Administrateur")
@@ -445,7 +427,7 @@ if st.session_state.user_auth == "Staff":
         
         with col_s1:
             st.subheader("🔨 Création de Profil Fédéral")
-            with st.form("admin_creation_form"):
+            with st.form("admin_creation_form_v8"):
                 st.write("Procédure d'arrivée : 15,000$ + 25 Points Permis.")
                 new_rob = st.text_input("Nom Roblox du Citoyen")
                 new_dis = st.text_input("Identifiant Discord")
@@ -455,7 +437,7 @@ if st.session_state.user_auth == "Staff":
                     if new_rob in df_b["Nom Roblox"].values:
                         st.error("Citoyen déjà enregistré.")
                     else:
-                        # DATE AUTOMATIQUE
+                        # DATE AUTOMATIQUE (Important pour la taxe jeune conducteur)
                         date_arr = datetime.now().strftime("%d/%m/%Y")
                         
                         # Banque entry
@@ -466,18 +448,23 @@ if st.session_state.user_auth == "Staff":
                         cloud_conn.update(worksheet="Banque", data=pd.concat([df_b, new_b]))
                         cloud_conn.update(worksheet="Points Permis", data=pd.concat([df_p, new_p]))
                         record_log("Staff", f"Création profil : {new_rob}")
-                        st.cache_data.clear(); st.success(f"Profil de {new_rob} créé avec succès !"); st.rerun()
+                        st.cache_data.clear()
+                        st.success(f"Profil de {new_rob} créé avec succès !")
+                        time.sleep(1)
+                        st.rerun()
         
         with col_s2:
             st.subheader("⚙️ Maintenance Système")
-            if st.button("🗑️ VIDER LE CACHE DE SESSION"):
+            if st.button("🗑️ VIDER LE CACHE DE SESSION", use_container_width=True):
                 st.cache_data.clear()
                 st.rerun()
             
             st.divider()
             st.write("📊 **Statistiques Globales**")
-            st.write(f"Masse monétaire : {df_b['Solde'].astype(float).sum():,.0f}$")
-            st.write(f"Parc Automobile : {len(df_i)} véhicules")
+            # Nettoyage des données pour le calcul
+            total_money = df_b['Solde'].replace('[\$,]', '', regex=True).astype(float).sum()
+            st.write(f"Masse monétaire : **{total_money:,.0f}$**")
+            st.write(f"Parc Automobile : **{len(df_i)} véhicules**")
 
 # ======================================================================================
 # 8. PIED DE PAGE
