@@ -616,80 +616,83 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
 if st.session_state.user_auth == "Staff":
     with tabs[2]:
         st.markdown('<div class="header-box"><h2>🛠️ PANNEAU D\'ADMINISTRATION High-Sec</h2></div>', unsafe_allow_html=True)
-# --- NOUVEAU : CRÉATION DE PROFIL CITOYEN (SOLDE AUTO 15K) ---
-st.markdown("### 👤 Création de Dossier Citoyen")
-with st.container(border=True):
-    c1, c2 = st.columns(2)
-    with c1:
-        new_name = st.text_input("Nom d'utilisateur ROBLOX", placeholder="Pseudo exact", key="admin_new_name")
-        new_discord = st.text_input("Utilisateur Discord", placeholder="pseudo#0000", key="admin_new_discord")
-    with c2:
-        new_job = st.selectbox("Emploiement initial", ["Sans-Emploi", "Agent RCT", "Entreprise Privée", "Service Public"], key="admin_new_job")
-        new_pts = st.slider("Points Permis (Départ)", 0, 25, 25, key="admin_new_pts")
+        
+        # --- SECTION 1 : CRÉATION DE PROFIL ---
+        st.markdown("### 👤 Création de Dossier Citoyen")
+        with st.container(border=True):
+            c1, c2 = st.columns(2)
+            with c1:
+                new_name = st.text_input("Nom d'utilisateur ROBLOX", placeholder="Pseudo exact", key="admin_new_name")
+                new_discord = st.text_input("Utilisateur Discord", placeholder="pseudo#0000", key="admin_new_discord")
+            with c2:
+                new_job = st.selectbox("Emploiement initial", ["Sans-Emploi", "Agent RCT", "Entreprise Privée", "Service Public"], key="admin_new_job")
+                new_pts = st.slider("Points Permis (Départ)", 0, 25, 25, key="admin_new_pts")
 
-    if st.button("🆕 GÉNÉRER LE DOSSIER NATIONAL", use_container_width=True):
-        if new_name and new_name not in df_b["Nom Roblox"].values:
-            with st.spinner("Initialisation du citoyen..."):
-                today_str = datetime.now().strftime("%d/%m/%Y")
-                
-                # Ajout dans l'onglet Banque (Solde fixé à 15000)
-                new_bank_row = pd.DataFrame([{
-                    "Nom Roblox": new_name,
-                    "Utilisateur Discord": new_discord,
-                    "Solde": 15000, 
-                    "Emploiement": new_job,
-                    "Date d'arrivée": today_str
-                }])
-                df_b_new = pd.concat([df_b, new_bank_row], ignore_index=True)
-                cloud_conn.update(worksheet="Banque", data=df_b_new)
+            if st.button("🆕 GÉNÉRER LE DOSSIER (15k + Date Auto)", use_container_width=True):
+                if new_name and new_name not in df_b["Nom Roblox"].values:
+                    with st.spinner("Initialisation du citoyen..."):
+                        today_str = datetime.now().strftime("%d/%m/%Y")
+                        
+                        # Banque (Solde 15000 auto)
+                        new_bank_row = pd.DataFrame([{
+                            "Nom Roblox": new_name,
+                            "Utilisateur Discord": new_discord,
+                            "Solde": 15000, 
+                            "Emploiement": new_job,
+                            "Date d'arrivée": today_str
+                        }])
+                        df_b_new = pd.concat([df_b, new_bank_row], ignore_index=True)
+                        cloud_conn.update(worksheet="Banque", data=df_b_new)
 
-                # Ajout dans l'onglet Points Permis
-                new_pts_row = pd.DataFrame([{
-                    "Nom Roblox": new_name,
-                    "PTS": new_pts,
-                    "Validité": "OUI" if new_pts > 0 else "NON"
-                }])
-                df_p_new = pd.concat([df_p, new_pts_row], ignore_index=True)
-                cloud_conn.update(worksheet="Points Permis", data=df_p_new)
+                        # Permis
+                        new_pts_row = pd.DataFrame([{
+                            "Nom Roblox": new_name,
+                            "PTS": new_pts,
+                            "Validité": "OUI" if new_pts > 0 else "NON"
+                        }])
+                        df_p_new = pd.concat([df_p, new_pts_row], ignore_index=True)
+                        cloud_conn.update(worksheet="Points Permis", data=df_p_new)
 
-                record_log(st.session_state.user_auth, f"Création profil : {new_name} (15k auto)")
-                st.success(f"✅ Dossier créé avec 15 000$ pour {new_name} !")
-                st.cache_data.clear()
-                time.sleep(1.5)
-                st.rerun()
-        else:
-            st.error("⚠️ Nom invalide ou citoyen déjà existant.")
+                        record_log(st.session_state.user_auth, f"Création profil : {new_name} (Solde: 15k)")
+                        st.success(f"✅ Dossier créé pour {new_name} !")
+                        st.cache_data.clear()
+                        time.sleep(1.5)
+                        st.rerun()
+                else:
+                    st.error("⚠️ Nom invalide ou déjà existant.")
 
         st.divider()
 
-        # 2. SECTION LOGS ET CONTRÔLE (En bas)
-        col_admin_1, col_admin_2 = st.columns(2)
+        # --- SECTION 2 : LOGS ET STATISTIQUES ---
+        col_admin_left, col_admin_right = st.columns(2)
         
-        with col_admin_1:
-            st.markdown("### 📜 Journaux d'Audit (Session Live)")
+        with col_admin_left:
+            st.markdown("### 📜 Journaux d'Audit")
             with st.container(border=True):
                 if st.session_state.audit_logs:
+                    # Look style terminal pour les logs
                     log_text = "\n".join(list(reversed(st.session_state.audit_logs)))
                     st.code(log_text, language="bash")
                 else:
                     st.info("Aucune activité enregistrée.")
             
-            if st.button("🗑️ EFFACER LES LOGS DE SESSION"):
+            if st.button("🗑️ EFFACER LES LOGS"):
                 st.session_state.audit_logs = []
                 st.rerun()
 
-        with col_admin_2:
-            st.markdown("### ⚙️ Contrôle Système")
+        with col_admin_right:
+            st.markdown("### 📊 État du Système")
             with st.container(border=True):
-                st.write("**État des Bases de Données :**")
-                st.success(f"✅ Banque : {len(df_b)} entrées")
-                st.success(f"✅ Immatriculations : {len(df_i)} entrées")
-                st.success(f"✅ Permis : {len(df_p)} entrées")
+                # ICI TES COMPTEURS DE DONNÉES
+                st.success(f"👥 **Citoyens enregistrés :** {len(df_b)}")
+                st.info(f"🚗 **Véhicules immatriculés :** {len(df_i)}")
+                st.warning(f"🪪 **Dossiers permis :** {len(df_p)}")
                 
                 st.divider()
-                if st.button("♻️ RÉINITIALISER LE CACHE GLOBAL", use_container_width=True):
+                st.write("**Maintenance :**")
+                if st.button("♻️ FORCER LA SYNCHRO CLOUD", use_container_width=True):
                     st.cache_data.clear()
-                    st.success("Cache vidé !")
+                    st.success("Données synchronisées !")
                     time.sleep(1)
                     st.rerun()
 # --- SÉCURITÉ : NETTOYAGE DES VARIABLES FANTÔMES ---
