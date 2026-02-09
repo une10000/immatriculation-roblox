@@ -206,7 +206,12 @@ with c3:
             st.rerun()
         else: 
             st.error("Accès refusé.")
-            st.stop()
+
+# --- C'EST ICI QU'IL FAUT METTRE LE "MUR" ---
+if st.session_state.user_auth is None:
+    st.stop()  # <--- Cette ligne bloque tout ce qui suit si on n'est pas connecté
+
+# Tout ce qui est en dessous (Section 6, 7, 8) ne s'affichera que si on est connecté.
         
 # ======================================================================================
 # 6. MODULE : DOSSIER CITOYEN UNIFIÉ (VISIBILITÉ TOTALE)
