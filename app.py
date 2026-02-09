@@ -330,7 +330,7 @@ with st.container():
                                 st.rerun()
                             else:
                                 st.error("Fonds insuffisants.")
-            except Exception as e:
+        except Exception as e:
         # On affiche la vraie erreur pour comprendre
         st.error(f"Erreur technique : {e}")
 
