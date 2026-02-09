@@ -571,10 +571,10 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
 # Saisie des points (Désactivé pour RCT)
 # Saisie des points (Désactivé pour RCT)
 # Saisie des points (Désactivé pour RCT)
-                    f_pts = st.number_input("Points à retirer", 
-                                            min_value=0, max_value=12, step=1, 
-                                            key="f_pts_fix", 
-                                            disabled=(st.session_state.user_auth == "RCT"))
+f_pts = st.number_input("Points à retirer", 
+                        min_value=0, max_value=12, step=1, 
+                        key="f_pts_fix", 
+                        disabled=(st.session_state.user_auth == "RCT"))
 
                     label_btn = "🚨 ENVOYER & DÉBITER POINTS" if st.session_state.user_auth == "Staff" else "🚨 ENVOYER LA FACTURE (RCT)"
                     
