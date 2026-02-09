@@ -569,15 +569,17 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
 
            # On ajoute 'disabled' pour que le RCT ne puisse même pas cliquer sur le champ
 # Saisie des points (Désactivé pour RCT)
-f_pts = st.number_input("Points à retirer", 
-                        min_value=0, max_value=12, step=1, 
-                        key="f_pts_fix", 
-                        disabled=(st.session_state.user_auth == "RCT"))
+            # Saisie des points (Désactivé pour RCT)
+                    f_pts = st.number_input("Points à retirer", 
+                                            min_value=0, max_value=12, step=1, 
+                                            key="f_pts_fix", 
+                                            disabled=(st.session_state.user_auth == "RCT"))
 
-label_btn = "🚨 ENVOYER & DÉBITER POINTS" if st.session_state.user_auth == "Staff" else "🚨 ENVOYER LA FACTURE (RCT)"
-if st.button(label_btn, use_container_width=True):
-    if f_motif:
-        with st.spinner("Mise à jour..."):
+                    label_btn = "🚨 ENVOYER & DÉBITER POINTS" if st.session_state.user_auth == "Staff" else "🚨 ENVOYER LA FACTURE (RCT)"
+                    
+                    if st.button(label_btn, use_container_width=True):
+                        if f_motif:
+                            with st.spinner("Mise à jour..."):
                                 # 1. GESTION DES POINTS (STAFF UNIQUEMENT)
                                 if f_pts > 0 and st.session_state.user_auth == "Staff":
                                     idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
@@ -588,6 +590,7 @@ if st.button(label_btn, use_container_width=True):
                                 df_factures = cloud_conn.read(worksheet="Factures")
                                 new_id = random.randint(10000, 99999)
                                 
+                                # Note pour le Staff si le RCT voulait enlever des points
                                 detail_pts = f" | -{f_pts}pts demandés" if st.session_state.user_auth == "RCT" and f_pts > 0 else f" | -{f_pts}pts"
                                 
                                 new_row = {
