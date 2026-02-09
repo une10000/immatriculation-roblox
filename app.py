@@ -617,49 +617,51 @@ if st.session_state.user_auth == "Staff":
     with tabs[2]:
         st.markdown('<div class="header-box"><h2>🛠️ PANNEAU D\'ADMINISTRATION High-Sec</h2></div>', unsafe_allow_html=True)
         
-        # 1. SECTION CRÉATION DE PROFIL (En haut pour être prioritaire)
-        st.markdown("### 👤 Création de Dossier Citoyen")
-        with st.container(border=True):
-            c1, c2 = st.columns(2)
-            with c1:
-                new_name = st.text_input("Nom d'utilisateur ROBLOX", placeholder="Pseudo exact", key="admin_new_name")
-                new_job = st.selectbox("Emploiement initial", ["Sans-Emploi", "Agent RCT", "Entreprise Privée", "Service Public"], key="admin_new_job")
-            with c2:
-                new_solde = st.number_input("Solde de départ ($)", min_value=0, value=1000, step=100, key="admin_new_solde")
-                new_pts = st.slider("Points Permis (Départ)", 0, 25, 25, key="admin_new_pts")
+# --- NOUVEAU : CRÉATION DE PROFIL CITOYEN (AVEC DISCORD) ---
+st.markdown("### 👤 Création de Dossier Citoyen")
+with st.container(border=True):
+    c1, c2 = st.columns(2)
+    with c1:
+        new_name = st.text_input("Nom d'utilisateur ROBLOX", placeholder="Pseudo exact", key="admin_new_name")
+        new_discord = st.text_input("Utilisateur Discord", placeholder="pseudo#0000 ou pseudo", key="admin_new_discord")
+        new_job = st.selectbox("Emploiement initial", ["Sans-Emploi", "Agent RCT", "Entreprise Privée", "Service Public"], key="admin_new_job")
+    with c2:
+        new_solde = st.number_input("Solde de départ ($)", min_value=0, value=1000, step=100, key="admin_new_solde")
+        new_pts = st.slider("Points Permis (Départ)", 0, 25, 25, key="admin_new_pts")
 
-            if st.button("🆕 GÉNÉRER LE DOSSIER NATIONAL", use_container_width=True):
-                if new_name and new_name not in df_b["Nom Roblox"].values:
-                    with st.spinner("Initialisation du citoyen..."):
-                        # Date automatique
-                        today_str = datetime.now().strftime("%d/%m/%Y")
-                        
-                        # Ajout Banque
-                        new_bank_row = pd.DataFrame([{
-                            "Nom Roblox": new_name,
-                            "Solde": new_solde,
-                            "Emploiement": new_job,
-                            "Date d'arrivée": today_str
-                        }])
-                        df_b_new = pd.concat([df_b, new_bank_row], ignore_index=True)
-                        cloud_conn.update(worksheet="Banque", data=df_b_new)
+    if st.button("🆕 GÉNÉRER LE DOSSIER NATIONAL", use_container_width=True):
+        if new_name and new_name not in df_b["Nom Roblox"].values:
+            with st.spinner("Initialisation du citoyen..."):
+                # Date automatique
+                today_str = datetime.now().strftime("%d/%m/%Y")
+                
+                # Ajout dans l'onglet Banque (Inclus maintenant le Discord et la Date)
+                new_bank_row = pd.DataFrame([{
+                    "Nom Roblox": new_name,
+                    "Utilisateur Discord": new_discord, # Nouveau champ
+                    "Solde": new_solde,
+                    "Emploiement": new_job,
+                    "Date d'arrivée": today_str
+                }])
+                df_b_new = pd.concat([df_b, new_bank_row], ignore_index=True)
+                cloud_conn.update(worksheet="Banque", data=df_b_new)
 
-                        # Ajout Points
-                        new_pts_row = pd.DataFrame([{
-                            "Nom Roblox": new_name,
-                            "PTS": new_pts,
-                            "Validité": "OUI" if new_pts > 0 else "NON"
-                        }])
-                        df_p_new = pd.concat([df_p, new_pts_row], ignore_index=True)
-                        cloud_conn.update(worksheet="Points Permis", data=df_p_new)
+                # Ajout dans l'onglet Points Permis
+                new_pts_row = pd.DataFrame([{
+                    "Nom Roblox": new_name,
+                    "PTS": new_pts,
+                    "Validité": "OUI" if new_pts > 0 else "NON"
+                }])
+                df_p_new = pd.concat([df_p, new_pts_row], ignore_index=True)
+                cloud_conn.update(worksheet="Points Permis", data=df_p_new)
 
-                        record_log(st.session_state.user_auth, f"Création profil : {new_name}")
-                        st.success(f"✅ Dossier créé avec succès pour {new_name} le {today_str} !")
-                        st.cache_data.clear()
-                        time.sleep(1.5)
-                        st.rerun()
-                else:
-                    st.error("⚠️ Nom invalide ou citoyen déjà existant.")
+                record_log(st.session_state.user_auth, f"Création profil : {new_name} (Discord: {new_discord})")
+                st.success(f"✅ Dossier créé pour {new_name} le {today_str} !")
+                st.cache_data.clear()
+                time.sleep(1.5)
+                st.rerun()
+        else:
+            st.error("⚠️ Nom invalide ou citoyen déjà existant.")
 
         st.divider()
 
