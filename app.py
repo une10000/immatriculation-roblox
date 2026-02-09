@@ -126,7 +126,7 @@ KEY_ADMIN = "RCRPFR-25-26"
 KEY_RCT = "RCT-26-RCRPFR"
 
 # Assets Graphiques
-LOGO_PATH = "https://media.discordapp.net/attachments/1441508709024006315/1467106550656270484/Capture_decran_2025-12-01_a_21.03.31.png"
+LOGO_PATH = "https://media.discordapp.net/attachments/1441508709024006315/1467106550656270484/Capture_decran_2025-12-01_a_21.03.31.png?ex=698a61b3&is=69891033&hm=8210184eaca7e5b311b5e00c11ba2e30e86bd67228f54e1f148577592ecfb090&=&format=webp&quality=lossless&width=2732&height=1508"
 
 def write_audit(action):
     """Enregistre chaque interaction pour le Staff."""
