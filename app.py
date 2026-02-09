@@ -409,7 +409,7 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                 st.subheader("🧾 Formulaire de Sanction")
                 with st.container(border=True):
                     f_val = st.number_input("Montant de l'amende/facture ($)", min_value=0, step=50, key="srv_fine_val")
-                    f_motif = st.text_input("Motif de l'infraction", placeholder="ex: Excès de vitesse", key="srv_fine_mot")
+                    f_motif = st.text_input("Motif de l'infraction", placeholder="ex: Dépannage", key="srv_fine_mot")
                     
                     # Logique des points : Invisible pour le RCT
                     p_loss = 0
