@@ -377,7 +377,7 @@ if not v_data.empty:
             """, unsafe_allow_html=True)
                         
                         # Utilisation d'une clé unique basée sur la plaque ET l'index pour éviter le "Duplicate Key"
-                        with st.expander("🗑️ Radier"):
+            with st.expander("🗑️ Radier"):
                             r_cod_check = st.text_input("Code Secret", type="password", key=f"rad_input_{veh['Numéro de la plaque']}_{i}")
                             if st.button("CONFIRMER", key=f"btn_confirm_{veh['Numéro de la plaque']}_{i}", use_container_width=True):
                                 if str(r_cod_check) == str(veh['CODE']) or st.session_state.user_auth == "Staff":
