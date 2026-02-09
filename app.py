@@ -354,16 +354,13 @@ with tabs[0]:
             f_assu = st.selectbox("Type d'Assurance", ["Aucune", "AVERIS (130$)", "RCT (150$)"], key="k_assu_v7")
             f_code = st.text_input("Définir un Code de Radiation (Secret)", type="password", key="k_code_v7")
             
-            # --- CALCULS TAXE JEUNE (Fixe à 0 ou 50) ---
+            # --- CALCULS TAXE JEUNE ---
             val_taxe_jeune = 0
-            est_jeune = False
-            
             if f_owner != "---":
                 try:
                     date_brute = df_b[df_b["Nom Roblox"] == f_owner]["Date d'arrivée"].values[0]
                     date_arr = datetime.strptime(str(date_brute), "%d/%m/%Y")
                     if (datetime.now() - date_arr).days < 30:
-                        est_jeune = True
                         val_taxe_jeune = 50
                         st.warning(f"🔰 JEUNE CONDUCTEUR détecté (+{val_taxe_jeune}$)")
                 except: pass
@@ -385,50 +382,50 @@ with tabs[0]:
                     u_solde = float(str(df_b.at[u_idx, "Solde"]).replace('$', ''))
                     
                     if u_solde >= total_bill:
-                        # --- TRAITEMENT DU PAIEMENT ---
                         df_b.at[u_idx, "Solde"] = u_solde - total_bill
-                        
-                        # Redirection des fonds (Averis vers Moune2010, RCT vers compte RCT)
                         if taxe_assu > 0:
                             target_acc = "Moune2010" if "AVERIS" in f_assu else ACC_RCT
                             a_idx = df_b[df_b["Nom Roblox"] == target_acc].index[0]
                             df_b.at[a_idx, "Solde"] = float(str(df_b.at[a_idx, "Solde"]).replace('$', '')) + taxe_assu
                         
-                        # --- ENREGISTREMENT ---
                         new_row = pd.DataFrame([{"Horodateur": datetime.now().strftime("%d/%m/%Y"), "Nom d'utilisateur ROBLOX": f_owner, "Marque du véhicule": f_model, "Numéro de la plaque": f_plate, "Assurance": f_assu, "CODE": f_code}])
                         cloud_conn.update(worksheet="Banque", data=df_b)
                         cloud_conn.update(worksheet="Copie de Immatriculations", data=pd.concat([df_i, new_row]))
                         
-                        # --- MESSAGE DE CONFIRMATION (NOUVEAU) ---
-                        st.balloons() # Optionnel : petites confettis pour le côté "cool"
-                        st.success(f"✅ Paiement de {total_bill}$ validé ! Votre plaque {f_plate} est désormais enregistrée.")
-                        
+                        st.balloons()
+                        st.success(f"✅ Paiement de {total_bill}$ validé !")
                         st.cache_data.clear()
-                        time.sleep(2) # On attend 2 secondes pour que l'utilisateur voit le message
+                        time.sleep(2)
                         st.rerun()
-                    else: 
-                        st.error("❌ Solde insuffisant sur votre compte bancaire.")
-                else:
-                    st.warning("⚠️ Veuillez remplir tous les champs (Propriétaire, Plaque et Code).")
-                    
-        # Le ticket avec la colonne Taxe Jeune FIXE
+                    else: st.error("❌ Solde insuffisant.")
+                else: st.warning("⚠️ Champs manquants.")
+
+    # --- ICI ON FERME col_f ET ON OUVRE col_t ---
+    with col_t:
+        st.markdown("### 🖼️ APERÇU LIVE")
         ticket_html = f"""
-        <div style="border: 4px double black; padding: 15px; background: white; color: black; font-family: monospace;">
+        <div style="border: 4px double black; padding: 15px; background: white; color: black; font-family: monospace; position: relative; overflow: hidden;">
+            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); font-size: 60px; opacity: 0.03; font-weight: bold; white-space: nowrap; pointer-events: none;">
+                RENSSELAER
+            </div>
+            
             <div style="text-align:center; font-weight:900; font-size:1.2em;">TITRE DE CIRCULATION</div>
             <center><small>RÉPUBLIQUE DE RENSSELAER</small></center>
-            <hr>
-            <div style="font-size: 0.9em;">
-                <p style="margin:2px 0;"><b>DATE :</b> {datetime.now().strftime("%d/%m/%Y")}</p>
-                <p style="margin:2px 0;"><b>NOM :</b> {f_owner}</p>
-                <p style="margin:2px 0;"><b>MODÈLE :</b> {f_model if f_model else "..."}</p>
-                <p style="margin:2px 0;"><b>PLAQUE :</b> <span style="background:#eee; border:1px solid #000; padding:0 3px;">{f_plate if f_plate else "..."}</span></p>
-                <p style="margin:2px 0;"><b>ASSURANCE :</b> {f_assu}</p>
-                <p style="margin:2px 0;"><b>TAXE JEUNE :</b> {val_taxe_jeune}$</p>
+            <hr style="border-top: 1px dashed black;">
+            
+            <div style="font-size: 0.9em; position: relative; z-index: 1;">
+                <p style="margin:4px 0;"><b>DATE :</b> {datetime.now().strftime("%d/%m/%Y")}</p>
+                <p style="margin:4px 0;"><b>NOM :</b> {f_owner}</p>
+                <p style="margin:4px 0;"><b>MODÈLE :</b> {f_model if f_model else "..."}</p>
+                <p style="margin:4px 0;"><b>PLAQUE :</b> <span style="background:#eee; border:1px solid #000; border-radius:3px; padding:0 6px; font-weight:bold; letter-spacing:1px;">{f_plate if f_plate else "..."}</span></p>
+                <p style="margin:4px 0;"><b>ASSURANCE :</b> {f_assu}</p>
+                <p style="margin:4px 0;"><b>TAXE JEUNE :</b> {val_taxe_jeune}$</p>
             </div>
-            <hr>
+            <hr style="border-top: 1px dashed black;">
             <div style="text-align:right; font-weight:bold; font-size:1.2em;">TOTAL : {total_bill}$</div>
             <br>
-            <center><small>Certifié conforme par le Terminal National</small></center>
+            <center><small style="opacity:0.6;">DOC-ID: {datetime.now().strftime('%H%M%S')}</small><br>
+            <small>Certifié conforme par le Terminal National</small></center>
         </div>
         """
         st.markdown(ticket_html, unsafe_allow_html=True)
