@@ -73,30 +73,31 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ======================================================================================
-# 2. MOTEUR DE DONNÉES CLOUD (CACHE & ANTI-QUOTA 429)
+# 2. MOTEUR DE DONNÉES CLOUD (CORRIGÉ - ANTI-RECURSION)
 # ======================================================================================
 
+# On crée la connexion EN DEHORS du cache
+cloud_conn = st.connection("gsheets", type=GSheetsConnection)
+
 @st.cache_data(ttl=600)
-def sync_with_federal_sheets():
+def fetch_data_only():
     """
-    Récupère les données depuis Google Sheets.
-    Le cache de 600s évite l'erreur 429 (Too Many Requests).
+    On ne met en cache QUE les DataFrames (le contenu), 
+    pas l'objet de connexion lui-même.
     """
     try:
-        conn = st.connection("gsheets", type=GSheetsConnection)
+        # On utilise la connexion globale pour lire
+        df_bank = cloud_conn.read(worksheet="Banque").dropna(how='all').fillna("")
+        df_immat = cloud_conn.read(worksheet="Copie de Immatriculations").dropna(how='all').fillna("")
+        df_pts = cloud_conn.read(worksheet="Points Permis").dropna(how='all').fillna("")
         
-        # Lecture des tables
-        df_bank = conn.read(worksheet="Banque").dropna(how='all').fillna("")
-        df_immat = conn.read(worksheet="Copie de Immatriculations").dropna(how='all').fillna("")
-        df_pts = conn.read(worksheet="Points Permis").dropna(how='all').fillna("")
-        
-        return conn, df_bank, df_immat, df_pts
+        return df_bank, df_immat, df_pts
     except Exception as e:
-        st.error(f"⚠️ ERREUR DE SYNCHRONISATION CLOUD : {e}")
-        return None, None, None, None
+        st.error(f"⚠️ ERREUR CLOUD : {e}")
+        return None, None, None
 
-# Chargement du moteur
-cloud_conn, df_b, df_i, df_p = sync_with_federal_sheets()
+# Appel du moteur
+df_b, df_i, df_p = fetch_data_only()
 
 # ======================================================================================
 # 3. INITIALISATION DES SESSIONS & CONSTANTES
