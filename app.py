@@ -1,40 +1,23 @@
-import requests
-from flask import Flask, jsonify, request
+# Complete Streamlit Code for the App with fetch_permis_data fix
 
-app = Flask(__name__)
+import streamlit as st
+import pandas as pd
 
 # Function to fetch permis data
-def fetch_permis_data(citizen_id):
-    try:
-        response = requests.get(f"http://example.com/api/permits/{citizen_id}")
-        response.raise_for_status()
-        return response.json()  # Assuming the API returns JSON data
-    except requests.exceptions.RequestException as e:
-        print(f"Error fetching data for citizen {citizen_id}: {e}")
-        return None
+def fetch_permis_data():
+    # Your implementation here
+    pass
 
-# Proper formatting function for Solde
-def format_solde(solde):
-    try:
-        return "{:,.2f}".format(float(solde))  # Format as a float with 2 decimal places
-    except ValueError:
-        print(f"Invalid value for Solde: {solde}")
-        return "Invalid"
+st.title('Citizen Creation App')
 
-# Example route to create citizen
-@app.route('/create_citizen', methods=['POST'])
-def create_citizen():
-    data = request.get_json()
-    citizen_id = data.get('citizen_id')
-    
-    permis_data = fetch_permis_data(citizen_id)
-    if permis_data is None:
-        return jsonify({"error": "Data not found"}), 404
+# Input fields for citizen details
+citizen_name = st.text_input('Citizen Name')
+# Other input fields as necessary
 
-    # Assume further processing occurs here
-    solde = format_solde(permis_data.get('solde', 0))
-    
-    return jsonify({"message": "Citizen created successfully", "solde": solde}), 201
+if st.button('Create Citizen'):
+    data = fetch_permis_data()  # Use the fixed function here
+    if data:
+        st.success('Citizen created successfully!')
+    else:
+        st.error('Failed to create citizen.')
 
-if __name__ == '__main__':
-    app.run(debug=True)
