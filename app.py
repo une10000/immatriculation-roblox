@@ -514,34 +514,40 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
 
             col_fine, col_pts, col_veh = st.columns([1, 1, 1.3])
 
-            # 1. ÉMISSION DE FACTURE (Remplace l'amende automatique)
+# 1. ÉMISSION DE FACTURE (VERSION STABLE)
             with col_fine:
                 st.subheader("🧾 Émettre Facture")
                 with st.container(border=True):
-                    f_val = st.number_input("Montant ($)", min_value=0, step=50, key="f_val_v15")
-                    f_motif = st.text_input("Motif", placeholder="ex: Excès de vitesse", key="f_mot_v15")
+                    f_val = st.number_input("Montant ($)", min_value=0, step=50, key="f_val_fix")
+                    f_motif = st.text_input("Motif", placeholder="ex: Excès de vitesse", key="f_mot_fix")
                     
-                    # Ajout d'une clé unique pour éviter le crash DuplicateElementId
-                    if st.button("ENVOYER LA FACTURE", use_container_width=True, key=f"btn_send_facture_{target}_{random.randint(0,999)}"):
+                    if st.button("ENVOYER LA FACTURE", use_container_width=True, key="btn_final_send"):
                         if f_val > 0 and f_motif:
-                            # Préparation de la donnée
-                            new_f = pd.DataFrame([{
-                                "ID": random.randint(10000, 99999),
-                                "Cible": target,
-                                "Emetteur": st.session_state.user_auth,
-                                "Montant": f_val,
-                                "Motif": f_motif,
-                                "Statut": "EN ATTENTE"
-                            }])
-                            
-                            # Lecture et Update de la feuille Factures
-                            df_factures = cloud_conn.read(worksheet="Factures")
-                            cloud_conn.update(worksheet="Factures", data=pd.concat([df_factures, new_f]))
-                            
-                            record_log(st.session_state.user_auth, f"Facture envoyée à {target} ({f_val}$)")
-                            st.success("Facture transmise !")
-                            time.sleep(0.5)
-                            st.rerun()
+                            with st.spinner("Liaison avec le serveur..."):
+                                # 1. Lire
+                                df_factures = cloud_conn.read(worksheet="Factures")
+                                
+                                # 2. Préparer la ligne
+                                new_row = {
+                                    "ID": random.randint(10000, 99999),
+                                    "Cible": target,
+                                    "Emetteur": st.session_state.user_auth,
+                                    "Montant": f_val,
+                                    "Motif": f_motif,
+                                    "Statut": "EN ATTENTE"
+                                }
+                                
+                                # 3. Ajouter et Envoyer
+                                df_factures = pd.concat([df_factures, pd.DataFrame([new_row])], ignore_index=True)
+                                cloud_conn.update(worksheet="Factures", data=df_factures)
+                                
+                                # 4. Confirmation
+                                st.success(f"✅ Envoyé sur Sheets pour {target} !")
+                                st.cache_data.clear()
+                                time.sleep(1)
+                                st.rerun()
+                        else:
+                            st.error("⚠️ Erreur : Montant ou Motif vide.")
 
             # 2. GESTION DU PERMIS
             with col_pts:
