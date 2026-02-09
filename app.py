@@ -214,8 +214,18 @@ if st.session_state.user_auth is None:
     # --- CONFIGURATION INTERFACE & CORRECTIFS ---
     st.markdown("""
         <style>
-            [data-testid="stSidebar"], [data-testid="stSidebarNav"] { display: none; }
-            [data-testid="stStatusWidget"] { display: none; }
+            /* Supprime la barre latérale "fantôme" lors de la déconnexion */
+            [data-testid="stSidebar"], [data-testid="stSidebarNav"] {
+                display: none;
+            }
+            /* Masque l'icône de chargement pour plus de discrétion (Audit Silencieux) */
+            [data-testid="stStatusWidget"] {
+                display: none;
+            }
+            /* Style pour le conteneur du logo */
+            .logo-container {
+                margin-bottom: 10px;
+            }
         </style>
     """, unsafe_allow_html=True)
 
@@ -224,42 +234,26 @@ if st.session_state.user_auth is None:
     from datetime import datetime, timedelta, timezone
     
     t_now_lock = datetime.now(timezone.utc) + timedelta(hours=1)
-    h_lock = 12
+    
+    # --- FORÇAGE DU MODE JOUR POUR TEST ---
+    h_lock = 12  # Fixé à 12 pour voir les nuages immédiatement
     heure_formattee = t_now_lock.strftime("%H:%M")
     
-    # --- LOGIQUE JOUR / NUIT ---
-    if 0 <= h_lock < 24:
-        salut_complet = "Bonjour☀️"
-        # Design Ciel Bleu avec Nuages MASSIFS
-        pattern_style = (
-            "background-color: #87CEEB; "
-            "background-image: "
-            "radial-gradient(circle at 20% 40%, white 15%, transparent 25%), " # Nuage 1
-            "radial-gradient(circle at 28% 45%, white 18%, transparent 30%), " # Nuage 1 (suite)
-            "radial-gradient(circle at 35% 40%, white 15%, transparent 25%), " # Nuage 1 (fin)
-            "radial-gradient(circle at 75% 65%, white 20%, transparent 35%), " # Nuage 2
-            "radial-gradient(circle at 85% 70%, white 22%, transparent 40%); " # Nuage 2 (suite)
-            "background-size: 600px 600px;" # Taille augmentée pour de plus gros nuages
-        )
-        t_color = "#1E1E1E"
-        # Un léger glow solaire
-        glow = "0 0 20px rgba(255, 255, 255, 0.6)"
-    else:
-        salut_complet = "Bonsoir🌕"
-        pattern_style = (
-            "background-color: #05070a; "
-            "background-image: "
-            "radial-gradient(1px 1px at 25% 35%, white, transparent), "
-            "radial-gradient(1px 1px at 50% 10%, white, transparent), "
-            "radial-gradient(2px 2px at 10% 80%, white, transparent), "
-            "radial-gradient(1px 1px at 90% 20%, white, transparent), "
-            "radial-gradient(1.5px 1.5px at 70% 60%, white, transparent); "
-            "background-size: 150px 150px, 200px 200px, 250px 250px, 180px 180px, 220px 220px;"
-        )
-        t_color = "#FFFFFF"
-        glow = "0 0 40px rgba(255,255,255,0.9), 0 0 80px rgba(255,255,255,0.4)"
+    # --- CONFIGURATION DESIGN CIEL BLEU & NUAGES GÉANTS ---
+    salut_complet = "Bonjour☀️"
+    pattern_style = (
+        "background-color: #87CEEB; " # Bleu ciel azur
+        "background-image: "
+        "radial-gradient(circle at 20% 50%, white 25%, transparent 35%), " # Gros Nuage 1
+        "radial-gradient(circle at 35% 55%, white 30%, transparent 45%), " # Gros Nuage 2
+        "radial-gradient(circle at 70% 50%, white 25%, transparent 40%), " # Gros Nuage 3
+        "radial-gradient(circle at 85% 60%, white 28%, transparent 45%); " # Gros Nuage 4
+        "background-size: 800px 800px;" # Répétition aérée pour effet massif
+    )
+    t_color = "#1E1E1E" # Texte sombre pour contraste sur bleu
+    glow = "0 0 20px rgba(255, 255, 255, 0.6)"
 
-    # --- AFFICHAGE UNITAIRE ---
+    # --- AFFICHAGE DE L'ACCUEIL DYNAMIQUE ---
     st.markdown(f"""
         <div style="text-align: center; margin-top: -30px; padding: 70px 20px 45px 20px; border-radius: 20px 20px 0 0; color: {t_color}; {pattern_style}">
             <h1 style="font-size: 5.5em; margin: 0; font-weight: 900; letter-spacing: -3px; text-shadow: {glow};">
@@ -272,45 +266,56 @@ if st.session_state.user_auth is None:
         </div>
     """, unsafe_allow_html=True)
 
-    # 2. EN-TÊTE RÉPUBLIQUE (Avec ajout du logo révisé)
+    # 2. EN-TÊTE RÉPUBLIQUE & LOGO
+    # Note : Remplace l'émoji par l'URL de ton logo si nécessaire
     st.markdown("""
-    <div class="header-box" style="margin-top: 0px; border-radius: 0 0 20px 20px; border-top: 1px solid rgba(255,255,255,0.05); padding: 20px;">
+    <div class="header-box" style="margin-top: 0px; border-radius: 0 0 20px 20px; border-top: 1px solid rgba(255,255,255,0.05); padding: 25px;">
     <center>
-        <span style="font-size: 40px;">👤</span> <h2 style="margin-bottom:0; margin-top:10px;">🏛️ RÉPUBLIQUE DE RENSSELAER</h2>
-        <p style="font-size: 1em; opacity: 0.8;">TERMINAL FÉDÉRAL D'OPÉRATIONS NATIONALES</p>
-        <hr style="border-color: rgba(255,255,255,0.1); margin: 10px 0;">
-        <small style="opacity: 0.6;">VERSION 14.6.0 | SÉCURISÉ PAR PROTOCOLE RCRP-OS</small>
+        <div class="logo-container">
+            <span style="font-size: 50px;">🏛️</span> 
+        </div>
+        <h2 style="margin-bottom:0; margin-top:5px; letter-spacing: 2px;">RÉPUBLIQUE DE RENSSELAER</h2>
+        <p style="font-size: 1em; opacity: 0.8; text-transform: uppercase;">Terminal Fédéral d'Opérations Nationales</p>
+        <hr style="border-color: rgba(255,255,255,0.1); margin: 15px 0;">
+        <small style="opacity: 0.5;">VERSION 14.6.0 | PROTOCOLE RCRP-OS SÉCURISÉ</small>
     </center>
     </div>
     """, unsafe_allow_html=True)
     
-    st.warning("⚠️ **AVERTISSEMENT :** Toute action effectuée sur ce terminal est enregistrée.")
+    st.warning("⚠️ **AVERTISSEMENT :** Toute action effectuée sur ce terminal est enregistrée par la Sécurité Nationale.")
     st.write("---")
 
-    # 3. COLONNES D'ACCÈS
+    # 3. COLONNES D'ACCÈS (CIVIL / RCT / STAFF)
     c1, c2, c3 = st.columns(3)
+    
     with c1:
-        st.markdown("### 👥 CIVIL")
-        if st.button("ACCÉDER AU TERMINAL", use_container_width=True):
+        st.markdown("### 👥 ACCÈS CIVIL")
+        st.info("Consultez vos véhicules et factures.")
+        if st.button("OUVRIR LA SESSION", use_container_width=True):
             st.session_state.user_auth = "Civil"
             st.rerun()
+            
     with c2:
         st.markdown("### 👨‍🔧 AGENT RCT")
         login_rct = st.text_input("Identifiant Agent", type="password", key="l_rct")
-        if st.button("AUTHENTIFICATION RCT", use_container_width=True):
+        if st.button("CONNEXION RCT", use_container_width=True):
             if login_rct == KEY_RCT:
                 st.session_state.user_auth = "RCT"
                 st.rerun()
-            else: st.error("Clé invalide.")
+            else: 
+                st.error("Identifiant invalide.")
+                
     with c3:
-        st.markdown("### 🛡️ STAFF/POLICE")
+        st.markdown("### 🛡️ STAFF / POLICE")
         login_staff = st.text_input("Clé Maîtresse", type="password", key="l_staff")
-        if st.button("ACCÈS ADMINISTRATEUR", use_container_width=True):
+        if st.button("ACCÈS SÉCURISÉ", use_container_width=True):
             if login_staff == KEY_STAFF:
                 st.session_state.user_auth = "Staff"
                 st.rerun()
-            else: st.error("Accès refusé.")
+            else: 
+                st.error("Accès refusé.")
 
+    # 4. RECHARGEMENT AUTOMATIQUE
     time.sleep(60)
     st.rerun()
     st.stop()
