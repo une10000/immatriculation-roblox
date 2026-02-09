@@ -217,7 +217,6 @@ if st.session_state.user_auth is None:
     
     t_now_lock = datetime.now(timezone.utc) + timedelta(hours=1)
     h_lock = t_now_lock.hour
-    # Format sans les secondes
     heure_formattee = t_now_lock.strftime("%H:%M")
 
     if 5 <= h_lock < 18:
@@ -247,24 +246,33 @@ if st.session_state.user_auth is None:
         glow = "0 0 15px rgba(255,255,255,0.4)"
         clock_opacity = "0.7"
 
-    # AFFICHAGE DU MESSAGE DE BIENVENUE + HORLOGE (HH:MM)
+    # AFFICHAGE AVEC CENTRAGE CORRIGÉ
     st.markdown(f"""
         <div style="
             text-align: center; 
             margin-top: -30px; 
             margin-bottom: 0px; 
-            padding: 55px 20px 40px 20px; 
+            padding: 65px 20px 40px 20px; 
             border-radius: 20px 20px 0 0;
             color: {t_color};
             {pattern_style}
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
         ">
-            <h1 style="font-size: 5.5em; margin-bottom: 0px; font-weight: 900; letter-spacing: -3px; line-height: 1.1; text-shadow: {glow};">
-                {salut} ! {emo}
-            </h1>
-            <p style="font-size: 1.1em; opacity: 0.7; letter-spacing: 5px; font-weight: bold; text-transform: uppercase; margin-top: 15px; margin-bottom: 8px;">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 15px;">
+                <h1 style="font-size: 5.5em; margin: 0; font-weight: 900; letter-spacing: -3px; line-height: 1; text-shadow: {glow};">
+                    {salut} !
+                </h1>
+                <span style="font-size: 4.5em; line-height: 1;">{emo}</span>
+            </div>
+            
+            <p style="font-size: 1.1em; opacity: 0.7; letter-spacing: 5px; font-weight: bold; text-transform: uppercase; margin-top: 20px; margin-bottom: 8px;">
                 Unité Fédérale de Rensselaer
             </p>
-            <div style="font-family: 'Courier New', monospace; font-size: 2em; letter-spacing: 4px; opacity: {clock_opacity}; font-weight: bold; border-top: 1px solid {t_color}22; display: inline-block; padding-top: 8px;">
+            
+            <div style="font-family: 'Courier New', monospace; font-size: 2.2em; letter-spacing: 4px; opacity: {clock_opacity}; font-weight: bold; border-top: 1px solid {t_color}22; display: inline-block; padding-top: 10px; margin-top: 5px;">
                 {heure_formattee}
             </div>
         </div>
@@ -312,10 +320,8 @@ if st.session_state.user_auth is None:
                 st.rerun()
             else: st.error("Accès refusé.")
 
-    # REFRESH TOUTES LES 60 SECONDES
     time.sleep(60)
     st.rerun()
-
     st.stop()
 
 # ======================================================================================
