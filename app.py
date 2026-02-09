@@ -175,12 +175,10 @@ if st.session_state.user_auth is None:
     </center>
     </div>
     """, unsafe_allow_html=True=
-                
-    st.warning("⚠️ **AVERTISSEMENT :** Toute action effectuée sur ce terminal est enregistrée. L'usurpation d'identité d'agent est punie par la loi fédérale.")
+    st.warning("⚠️ **AVERTISSEMENT :** Toute action effectuée sur ce terminal est enregistrée. L'usurpation d'identité d'agent est punie par la loi fédérale.")
     
-    c1, c2, c3 = st.columns(3)
-    
-    with c1:
+c1, c2, c3 = st.columns(3)
+with c1:
         st.markdown("### 👥 CIVIL")
         st.write("Accès libre pour consultation et immatriculation.")
         if st.button("ACCÉDER AU TERMINAL"):
@@ -188,7 +186,7 @@ if st.session_state.user_auth is None:
             record_log("Civil", "Connexion Public")
             st.rerun()
             
-    with c2:
+with c2:
         st.markdown("### 👨‍🔧 🛻🪝 AGENT RCT")
         login_rct = st.text_input("Identifiant Agent", type="password")
         if st.button("AUTHENTIFICATION RCT"):
@@ -198,7 +196,7 @@ if st.session_state.user_auth is None:
                 st.rerun()
             else: st.error("Clé invalide.")
             
-    with c3:
+with c3:
         st.markdown("### 🛡️👮‍♂️ STAFF/POLICE")
         login_staff = st.text_input("Clé Maîtresse", type="password")
         if st.button("ACCÈS ADMINISTRATEUR"):
