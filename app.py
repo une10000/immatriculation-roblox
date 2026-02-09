@@ -336,42 +336,30 @@ with tab_immat:
 
 # --- ONGLET 2 : DOSSIERS CITOYENS ---
 with tab_dossier:
-    st.header("🪪 Dossiers Administratifs")
-    
-    if st.session_state.role == "Staff":
-        # Bloc Staff de gestion
-        with st.container(border=True):
-            st.subheader("🧧 Console de Gestion Staff")
-            col_s1, col_s2 = st.columns(2)
-            
-            with col_s1:
-                if st.button("Lancer la Paye Générale (Salaire de Base)", use_container_width=True):
-                    for idx, r in df_banque.iterrows():
-                        montant_paye = 17000 if "RCT" in str(r["Emploiement"]) else 15000
-                        solde_vieux = float(str(r["Solde"]).replace('$', '').replace(' ', ''))
-                        df_banque.at[idx, "Solde"] = solde_vieux + montant_paye
-                    conn.update(worksheet="Banque", data=df_banque)
-                    st.success("💰 Tous les salaires ont été versés.")
-            
-            with col_s2:
-                with st.expander("👤 Créer un nouveau profil citoyen"):
-                    with st.form("new_cit_form"):
-                        n_rob = st.text_input("Nom Roblox")
-                        n_dis = st.text_input("Nom Discord")
-                        n_job = st.selectbox("Poste Occupé", ["Civil", "Agent RCT", "Gouvernement"])
-                        if st.form_submit_button("Valider la création"):
-                            # DATE AUTOMATIQUE DEMANDÉE
-                            d_creation = datetime.now().strftime("%d/%m/%Y")
-                            new_citizen = pd.DataFrame([{
-                                "Solde": 15000, 
-                                "Nom Discord": n_dis, 
-                                "Nom Roblox": n_rob, 
-                                "Date d'arrivée": d_creation, 
-                                "Emploiement": n_job
-                            }])
-                            conn.update(worksheet="Banque", data=pd.concat([df_banque, new_citizen], ignore_index=True))
-                            st.success(f"✅ Citoyen enregistré le {d_creation}")
-                            st.rerun()
+    if st.session_state.role == "Staff":
+        col_paye, col_crea = st.columns(2)
+        with col_paye:
+            st.subheader("🧧 Finances")
+            if st.button("💰 LANCER LA PAIE GÉNÉRALE", use_container_width=True):
+                for i, r in df_banque.iterrows():
+                    m_paye = 17000 if "RCT" in str(r["Emploiement"]) else 15000
+                    df_banque.at[i, "Solde"] = float(str(r["Solde"]).replace('$', '')) + m_paye
+                conn.update(worksheet="Banque", data=df_banque)
+                st.success("Salaires versés !"); time.sleep(1); st.rerun()
+        
+        with col_crea:
+            st.subheader("👤 Nouveau Citoyen")
+            with st.form("crea_cit"):
+                n_rob = st.text_input("Nom Roblox")
+                n_dis = st.text_input("Nom Discord")
+                n_job = st.selectbox("Job", ["Civil", "Agent RCT", "Gouvernement"])
+                if st.form_submit_button("Créer Dossier (15k + 25pts)"):
+                    d_c = datetime.now().strftime("%d/%m/%Y")
+                    new_b = pd.DataFrame([{"Solde": 15000, "Nom Discord": n_dis, "Nom Roblox": n_rob, "Date d'arrivée": d_c, "Emploiement": n_job}])
+                    new_p = pd.DataFrame([{"Nom Discord": n_dis, "Nom Roblox": n_rob, "PTS": 25, "Validité": "OUI"}])
+                    conn.update(worksheet="Banque", data=pd.concat([df_banque, new_b], ignore_index=True))
+                    conn.update(worksheet="Points Permis", data=pd.concat([df_permis, new_p], ignore_index=True))
+                    st.success("✅ Citoyen enregistré !"); st.rerun()
 
     st.divider()
     
