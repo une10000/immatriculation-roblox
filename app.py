@@ -551,92 +551,74 @@ with tabs[0]:
 # --- ONGLET 2 : SERVICES AGENT (FACTURES / POINTS / CONSULTATION) ---
 if st.session_state.user_auth in ["RCT", "Staff"]:
     with tabs[1]:
-        st.markdown("### 👮 Interface de Service")
-        
         if target == "---":
             st.warning("⚠️ Sélectionnez un citoyen en haut de la page.")
         else:
-            # Affichage du nom de la cible
-            st.markdown(f'<div style="background-color: #1e1e1e; padding: 15px; border-radius: 10px; border-left: 5px solid #d32f2f; color: white;">🔍 Cible : <b>{target}</b></div>', unsafe_allow_html=True)
-            st.write("")
-
-            # Structure en 3 colonnes : Saisie | Reçu | Véhicules
-            col_saisie, col_recu, col_vehicules = st.columns([1, 1.2, 0.8])
+            # 3 colonnes : Saisie | Facture (Milieu) | Véhicules (Droite)
+            col_saisie, col_facture, col_vehicules = st.columns([1, 1.2, 0.8])
 
             with col_saisie:
                 with st.container(border=True):
-                    st.markdown("#### 📝 Créer une Infraction")
+                    st.markdown("#### 📝 Saisie")
+                    f_val = st.number_input("Montant ($)", min_value=0, step=50, key="v_val_final")
                     
-                    f_val = st.number_input("Montant de l'amende ($)", min_value=0, step=50, key="v_val")
-                    
-                    # SECURITÉ : disabled=True si l'utilisateur est RCT
                     is_rct = (st.session_state.user_auth == "RCT")
                     f_pts = st.number_input(
                         "Points à retirer", 
                         min_value=0, max_value=12, step=1, 
-                        key="v_pts", 
-                        disabled=is_rct,
-                        help="Action réservée au Staff" if is_rct else ""
+                        key="v_pts_final", 
+                        disabled=is_rct
                     )
                     
-                    f_motif = st.text_input("Motif de l'infraction", key="v_mot")
+                    f_motif = st.text_input("Motif", key="v_mot_final")
                     
-                    v_list = ["AUCUN / PIÉTON"] + df_i[df_i["Nom d'utilisateur ROBLOX"] == target]["Numéro de la plaque"].tolist()
-                    f_plate = st.selectbox("Véhicule concerné", v_list, key="f_plate")
+                    # Récupération des données véhicules pour la cible
+                    target_veh = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
+                    v_list = ["AUCUN / PIÉTON"] + target_veh["Numéro de la plaque"].tolist()
+                    f_plate = st.selectbox("Véhicule concerné", v_list, key="v_plate_final")
                     
                     st.write("---")
-                    
-                    # Le bouton change de nom selon le grade
                     label = "🚨 ENVOYER & DÉBITER" if not is_rct else "🚨 ENVOYER FACTURE"
                     
                     if st.button(label, use_container_width=True, type="primary"):
                         if not f_motif:
-                            st.error("⚠️ Tu dois mettre un motif.")
+                            st.error("Motif obligatoire.")
                         else:
-                            with st.spinner("Traitement..."):
-                                # 1. Retrait des points (SEULEMENT SI STAFF)
-                                if f_pts > 0 and not is_rct:
-                                    idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
-                                    df_p.at[idx_p, "PTS"] = max(0, int(df_p.at[idx_p, "PTS"]) - f_pts)
-                                    cloud_conn.update(worksheet="Points Permis", data=df_p)
-                                
-                                # 2. Envoi de la facture (POUR TOUS)
-                                df_f = cloud_conn.read(worksheet="Factures")
-                                note_pts = f" | -{f_pts}pts" if not is_rct else f" | (RCT: -{f_pts}pts suggérés)"
-                                
-                                new_facture = {
-                                    "ID": random.randint(1000, 9999),
-                                    "Cible": target,
-                                    "Emetteur": st.session_state.user_auth,
-                                    "Montant": f_val,
-                                    "Motif": f"{f_motif} [{f_plate}]{note_pts}",
-                                    "Statut": "EN ATTENTE"
-                                }
-                                
-                                df_f = pd.concat([df_f, pd.DataFrame([new_facture])], ignore_index=True)
-                                cloud_conn.update(worksheet="Factures", data=df_f)
-                                
-                                st.success("✅ Opération réussie !")
-                                st.cache_data.clear()
-                                time.sleep(1)
-                                st.rerun()
+                            # Logique d'envoi (Points + Facture)
+                            if f_pts > 0 and not is_rct:
+                                idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
+                                df_p.at[idx_p, "PTS"] = max(0, int(df_p.at[idx_p, "PTS"]) - f_pts)
+                                cloud_conn.update(worksheet="Points Permis", data=df_p)
+                            
+                            df_f = cloud_conn.read(worksheet="Factures")
+                            new_row = {
+                                "ID": random.randint(1000, 9999),
+                                "Cible": target,
+                                "Emetteur": st.session_state.user_auth,
+                                "Montant": f_val,
+                                "Motif": f"{f_motif} [{f_plate}]",
+                                "Statut": "EN ATTENTE"
+                            }
+                            df_f = pd.concat([df_f, pd.DataFrame([new_row])], ignore_index=True)
+                            cloud_conn.update(worksheet="Factures", data=df_f)
+                            st.success("✅ Envoyé !")
+                            st.cache_data.clear()
+                            st.rerun()
 
-            with col_recu:
-                st.markdown("#### 📄 Aperçu Reçu")
-                # Design style "Reçu" identique à ton Titre de Circulation
+            with col_facture:
+                st.markdown("#### 📄 Aperçu")
                 st.markdown(f"""
                 <div style="border: 2px solid black; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; line-height: 1.2;">
-                    <center><b>PROCÈS-VERBAL</b><br><small>RÉPUBLIQUE DE RENSSERLAER</small></center>
+                    <center><b>FACTURE</b><br><small>RÉPUBLIQUE DE RENSSERLAER</small></center>
                     <hr style="border-top: 1px solid #ccc; margin: 10px 0;">
                     <b>DATE   :</b> {datetime.now().strftime('%d/%m/%Y')}<br>
                     <b>NOM    :</b> {target}<br>
                     <b>MOTIF  :</b> {f_motif.upper() if f_motif else '...'}<br>
                     <b>PLAQUE :</b> <span style="border: 1px solid black; padding: 0 3px;">{f_plate}</span><br>
-                    <b>AMENDE :</b> {f_val}$
+                    <b>MONTANT:</b> {f_val}$
                     <hr style="border-top: 1px solid #ccc; margin: 10px 0;">
-                    <div style="text-align: center; color: #d32f2f; font-weight: bold; font-size: 0.8em;">
-                        ⚠️ INFRACTION ENREGISTRÉE<br>
-                        <span style="color: black; font-weight: normal;">POINTS : -{f_pts}</span><br>
+                    <div style="text-align: center; color: black; font-weight: bold; font-size: 0.8em;">
+                        POINTS À DÉBITER : -{f_pts}<br>
                         <small>Par le Terminal National</small>
                     </div>
                 </div>
@@ -644,10 +626,32 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
 
             with col_vehicules:
                 st.markdown("#### 🚗 Véhicules")
-                user_veh = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]["Numéro de la plaque"].tolist()
-                if user_veh:
-                    for v in user_veh:
-                        st.code(f"Plaque : {v}")
+                if not target_veh.empty:
+                    for _, veh in target_veh.iterrows():
+                        # Logique des couleurs d'assurance
+                        assurance = str(veh['Assurance'])
+                        if assurance == "Averis":
+                            color, status_txt, icon = "green", "VÉHICULE EN ORDRE", "✅"
+                        elif assurance == "RCT":
+                            color, status_txt, icon = "green", "ASSURÉ RCT", "🛡️"
+                        else:
+                            color, status_txt, icon = "#d32f2f", "🚨 NON-ASSURÉ RCT", "⚠️"
+
+                        st.markdown(f"""
+                        <div style="border: 2px solid black; padding: 10px; background: white; color: black; font-family: 'Courier New', monospace; line-height: 1.1; margin-bottom: 10px; font-size: 0.8em;">
+                            <center><b>TITRE DE CIRCULATION</b></center>
+                            <hr style="border-top: 1px solid #ccc; margin: 5px 0;">
+                            <b>NOM :</b> {target}<br>
+                            <b>MODÈLE :</b> {veh['Marque du véhicule']}<br>
+                            <b>PLAQUE :</b> <span style="border: 1px solid black; padding: 0 2px;">{veh['Numéro de la plaque']}</span><br>
+                            <b>ASSUR. :</b> {assurance}
+                            <hr style="border-top: 1px solid #ccc; margin: 5px 0;">
+                            <div style="text-align: center; color: {color}; font-weight: bold;">
+                                {icon} {status_txt}<br>
+                                <small style="color: gray; font-size: 0.7em;">Terminal National</small>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
                 else:
                     st.info("Aucun véhicule.")
 # --- ONGLET 3 : ADMINISTRATION (STAFF ONLY) ---
