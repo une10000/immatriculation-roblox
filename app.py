@@ -334,8 +334,6 @@ with st.container():
         # On affiche la vraie erreur pour comprendre
             st.error(f"Erreur technique : {e}")
 
-if st.session_state.user_auth in ["Staff", "RCT"]:
-    st.subheader("🧾 Formulaire de Sanction")
 # --- SECTION VÉHICULES CORRIGÉE ---
 # --- SECTION VÉHICULES UNIFORMISÉE ---
 st.write("### 🚗 VÉHICULES ENREGISTRÉS")
