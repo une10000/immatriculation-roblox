@@ -277,7 +277,7 @@ with st.container():
                 st.error("Aucun compte trouvé.") 
 
         # --- COLONNE 3 : ARCHIVES COMPTABLES ---
-            with col3:
+with col3:
             st.markdown("### 📁 ARCHIVES")
             try:
                 # 1. Lecture des données
