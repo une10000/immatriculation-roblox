@@ -131,7 +131,7 @@ CODE_ADMIN = "RCRPFR-25-26"
 CODE_PRO = "RCT-26-RCRPFR"    
 
 # URL du logo (Correction lien permanent)
-LOGO_URL = "https://media.discordapp.net/attachments/1441508709024006315/1467106550656270484/Capture_decran_2025-12-01_a_21.03.31.png?width=800&height=442"
+LOGO_URL = "https://media.discordapp.net/attachments/1441508709024006315/1467106550656270484/Capture_decran_2025-12-01_a_21.03.31.png?ex=698a61b3&is=69891033&hm=8210184eaca7e5b311b5e00c11ba2e30e86bd67228f54e1f148577592ecfb090&=&format=webp&quality=lossless&width=2732&height=1508"
 
 # --------------------------------------------------------------------------------------
 # [SECTION 3] : MOTEUR DE DONNÉES ET SYNCHRONISATION CLOUD
