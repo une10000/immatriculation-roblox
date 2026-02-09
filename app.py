@@ -522,7 +522,7 @@ st.markdown("---")
 st.markdown("""
     <center>
         <b>TERMINAL GOUVERNEMENTAL RCRP v18.0</b><br>
-        Propriété de la République de Palm City. Usage réservé au personnel accrédité.<br>
+        Propriété de Rensselaer County Roleplay FR. Usage réservé au personnel accrédité.<br>
         <i>"Sécurité - Progrès - Prospérité"</i>
     </center>
 """, unsafe_allow_html=True)
