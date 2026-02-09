@@ -348,31 +348,47 @@ try:
             <div style="margin-bottom: 15px;"></div>
             """, unsafe_allow_html=True)
 
-            # Bouton de paiement
+# --- BOUTON DE PAIEMENT ---
             if st.button(f"💳 RÉGLER LA FACTURE #{fac['ID']}", key=f"pay_{fac['ID']}", use_container_width=True):
-                # ... (Après le code du bouton "💳 RÉGLER LA FACTURE")
+                idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
+                solde_raw = str(df_b.at[idx_b, "Solde"]).replace('$', '').replace(',', '')
+                solde_actuel = float(solde_raw)
+                montant_facture = float(fac['Montant'])
+                
+                if solde_actuel >= montant_facture:
+                    # Logique de débit (déjà présente dans ton code)
+                    df_b.at[idx_b, "Solde"] = solde_actuel - montant_facture
+                    rct_idx = df_b[df_b["Nom Roblox"] == ACC_RCT].index[0]
+                    solde_dest = float(str(df_b.at[rct_idx, "Solde"]).replace('$', '').replace(',', ''))
+                    df_b.at[rct_idx, "Solde"] = solde_dest + montant_facture
+                    df_all_f.loc[df_all_f["ID"] == fac["ID"], "Statut"] = "PAYÉ"
+                    
+                    cloud_conn.update(worksheet="Banque", data=df_b)
+                    cloud_conn.update(worksheet="Factures", data=df_all_f)
+                    
+                    record_log(target, f"Paiement facture {fac['Emetteur']} #{fac['ID']}")
+                    st.success("✅ Paiement effectué !")
+                    st.cache_data.clear()
+                    time.sleep(1)
+                    st.rerun()
+                else:
+                    st.error("❌ Fonds insuffisants.")
 
-            # --- AJOUT ICI : BOUTON ANNULER POUR LES ADMINS ---
+            # --- BOUTON ANNULER (PLACÉ APRÈS LE BLOC IF DU PAIEMENT) ---
             if st.session_state.user_auth in ["Staff", "Admin"]:
-                st.write("") 
                 if st.button(f"🗑️ ANNULER L'ERREUR (Facture #{fac['ID']})", key=f"admin_del_{fac['ID']}", use_container_width=True):
                     try:
-                        # 1. On recharge les données pour être sûr de la ligne
-                        df_all_f = cloud_conn.read(worksheet="Factures")
+                        df_all_f_sync = cloud_conn.read(worksheet="Factures")
+                        row_idx = df_all_f_sync[df_all_f_sync["ID"] == fac["ID"]].index[0] + 2
+                        cloud_conn.update(worksheet="Factures", range=f"E{row_idx}", data=[["ANNULÉ"]])
                         
-                        # 2. On trouve la ligne exacte dans Google Sheets
-                        row_to_update = df_all_f[df_all_f["ID"] == fac["ID"]].index[0] + 2
-                        
-                        # 3. On change le statut en "ANNULÉ"
-                        cloud_conn.update(worksheet="Factures", range=f"E{row_to_update}", data=[["ANNULÉ"]])
-                        
-                        record_log(st.session_state.user_auth, f"Annulation facture #{fac['ID']} de {target}")
-                        st.warning(f"Facture #{fac['ID']} annulée avec succès.")
+                        record_log(st.session_state.user_auth, f"Annulation facture #{fac['ID']}")
+                        st.warning("Facture annulée.")
                         st.cache_data.clear()
                         time.sleep(1)
                         st.rerun()
                     except Exception as e:
-                        st.error(f"Erreur lors de l'annulation : {e}")
+                        st.error(f"Erreur : {e}")
 
 # ... (Le reste de ton code pour les véhicules continue ensuite)
                 idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
