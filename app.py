@@ -124,8 +124,8 @@ KEY_RCT = "RCT-26-RCRPFR"
 KEY_STAFF = "RCRPFR-25-26"
 
 def record_log(user, action):
-    now = datetime.now().strftime("%H:%M:%S")
-    st.session_state.audit_logs.append(f"[{now}] {user} : {action}")
+    now = datetime.now().strftime("%H:%M:%S")
+    st.session_state.audit_logs.append(f"[{now}] {user} : {action}")
 
 # ======================================================================================
 # 4. SIDEBAR CONDITIONNELLE (LOGO & INFOS)
