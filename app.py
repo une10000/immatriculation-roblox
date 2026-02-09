@@ -243,14 +243,26 @@ with st.container():
                 st.markdown(f"Statut : <b style='color:{status_color};'>{'VALIDE' if pts_val > 0 else 'SUSPENDU'}</b>", unsafe_allow_html=True)
             else: st.error("Aucun permis trouvé.")
             
-        # Section Banque
+       # Section Banque avec Motif
         with col2:
             b_data = df_b[df_b["Nom Roblox"] == target]
             if not b_data.empty:
-                st.metric("SOLDE BANCAIRE", f"{b_data.iloc[0]['Solde']}$")
+                # Création d'une petite rangée interne pour mettre le motif à droite du metric
+                c_solde, c_motif = st.columns([2, 1])
+                with c_solde:
+                    st.metric("SOLDE BANCAIRE", f"{b_data.iloc[0]['Solde']}$")
+                with c_motif:
+                    # Petit motif visuel (Carte ou Badge)
+                    st.markdown("""
+                        <div style="text-align: right; opacity: 0.2; margin-top: 10px;">
+                            <span style="font-size: 45px;">💳</span>
+                        </div>
+                    """, unsafe_allow_html=True)
+                
                 st.write(f"🏢 Métier : **{b_data.iloc[0]['Emploiement']}**")
-                st.caption(f"📅 Date d'arrivée : {b_data.iloc[0]['Date d\'arrivée']}")
-            else: st.error("Aucun compte bancaire.")
+                st.caption(f"📅 Arrivée : {b_data.iloc[0]['Date d\'arrivée']}")
+            else: 
+                st.error("Aucun compte trouvé.")
             
         # Section Véhicules
         # Section Véhicules (Dossier Citoyen)
