@@ -331,8 +331,15 @@ with st.container():
                                 st.error("Fonds insuffisants.")
             else:
                 st.info("✅ Aucune dette en attente.")
-        except Exception as e:
-            st.warning("Système de facturation indisponible")
+        # Ton code de paiement...
+    except Exception as e:
+        # On affiche la vraie erreur pour comprendre pourquoi ça bloque
+        st.error(f"Erreur technique : {e}") 
+
+# --- SECTION FACTURATION (POUR RCT ET STAFF) ---
+if st.session_state.user_auth in ["Staff", "RCT"]:
+    st.subheader("🧾 Formulaire de Sanction")
+    # Remets ici ton code de number_input et bouton de validation
         # --- SECTION VÉHICULES CORRIGÉE ---
         st.write(f"🚘 **VÉHICULES ENREGISTRÉS**")
         v_data = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
