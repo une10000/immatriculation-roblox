@@ -410,9 +410,7 @@ with tabs[0]:
                         st.error("❌ Solde insuffisant sur votre compte bancaire.")
                 else:
                     st.warning("⚠️ Veuillez remplir tous les champs (Propriétaire, Plaque et Code).")
-
-    # Le ticket avec Filigrane Central et Bande de sécurité
-        # Le ticket avec Filigrane Central et Bande de sécurité
+                    
         # Le ticket avec la colonne Taxe Jeune FIXE
         ticket_html = f"""
         <div style="border: 4px double black; padding: 15px; background: white; color: black; font-family: monospace;">
