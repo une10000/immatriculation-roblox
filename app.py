@@ -392,25 +392,6 @@ with tabs[0]:
         </div>
         """
         st.markdown(ticket_html, unsafe_allow_html=True)
-
-    # --- SECTION RADIATION ---
-    st.divider()
-    st.markdown("#### 🗑️ Radiation de Plaque")
-    c_r1, c_r2 = st.columns(2)
-    with c_r1: r_plq = st.text_input("Plaque à radier", key="rad_p_v7").upper()
-    with c_r2: r_cod = st.text_input("Code secret", type="password", key="rad_c_v7")
-    
-    if st.button("CONFIRMER LA RADIATION", use_container_width=True, key="btn_rad_v7"):
-        match = df_i[df_i["Numéro de la plaque"].astype(str).str.upper() == r_plq]
-        if not match.empty:
-            if str(r_cod) == str(match.iloc[0]["CODE"]) or st.session_state.user_auth == "Staff":
-                df_i = df_i.drop(match.index[0])
-                cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i)
-                st.cache_data.clear()
-                st.success("Plaque radiée.")
-                time.sleep(1)
-                st.rerun()
-            else: st.error("Code incorrect.")
                 
 # --- ONGLET 2 : SERVICES AGENT (AMENDES / POINTS / CONSULTATION) ---
 if st.session_state.user_auth in ["RCT", "Staff"]:
