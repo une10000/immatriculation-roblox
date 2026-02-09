@@ -277,7 +277,7 @@ with st.container():
                 st.error("Aucun compte trouvé.") 
 
         # --- COLONNE 3 : ARCHIVES COMPTABLES ---
-        with col3:
+with col3:
             st.markdown("### 📁 ARCHIVES")
             try:
                 # 1. Lecture de la base factures
@@ -290,28 +290,35 @@ with st.container():
                 ]
 
                 if not historique.empty:
-                    with st.container(height=300):
+                    with st.container(height=400): # Augmenté un peu pour le bouton
                         for _, f in historique.iterrows():
                             # --- BOUTON DE REMBOURSEMENT ADMIN ---
                             if st.session_state.user_auth in ["Staff", "Admin"]:
                                 if st.button(f"🔄 Rembourser #{f['ID']}", key=f"refund_{f['ID']}", use_container_width=True):
                                     try:
+                                        # Récupération des données fraîches
                                         df_b_sync = cloud_conn.read(worksheet="Banque")
                                         df_f_sync = cloud_conn.read(worksheet="Factures")
                                         
+                                        # Calcul du remboursement
                                         idx_civil = df_b_sync[df_b_sync["Nom Roblox"] == target].index[0]
                                         montant = float(str(f['Montant']).replace('$', '').replace(',', ''))
-                                        solde_civil = float(str(df_b_sync.at[idx_civil, "Solde"]).replace('$', ''))
                                         
-                                        df_b_sync.at[idx_civil, "Solde"] = solde_civil + montant
+                                        # On rend l'argent au civil
+                                        solde_c = float(str(df_b_sync.at[idx_civil, "Solde"]).replace('$', ''))
+                                        df_b_sync.at[idx_civil, "Solde"] = solde_c + montant
                                         
+                                        # On le reprend à la RCT
                                         idx_rct = df_b_sync[df_b_sync["Nom Roblox"] == ACC_RCT].index[0]
                                         solde_rct = float(str(df_b_sync.at[idx_rct, "Solde"]).replace('$', ''))
                                         df_b_sync.at[idx_rct, "Solde"] = solde_rct - montant
                                         
-                                        row_f = df_f_sync[df_f_sync["ID"] == f['ID']].index[0] + 2
-                                        cloud_conn.update(worksheet="Factures", range=f"E{row_f}", data=[["REMBOURSÉ"]])
+                                        # Mise à jour du statut dans le tableau des factures
+                                        df_f_sync.loc[df_f_sync["ID"] == f["ID"], "Statut"] = "REMBOURSÉ"
+                                        
+                                        # Envoi groupé à Google Sheets (sans l'argument 'range' qui plantait)
                                         cloud_conn.update(worksheet="Banque", data=df_b_sync)
+                                        cloud_conn.update(worksheet="Factures", data=df_f_sync)
                                         
                                         st.success(f"Facture #{f['ID']} remboursée !")
                                         st.cache_data.clear()
