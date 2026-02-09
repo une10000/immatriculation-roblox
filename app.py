@@ -218,36 +218,50 @@ if st.session_state.user_auth is not None:
 # ======================================================================================
 # 5. LOCKSCREEN (CONNEXION)
 # ======================================================================================
+# ======================================================================================
+# 5. LOCKSCREEN (CONNEXION)
+# ======================================================================================
 
 if st.session_state.user_auth is None:
-    # 1. MESSAGE DE BIENVENUE AVEC MOTIFS DYNAMIQUES ADAPTATIFS
+    # 1. CALCUL DU MOTIF DYNAMIQUE (Basé sur UTC+1)
     from datetime import datetime, timedelta, timezone
     t_now_lock = datetime.now(timezone.utc) + timedelta(hours=1)
     h_lock = t_now_lock.hour
 
-    # Configuration visuelle selon l'heure (utilisant RGBA pour la compatibilité clair/sombre)
     if 5 <= h_lock < 18:
         salut, emo = "Bonjour", "☀️"
-        bg_style = "linear-gradient(90deg, rgba(255, 215, 0, 0.15) 0%, rgba(255, 215, 0, 0.05) 100%)"
-        border_color = "rgba(255, 215, 0, 0.6)"
+        # MOTIF JOUR : Hachures diagonales (Style Sécurité/Admin)
+        pattern_css = """
+            background-color: rgba(255, 215, 0, 0.03);
+            background-image:协议 linear-gradient(45deg, rgba(0,0,0,0.05) 25%, transparent 25%, transparent 50%, rgba(0,0,0,0.05) 50%, rgba(0,0,0,0.05) 75%, transparent 75%, transparent);
+            background-size: 20px 20px;
+            border: 2px solid rgba(0,0,0,0.05);
+        """
     else:
         salut, emo = "Bonsoir", "🌙"
-        bg_style = "linear-gradient(90deg, rgba(100, 149, 237, 0.15) 0%, rgba(138, 43, 226, 0.1) 100%)"
-        border_color = "rgba(138, 43, 226, 0.6)"
+        # MOTIF NUIT : Grille tactique (Style Carbone/Technique)
+        pattern_css = """
+            background-color: rgba(0, 0, 0, 0.1);
+            background-image: 
+                linear-gradient(30deg, rgba(255,255,255,0.02) 12%, transparent 12.5%, transparent 87%, rgba(255,255,255,0.02) 87.5%, rgba(255,255,255,0.02)),
+                linear-gradient(150deg, rgba(255,255,255,0.02) 12%, transparent 12.5%, transparent 87%, rgba(255,255,255,0.02) 87.5%, rgba(255,255,255,0.02)),
+                linear-gradient(60deg, rgba(255,255,255,0.03) 25%, transparent 25.5%, transparent 75%, rgba(255,255,255,0.03) 75%, rgba(255,255,255,0.03));
+            background-size: 30px 50px;
+            border: 2px solid rgba(255,255,255,0.05);
+        """
 
+    # AFFICHAGE DU MESSAGE DE BIENVENUE
     st.markdown(f"""
         <div style="
             text-align: center; 
             margin-top: -30px; 
             margin-bottom: 25px; 
-            padding: 25px; 
-            background: {bg_style}; 
-            border-radius: 15px; 
-            border-left: 6px solid {border_color};
-            border-right: 6px solid {border_color};
+            padding: 40px 20px; 
+            border-radius: 20px; 
+            {pattern_css}
         ">
             <h1 style="font-size: 4.5em; margin-bottom: 0px; font-weight: 800;">{salut} ! {emo}</h1>
-            <p style="font-size: 1.2em; opacity: 0.7; letter-spacing: 2px;">SYSTÈME D'IMMATRICULATION NATIONAL</p>
+            <p style="font-size: 1.2em; opacity: 0.7; letter-spacing: 3px; font-weight: bold;">SYSTÈME D'IMMATRICULATION NATIONAL</p>
         </div>
     """, unsafe_allow_html=True)
 
@@ -285,8 +299,7 @@ if st.session_state.user_auth is None:
             if login_rct == KEY_RCT:
                 st.session_state.user_auth = "RCT"
                 st.rerun()
-            else: 
-                st.error("Clé invalide.")
+            else: st.error("Clé invalide.")
                 
     with c3:
         st.markdown("### 🛡️👮‍♂️ STAFF/POLICE")
@@ -296,10 +309,8 @@ if st.session_state.user_auth is None:
             if login_staff == KEY_STAFF:
                 st.session_state.user_auth = "Staff"
                 st.rerun()
-            else: 
-                st.error("Accès refusé.")
+            else: st.error("Accès refusé.")
 
-    # Arrêt du script pour afficher uniquement le lockscreen
     st.stop()
 
 # ======================================================================================
