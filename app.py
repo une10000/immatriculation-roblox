@@ -280,6 +280,54 @@ with st.container():
                         """, unsafe_allow_html=True)
             else: 
                 st.error("Aucun compte trouvé.") 
+# --- TROUVE CETTE LIGNE DANS TON CODE (vers la fin de la section 6) ---
+# st.error("Aucun compte trouvé.") 
+
+# === COLLE LE BLOC CI-DESSOUS JUSTE APRÈS LA SECTION VÉHICULES ===
+
+st.markdown("---")
+# Utilisation d'un expander pour ne pas encombrer l'interface
+with st.expander("📁 VOIR L'HISTORIQUE DES ANCIENNES FACTURES (Archives Payées)"):
+    try:
+        # On lit la base des factures
+        df_f_history = cloud_conn.read(worksheet="Factures").fillna("")
+        
+        # On filtre uniquement les factures PAYÉES pour le citoyen sélectionné (target)
+        historique = df_f_history[
+            (df_f_history["Cible"] == target) & 
+            (df_f_history["Statut"] == "PAYÉ")
+        ]
+        
+        if not historique.empty:
+            st.markdown("#### ✅ Reçus de paiements archivés")
+            for _, f in historique.iterrows():
+                # Design compact pour l'historique
+                st.markdown(f"""
+                <div style="border-left: 5px solid #2e7d32; padding: 10px; background: #ffffff; border: 1px solid #ddd; border-left: 5px solid #2e7d32; margin-bottom: 10px; color: black; font-family: monospace;">
+                    <div style="display: flex; justify-content: space-between;">
+                        <small><b>RÉF :</b> #{f['ID']}</small>
+                        <small style="color: green; font-weight: bold;">STATUT : PAYÉ ✔</small>
+                    </div>
+                    <div style="margin: 5px 0;">
+                        <b>OBJET :</b> {f['Motif']}<br>
+                        <b>ÉMIS PAR :</b> {f['Emetteur']}
+                    </div>
+                    <div style="text-align: right; font-weight: bold; border-top: 1px dashed #ccc; pt-5px;">
+                        MONTANT ACQUITTÉ : {f['Montant']}$
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            # Petit bonus : Calcul du total payé à l'État
+            total_paye = historique["Montant"].astype(float).sum()
+            st.info(f"💰 Total des contributions versées : **{total_paye}$**")
+        else:
+            st.info("Aucun historique de paiement disponible pour ce profil.")
+            
+    except Exception as e:
+        st.error(f"Impossible de charger l'historique : {e}")
+
+# =============================================================
 
 # ======================================================================================
 # NOUVEAU : SYSTÈME DE PAIEMENT DES FACTURES (STYLE TICKET)
