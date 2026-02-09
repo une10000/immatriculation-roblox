@@ -240,7 +240,7 @@ if st.session_state.user_auth is None:
         glow = "none"
     else:
         # Fusion directe : Bonsoir + Lune ronde, sans espace
-        salut_complet = " Bonsoir🌕"
+        salut_complet = "   Bonsoir🌕"
         pattern_style = (
             "background-color: #05070a; "
             "background-image: "
