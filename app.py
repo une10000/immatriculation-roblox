@@ -280,46 +280,48 @@ with st.container():
                         """, unsafe_allow_html=True)
             else: 
 st.markdown("---")
-# Utilisation d'un expander pour ne pas encombrer l'interface
-with st.expander("📁 VOIR L'HISTORIQUE DES ANCIENNES FACTURES (Archives Payées)"):
+# --- HISTORIQUE DES FACTURES PAYÉES (ACCESSIBLE AUX CIVILS) ---
+st.markdown("### 📁 ARCHIVES COMPTABLES")
+with st.expander("Consulter mes factures déjà payées", expanded=False):
     try:
-        # On lit la base des factures
+        # Lecture de la base factures
         df_f_history = cloud_conn.read(worksheet="Factures").fillna("")
         
-        # On filtre uniquement les factures PAYÉES pour le citoyen sélectionné (target)
+        # Filtre sur les factures PAYÉES du citoyen cible
         historique = df_f_history[
             (df_f_history["Cible"] == target) & 
             (df_f_history["Statut"] == "PAYÉ")
         ]
         
         if not historique.empty:
-            st.markdown("#### ✅ Reçus de paiements archivés")
+            st.success(f"✅ {len(historique)} factures archivées au nom de {target}")
             for _, f in historique.iterrows():
-                # Design compact pour l'historique
                 st.markdown(f"""
-                <div style="border-left: 5px solid #2e7d32; padding: 10px; background: #ffffff; border: 1px solid #ddd; border-left: 5px solid #2e7d32; margin-bottom: 10px; color: black; font-family: monospace;">
-                    <div style="display: flex; justify-content: space-between;">
-                        <small><b>RÉF :</b> #{f['ID']}</small>
-                        <small style="color: green; font-weight: bold;">STATUT : PAYÉ ✔</small>
+                <div style="border: 1px solid #000; padding: 10px; background: #f9f9f9; color: black; font-family: 'Courier New', monospace; margin-bottom: 8px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 0.8em;">
+                        <b>REF: #{f['ID']}</b>
+                        <b style="color: green;">ACQUITTÉE ✔</b>
                     </div>
-                    <div style="margin: 5px 0;">
-                        <b>OBJET :</b> {f['Motif']}<br>
-                        <b>ÉMIS PAR :</b> {f['Emetteur']}
-                    </div>
-                    <div style="text-align: right; font-weight: bold; border-top: 1px dashed #ccc; pt-5px;">
-                        MONTANT ACQUITTÉ : {f['Montant']}$
+                    <hr style="margin: 5px 0; border-top: 1px dashed #000;">
+                    <div style="font-size: 0.9em;">
+                        <b>MOTIF :</b> {f['Motif']}<br>
+                        <b>MONTANT :</b> {f['Montant']}$
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
             
-            # Petit bonus : Calcul du total payé à l'État
-            total_paye = historique["Montant"].astype(float).sum()
-            st.info(f"💰 Total des contributions versées : **{total_paye}$**")
+            # Somme totale payée (utile pour le RP "Gros contribuable")
+            total_versé = historique["Montant"].astype(float).sum()
+            st.caption(f"💰 Total cumulé versé à l'État : {total_versé}$")
         else:
-            st.info("Aucun historique de paiement disponible pour ce profil.")
+            st.info("Aucune archive de paiement trouvée pour ce profil.")
             
     except Exception as e:
-        st.error(f"Impossible de charger l'historique : {e}")
+        st.error(f"Erreur d'accès aux archives : {e}")
+
+# ======================================================================================
+# 7. LOGIQUE DES ONGLETS (CORRIGÉE)
+# ======================================================================================
 
 # =============================================================
 
