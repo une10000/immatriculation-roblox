@@ -373,10 +373,10 @@ with tabs[0]:
                 st.rerun()
             else: st.error("Code incorrect.")
                 
-# --- ONGLET 2 : SERVICES AGENT (AMENDES & POINTS) ---
+# --- ONGLET 2 : SERVICES AGENT (AMENDES / POINTS / CONSULTATION) ---
 if st.session_state.user_auth in ["RCT", "Staff"]:
     with tabs[1]:
-        st.markdown("### 👮 Interface de Service")
+        st.markdown("### 👮 Interface de Service RCT / Staff")
         
         if target == "---":
             st.warning("⚠️ Veuillez sélectionner un citoyen dans le dossier en haut pour agir.")
@@ -389,15 +389,14 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                 </div>
             """, unsafe_allow_html=True)
 
-            # Division en trois colonnes : Amendes / Sanctions / Véhicules
-            col_fine, col_pts, col_veh = st.columns([1, 1, 1.2])
+            col_fine, col_pts, col_veh = st.columns([1, 1, 1.3])
 
-            # 1. COLONNE AMENDES
+            # 1. AMENDES
             with col_fine:
                 st.subheader("💰 Amendes")
                 with st.container(border=True):
-                    tax_val = st.number_input("Montant ($)", min_value=0, step=50, key="fine_val_v12")
-                    if st.button("PERCEVOIR", use_container_width=True, key="btn_fine_v12"):
+                    tax_val = st.number_input("Montant ($)", min_value=0, step=50, key="fine_val_v13")
+                    if st.button("PERCEVOIR", use_container_width=True):
                         if tax_val > 0:
                             idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
                             curr_solde = float(str(df_b.at[idx_b, "Solde"]).replace('$', ''))
@@ -408,38 +407,50 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                             record_log(st.session_state.user_auth, f"Amende {tax_val}$ sur {target}")
                             st.cache_data.clear(); st.success("Fait."); time.sleep(0.5); st.rerun()
 
-            # 2. COLONNE POINTS
+            # 2. POINTS
             with col_pts:
                 st.subheader("⚖️ Permis")
                 with st.container(border=True):
-                    p_loss = st.number_input("Points à retirer", min_value=0, max_value=25, step=1, key="pts_loss_v12")
-                    if st.button("RETIRER POINTS", use_container_width=True, key="btn_pts_v12"):
+                    p_loss = st.number_input("Points à retirer", min_value=0, max_value=25, step=1, key="pts_loss_v13")
+                    if st.button("RETIRER POINTS", use_container_width=True):
                         idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
                         new_pts = max(0, int(df_p.at[idx_p, "PTS"]) - p_loss)
                         df_p.at[idx_p, "PTS"] = new_pts
                         if new_pts == 0: df_p.at[idx_p, "Validité"] = "NON"
-                        
                         cloud_conn.update(worksheet="Points Permis", data=df_p)
                         record_log(st.session_state.user_auth, f"Points -{p_loss} sur {target}")
                         st.cache_data.clear(); st.success("Points retirés."); time.sleep(0.5); st.rerun()
 
-            # 3. COLONNE VÉHICULES (Radar Simplifié)
+            # 3. RADAR VÉHICULES (Format Reçu)
             with col_veh:
-                st.subheader("🚗 Radar")
+                st.subheader("🚗 Titres de Circulation")
                 v_player = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
+                
                 if v_player.empty:
-                    st.info("Aucun véhicule.")
+                    st.info("Aucun véhicule enregistré.")
                 else:
                     for _, v in v_player.iterrows():
-                        with st.container(border=True):
-                            st.markdown(f"**PLQ : {v['Numéro de la plaque']}**")
-                            st.caption(f"Modèle : {v['Marque du véhicule']}")
-                            
-                            # Vérification simple : Assuré ou pas
-                            if str(v['Assurance']) == "Aucune":
-                                st.error("❌ NON ASSURÉ")
-                            else:
-                                st.success("✔️ VÉHICULE ASSURÉ")
+                        # Définition du statut assurance pour le design
+                        is_assu = v['Assurance'] != "Aucune"
+                        status_color = "#2e7d32" if is_assu else "#d32f2f"
+                        status_text = "VÉHICULE EN RÈGLE" if is_assu else "DÉFAUT D'ASSURANCE"
+                        
+                        # Le Reçu version "Consultation Agent"
+                        ticket_html = f"""
+                        <div style="border: 2px solid #000; padding: 10px; background: white; color: black; font-family: monospace; margin-bottom: 15px; box-shadow: 3px 3px 0px #888;">
+                            <div style="text-align:center; font-weight:bold; font-size:0.9em; border-bottom: 1px solid #000; margin-bottom: 5px;">RÉPUBLIQUE DE RENSSELAER</div>
+                            <div style="font-size: 0.8em; line-height: 1.2;">
+                                <b>DATE :</b> {v['Horodateur']}<br>
+                                <b>MODÈLE :</b> {v['Marque du véhicule']}<br>
+                                <b>PLAQUE :</b> <span style="background:#eee; border:1px solid #000; padding:0 2px;">{v['Numéro de la plaque']}</span><br>
+                                <b>ASSU :</b> {v['Assurance']}
+                            </div>
+                            <div style="margin-top: 5px; text-align: center; background: {status_color}; color: white; font-weight: bold; font-size: 0.7em; padding: 2px;">
+                                {status_text}
+                            </div>
+                        </div>
+                        """
+                        st.markdown(ticket_html, unsafe_allow_html=True)
 # --- ONGLET 3 : ADMINISTRATION (STAFF UNIQUEMENT) ---
 if st.session_state.user_auth == "Staff":
     with tabs[2]:
