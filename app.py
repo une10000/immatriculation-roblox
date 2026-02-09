@@ -226,7 +226,7 @@ if st.session_state.user_auth is None:
         glow = "none"
     else:
         # CHANGEMENT : Emoji lune ronde et Glow intensifié
-        salut, emo = "Bonsoir", "🌕"
+        salut, emo = "Bonsoir🌕"
         pattern_style = (
             "background-color: #05070a; "
             "background-image: "
