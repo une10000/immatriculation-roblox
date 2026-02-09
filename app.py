@@ -291,35 +291,41 @@ with st.container():
                 
                 if not historique.empty:
                     # Utilisation d'un container défilable pour garder l'interface propre
-                    with st.container(height=300):
+with st.container(height=300):
                         for _, f in historique.iterrows():
                             # --- BOUTON DE REMBOURSEMENT ADMIN ---
-if st.session_state.user_auth in ["Staff", "Admin"]:
-    if st.button(f"🔄 Rembourser #{f['ID']}", key=f"refund_{f['ID']}"):
-        try:
-            # 1. On récupère les données fraîches
-            df_b_sync = cloud_conn.read(worksheet="Banque")
-            df_f_sync = cloud_conn.read(worksheet="Factures")
-            
-            # 2. On rend l'argent au civil
-            idx_civil = df_b_sync[df_b_sync["Nom Roblox"] == target].index[0]
-            montant = float(f['Montant'])
-            df_b_sync.at[idx_civil, "Solde"] = float(str(df_b_sync.at[idx_civil, "Solde"]).replace('$', '')) + montant
-            
-            # 3. On retire l'argent du compte RCT (ou Etat)
-            idx_rct = df_b_sync[df_b_sync["Nom Roblox"] == ACC_RCT].index[0]
-            df_b_sync.at[idx_rct, "Solde"] = float(str(df_b_sync.at[idx_rct, "Solde"]).replace('$', '')) - montant
-            
-            # 4. On change le statut en "REMBOURSÉ"
-            row_f = df_f_sync[df_f_sync["ID"] == f['ID']].index[0] + 2
-            cloud_conn.update(worksheet="Factures", range=f"E{row_f}", data=[["REMBOURSÉ"]])
-            cloud_conn.update(worksheet="Banque", data=df_b_sync)
-            
-            st.success(f"Facture #{f['ID']} remboursée !")
-            st.cache_data.clear()
-            st.rerun()
-        except Exception as e:
-            st.error(f"Erreur remboursement : {e}")
+                            # Ce bloc est maintenant correctement aligné sous le "for"
+                            if st.session_state.user_auth in ["Staff", "Admin"]:
+                                if st.button(f"🔄 Rembourser #{f['ID']}", key=f"refund_{f['ID']}", use_container_width=True):
+                                    try:
+                                        # 1. On récupère les données fraîches
+                                        df_b_sync = cloud_conn.read(worksheet="Banque")
+                                        df_f_sync = cloud_conn.read(worksheet="Factures")
+                                        
+                                        # 2. On rend l'argent au civil
+                                        idx_civil = df_b_sync[df_b_sync["Nom Roblox"] == target].index[0]
+                                        montant = float(str(f['Montant']).replace('$', '').replace(',', ''))
+                                        solde_civil = float(str(df_b_sync.at[idx_civil, "Solde"]).replace('$', ''))
+                                        df_b_sync.at[idx_civil, "Solde"] = solde_civil + montant
+                                        
+                                        # 3. On retire l'argent du compte RCT (ou Etat)
+                                        idx_rct = df_b_sync[df_b_sync["Nom Roblox"] == ACC_RCT].index[0]
+                                        solde_rct = float(str(df_b_sync.at[idx_rct, "Solde"]).replace('$', ''))
+                                        df_b_sync.at[idx_rct, "Solde"] = solde_rct - montant
+                                        
+                                        # 4. On change le statut en "REMBOURSÉ"
+                                        row_f = df_f_sync[df_f_sync["ID"] == f['ID']].index[0] + 2
+                                        cloud_conn.update(worksheet="Factures", range=f"E{row_f}", data=[["REMBOURSÉ"]])
+                                        cloud_conn.update(worksheet="Banque", data=df_b_sync)
+                                        
+                                        st.success(f"Facture #{f['ID']} remboursée !")
+                                        st.cache_data.clear()
+                                        time.sleep(1)
+                                        st.rerun()
+                                    except Exception as e:
+                                        st.error(f"Erreur remboursement : {e}")
+
+                            # --- AFFICHAGE DU TICKET HTML (Toujours aligné sous le "for") ---
                             st.markdown(f"""
                             <div style="border: 1px solid #000; padding: 10px; background: #f9f9f9; color: black; font-family: 'Courier New', monospace; margin-bottom: 8px; border-left: 5px solid green;">
                                 <div style="display: flex; justify-content: space-between; font-size: 0.8em;">
@@ -333,11 +339,6 @@ if st.session_state.user_auth in ["Staff", "Admin"]:
                                 </div>
                             </div>
                             """, unsafe_allow_html=True)
-                else:
-                    st.info("Aucun paiement archivé.")
-            except Exception as e:
-                st.error(f"Erreur d'accès aux archives : {e}")
-
 # ======================================================================================
 # 7. LOGIQUE DES ONGLETS (CORRIGÉE)
 # ======================================================================================
