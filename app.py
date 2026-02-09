@@ -237,7 +237,8 @@ with st.container():
                     status_color = "green" if pts_val > 0 else "red"
                     st.markdown(f"Statut : <b style='color:{status_color};'>{'VALIDE' if pts_val > 0 else 'SUSPENDU'}</b>", unsafe_allow_html=True)
                 with c_motif_p:
-                    st.markdown('<div style="opacity: 0.1; font-size: 50px; text-align: right;">🚗</div>', unsafe_allow_html=True)
+                    # Filigrane discret
+                    st.markdown('<div style="opacity: 0.1; font-size: 50px; text-align: right; margin-top: -10px;">🚗</div>', unsafe_allow_html=True)
             else:
                 st.error("Aucun permis trouvé.")
 
@@ -249,14 +250,16 @@ with st.container():
                 with c_info:
                     st.metric("SOLDE BANCAIRE", f"{b_data.iloc[0]['Solde']}$")
                     st.write(f"🏢 **{b_data.iloc[0]['Emploiement']}**")
-                    st.caption(f"📅 Arrivée : {b_data.iloc[0]['Date d\'arrivée']}")
+                    # Ajout automatique de la date de création si présente
+                    st.caption(f"📅 Arrivée : {b_data.iloc[0].get('Date d\'arrivée', 'Non renseignée')}")
                 with c_motif_b:
-                    st.markdown('<div style="opacity: 0.1; font-size: 50px; text-align: right;">🏛️</div>', unsafe_allow_html=True)
+                    # Filigrane discret
+                    st.markdown('<div style="opacity: 0.1; font-size: 50px; text-align: right; margin-top: -10px;">🏛️</div>', unsafe_allow_html=True)
             else:
                 st.error("Aucun compte trouvé.")
 
         with col3:
-            st.write("") # Équilibre visuel
+            st.write("") 
 
         # --- VÉHICULES ENREGISTRÉS ---
         st.divider()
@@ -278,7 +281,7 @@ with st.container():
                         </div>
                         """, unsafe_allow_html=True)
                         
-                        # Utilisation d'une clé unique pour éviter le DuplicateElementKey
+                        # Correction DuplicateElementKey : Clé incluant l'index i
                         with st.expander("🗑️ Radier"):
                             r_cod_check = st.text_input("Code Secret", type="password", key=f"rad_v6_{veh['Numéro de la plaque']}_{i}")
                             if st.button("CONFIRMER", key=f"btn_v6_{veh['Numéro de la plaque']}_{i}", use_container_width=True):
@@ -303,7 +306,7 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
         if target == "---":
             st.warning("⚠️ Veuillez sélectionner un citoyen dans le dossier en haut pour agir.")
         else:
-            # BANDEAU D'IDENTIFICATION
+            # BANDEAU IDENTITÉ
             st.markdown(f"""
                 <div style="background-color: #000; padding: 20px; border-radius: 10px; border-left: 10px solid #d32f2f; margin-bottom: 20px;">
                     <h1 style="color: white; margin: 0; letter-spacing: 2px; font-size: 2.5em;">👤 {target.upper()}</h1>
@@ -313,84 +316,72 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
 
             col_fine, col_pts, col_veh = st.columns([1, 1, 1.3])
 
-            # 1. AMENDES
             with col_fine:
                 st.subheader("💰 Amendes")
                 with st.container(border=True):
-                    tax_val = st.number_input("Montant ($)", min_value=0, step=50, key="fine_val_v13")
-                    if st.button("PERCEVOIR", use_container_width=True):
+                    tax_val = st.number_input("Montant ($)", min_value=0, step=50, key="fine_val_agent")
+                    if st.button("PERCEVOIR", use_container_width=True, key="btn_fine_agent"):
                         if tax_val > 0:
                             idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
                             curr_solde = float(str(df_b.at[idx_b, "Solde"]).replace('$', ''))
                             df_b.at[idx_b, "Solde"] = curr_solde - tax_val
-                            # Rappel : l'argent va à Moune2010 pour Averis, ou au compte RCT ici
+                            # Argent vers le compte RCT paramétré
                             rct_idx = df_b[df_b["Nom Roblox"] == ACC_RCT].index[0]
                             df_b.at[rct_idx, "Solde"] = float(str(df_b.at[rct_idx, "Solde"]).replace('$', '')) + tax_val
                             cloud_conn.update(worksheet="Banque", data=df_b)
                             record_log(st.session_state.user_auth, f"Amende {tax_val}$ sur {target}")
                             st.cache_data.clear(); st.success("Fait."); time.sleep(0.5); st.rerun()
 
-            # 2. POINTS
             with col_pts:
                 st.subheader("⚖️ Permis")
                 with st.container(border=True):
-                    p_loss = st.number_input("Points à retirer", min_value=0, max_value=25, step=1, key="pts_loss_v13")
-                    if st.button("RETIRER POINTS", use_container_width=True):
+                    p_loss = st.number_input("Points à retirer", min_value=0, max_value=25, step=1, key="pts_loss_agent")
+                    if st.button("RETIRER POINTS", use_container_width=True, key="btn_pts_agent"):
                         idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
                         new_pts = max(0, int(df_p.at[idx_p, "PTS"]) - p_loss)
                         df_p.at[idx_p, "PTS"] = new_pts
                         if new_pts == 0: df_p.at[idx_p, "Validité"] = "NON"
                         cloud_conn.update(worksheet="Points Permis", data=df_p)
                         record_log(st.session_state.user_auth, f"Points -{p_loss} sur {target}")
-                        st.cache_data.clear(); st.success("Points retirés."); time.sleep(0.5); st.rerun()
+                        st.cache_data.clear(); st.success("Fait."); time.sleep(0.5); st.rerun()
 
-            # 3. TITRES DE CIRCULATION (L'ALERTE RCT EST ICI)
             with col_veh:
                 st.subheader("🚗 Titres de Circulation")
-                v_player = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
+                v_agent = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
                 
-                if v_player.empty:
-                    st.info("Aucun véhicule enregistré.")
+                if v_agent.empty:
+                    st.info("Aucun véhicule.")
                 else:
-                    for i, (_, v) in enumerate(v_player.iterrows()):
-                        assu_type = str(v['Assurance'])
+                    for i, (_, v) in enumerate(v_agent.iterrows()):
+                        assu = str(v['Assurance'])
                         
-                        # LOGIQUE CONDITIONNELLE : DANGER SI PAS RCT UNIQUEMENT POUR GRADE RCT
+                        # LOGIQUE DE COULEUR : DANGER JAUNE SI RCT ET PAS ASSURÉ RCT
                         if st.session_state.user_auth == "RCT":
-                            if "RCT" in assu_type:
-                                status_color = "#2e7d32"
-                                status_text = "VÉHICULE EN RÈGLE (RCT)"
-                                t_color = "white"
+                            if "RCT" in assu:
+                                s_color, s_txt, t_color = "#2e7d32", "VÉHICULE EN RÈGLE (RCT)", "white"
                             else:
-                                status_color = "#fbc02d" # Jaune Danger
-                                status_text = "⚠️ DANGER : NON-ASSURÉ RCT"
-                                t_color = "black"
+                                s_color, s_txt, t_color = "#fbc02d", "⚠️ DANGER : NON-ASSURÉ RCT", "black"
                         else:
-                            # Pour le Staff : Vert si assuré, Rouge si Aucune
-                            if assu_type != "Aucune":
-                                status_color = "#2e7d32"
-                                status_text = "VÉHICULE EN RÈGLE"
-                                t_color = "white"
+                            # Pour Staff/Police : Vert si n'importe quelle assurance, Rouge si aucune
+                            if assu != "Aucune":
+                                s_color, s_txt, t_color = "#2e7d32", "VÉHICULE EN RÈGLE", "white"
                             else:
-                                status_color = "#d32f2f"
-                                status_text = "DÉFAUT D'ASSURANCE"
-                                t_color = "white"
+                                s_color, s_txt, t_color = "#d32f2f", "⚠️ DÉFAUT D'ASSURANCE", "white"
 
-                        ticket_html = f"""
+                        st.markdown(f"""
                         <div style="border: 2px solid #000; padding: 10px; background: white; color: black; font-family: monospace; margin-bottom: 15px; box-shadow: 3px 3px 0px #888;">
                             <div style="text-align:center; font-weight:bold; font-size:0.9em; border-bottom: 1px solid #000; margin-bottom: 5px;">RÉPUBLIQUE DE RENSSELAER</div>
                             <div style="font-size: 0.8em; line-height: 1.2;">
                                 <b>DATE :</b> {v['Horodateur']}<br>
                                 <b>MODÈLE :</b> {v['Marque du véhicule']}<br>
                                 <b>PLAQUE :</b> <span style="background:#eee; border:1px solid #000; padding:0 2px;">{v['Numéro de la plaque']}</span><br>
-                                <b>ASSU :</b> {assu_type}
+                                <b>ASSU :</b> {assu}
                             </div>
-                            <div style="margin-top: 5px; text-align: center; background: {status_color}; color: {t_color}; font-weight: bold; font-size: 0.7em; padding: 4px;">
-                                {status_text}
+                            <div style="margin-top: 5px; text-align: center; background: {s_color}; color: {t_color}; font-weight: bold; font-size: 0.7em; padding: 4px;">
+                                {s_txt}
                             </div>
                         </div>
-                        """
-                        st.markdown(ticket_html, unsafe_allow_html=True)
+                        """, unsafe_allow_html=True)
 # ======================================================================================
 # 7. LOGIQUE DES ONGLETS (CORRIGÉE)
 # ======================================================================================
