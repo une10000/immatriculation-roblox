@@ -552,7 +552,6 @@ with tabs[0]:
 if st.session_state.user_auth in ["RCT", "Staff"]:
     with tabs[1]:
         st.markdown("### 👮 Interface de Service")
-        
         if target == "---":
             st.warning("⚠️ Sélectionnez un citoyen en haut de la page.")
         else:
