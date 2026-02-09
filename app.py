@@ -373,9 +373,10 @@ with tabs[0]:
                 st.rerun()
             else: st.error("Code incorrect.")
                 
-# --- ONGLET 2 : SERVICES RCT (AMENDES & RADAR VÉHICULES) ---
-with tabs[1]:
-        st.markdown("### 👮 Interface de Service RCT")
+# --- ONGLET 2 : SERVICES AGENT (AMENDES & POINTS) ---
+if st.session_state.user_auth in ["RCT", "Staff"]:
+    with tabs[1]:
+        st.markdown("### 👮 Interface de Service RCT / Staff")
         
         if target == "---":
             st.warning("⚠️ Veuillez sélectionner un citoyen dans le dossier en haut pour agir.")
@@ -384,57 +385,63 @@ with tabs[1]:
             st.markdown(f"""
                 <div style="background-color: #000; padding: 20px; border-radius: 10px; border-left: 10px solid #d32f2f; margin-bottom: 20px;">
                     <h1 style="color: white; margin: 0; letter-spacing: 2px; font-size: 2.5em;">👤 {target.upper()}</h1>
-                    <p style="color: #d32f2f; font-weight: bold; margin: 0;">DOSSIER AGENT - CONSULTATION EN COURS</p>
+                    <p style="color: #d32f2f; font-weight: bold; margin: 0;">UNITÉ D'INTERVENTION - ACCÈS AUTORISÉ</p>
                 </div>
             """, unsafe_allow_html=True)
 
-            # Division en deux colonnes : Action à gauche / Infos véhicules à droite
-            col_action, col_info = st.columns([1, 1])
+            # Division en trois colonnes : Amendes / Sanctions / Véhicules
+            col_fine, col_pts, col_veh = st.columns([1, 1, 1.2])
 
-            with col_action:
-                st.subheader("💰 Perception d'Amende")
+            # 1. COLONNE AMENDES (RCT & Staff)
+            with col_fine:
+                st.subheader("💰 Amendes")
                 with st.container(border=True):
-                    tax_val = st.number_input("Montant de l'amende ($)", min_value=0, step=50, key="fine_val_v10")
-                    
-                    if st.button("ÉMETTRE ET PERCEVOIR", use_container_width=True):
+                    tax_val = st.number_input("Montant ($)", min_value=0, step=50, key="fine_val_v11")
+                    if st.button("PERCEVOIR", use_container_width=True, key="btn_fine_v11"):
                         if tax_val > 0:
                             idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
                             curr_solde = float(str(df_b.at[idx_b, "Solde"]).replace('$', ''))
-                            
                             df_b.at[idx_b, "Solde"] = curr_solde - tax_val
                             rct_idx = df_b[df_b["Nom Roblox"] == ACC_RCT].index[0]
                             df_b.at[rct_idx, "Solde"] = float(str(df_b.at[rct_idx, "Solde"]).replace('$', '')) + tax_val
-                            
                             cloud_conn.update(worksheet="Banque", data=df_b)
-                            record_log(st.session_state.user_auth, f"Amende {tax_val}$ émise pour {target}")
-                            
-                            st.cache_data.clear()
-                            st.success(f"✅ Amende de {tax_val}$ perçue.")
-                            time.sleep(1)
-                            st.rerun()
-                        else:
-                            st.error("Entrez un montant.")
+                            record_log(st.session_state.user_auth, f"Amende {tax_val}$ sur {target}")
+                            st.cache_data.clear(); st.success("Amende perçue."); time.sleep(1); st.rerun()
 
-            with col_info:
-                st.subheader("🚗 Radar Véhicules")
+            # 2. COLONNE POINTS (RCT & Staff)
+            with col_pts:
+                st.subheader("⚖️ Permis")
+                with st.container(border=True):
+                    p_loss = st.number_input("Points à retirer", min_value=0, max_value=25, step=1, key="pts_loss_v11")
+                    if st.button("RETIRER POINTS", use_container_width=True, key="btn_pts_v11"):
+                        if p_loss > 0:
+                            idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
+                            old_pts = int(df_p.at[idx_p, "PTS"])
+                            new_pts = max(0, old_pts - p_loss)
+                            df_p.at[idx_p, "PTS"] = new_pts
+                            
+                            # Si 0 points, on peut mettre la validité à NON
+                            if new_pts == 0: df_p.at[idx_p, "Validité"] = "NON"
+                            
+                            cloud_conn.update(worksheet="Points Permis", data=df_p)
+                            record_log(st.session_state.user_auth, f"Points -{p_loss} sur {target}")
+                            st.cache_data.clear(); st.success(f"{p_loss} pts retirés."); time.sleep(1); st.rerun()
+
+            # 3. COLONNE VÉHICULES (Radar)
+            with col_veh:
+                st.subheader("🚗 Radar")
                 v_player = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
-                
                 if v_player.empty:
-                    st.info(f"Aucun véhicule pour {target}.")
+                    st.info("Aucun véhicule.")
                 else:
                     for _, v in v_player.iterrows():
                         with st.container(border=True):
-                            st.markdown(f"**📌 PLAQUE : {v['Numéro de la plaque']}**")
-                            st.write(f"Modèle : {v['Marque du véhicule']}")
-                            
-                            # Détection Assurance RCT
-                            type_assu = str(v['Assurance'])
-                            if "RCT" in type_assu:
-                                st.success("✅ ASSURANCE RCT")
+                            st.markdown(f"**Plaque : {v['Numéro de la plaque']}**")
+                            st.caption(f"Modèle : {v['Marque du véhicule']}")
+                            if "RCT" in str(v['Assurance']):
+                                st.success("✅ RCT")
                             else:
-                                st.error("⚠️ NON RCT (À Facturer)")
-                                st.caption(f"Actuel : {type_assu}")
-
+                                st.error("⚠️ NON RCT")
 # --- ONGLET 3 : ADMINISTRATION (STAFF UNIQUEMENT) ---
 if st.session_state.user_auth == "Staff":
     with tabs[2]:
