@@ -283,47 +283,46 @@ with tabs[0]:
     
     with col_f:
         with st.container(border=True):
-            # Clés renommées en 'v3' pour tuer définitivement l'erreur Duplicate Key
-            f_owner = st.selectbox("Propriétaire du véhicule", ["---"] + df_b["Nom Roblox"].tolist(), key="owner_v3")
-            f_model = st.text_input("Marque & Modèle précis", key="model_v3")
-            f_plate = st.text_input("Numéro de Plaque souhaité", key="plate_v3").upper()
-            f_assu = st.selectbox("Type d'Assurance", ["Aucune", "AVERIS (130$)", "RCT (150$)"], key="assu_v3")
-            f_code = st.text_input("Définir un Code de Radiation (Secret)", type="password", key="code_v3")
+            # Clés uniques pour éviter les erreurs "Duplicate Key"
+            f_owner = st.selectbox("Propriétaire du véhicule", ["---"] + df_b["Nom Roblox"].tolist(), key="k_owner_new")
+            f_model = st.text_input("Marque & Modèle précis", key="k_model_new")
+            f_plate = st.text_input("Numéro de Plaque souhaité", key="k_plate_new").upper()
+            f_assu = st.selectbox("Type d'Assurance", ["Aucune", "AVERIS (130$)", "RCT (150$)"], key="k_assu_new")
+            f_code = st.text_input("Définir un Code de Radiation (Secret)", type="password", key="k_code_new")
             
-            # --- CALCUL AUTO JEUNE CONDUCTEUR ---
+            # --- DÉTECTION AUTO JEUNE CONDUCTEUR ---
             est_jeune = False
             if f_owner != "---":
                 try:
-                    # On va chercher la date dans la colonne 'Date d\'arrivée' du df_b (Banque)
+                    # Lecture de la date dans le Sheets Banque (df_b)
                     date_brute = df_b[df_b["Nom Roblox"] == f_owner]["Date d'arrivée"].values[0]
                     date_arr = datetime.strptime(str(date_brute), "%d/%m/%Y")
-                    # Moins de 30 jours = Jeune Conducteur
                     if (datetime.now() - date_arr).days < 30:
                         est_jeune = True
-                        st.warning("🔰 STATUT : JEUNE CONDUCTEUR (Automatique)")
+                        st.warning("🔰 STATUT : JEUNE CONDUCTEUR")
                 except:
                     pass
 
-            # Calcul financier
+            # Calcul des prix
             taxe_gouv = 175
             taxe_assu = 130 if "AVERIS" in f_assu else (150 if "RCT" in f_assu else 0)
             total_bill = taxe_gouv + taxe_assu
             
-            if st.button(f"S'ACQUITTER DE {total_bill}$ ET ENREGISTRER", use_container_width=True, key="pay_v3"):
+            if st.button(f"S'ACQUITTER DE {total_bill}$ ET ENREGISTRER", use_container_width=True, key="k_btn_save"):
                 if f_owner != "---" and f_plate and f_code:
                     u_idx = df_b[df_b["Nom Roblox"] == f_owner].index[0]
                     u_solde = float(str(df_b.at[u_idx, "Solde"]).replace('$', ''))
                     
                     if u_solde >= total_bill:
-                        # Débit
+                        # Mise à jour des soldes
                         df_b.at[u_idx, "Solde"] = u_solde - total_bill
-                        # Crédit Assureur (Moune2010 pour Averis)
                         if taxe_assu > 0:
-                            target = ACC_AVERIS if "AVERIS" in f_assu else ACC_RCT
+                            # Averis -> Moune2010 (selon tes infos)
+                            target = "Moune2010" if "AVERIS" in f_assu else ACC_RCT
                             a_idx = df_b[df_b["Nom Roblox"] == target].index[0]
                             df_b.at[a_idx, "Solde"] = float(str(df_b.at[a_idx, "Solde"]).replace('$', '')) + taxe_assu
                         
-                        # Enregistrement Immat
+                        # Création de la ligne immatriculation
                         new_row = pd.DataFrame([{
                             "Horodateur": datetime.now().strftime("%d/%m/%Y"),
                             "Nom d'utilisateur ROBLOX": f_owner,
@@ -337,53 +336,61 @@ with tabs[0]:
                         cloud_conn.update(worksheet="Copie de Immatriculations", data=pd.concat([df_i, new_row]))
                         st.session_state.last_action = {"nom": f_owner, "plq": f_plate, "mod": f_model, "prix": total_bill, "jeune": est_jeune}
                         st.cache_data.clear(); st.rerun()
-
-        st.divider()
-        st.markdown("#### 🗑️ Radiation")
-        # Clés uniques ici aussi
-        r_plq = st.text_input("Plaque", key="rad_plate_v3").upper()
-        r_cod = st.text_input("Code", type="password", key="rad_code_v3")
-        if st.button("CONFIRMER RADIATION", key="rad_btn_v3"):
-            # Logique de suppression ici...
-            st.success("Action effectuée")
+                    else: st.error("❌ Solde insuffisant.")
 
     with col_t:
         st.markdown("### 🖼️ APERÇU DU TITRE (LIVE)")
         
-        # Variables de sécurité pour l'affichage
-        n = f_owner if f_owner != "---" else ".................."
-        m = f_model if f_model else ".................."
-        p = f_plate if f_plate else ".................."
+        # Sécurité : On affiche des points si c'est vide
+        txt_nom = f_owner if f_owner != "---" else ".................."
+        txt_mod = f_model if f_model != "" else ".................."
+        txt_plq = f_plate if f_plate != "" else ".................."
         
-        # MENTION HTML
-        mj = ""
+        # Badge Jeune Conducteur
+        badge_html = ""
         if est_jeune:
-            mj = '<div style="color:red; font-weight:bold; text-align:center; border:2px solid red; padding:5px; margin-bottom:10px;">⚠️ JEUNE CONDUCTEUR ⚠️</div>'
+            badge_html = '<div style="color:red; font-weight:bold; text-align:center; border:2px solid red; padding:5px; margin-bottom:10px;">⚠️ JEUNE CONDUCTEUR ⚠️</div>'
 
-        # LE REÇU (Attention au triple guillemet et au paramètre à la fin)
-        ticket_html = f"""
-        <div style="border: 2px solid #000; padding: 20px; background: #fff; color: #000; font-family: monospace; box-shadow: 5px 5px 0px #000;">
-            <div style="text-align:center; font-weight:bold; font-size:1.4em; text-decoration:underline;">TITRE DE CIRCULATION</div>
+        # LE REÇU (Rendu HTML propre)
+        st.write(f"""
+        <div style="border: 2px solid #000; padding: 15px; background: #fff; color: #000; font-family: monospace;">
+            <div style="text-align:center; font-weight:bold; font-size:1.2em;">TITRE DE CIRCULATION</div>
             <center><small>RÉPUBLIQUE DE RENSSELAER</small></center>
+            <hr style="border: 0.5px dashed #000;">
+            {badge_html}
+            <p><b>DATE :</b> {datetime.now().strftime("%d/%m/%Y")}</p>
+            <p><b>NOM :</b> {txt_nom}</p>
+            <p><b>MODÈLE :</b> {txt_mod}</p>
+            <p><b>PLAQUE :</b> <span style="background:#ddd; border:1px solid #000; padding:0 5px;">{txt_plq}</span></p>
+            <p><b>ASSURANCE :</b> {f_assu}</p>
+            <hr style="border: 0.5px dashed #000;">
+            <div style="text-align:right; font-size:1.1em;"><b>TOTAL : {total_bill}$</b></div>
             <br>
-            <div style="border-top: 1px dashed #000;"></div>
-            <br>
-            {mj}
-            <p style="margin:5px 0;"><b>DATE D'ÉMISSION :</b> {datetime.now().strftime("%d/%m/%Y")}</p>
-            <p style="margin:5px 0;"><b>PROPRIÉTAIRE :</b> {n}</p>
-            <p style="margin:5px 0;"><b>MODÈLE :</b> {m}</p>
-            <p style="margin:5px 0;"><b>NUMÉRO PLAQUE :</b> <span style="background:#eee; padding:2px 5px; border:1px solid #000;">{p}</span></p>
-            <p style="margin:5px 0;"><b>CONTRAT ASSU :</b> {f_assu}</p>
-            <br>
-            <div style="border-top: 1px dashed #000;"></div>
-            <div style="text-align:right; font-size:1.2em; margin-top:10px;"><b>TOTAL : {total_bill}$</b></div>
-            <br>
-            <center><small>Document certifié conforme par le terminal fédéral</small></center>
+            <center><small>Certifié par le Terminal National</small></center>
         </div>
-        """
+        """, unsafe_allow_html=True)
         
-        # C'EST CETTE LIGNE QUI DOIT ÊTRE EXACTEMENT COMME ÇA :
-        st.markdown(ticket_html, unsafe_allow_html=True)
+        if st.session_state.last_action:
+            st.success("✅ TRANSACTION CONFIRMÉE")
+
+    # SECTION RADIATION (SÉPARÉE POUR ÉVITER LES DOUBLONS)
+    st.divider()
+    st.markdown("#### 🗑️ Radiation de Plaque")
+    col_r1, col_r2 = st.columns(2)
+    with col_r1:
+        r_plq = st.text_input("Plaque à radier", key="k_rad_p").upper()
+    with col_r2:
+        r_cod = st.text_input("Code secret", type="password", key="k_rad_c")
+    
+    if st.button("CONFIRMER LA RADIATION", use_container_width=True, key="k_btn_rad"):
+        match = df_i[df_i["Numéro de la plaque"].astype(str).str.upper() == r_plq]
+        if not match.empty:
+            if str(r_cod) == str(match.iloc[0]["CODE"]) or st.session_state.user_auth == "Staff":
+                df_i = df_i.drop(match.index[0])
+                cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i)
+                st.cache_data.clear(); st.success("Plaque radiée."); time.sleep(1); st.rerun()
+            else: st.error("Code incorrect.")
+        else: st.error("Plaque inconnue.")
             
 # --- ONGLET 2 : SERVICES RCT (AMENDES & POINTS) ---
 if st.session_state.user_auth in ["RCT", "Staff"]:
