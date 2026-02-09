@@ -289,9 +289,22 @@ with tabs[0]:
             f_assu = st.selectbox("Type d'Assurance", ["Aucune", "AVERIS (130$)", "RCT (150$)"], key="main_assu")
             f_code = st.text_input("Définir un Code de Radiation (Secret)", type="password", key="main_code")
             
-            # --- MENTION JEUNE CONDUCTEUR ---
-            f_jeune = st.checkbox("Mention Jeune Conducteur (Affiche ⚠️ sur le reçu)", key="main_jeune")
-            
+            # --- CALCUL AUTOMATIQUE JEUNE CONDUCTEUR (MOINS DE 30 JOURS) ---
+            est_jeune = False
+            if f_owner != "---":
+                try:
+                    # On récupère la date d'arrivée du citoyen
+                    date_str = df_b[df_b["Nom Roblox"] == f_owner]["Date d'arrivée"].values[0]
+                    date_arrivee = datetime.strptime(date_str, "%d/%m/%Y")
+                    nb_jours = (datetime.now() - date_arrivee).days
+                    
+                    if nb_jours < 30:
+                        est_jeune = True
+                        st.info(f"🔰 Statut : Jeune Conducteur détecté ({nb_jours} jours d'ancienneté)")
+                except:
+                    # Si la date est mal formatée dans le Sheets, on ignore
+                    pass
+
             # Calcul financier
             taxe_gouv = 175
             taxe_assu = 130 if "AVERIS" in f_assu else (150 if "RCT" in f_assu else 0)
@@ -303,7 +316,7 @@ with tabs[0]:
 
             total_bill = taxe_gouv + taxe_assu
             
-            if st.button(f"S'ACQUITTER DE {total_bill}$ ET ENREGISTRER", use_container_width=True, key="btn_submit_immat"):
+            if st.button(f"S'ACQUITTER DE {total_bill}$ ET ENREGISTRER", use_container_width=True, key="btn_immat_auto"):
                 if f_owner != "---" and f_plate and f_code:
                     if f_plate in df_i["Numéro de la plaque"].astype(str).values:
                         st.error("❌ Cette plaque est déjà attribuée.")
@@ -329,25 +342,22 @@ with tabs[0]:
                             
                             cloud_conn.update(worksheet="Banque", data=df_b)
                             cloud_conn.update(worksheet="Copie de Immatriculations", data=pd.concat([df_i, new_row]))
-                            st.session_state.last_action = {"nom": f_owner, "plq": f_plate, "mod": f_model, "prix": total_bill, "jeune": f_jeune}
+                            st.session_state.last_action = {"nom": f_owner, "plq": f_plate, "mod": f_model, "prix": total_bill, "jeune": est_jeune}
                             record_log(st.session_state.user_auth, f"Immat {f_plate}")
                             st.cache_data.clear(); st.rerun()
                         else: st.error("❌ Solde insuffisant.")
 
         st.divider()
         st.markdown("#### 🗑️ Radiation de Plaque")
-        # IDENTIFIANTS UNIQUES ICI POUR ÉVITER L'ERREUR ROUGE
-        rad_plate_input = st.text_input("Plaque à radier", key="unique_rad_plate").upper()
-        rad_key_input = st.text_input("Code de sécurité", type="password", key="unique_rad_code")
-        
-        if st.button("RADIER LE VÉHICULE", use_container_width=True, key="btn_final_rad"):
-            match = df_i[df_i["Numéro de la plaque"].astype(str).str.upper() == rad_plate_input]
+        rad_plate_in = st.text_input("Plaque à radier", key="rad_plate_fixed").upper()
+        rad_key_in = st.text_input("Code de sécurité", type="password", key="rad_key_fixed")
+        if st.button("RADIER LE VÉHICULE", use_container_width=True, key="btn_rad_fixed"):
+            match = df_i[df_i["Numéro de la plaque"].astype(str).str.upper() == rad_plate_in]
             if not match.empty:
-                if str(rad_key_input) == str(match.iloc[0]["CODE"]) or st.session_state.user_auth == "Staff":
+                if str(rad_key_in) == str(match.iloc[0]["CODE"]) or st.session_state.user_auth == "Staff":
                     df_i = df_i.drop(match.index[0])
                     cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i)
                     st.cache_data.clear(); st.success("Véhicule radié."); time.sleep(1); st.rerun()
-                else: st.error("Code incorrect.")
 
     with col_t:
         st.markdown("### 🖼️ APERÇU DU TITRE (LIVE)")
@@ -355,12 +365,11 @@ with tabs[0]:
         d_mod = f_model if f_model else ".................."
         d_plq = f_plate if f_plate else ".................."
         
-        # Gestion de la mention Jeune Conducteur en HTML
+        # Affichage conditionnel auto sur le ticket
         mention_html = ""
-        if f_jeune:
+        if est_jeune:
             mention_html = '<div style="color:red; font-weight:bold; text-align:center; border:2px solid red; padding:5px; margin-bottom:10px;">⚠️ JEUNE CONDUCTEUR ⚠️</div>'
         
-        # LE TICKET (Correction des balises f-string pour éviter le texte brut)
         st.markdown(f"""
             <div class="receipt-container">
                 <div class="receipt-title">TITRE DE CIRCULATION</div>
