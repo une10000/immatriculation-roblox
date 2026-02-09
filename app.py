@@ -411,27 +411,39 @@ with tabs[0]:
                 else:
                     st.warning("⚠️ Veuillez remplir tous les champs (Propriétaire, Plaque et Code).")
 
-    with col_t:
-        st.markdown("### 🖼️ APERÇU DU TITRE (LIVE)")
-        
-        # Le ticket avec la colonne Taxe Jeune FIXE
+    # Le ticket avec Filigrane Central et Bande de sécurité
         ticket_html = f"""
-        <div style="border: 4px double black; padding: 15px; background: white; color: black; font-family: monospace;">
-            <div style="text-align:center; font-weight:900; font-size:1.2em;">TITRE DE CIRCULATION</div>
-            <center><small>RÉPUBLIQUE DE RENSSELAER</small></center>
-            <hr>
-            <div style="font-size: 0.9em;">
-                <p style="margin:2px 0;"><b>DATE :</b> {datetime.now().strftime("%d/%m/%Y")}</p>
-                <p style="margin:2px 0;"><b>NOM :</b> {f_owner}</p>
-                <p style="margin:2px 0;"><b>MODÈLE :</b> {f_model if f_model else "..."}</p>
-                <p style="margin:2px 0;"><b>PLAQUE :</b> <span style="background:#eee; border:1px solid #000; padding:0 3px;">{f_plate if f_plate else "..."}</span></p>
-                <p style="margin:2px 0;"><b>ASSURANCE :</b> {f_assu}</p>
-                <p style="margin:2px 0;"><b>TAXE JEUNE :</b> {val_taxe_jeune}$</p>
+        <div style="border: 4px double black; padding: 15px; background: white; color: black; font-family: monospace; position: relative; overflow: hidden;">
+            
+            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); font-size: 80px; opacity: 0.05; z-index: 0; white-space: nowrap; pointer-events: none;">
+                RENSSELAER
             </div>
-            <hr>
-            <div style="text-align:right; font-weight:bold; font-size:1.2em;">TOTAL : {total_bill}$</div>
-            <br>
-            <center><small>Certifié conforme par le Terminal National</small></center>
+
+            <div style="position: relative; z-index: 1;">
+                <div style="text-align:center; font-weight:900; font-size:1.2em;">TITRE DE CIRCULATION</div>
+                <center><small>RÉPUBLIQUE DE RENSSELAER</small></center>
+                <hr style="border-top: 1px dashed black;">
+                
+                <div style="font-size: 0.9em;">
+                    <p style="margin:4px 0;"><b>DATE :</b> {datetime.now().strftime("%d/%m/%Y")}</p>
+                    <p style="margin:4px 0;"><b>NOM :</b> {f_owner}</p>
+                    <p style="margin:4px 0;"><b>MODÈLE :</b> {f_model if f_model else "..."}</p>
+                    <p style="margin:4px 0;"><b>PLAQUE :</b> <span style="background:#eee; border:1px solid #000; border-radius:3px; padding:0 8px; font-weight:bold; font-size:1.1em; letter-spacing:1px;">{f_plate if f_plate else "..."}</span></p>
+                    <p style="margin:4px 0;"><b>ASSURANCE :</b> {f_assu}</p>
+                    <p style="margin:4px 0;"><b>TAXE JEUNE :</b> {val_taxe_jeune}$</p>
+                </div>
+                
+                <hr style="border-top: 1px dashed black;">
+                
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="font-size: 8px; opacity: 0.5;">
+                        SÉCURITÉ NATIONALE<br>DOC-ID: {datetime.now().strftime("%y%m%d%H%M")}
+                    </div>
+                    <div style="text-align:right; font-weight:bold; font-size:1.2em;">TOTAL : {total_bill}$</div>
+                </div>
+                <br>
+                <center><small style="letter-spacing: 2px; opacity: 0.6;">•••• VALIDÉ PAR LE TERMINAL ••••</small></center>
+            </div>
         </div>
         """
         st.markdown(ticket_html, unsafe_allow_html=True)
