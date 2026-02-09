@@ -233,7 +233,7 @@ if st.session_state.user_auth is None:
     h_lock = t_now_lock.hour
     heure_formattee = t_now_lock.strftime("%H:%M")
 
-    if 5 <= h_lock < 18:
+    if 5 <= h_lock < 24:
         salut_complet = "Bonjour☀️"
         pattern_style = "background-color: #f9f9f9; background-image: radial-gradient(#d1d1d1 2px, transparent 0); background-size: 24px 24px;"
         t_color = "#1E1E1E"
