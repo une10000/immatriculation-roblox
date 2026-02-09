@@ -174,7 +174,7 @@ if st.session_state.user_auth is None:
     <small>VERSION 34.5.0 | SÉCURISÉ PAR PROTOCOLE RCRP-OS</small>
     </center>
     </div>
-    """, unsafe_allow_html=True
+    """, unsafe_allow_html=True=
                 
     st.warning("⚠️ **AVERTISSEMENT :** Toute action effectuée sur ce terminal est enregistrée. L'usurpation d'identité d'agent est punie par la loi fédérale.")
     
