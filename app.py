@@ -160,7 +160,7 @@ if st.session_state.user_auth is not None:
 
         # 4. Affichage groupé pour réduire l'espace
         st.markdown(f"### 📅 <br> {nom_jour},<br>{num_jour} {nom_mois} {annee}", unsafe_allow_html=True)
-        st.markdown(f"### ⏰ {t_now.strftime('%H:%M:%S')}")
+        st.markdown(f"### ⏰ <br> {t_now.strftime('%H:%M:%S')}")
         st.divider()
 
         st.write(f"🔐 Accréditation : **{st.session_state.user_auth}**")
