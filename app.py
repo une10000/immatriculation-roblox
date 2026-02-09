@@ -134,31 +134,31 @@ def record_log(user, action):
 if st.session_state.user_auth is not None:
     with st.sidebar:
         # LOGO RCRP
-        st.image("https://media.discordapp.net/attachments/1441508709024006315/1467106550656270484/Capture_decran_2025-12-01_a_21.03.31.png?ex=698a61b3&is=69891033&hm=8210184eaca7e5b311b5e00c11ba2e30e86bd67228f54e1f148577592ecfb090&=&format=webp&quality=lossless&width=2732&height=1508", use_container_width=True)
+        st.image("https://media.discordapp.net/attachments/1441508709024006315/1467106550656270484/Capture_decran_2025-12-01_a_21.03.31.png", use_container_width=True)
         
-st.divider()
-# HEURE ET DATE A GAUCHE
-t_now = datetime.now()
-st.markdown(f"### 📅 {t_now.strftime('%d/%m/%Y')}")
-st.markdown(f"### ⏰ {t_now.strftime('%H:%M:%S')}")
-st.divider()
+        st.divider()
+        # HEURE ET DATE A GAUCHE
+        t_now = datetime.now()
+        st.markdown(f"### 📅 {t_now.strftime('%d/%m/%Y')}")
+        st.markdown(f"### ⏰ {t_now.strftime('%H:%M:%S')}")
+        st.divider()
 
-st.write(f"🔐 Accréditation : **{st.session_state.user_auth}**")
+        st.write(f"🔐 Accréditation : **{st.session_state.user_auth}**")
 
-if st.button("🔄 FORCER SYNCHRO"):
-    st.cache_data.clear()
-    record_log(st.session_state.user_auth, "Synchro Cloud Manuelle")
-    st.rerun()
-    
-if st.button("🚪 DÉCONNEXION"):
-    record_log(st.session_state.user_auth, "Déconnexion")
-    st.session_state.user_auth = None
-    st.rerun()
-    
-st.divider()
-st.caption("📜 JOURNAUX D'AUDIT (SESSION)")
-for log in reversed(st.session_state.audit_logs[-8:]):
-    st.caption(log)
+        if st.button("🔄 FORCER SYNCHRO"):
+            st.cache_data.clear()
+            record_log(st.session_state.user_auth, "Synchro Cloud Manuelle")
+            st.rerun()
+            
+        if st.button("🚪 DÉCONNEXION"):
+            record_log(st.session_state.user_auth, "Déconnexion")
+            st.session_state.user_auth = None
+            st.rerun()
+            
+        st.divider()
+        st.caption("📜 JOURNAUX D'AUDIT (SESSION)")
+        for log in reversed(st.session_state.audit_logs[-8:]):
+            st.caption(log)
 
 # ======================================================================================
 # 5. LOCKSCREEN (CONNEXION)
