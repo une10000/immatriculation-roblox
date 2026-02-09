@@ -373,7 +373,6 @@ with tabs[0]:
                 st.rerun()
             else: st.error("Code incorrect.")
                 
-# --- ONGLET 2 : SERVICES RCT (AMENDES UNIQUEMENT) ---
 # --- ONGLET 2 : SERVICES RCT (AMENDES & RADAR VÉHICULES) ---
 if st.session_state.user_auth in ["RCT", "Staff"]:
     with tabs[1]:
@@ -415,7 +414,7 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                             time.sleep(1)
                             st.rerun()
 
-            with col_info:
+           with col_info:
                 st.subheader("🚗 Véhicules Enregistrés")
                 # Filtrage des véhicules appartenant au citoyen sélectionné
                 v_player = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
@@ -424,14 +423,20 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                     st.info(f"Aucun véhicule immatriculé pour {target}.")
                 else:
                     for _, v in v_player.iterrows():
-                        with st.expander(f"📌 PLAQUE : {v['Numéro de la plaque']}", expanded=True):
+                        # Style de la carte véhicule
+                        with st.container(border=True):
+                            st.markdown(f"**📌 PLAQUE : {v['Numéro de la plaque']}**")
                             st.write(f"**Modèle :** {v['Marque du véhicule']}")
-                            st.write(f"**Assurance :** {v['Assurance']}")
-                            # Petit indicateur visuel pour l'assurance
-                            if v['Assurance'] == "Aucune":
-                                st.error("⚠️ DÉFAUT D'ASSURANCE")
+                            
+                            # LOGIQUE : Seule l'assurance RCT est considérée comme "Valide" ici
+                            # Si c'est "Aucune" ou "AVERIS", on affiche l'alerte pour l'agent
+                            type_assu = str(v['Assurance'])
+                            
+                            if "RCT" in type_assu:
+                                st.success("✅ ASSURANCE RCT")
                             else:
-                                st.success("✔️ ASSURÉ")
+                                st.error("⚠️ NON RCT (À Facturer)")
+                                st.caption(f"Actuel : {type_assu}")
 
 # --- ONGLET 3 : ADMINISTRATION (STAFF UNIQUEMENT) ---
 if st.session_state.user_auth == "Staff":
