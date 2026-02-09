@@ -1,5 +1,5 @@
 # ======================================================================================
-# PROJET : RÉPUBLIQUE DE PALM CITY - SYSTÈME DE GESTION CENTRALISÉ (RCRP)
+# PROJET : Rensselaer County Roleplay FR - SYSTÈME DE GESTION CENTRALISÉ (RCRP)
 # VERSION : 18.0.4 (ÉDITION GOUVERNEMENTALE - FÉVRIER 2026)
 # DÉVELOPPEUR : SYSTÈME AUTOMATISÉ RCRP
 # ======================================================================================
@@ -16,7 +16,7 @@ import random
 # --------------------------------------------------------------------------------------
 # Configuration de la fenêtre et du mode d'affichage
 st.set_page_config(
-    page_title="RCRP - Système de Gestion Intégral Professionnel",
+    page_title="RCRP - Portail",
     page_icon="🏛️",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -170,7 +170,7 @@ else:
 # [SECTION 4] : PORTAIL D'AUTHENTIFICATION (GATEWAY)
 # --------------------------------------------------------------------------------------
 if st.session_state.role is None:
-    st.title("🏛️ République de Palm City - Terminal Gouvernemental")
+    st.title("🏛️ Rensselaer County Roleplay FR - Portail")
     st.write("---")
     
     st.markdown("#### Identification requise pour accéder aux registres nationaux")
@@ -218,7 +218,6 @@ with st.sidebar:
     st.divider()
     st.markdown(f"### 💠 État du Système")
     st.write(f"Session : **{st.session_state.role}**")
-    st.write(f"Utilisateur : **{st.session_state.role}_USER**")
     st.divider()
     
     st.subheader("Informations Temps Réel")
