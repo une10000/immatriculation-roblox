@@ -228,7 +228,7 @@ if st.session_state.user_auth is None:
     h_lock = t_now_lock.hour
     heure_formattee = t_now_lock.strftime("%H:%M")
 # --- LOGIQUE JOUR / NUIT ---
-    if 5 <= h_lock < 24:
+    if 5 <= h_lock < 18:
         salut_complet = "Bonjour☀️"
         pattern_style = (
             "background-color: #87CEEB; "
