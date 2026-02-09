@@ -265,16 +265,6 @@ st.divider()
 # ======================================================================================
 # 7. LOGIQUE DES ONGLETS (CORRIGÉE)
 # ======================================================================================
-
-# On définit les onglets proprement
-tab_labels = ["🚗 IMMATRICULATION"]
-if st.session_state.user_auth in ["RCT", "Staff"]: tab_labels.append("👮 SERVICES AGENT")
-if st.session_state.user_auth == "Staff": tab_labels.append("🛠️ ADMINISTRATION")
-
-# CRÉATION DES TABS (Indispensable pour éviter la NameError)
-tabs = st.tabs(tab_labels)
-
-# --- LOGIQUE DES ONGLETS ---
 tab_labels = ["🚗 IMMATRICULATION"]
 if st.session_state.user_auth in ["RCT", "Staff"]: tab_labels.append("👮 SERVICES AGENT")
 if st.session_state.user_auth == "Staff": tab_labels.append("🛠️ ADMINISTRATION")
