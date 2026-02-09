@@ -549,15 +549,20 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
             with col_pts:
                 st.subheader("⚖️ Permis")
                 with st.container(border=True):
-                    p_loss = st.number_input("Points à retirer", min_value=0, max_value=25, step=1, key="pts_loss_v15")
-                    if st.button("RETIRER POINTS", use_container_width=True):
-                        idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
-                        new_pts = max(0, int(df_p.at[idx_p, "PTS"]) - p_loss)
-                        df_p.at[idx_p, "PTS"] = new_pts
-                        if new_pts == 0: df_p.at[idx_p, "Validité"] = "NON"
-                        cloud_conn.update(worksheet="Points Permis", data=df_p)
-                        record_log(st.session_state.user_auth, f"Points -{p_loss} sur {target}")
-                        st.cache_data.clear(); st.success("Fait."); time.sleep(0.5); st.rerun()
+                    if st.session_state.user_auth == "Staff":
+                        p_loss = st.number_input("Points à retirer", min_value=0, max_value=25, step=1, key="pts_loss_v15")
+                        if st.button("RETIRER POINTS", use_container_width=True):
+                            idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
+                            new_pts = max(0, int(df_p.at[idx_p, "PTS"]) - p_loss)
+                            df_p.at[idx_p, "PTS"] = new_pts
+                            if new_pts == 0: df_p.at[idx_p, "Validité"] = "NON"
+                            cloud_conn.update(worksheet="Points Permis", data=df_p)
+                            record_log(st.session_state.user_auth, f"Points -{p_loss} sur {target}")
+                            st.cache_data.clear(); st.success("Fait."); time.sleep(0.5); st.rerun()
+                    else:
+                        st.info("ℹ️ Accès Staff uniquement pour le retrait de points.")
+                        # On définit p_loss à 0 par sécurité pour le RCT
+                        p_loss = 0
 
 # 3. SCANNER DE VÉHICULES (NOSTALGIQUE & SÉCURISÉ)
             with col_veh:
