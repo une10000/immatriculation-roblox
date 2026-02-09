@@ -267,8 +267,8 @@ if st.session_state.user_auth is None:
             else: st.error("Clé invalide.")
                 
     with c3:
-        st.markdown("### 🛡️ STAFF/POLICE")
-        st.info("Accès restreint aux autorités pour l'administration et les remboursements.")
+        st.markdown("### 🛡️👮‍♂️ STAFF/POLICE")
+        st.info("Accès restreint aux autorités pour l'administration et les contraventions.")
         login_staff = st.text_input("Clé Maîtresse", type="password", key="l_staff")
         if st.button("ACCÈS ADMINISTRATEUR", use_container_width=True):
             if login_staff == KEY_STAFF:
