@@ -210,8 +210,8 @@ if st.session_state.user_auth is not None:
 # ======================================================================================
 # 5. LOCKSCREEN (CONNEXION)
 # ======================================================================================
-
 if st.session_state.user_auth is None:
+    # 1. Ton en-tête actuel
     st.markdown("""
     <div class="header-box">
     <center>
@@ -222,8 +222,32 @@ if st.session_state.user_auth is None:
     </center>
     </div>
     """, unsafe_allow_html=True)
-    st.warning("⚠️ **AVERTISSEMENT :** Toute action effectuée sur ce terminal est enregistrée.")
     
+    st.warning("⚠️ **AVERTISSEMENT :** Toute action effectuée sur ce terminal est enregistrée.")
+
+    # --- LE NOUVEAU BLOC : MESSAGE DE BIENVENUE DYNAMIQUE ---
+    from datetime import datetime, timedelta, timezone
+    t_now = datetime.now(timezone.utc) + timedelta(hours=1)
+    heure_actuelle = t_now.hour
+
+    if 5 <= heure_actuelle < 18:
+        salutation = "Bonjour"
+        emoji_salut = "☀️"
+    else:
+        salutation = "Bonsoir"
+        emoji_salut = "🌙"
+
+    st.markdown(f"""
+        <div style="text-align: center; margin-top: 30px; margin-bottom: 10px;">
+            <h1 style="font-size: 4em; margin-bottom: 0px; font-weight: 800; color: white;">{salutation} ! {emoji_salut}</h1>
+            <p style="font-size: 1.3em; color: rgba(255,255,255,0.7);">Prêt pour votre service ?</p>
+        </div>
+    """, unsafe_allow_html=True)
+    # -------------------------------------------------------
+
+    # La suite de ton code (les colonnes pour Nom / MDP)
+    col1, col2 = st.columns(2)
+    # ... etc
     c1, c2, c3 = st.columns(3)
     with c1:
         st.markdown("### 👥 CIVIL")
