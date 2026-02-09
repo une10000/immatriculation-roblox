@@ -279,12 +279,6 @@ with st.container():
                             </div>
                         """, unsafe_allow_html=True)
             else: 
-                st.error("Aucun compte trouvé.") 
-# --- TROUVE CETTE LIGNE DANS TON CODE (vers la fin de la section 6) ---
-# st.error("Aucun compte trouvé.") 
-
-# === COLLE LE BLOC CI-DESSOUS JUSTE APRÈS LA SECTION VÉHICULES ===
-
 st.markdown("---")
 # Utilisation d'un expander pour ne pas encombrer l'interface
 with st.expander("📁 VOIR L'HISTORIQUE DES ANCIENNES FACTURES (Archives Payées)"):
