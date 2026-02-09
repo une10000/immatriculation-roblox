@@ -391,8 +391,6 @@ if not v_data.empty:
                                     st.rerun()
                                 else:
                                     st.error("Code incorrect")
-        else:
-            st.info("Aucun véhicule.")
             
 # ======================================================================================
 # 7. LOGIQUE DES ONGLETS (CORRIGÉE)
