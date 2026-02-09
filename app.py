@@ -576,11 +576,11 @@ f_pts = st.number_input("Points à retirer",
                         disabled=(st.session_state.user_auth == "RCT"))
                                 
                                 # 2. Création de la Facture : Autorisé pour tous (RCT et Staff)
-                                df_factures = cloud_conn.read(worksheet="Factures")
-                                new_id = random.randint(10000, 99999)
+df_factures = cloud_conn.read(worksheet="Factures")
+new_id = random.randint(10000, 99999)
                                 
                                 # Le motif précise si des points auraient dû être retirés (pour info Staff)
-                                detail_pts = f" | -{f_pts}pts demandés" if st.session_state.user_auth == "RCT" and f_pts > 0 else f" | -{f_pts}pts"
+detail_pts = f" | -{f_pts}pts demandés" if st.session_state.user_auth == "RCT" and f_pts > 0 else f" | -{f_pts}pts"
                                 
                                 new_row = {
                                     "ID": new_id, 
