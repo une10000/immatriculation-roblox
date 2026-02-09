@@ -306,7 +306,7 @@ with tabs[0]:
             if "RCT" in f_assu and f_owner != "---":
                 if len(df_i[df_i["Nom d'utilisateur ROBLOX"] == f_owner]) >= 2:
                     taxe_assu = 0
-                    st.success("🎁 OFFRE TRIO : Assurance offerte !")
+                    st.success("🎁 OFFRE TRIO : Assurance offerte sur le 3ème véhicule !")
 
             total_bill = taxe_gouv + taxe_assu + val_taxe_jeune
             
