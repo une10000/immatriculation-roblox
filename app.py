@@ -193,7 +193,7 @@ if st.session_state.user_auth is None:
             st.rerun()
             
     with c2:
-        st.markdown("### 🛻 🪝 AGENT RCT")
+        st.markdown("### 👨‍🔧 🛻🪝 AGENT RCT")
         login_rct = st.text_input("Identifiant Agent", type="password")
         if st.button("AUTHENTIFICATION RCT"):
             if login_rct == KEY_RCT:
