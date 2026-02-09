@@ -289,25 +289,13 @@ with tabs[0]:
     
     with col_f:
         with st.container(border=True):
-            f_owner = st.selectbox("Propriétaire du véhicule", ["---"] + df_b["Nom Roblox"].tolist(), key="k_owner_final")
-            f_model = st.text_input("Marque & Modèle précis", key="k_model_final")
-            f_plate = st.text_input("Numéro de Plaque souhaité", key="k_plate_final").upper()
-            f_assu = st.selectbox("Type d'Assurance", ["Aucune", "AVERIS (130$)", "RCT (150$)"], key="k_assu_final")
-            f_code = st.text_input("Définir un Code de Radiation (Secret)", type="password", key="k_code_final")
+            f_owner = st.selectbox("Propriétaire du véhicule", ["---"] + df_b["Nom Roblox"].tolist(), key="k_owner_simple")
+            f_model = st.text_input("Marque & Modèle précis", key="k_model_simple")
+            f_plate = st.text_input("Numéro de Plaque souhaité", key="k_plate_simple").upper()
+            f_assu = st.selectbox("Type d'Assurance", ["Aucune", "AVERIS (130$)", "RCT (150$)"], key="k_assu_simple")
+            f_code = st.text_input("Définir un Code de Radiation (Secret)", type="password", key="k_code_simple")
             
-            # --- CALCULS ---
-            est_jeune = False
-            taxe_jeune_val = 0
-            if f_owner != "---":
-                try:
-                    date_brute = df_b[df_b["Nom Roblox"] == f_owner]["Date d'arrivée"].values[0]
-                    date_arr = datetime.strptime(str(date_brute), "%d/%m/%Y")
-                    if (datetime.now() - date_arr).days < 30:
-                        est_jeune = True
-                        taxe_jeune_val = 50
-                        st.warning(f"🔰 JEUNE CONDUCTEUR : Taxe de {taxe_jeune_val}$ appliquée.")
-                except: pass
-
+            # --- CALCULS SIMPLIFIÉS ---
             taxe_gouv = 175
             taxe_assu = 130 if "AVERIS" in f_assu else (150 if "RCT" in f_assu else 0)
             
@@ -317,9 +305,9 @@ with tabs[0]:
                     taxe_assu = 0
                     st.success("🎁 OFFRE TRIO : Assurance offerte !")
 
-            total_bill = taxe_gouv + taxe_assu + taxe_jeune_val
+            total_bill = taxe_gouv + taxe_assu
             
-            if st.button(f"S'ACQUITTER DE {total_bill}$ ET ENREGISTRER", use_container_width=True):
+            if st.button(f"S'ACQUITTER DE {total_bill}$ ET ENREGISTRER", use_container_width=True, key="btn_pay_simple"):
                 if f_owner != "---" and f_plate and f_code:
                     u_idx = df_b[df_b["Nom Roblox"] == f_owner].index[0]
                     u_solde = float(str(df_b.at[u_idx, "Solde"]).replace('$', ''))
@@ -336,28 +324,23 @@ with tabs[0]:
                         cloud_conn.update(worksheet="Copie de Immatriculations", data=pd.concat([df_i, new_row]))
                         st.cache_data.clear()
                         st.rerun()
+                    else: st.error("❌ Solde insuffisant.")
 
     with col_t:
         st.markdown("### 🖼️ APERÇU DU TITRE (LIVE)")
         
-        # On prépare la ligne Jeune Conducteur proprement avant de l'injecter
-        ligne_jeune = f"<p><b>TAXE JEUNE :</b> {taxe_jeune_val}$</p>" if est_jeune else ""
-        badge_jeune = '<div style="color:red; font-weight:bold; text-align:center; border:2px solid red; padding:5px; margin-bottom:10px;">⚠️ JEUNE CONDUCTEUR ⚠️</div>' if est_jeune else ""
-        
-        # Le ticket HTML simplifié pour éviter les erreurs d'affichage
+        # Ticket HTML Ultra-propre
         ticket_html = f"""
         <div style="border: 4px double black; padding: 15px; background: white; color: black; font-family: monospace;">
             <div style="text-align:center; font-weight:900; font-size:1.2em;">TITRE DE CIRCULATION</div>
             <center><small>RÉPUBLIQUE DE RENSSELAER</small></center>
             <hr>
-            {badge_jeune}
             <div style="font-size: 0.9em;">
                 <p><b>DATE :</b> {datetime.now().strftime("%d/%m/%Y")}</p>
                 <p><b>NOM :</b> {f_owner}</p>
                 <p><b>MODÈLE :</b> {f_model if f_model else "..."}</p>
                 <p><b>PLAQUE :</b> <span style="background:#eee; border:1px solid #000; padding:0 3px;">{f_plate if f_plate else "..."}</span></p>
                 <p><b>ASSURANCE :</b> {f_assu}</p>
-                {ligne_jeune}
             </div>
             <hr>
             <div style="text-align:right; font-weight:bold; font-size:1.2em;">TOTAL : {total_bill}$</div>
@@ -371,10 +354,10 @@ with tabs[0]:
     st.divider()
     st.markdown("#### 🗑️ Radiation de Plaque")
     c_r1, c_r2 = st.columns(2)
-    with c_r1: r_plq = st.text_input("Plaque à radier", key="rad_p_final").upper()
-    with c_r2: r_cod = st.text_input("Code secret", type="password", key="rad_c_final")
+    with c_r1: r_plq = st.text_input("Plaque à radier", key="rad_p_simple").upper()
+    with c_r2: r_cod = st.text_input("Code secret", type="password", key="rad_c_simple")
     
-    if st.button("CONFIRMER LA RADIATION", use_container_width=True):
+    if st.button("CONFIRMER LA RADIATION", use_container_width=True, key="btn_rad_simple"):
         match = df_i[df_i["Numéro de la plaque"].astype(str).str.upper() == r_plq]
         if not match.empty:
             if str(r_cod) == str(match.iloc[0]["CODE"]) or st.session_state.user_auth == "Staff":
@@ -385,6 +368,7 @@ with tabs[0]:
                 time.sleep(1)
                 st.rerun()
             else: st.error("Code incorrect.")
+                
 # --- ONGLET 2 : SERVICES RCT (AMENDES & POINTS) ---
 if st.session_state.user_auth in ["RCT", "Staff"]:
     with tabs[1]:
