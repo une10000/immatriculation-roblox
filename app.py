@@ -289,6 +289,9 @@ with tabs[0]:
             f_assu = st.selectbox("Type d'Assurance", ["Aucune", "AVERIS (130$)", "RCT (150$)"])
             f_code = st.text_input("Définir un Code de Radiation (Secret)", type="password")
             
+            # --- AJOUT DE LA MENTION JEUNE CONDUCTEUR ---
+            f_jeune = st.checkbox("Mention Jeune Conducteur (Affiche ⚠️ sur le reçu)")
+            
             # Calcul financier dynamique
             taxe_gouv = 175
             taxe_assu = 130 if "AVERIS" in f_assu else (150 if "RCT" in f_assu else 0)
@@ -331,11 +334,35 @@ with tabs[0]:
                             
                             cloud_conn.update(worksheet="Banque", data=df_b)
                             cloud_conn.update(worksheet="Copie de Immatriculations", data=pd.concat([df_i, new_row]))
-                            st.session_state.last_action = {"nom": f_owner, "plq": f_plate, "mod": f_model, "prix": total_bill}
+                            
+                            # Stockage de l'action avec l'info 'jeune' pour le ticket
+                            st.session_state.last_action = {
+                                "nom": f_owner, 
+                                "plq": f_plate, 
+                                "mod": f_model, 
+                                "prix": total_bill,
+                                "jeune": f_jeune # On sauve l'info ici
+                            }
+                            
                             record_log(st.session_state.user_auth, f"Immat {f_plate} pour {f_owner}")
                             st.cache_data.clear(); st.rerun()
                         else: st.error("❌ Solde bancaire insuffisant.")
                 else: st.warning("⚠️ Veuillez remplir tous les champs.")
+
+        st.divider()
+        st.markdown("#### 🗑️ Radiation de Plaque")
+        rad_plate = st.text_input("Plaque à radier", key="rad_plate").upper()
+        rad_key = st.text_input("Code de sécurité", type="password", key="rad_key")
+        if st.button("RADIER LE VÉHICULE DU REGISTRE", use_container_width=True):
+            match = df_i[df_i["Numéro de la plaque"].astype(str).str.upper() == rad_plate]
+            if not match.empty:
+                if str(rad_key) == str(match.iloc[0]["CODE"]) or st.session_state.user_auth == "Staff":
+                    df_i = df_i.drop(match.index[0])
+                    cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i)
+                    record_log(st.session_state.user_auth, f"Radiation plaque {rad_plate}")
+                    st.cache_data.clear(); st.success("Véhicule radié avec succès."); time.sleep(1); st.rerun()
+                else: st.error("Code de sécurité incorrect.")
+            else: st.error("Plaque introuvable.")
 
         st.divider()
         st.markdown("#### 🗑️ Radiation de Plaque")
