@@ -185,7 +185,7 @@ if st.session_state.user_auth is None:
 
 with st.sidebar:
     st.image("https://media.discordapp.net/attachments/1441508709024006315/1467106550656270484/Capture_decran_2025-12-01_a_21.03.31.png?ex=698a61b3&is=69891033&hm=8210184eaca7e5b311b5e00c11ba2e30e86bd67228f54e1f148577592ecfb090&=&format=webp&quality=lossless&width=2732&height=1508", use_container_width=True)
-    st.title("⚙️ MAGNUS CORE")
+    st.title("⚙️ RCRP FR OS ")
     st.write(f"Opérateur : **{st.session_state.user_auth}**")
     st.write(f"Date : {datetime.now().strftime('%d/%m/%Y')}")
     st.divider()
@@ -440,6 +440,6 @@ with tab_s:
 # ======================================================================================
 
 st.divider()
-st.caption(f"MAGNUS CORE OS v27.0 | RCRP FEDERAL | OPERATOR ID: {st.session_state.user_auth}")
+st.caption(f"RCRP FR OS v27.0 | RCRP FEDERAL | OPERATOR ID: {st.session_state.user_auth}")
 
 # FIN DU CODE SOURCE
