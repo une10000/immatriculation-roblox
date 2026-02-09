@@ -350,6 +350,33 @@ try:
 
             # Bouton de paiement
             if st.button(f"💳 RÉGLER LA FACTURE #{fac['ID']}", key=f"pay_{fac['ID']}", use_container_width=True):
+                # ... (Après le code du bouton "💳 RÉGLER LA FACTURE")
+
+            # --- AJOUT ICI : BOUTON ANNULER POUR LES ADMINS ---
+            if st.session_state.user_auth in ["Staff", "Admin"]:
+                st.write("") # Petit espace
+                if st.button(f"🗑️ ANNULER L'ERREUR (Facture #{fac['ID']})", key=f"admin_del_{fac['ID']}", use_container_width=True):
+                    try:
+                        # 1. On recharge les données pour être sûr de la ligne
+                        df_all_f = cloud_conn.read(worksheet="Factures")
+                        
+                        # 2. On trouve la ligne exacte dans Google Sheets
+                        # On cherche l'ID de la facture, .index[0] donne la position, +2 pour GSheets
+                        row_to_update = df_all_f[df_all_f["ID"] == fac["ID"]].index[0] + 2
+                        
+                        # 3. On change le statut en "ANNULÉ" dans la colonne E (Statut)
+                        # Note : Pas de retrait d'argent ici, on change juste le texte.
+                        cloud_conn.update(worksheet="Factures", range=f"E{row_to_update}", data=[["ANNULÉ"]])
+                        
+                        record_log(st.session_state.user_auth, f"Annulation facture #{fac['ID']} de {target}")
+                        st.warning(f"Facture #{fac['ID']} annulée avec succès.")
+                        st.cache_data.clear()
+                        time.sleep(1)
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Erreur lors de l'annulation : {e}")
+
+# ... (Le reste de ton code pour les véhicules continue ensuite)
                 idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
                 solde_raw = str(df_b.at[idx_b, "Solde"]).replace('$', '').replace(',', '')
                 solde_actuel = float(solde_raw)
