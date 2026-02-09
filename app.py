@@ -200,10 +200,11 @@ if st.session_state.user_auth is None:
             if login_staff == KEY_STAFF:
                 st.session_state.user_auth = "Staff"
                 st.rerun()
-            else: st.error("Accès refusé.")
+            else: 
+                st.error("Accès refusé.")
     
     # TRÈS IMPORTANT : On arrête le code ici si on n'est pas connecté
-    st.stop() 
+st.stop() 
 
 # --- LE RESTE DU CODE (SECTION 6, 7, 8) COMMENCE ICI ---
         
@@ -329,35 +330,51 @@ with st.container():
                                 st.rerun()
                             else:
                                 st.error("Fonds insuffisants.")
-            else:
-                st.info("✅ Aucune dette en attente.")
-        # Ton code de paiement...
-    except Exception as e:
-        # On affiche la vraie erreur pour comprendre pourquoi ça bloque
-        st.error(f"Erreur technique : {e}") 
+            except Exception as e:
+        # On affiche la vraie erreur pour comprendre
+        st.error(f"Erreur technique : {e}")
 
-# --- SECTION FACTURATION (POUR RCT ET STAFF) ---
+# --- SECTION FACTURATION (AUTORISÉE RCT ET STAFF) ---
 if st.session_state.user_auth in ["Staff", "RCT"]:
     st.subheader("🧾 Formulaire de Sanction")
-    # Remets ici ton code de number_input et bouton de validation
-        # --- SECTION VÉHICULES CORRIGÉE ---
-        st.write(f"🚘 **VÉHICULES ENREGISTRÉS**")
-        v_data = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
-        
-        if not v_data.empty:
-            v_cols = st.columns(3) 
-            for i, (_, veh) in enumerate(v_data.iterrows()):
-                with v_cols[i % 3]:
-                    with st.container(border=True):
-                        st.markdown(f"""
-                        <div style="border: 1px solid #000; padding: 10px; background: white; color: black; font-family: monospace; font-size: 0.85em;">
-                            <center><b>TITRE DE PROPRIÉTÉ</b></center>
-                            <hr style="margin:5px 0;">
-                            <b>PLAQUE :</b> {veh['Numéro de la plaque']}<br>
-                            <b>MODÈLE :</b> {veh['Marque du véhicule']}<br>
-                            <b>ASSUR. :</b> {veh['Assurance']}
-                        </div>
-                        """, unsafe_allow_html=True)
+    # Remets tes lignes de number_input ici
+# --- SECTION VÉHICULES CORRIGÉE ---
+st.write("### 🚗 VÉHICULES ENREGISTRÉS")
+v_data = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
+
+if not v_data.empty:
+    v_cols = st.columns(3)
+    for i, (_, veh) in enumerate(v_data.iterrows()):
+        with v_cols[i % 3]:
+            # Logique de sécurité
+            assu_val = str(veh['Assurance']).upper()
+            is_rct_ok = "RCT" in assu_val
+            is_police_ok = any(x in assu_val for x in ["RCT", "AVERIS"])
+            
+            # Style par défaut
+            bg_color = "#2e7d32" # Vert
+            txt_status = "VÉHICULE EN RÈGLE"
+            
+            if st.session_state.user_auth == "RCT" and not is_rct_ok:
+                bg_color = "#d32f2f" # Rouge
+                txt_status = "⚠️ DANGER : NON-ASSURÉ RCT"
+            elif st.session_state.user_auth == "Staff" and not is_police_ok:
+                bg_color = "#d32f2f"
+                txt_status = "⚠️ VÉHICULE NON-ASSURÉ"
+
+            # Le Ticket Blanc "Nostalgique"
+            st.markdown(f"""
+            <div style="border: 2px solid black; padding: 10px; background: white; color: black; font-family: monospace;">
+                <center><b>TITRE DE PROPRIÉTÉ</b></center>
+                <hr style="margin: 5px 0; border-top: 1px solid black;">
+                <b>PLAQUE :</b> {veh['Numéro de la plaque']}<br>
+                <b>MODÈLE :</b> {veh['Marque du véhicule']}<br>
+                <b>ASSUR. :</b> {veh['Assurance']}
+                <div style="background: {bg_color}; color: white; text-align: center; margin-top: 10px; padding: 5px; font-weight: bold; font-size: 0.8em;">
+                    {txt_status}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
                         
                         # Utilisation d'une clé unique basée sur la plaque ET l'index pour éviter le "Duplicate Key"
                         with st.expander("🗑️ Radier"):
