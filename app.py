@@ -232,26 +232,28 @@ with st.container():
     if target != "---":
         col1, col2, col3 = st.columns(3)
         
-        # --- COLONNE 1 : PERMIS (FILIGRANE ROUGE) ---
+       # Section Points & Permis avec Bandeau de Sécurité
         with col1:
             p_data = df_p[df_p["Nom Roblox"] == target]
             if not p_data.empty:
                 pts_val = int(p_data.iloc[0]["PTS"])
                 
-                # Container pour aligner texte à gauche et filigrane à droite
-                c_pts, c_motif_p = st.columns([2, 1])
+                # Organisation interne identique à la banque
+                c_pts, c_vide, c_motif_p = st.columns([3, 0.5, 2])
+                
                 with c_pts:
                     st.metric("POINTS PERMIS", f"{pts_val}/25")
                     status_color = "green" if pts_val > 0 else "red"
                     st.markdown(f"Statut : <b style='color:{status_color};'>{'VALIDE' if pts_val > 0 else 'SUSPENDU'}</b>", unsafe_allow_html=True)
                 
                 with c_motif_p:
-                    # FILIGRANE PERMIS
+                    # MOTIFS ROUTIERS (Poussés à droite)
                     st.markdown("""
                         <div style="text-align: right; line-height: 1; padding-top: 5px;">
                             <div style="opacity: 0.15; font-size: 40px; margin-bottom: -10px;">🛡️</div>
                             <div style="opacity: 0.1; font-size: 50px; margin-bottom: -10px;">🚗</div>
-                            <p style="font-size: 8px; opacity: 0.3; font-family: monospace; margin: 0;">DRIVER LICENSE<br>SECURITY</p>
+                            <div style="height: 4px; width: 60px; background: linear-gradient(90deg, transparent, #d32f2f); display: inline-block; opacity: 0.2; border-radius: 2px;"></div>
+                            <p style="font-size: 8px; opacity: 0.3; font-family: monospace; margin: 0;">DRIVER LICENSE<br>SECURITY CHECK</p>
                         </div>
                     """, unsafe_allow_html=True)
             else:
