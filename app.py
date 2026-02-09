@@ -152,20 +152,21 @@ if st.session_state.user_auth is not None:
         nom_mois = mois[t_now.strftime('%B')]
         annee = t_now.strftime('%Y')
 
-        # 4. Bloc Date (Aligné à gauche et serré)
+        # 4. Bloc Date (Forcé à gauche)
         st.markdown(f"""
-            <div style="text-align: left; line-height: 1.1;">
+            <div style="text-align: left; line-height: 1.1; margin-left: 0; padding-left: 0;">
                 <span style="font-size: 1.5em;">📅</span><br>
                 <b style="font-size: 1.2em;">{nom_jour},</b><br>
                 <span style="font-size: 1.1em;">{num_jour} {nom_mois} {annee}</span>
             </div>
         """, unsafe_allow_html=True)
 
-        st.write("") # Petit espace entre date et heure
+        st.write("") 
 
-        # 5. Bloc Horloge Dynamique (Aligné à gauche)
-        st.markdown("<div style='text-align: left; font-size: 1.5em; margin-bottom: 0;'>⏰</div>", unsafe_allow_html=True)
+        # 5. Bloc Horloge Dynamique (Correction du décalage)
+        st.markdown("<div style='text-align: left; font-size: 1.5em; margin-bottom: 0; margin-left: 0;'>⏰</div>", unsafe_allow_html=True)
         
+        # Le secret est dans le "margin-left: -8px" pour compenser la marge naturelle de l'iframe Streamlit
         components.html(f"""
             <div id="clock" style="
                 font-family: 'Source Sans Pro', sans-serif; 
@@ -173,6 +174,7 @@ if st.session_state.user_auth is not None:
                 font-weight: bold; 
                 text-align: left; 
                 color: #31333F;
+                margin-left: -8px; 
                 margin-top: -5px;
             "></div>
             <script>
