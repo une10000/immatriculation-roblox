@@ -211,14 +211,17 @@ if st.session_state.user_auth is not None:
 # ======================================================================================
 
 if st.session_state.user_auth is None:
-    # 1. CALCUL DU MOMENT DE LA JOURNÉE (UTC+1)
+    # 1. CALCUL DU MOMENT ET DE L'HEURE (UTC+1)
+    import time
     from datetime import datetime, timedelta, timezone
+    
     t_now_lock = datetime.now(timezone.utc) + timedelta(hours=1)
     h_lock = t_now_lock.hour
+    # Format sans les secondes
+    heure_formattee = t_now_lock.strftime("%H:%M")
 
     if 5 <= h_lock < 18:
         salut, emo = "Bonjour", "☀️"
-        # MOTIF JOUR : Points classiques
         pattern_style = (
             "background-color: #f9f9f9; "
             "background-image: radial-gradient(#d1d1d1 2px, transparent 0); "
@@ -226,11 +229,11 @@ if st.session_state.user_auth is None:
         )
         t_color = "#1E1E1E"
         glow = "none"
+        clock_opacity = "0.5"
     else:
         salut, emo = "Bonsoir", "🌙"
-        # MOTIF NUIT : CIEL ÉTOILÉ ALÉATOIRE (Superposition décalée)
         pattern_style = (
-            "background-color: #05070a; " # Fond encore plus profond
+            "background-color: #05070a; "
             "background-image: "
             "radial-gradient(1px 1px at 25% 35%, white, transparent), "
             "radial-gradient(1px 1px at 50% 10%, white, transparent), "
@@ -242,28 +245,32 @@ if st.session_state.user_auth is None:
         )
         t_color = "#FFFFFF"
         glow = "0 0 15px rgba(255,255,255,0.4)"
+        clock_opacity = "0.7"
 
-    # AFFICHAGE DU MESSAGE DE BIENVENUE
+    # AFFICHAGE DU MESSAGE DE BIENVENUE + HORLOGE (HH:MM)
     st.markdown(f"""
         <div style="
             text-align: center; 
             margin-top: -30px; 
             margin-bottom: 0px; 
-            padding: 65px 20px; 
+            padding: 55px 20px 40px 20px; 
             border-radius: 20px 20px 0 0;
             color: {t_color};
             {pattern_style}
         ">
-            <h1 style="font-size: 5.5em; margin-bottom: 0px; font-weight: 900; letter-spacing: -3px; line-height: 1; text-shadow: {glow};">
+            <h1 style="font-size: 5.5em; margin-bottom: 0px; font-weight: 900; letter-spacing: -3px; line-height: 1.1; text-shadow: {glow};">
                 {salut} ! {emo}
             </h1>
-            <p style="font-size: 1.2em; opacity: 0.8; letter-spacing: 6px; font-weight: bold; text-transform: uppercase; margin-top: 15px;">
+            <p style="font-size: 1.1em; opacity: 0.7; letter-spacing: 5px; font-weight: bold; text-transform: uppercase; margin-top: 15px; margin-bottom: 8px;">
                 Unité Fédérale de Rensselaer
             </p>
+            <div style="font-family: 'Courier New', monospace; font-size: 2em; letter-spacing: 4px; opacity: {clock_opacity}; font-weight: bold; border-top: 1px solid {t_color}22; display: inline-block; padding-top: 8px;">
+                {heure_formattee}
+            </div>
         </div>
     """, unsafe_allow_html=True)
 
-    # 2. EN-TÊTE RÉPUBLIQUE (Fusionné)
+    # 2. EN-TÊTE RÉPUBLIQUE
     st.markdown("""
     <div class="header-box" style="margin-top: 0px; border-radius: 0 0 20px 20px; border-top: 1px solid rgba(255,255,255,0.05);">
     <center>
@@ -283,14 +290,12 @@ if st.session_state.user_auth is None:
     
     with c1:
         st.markdown("### 👥 CIVIL")
-        st.info("Accès public pour consulter votre profil.")
         if st.button("ACCÉDER AU TERMINAL", use_container_width=True):
             st.session_state.user_auth = "Civil"
             st.rerun()
             
     with c2:
         st.markdown("### 👨‍🔧 AGENT RCT")
-        st.info("Interface technique pour la gestion du RCT.")
         login_rct = st.text_input("Identifiant Agent", type="password", key="l_rct")
         if st.button("AUTHENTIFICATION RCT", use_container_width=True):
             if login_rct == KEY_RCT:
@@ -299,14 +304,17 @@ if st.session_state.user_auth is None:
             else: st.error("Clé invalide.")
                 
     with c3:
-        st.markdown("### 🛡️👮‍♂️ STAFF/POLICE")
-        st.info("Accès restreint : Administration et contraventions.")
+        st.markdown("### 🛡️ STAFF/POLICE")
         login_staff = st.text_input("Clé Maîtresse", type="password", key="l_staff")
         if st.button("ACCÈS ADMINISTRATEUR", use_container_width=True):
             if login_staff == KEY_STAFF:
                 st.session_state.user_auth = "Staff"
                 st.rerun()
             else: st.error("Accès refusé.")
+
+    # REFRESH TOUTES LES 60 SECONDES
+    time.sleep(60)
+    st.rerun()
 
     st.stop()
 
