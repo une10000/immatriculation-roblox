@@ -469,7 +469,7 @@ with tab_dossier:
 # MODULE C : BANQUE CENTRALE ET PRÉLÈVEMENTS
 # --------------------------------------------------------------------------------------
 with tab_banque:
-    st.header("💰 Banque Centrale de Palm City")
+    st.header("💰 Banque Centrale de Rensselaer County Roleplay FR")
     st.write("Interface de contrôle des flux monétaires nationaux.")
     
     q_bank = st.text_input("🔍 Rechercher un compte titulaire", key="q_bank").lower()
