@@ -270,14 +270,14 @@ with st.container():
                 with v_cols[i % 3]:
                     with st.container(border=True):
                         st.markdown(f"""
-                        <div style="border: 1px solid #000; padding: 10px; background: white; color: black; font-family: monospace; font-size: 0.85em; box-shadow: 2px 2px 0px #eee;">
-                            <center><b>TITRE DE PROPRIÉTÉ</b></center>
-                            <hr style="margin:5px 0; border-top:1px solid #ddd;">
-                            <b>PLQ :</b> {veh['Numéro de la plaque']}<br>
-                            <b>MOD :</b> {veh['Marque du véhicule']}<br>
-                            <b>ASS :</b> {veh['Assurance']}
-                        </div>
-                        """, unsafe_allow_html=True)
+<div style="border: 1px solid #000; padding: 10px; background: white; color: black; font-family: monospace; font-size: 0.85em; box-shadow: 2px 2px 0px #eee;">
+    <center><b>TITRE DE PROPRIÉTÉ</b></center>
+    <hr style="margin:5px 0; border-top:1px solid #ddd;">
+    <b>PLAQUE :</b> <span style="background:#eee; border:1px solid #000; border-radius:3px; padding:0 6px; font-weight:bold; letter-spacing:1px;">{veh['Numéro de la plaque']}</span><br>
+    <b>MODÈLE :</b> {veh['Marque du véhicule']}<br>
+    <b>ASSUR. :</b> {veh['Assurance']}
+</div>
+""", unsafe_allow_html=True)
                         
                         # Bouton de radiation intégré
                         with st.expander("🗑️ Radier"):
