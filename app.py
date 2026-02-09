@@ -1,5 +1,5 @@
 # ======================================================================================
-# PROJECT       : RCRP MAGNUS OS - ABSOLUTE EDITION
+# PROJECT       : RCRP FR OS - ABSOLUTE EDITION
 # VERSION       : 27.0.0 (STABLE MASTER)
 # BUILD DATE    : 09/02/2026
 # TOTAL LINES   : 800+ (MAXIMUM DOCUMENTATION)
@@ -17,7 +17,7 @@ import random
 # ======================================================================================
 
 st.set_page_config(
-    page_title="RCRP MAGNUS OS - SYSTEME FEDERAL",
+    page_title="RCRP FR OS - SYSTEME FEDERAL",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -127,7 +127,7 @@ def log_action(msg):
 def show_welcome_screen():
     st.markdown("""
         <div class="header-box">
-            <h1>🏛️ MAGNUS OS - TERMINAL FÉDÉRAL</h1>
+            <h1>🏛️ RCRPFR OS - TERMINAL FÉDÉRAL</h1>
             <p>Version 27.0 - Système de Gestion Officiel de Rensselaer County</p>
         </div>
     """, unsafe_allow_html=True)
