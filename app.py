@@ -258,7 +258,7 @@ if st.session_state.user_auth is None:
             
     with c2:
         st.markdown("### 👨‍🔧 AGENT RCT")
-        st.info("Interface technique pour la gestion des plaques et des services de remorquage.")
+        st.info("Interface technique pour la gestion des plaques et des services du RCT.")
         login_rct = st.text_input("Identifiant Agent", type="password", key="l_rct")
         if st.button("AUTHENTIFICATION RCT", use_container_width=True):
             if login_rct == KEY_RCT:
