@@ -206,39 +206,42 @@ if st.session_state.user_auth is not None:
         st.caption("📜 JOURNAUX D'AUDIT (SESSION)")
         for log in reversed(st.session_state.audit_logs[-8:]):
             st.caption(log)
-
 # ======================================================================================
-# 5. LOCKSCREEN (CONNEXION)
+# 5. LOCKSCREEN (CONNEXION) - UNITÉ FÉDÉRALE DE RENSSELAER
 # ======================================================================================
 
 if st.session_state.user_auth is None:
-    # 1. CALCUL DES MOTIFS DYNAMIQUES
+    # 1. CALCUL DU MOMENT DE LA JOURNÉE (UTC+1)
     from datetime import datetime, timedelta, timezone
     t_now_lock = datetime.now(timezone.utc) + timedelta(hours=1)
     h_lock = t_now_lock.hour
 
     if 5 <= h_lock < 18:
         salut, emo = "Bonjour", "☀️"
-        # MOTIF JOUR : Petits points gris classiques
+        # MOTIF JOUR : Points classiques
         pattern_style = (
             "background-color: #f9f9f9; "
             "background-image: radial-gradient(#d1d1d1 2px, transparent 0); "
             "background-size: 24px 24px; "
         )
         t_color = "#1E1E1E"
+        glow = "none"
     else:
         salut, emo = "Bonsoir", "🌙"
-        # MOTIF NUIT : CIEL ÉTOILÉ (Petites étoiles de tailles variées)
+        # MOTIF NUIT : CIEL ÉTOILÉ ALÉATOIRE (Superposition décalée)
         pattern_style = (
-            "background-color: #0b0e14; " # Un bleu-noir profond
+            "background-color: #05070a; " # Fond encore plus profond
             "background-image: "
-            "radial-gradient(white, rgba(255,255,255,.2) 2px, transparent 5px), " # Étoiles proches
-            "radial-gradient(white, rgba(255,255,255,.15) 1px, transparent 3px), " # Étoiles moyennes
-            "radial-gradient(white, rgba(255,255,255,.1) 1px, transparent 2px); "  # Poussière d'étoiles
-            "background-size: 100px 100px, 60px 60px, 30px 30px; "
-            "background-position: 0 0, 30px 40px, 15px 10px; " # Décalage pour l'effet aléatoire
+            "radial-gradient(1px 1px at 25% 35%, white, transparent), "
+            "radial-gradient(1px 1px at 50% 10%, white, transparent), "
+            "radial-gradient(2px 2px at 10% 80%, white, transparent), "
+            "radial-gradient(1px 1px at 90% 20%, white, transparent), "
+            "radial-gradient(1.5px 1.5px at 70% 60%, white, transparent), "
+            "radial-gradient(1px 1px at 30% 90%, rgba(255,255,255,0.3), transparent); "
+            "background-size: 150px 150px, 200px 200px, 250px 250px, 180px 180px, 220px 220px, 130px 130px; "
         )
         t_color = "#FFFFFF"
+        glow = "0 0 15px rgba(255,255,255,0.4)"
 
     # AFFICHAGE DU MESSAGE DE BIENVENUE
     st.markdown(f"""
@@ -246,12 +249,12 @@ if st.session_state.user_auth is None:
             text-align: center; 
             margin-top: -30px; 
             margin-bottom: 0px; 
-            padding: 60px 20px; 
+            padding: 65px 20px; 
             border-radius: 20px 20px 0 0;
             color: {t_color};
             {pattern_style}
         ">
-            <h1 style="font-size: 5.5em; margin-bottom: 0px; font-weight: 900; letter-spacing: -3px; line-height: 1.1; text-shadow: 0 0 20px rgba(255,255,255,0.2);">
+            <h1 style="font-size: 5.5em; margin-bottom: 0px; font-weight: 900; letter-spacing: -3px; line-height: 1; text-shadow: {glow};">
                 {salut} ! {emo}
             </h1>
             <p style="font-size: 1.2em; opacity: 0.8; letter-spacing: 6px; font-weight: bold; text-transform: uppercase; margin-top: 15px;">
@@ -260,9 +263,9 @@ if st.session_state.user_auth is None:
         </div>
     """, unsafe_allow_html=True)
 
-    # 2. EN-TÊTE RENSSELAER (Collé au message)
+    # 2. EN-TÊTE RÉPUBLIQUE (Fusionné)
     st.markdown("""
-    <div class="header-box" style="margin-top: 0px; border-radius: 0 0 20px 20px;">
+    <div class="header-box" style="margin-top: 0px; border-radius: 0 0 20px 20px; border-top: 1px solid rgba(255,255,255,0.05);">
     <center>
         <h2 style="margin-bottom:0;">🏛️ RÉPUBLIQUE DE RENSSELAER</h2>
         <p style="font-size: 1em; opacity: 0.8;">TERMINAL FÉDÉRAL D'OPÉRATIONS NATIONALES</p>
@@ -277,7 +280,35 @@ if st.session_state.user_auth is None:
 
     # 3. COLONNES D'ACCÈS
     c1, c2, c3 = st.columns(3)
-    # ... (le reste de tes boutons Civil, RCT, Staff reste identique)
+    
+    with c1:
+        st.markdown("### 👥 CIVIL")
+        st.info("Accès public pour consulter votre profil.")
+        if st.button("ACCÉDER AU TERMINAL", use_container_width=True):
+            st.session_state.user_auth = "Civil"
+            st.rerun()
+            
+    with c2:
+        st.markdown("### 👨‍🔧 AGENT RCT")
+        st.info("Interface technique pour la gestion du RCT.")
+        login_rct = st.text_input("Identifiant Agent", type="password", key="l_rct")
+        if st.button("AUTHENTIFICATION RCT", use_container_width=True):
+            if login_rct == KEY_RCT:
+                st.session_state.user_auth = "RCT"
+                st.rerun()
+            else: st.error("Clé invalide.")
+                
+    with c3:
+        st.markdown("### 🛡️👮‍♂️ STAFF/POLICE")
+        st.info("Accès restreint : Administration et contraventions.")
+        login_staff = st.text_input("Clé Maîtresse", type="password", key="l_staff")
+        if st.button("ACCÈS ADMINISTRATEUR", use_container_width=True):
+            if login_staff == KEY_STAFF:
+                st.session_state.user_auth = "Staff"
+                st.rerun()
+            else: st.error("Accès refusé.")
+
+    st.stop()
 
 # ======================================================================================
 # LE RESTE DU CODE (S'affiche uniquement après connexion)
