@@ -233,102 +233,33 @@ with st.container():
     if target != "---":
         col1, col2, col3 = st.columns(3)
         
-        # Section Points & Permis avec Bandeau de Sécurité
+        # Section Points & Permis
         with col1:
             p_data = df_p[df_p["Nom Roblox"] == target]
             if not p_data.empty:
                 pts_val = int(p_data.iloc[0]["PTS"])
-                
-                # Organisation interne identique à la banque
-                c_pts, c_vide, c_motif_p = st.columns([3, 0.5, 2])
-                
-                with c_pts:
-                    st.metric("POINTS PERMIS", f"{pts_val}/25")
-                    status_color = "green" if pts_val > 0 else "red"
-                    st.markdown(f"Statut : <b style='color:{status_color};'>{'VALIDE' if pts_val > 0 else 'SUSPENDU'}</b>", unsafe_allow_html=True)
-                
-                with c_motif_p:
-                    # MOTIFS ROUTIERS (Poussés à droite)
-                    st.markdown("""
-                        <div style="text-align: right; line-height: 1; padding-top: 5px;">
-                            <div style="opacity: 0.15; font-size: 40px; margin-bottom: -10px;">🛡️</div>
-                            <div style="opacity: 0.1; font-size: 50px; margin-bottom: -10px;">🚗</div>
-                            <div style="height: 4px; width: 60px; background: linear-gradient(90deg, transparent, #d32f2f); display: inline-block; opacity: 0.2; border-radius: 2px;"></div>
-                            <p style="font-size: 8px; opacity: 0.3; font-family: monospace; margin: 0;">DRIVER LICENSE<br>SECURITY CHECK</p>
-                        </div>
-                    """, unsafe_allow_html=True)
-            else:
-                st.error("Aucun permis trouvé.")
+                st.metric("POINTS PERMIS", f"{pts_val}/25")
+                status_color = "green" if pts_val > 0 else "red"
+                st.markdown(f"Statut : <b style='color:{status_color};'>{'VALIDE' if pts_val > 0 else 'SUSPENDU'}</b>", unsafe_allow_html=True)
+            else: st.error("Aucun permis trouvé.")
             
-       # Section Banque avec Bandeau de Sécurité
+        # Section Banque
         with col2:
             b_data = df_b[df_b["Nom Roblox"] == target]
             if not b_data.empty:
-                # Utilisation d'un container pour regrouper le tout
-                with st.container(border=False):
-                    # On crée 3 colonnes internes pour gérer l'alignement précis
-                    c_info, c_vide, c_motif = st.columns([3, 1, 2])
-                    
-                    with c_info:
-                        st.metric("SOLDE BANCAIRE", f"{b_data.iloc[0]['Solde']}$")
-                        st.write(f"🏢 Métier : **{b_data.iloc[0]['Emploiement']}**")
-                        st.caption(f"📅 Arrivée : {b_data.iloc[0]['Date d\'arrivée']}")
-                    
-                    with c_motif:
-                        # SUPERPOSITION DE MOTIFS (Plus à droite et plus complet)
-                        st.markdown("""
-                            <div style="text-align: right; line-height: 1; padding-top: 5px;">
-                                <div style="opacity: 0.15; font-size: 40px; margin-bottom: -10px;">🏛️</div>
-                                <div style="opacity: 0.1; font-size: 50px; margin-bottom: -10px;">💳</div>
-                                <div style="height: 4px; width: 60px; background: linear-gradient(90deg, transparent, #000); display: inline-block; opacity: 0.2; border-radius: 2px;"></div>
-                                <p style="font-size: 8px; opacity: 0.3; font-family: monospace; margin: 0;">OFFICIAL BANK DATA<br>VERIFIED BY RCRP</p>
-                            </div>
-                        """, unsafe_allow_html=True)
-            else: 
-                st.error("Aucun compte trouvé.")
+                st.metric("SOLDE BANCAIRE", f"{b_data.iloc[0]['Solde']}$")
+                st.write(f"🏢 Métier : **{b_data.iloc[0]['Emploiement']}**")
+                st.caption(f"📅 Date d'arrivée : {b_data.iloc[0]['Date d\'arrivée']}")
+            else: st.error("Aucun compte bancaire.")
             
         # Section Véhicules
-        # Section Véhicules (Dossier Citoyen)
         with col3:
             v_data = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
-            # --- FIN DES 3 COLONNES (Points / Banque / Vide) ---
-        
-        st.write(f"🚘 **VÉHICULES ENREGISTRÉS ({len(v_data)})**")
-        
-        if not v_data.empty:
-            # On crée dynamiquement autant de colonnes qu'il y a de véhicules
-            # On limite à 3 ou 4 par ligne pour que ça reste lisible
-            v_cols = st.columns(3) 
-            
-            for i, (_, veh) in enumerate(v_data.iterrows()):
-                # On distribue les véhicules dans les colonnes (0, 1, 2, puis on revient à 0)
-                with v_cols[i % 3]:
-                    with st.container(border=True):
-                        st.markdown(f"""
-<div style="border: 1px solid #000; padding: 10px; background: white; color: black; font-family: monospace; font-size: 0.85em; box-shadow: 2px 2px 0px #eee;">
-    <center><b>TITRE DE PROPRIÉTÉ</b></center>
-    <hr style="margin:5px 0; border-top:1px solid #ddd;">
-    <b>PLAQUE :</b> <span style="background:#eee; border:1px solid #000; border-radius:3px; padding:0 6px; font-weight:bold; letter-spacing:1px;">{veh['Numéro de la plaque']}</span><br>
-    <b>MODÈLE :</b> {veh['Marque du véhicule']}<br>
-    <b>ASSUR. :</b> {veh['Assurance']}
-</div>
-""", unsafe_allow_html=True)
-                        
-                        # Bouton de radiation intégré
-                        with st.expander("🗑️ Radier"):
-                            r_cod_check = st.text_input("Code Secret", type="password", key=f"rad_val_{veh['Numéro de la plaque']}")
-                            if st.button("CONFIRMER", key=f"btn_del_{veh['Numéro de la plaque']}", use_container_width=True):
-                                if str(r_cod_check) == str(veh['CODE']) or st.session_state.user_auth == "Staff":
-                                    df_i = df_i[df_i["Numéro de la plaque"] != veh['Numéro de la plaque']]
-                                    cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i)
-                                    st.cache_data.clear()
-                                    st.success("Radié !")
-                                    time.sleep(1)
-                                    st.rerun()
-                                else:
-                                    st.error("Code incorrect")
-        else:
-            st.info("Aucun véhicule enregistré pour ce citoyen.")
+            st.write(f"🚘 **VÉHICULES ({len(v_data)})**")
+            if not v_data.empty:
+                for _, veh in v_data.iterrows():
+                    st.caption(f"• **{veh['Numéro de la plaque']}** — {veh['Marque du véhicule']}")
+            else: st.write("Aucun véhicule enregistré.")
 
 st.divider()
 # ======================================================================================
@@ -354,13 +285,16 @@ with tabs[0]:
             f_assu = st.selectbox("Type d'Assurance", ["Aucune", "AVERIS (130$)", "RCT (150$)"], key="k_assu_v7")
             f_code = st.text_input("Définir un Code de Radiation (Secret)", type="password", key="k_code_v7")
             
-            # --- CALCULS TAXE JEUNE ---
+            # --- CALCULS TAXE JEUNE (Fixe à 0 ou 50) ---
             val_taxe_jeune = 0
+            est_jeune = False
+            
             if f_owner != "---":
                 try:
                     date_brute = df_b[df_b["Nom Roblox"] == f_owner]["Date d'arrivée"].values[0]
                     date_arr = datetime.strptime(str(date_brute), "%d/%m/%Y")
                     if (datetime.now() - date_arr).days < 30:
+                        est_jeune = True
                         val_taxe_jeune = 50
                         st.warning(f"🔰 JEUNE CONDUCTEUR détecté (+{val_taxe_jeune}$)")
                 except: pass
@@ -382,65 +316,75 @@ with tabs[0]:
                     u_solde = float(str(df_b.at[u_idx, "Solde"]).replace('$', ''))
                     
                     if u_solde >= total_bill:
+                        # --- TRAITEMENT DU PAIEMENT ---
                         df_b.at[u_idx, "Solde"] = u_solde - total_bill
+                        
+                        # Redirection des fonds (Averis vers Moune2010, RCT vers compte RCT)
                         if taxe_assu > 0:
                             target_acc = "Moune2010" if "AVERIS" in f_assu else ACC_RCT
                             a_idx = df_b[df_b["Nom Roblox"] == target_acc].index[0]
                             df_b.at[a_idx, "Solde"] = float(str(df_b.at[a_idx, "Solde"]).replace('$', '')) + taxe_assu
                         
+                        # --- ENREGISTREMENT ---
                         new_row = pd.DataFrame([{"Horodateur": datetime.now().strftime("%d/%m/%Y"), "Nom d'utilisateur ROBLOX": f_owner, "Marque du véhicule": f_model, "Numéro de la plaque": f_plate, "Assurance": f_assu, "CODE": f_code}])
                         cloud_conn.update(worksheet="Banque", data=df_b)
                         cloud_conn.update(worksheet="Copie de Immatriculations", data=pd.concat([df_i, new_row]))
                         
-                        st.balloons()
-                        st.success(f"✅ Paiement de {total_bill}$ validé !")
+                        # --- MESSAGE DE CONFIRMATION (NOUVEAU) ---
+                        st.balloons() # Optionnel : petites confettis pour le côté "cool"
+                        st.success(f"✅ Paiement de {total_bill}$ validé ! Votre plaque {f_plate} est désormais enregistrée.")
+                        
                         st.cache_data.clear()
-                        time.sleep(2)
+                        time.sleep(2) # On attend 2 secondes pour que l'utilisateur voit le message
                         st.rerun()
-                    else: st.error("❌ Solde insuffisant.")
-                else: st.warning("⚠️ Champs manquants.")
+                    else: 
+                        st.error("❌ Solde insuffisant sur votre compte bancaire.")
+                else:
+                    st.warning("⚠️ Veuillez remplir tous les champs (Propriétaire, Plaque et Code).")
 
-    # --- ICI ON FERME col_f ET ON OUVRE col_t ---
     with col_t:
-        st.markdown("### 🖼️ APERÇU LIVE")
+        st.markdown("### 🖼️ APERÇU DU TITRE (LIVE)")
         
-        # Le ticket RETRO avec filigrane intégré
+        # Le ticket avec la colonne Taxe Jeune FIXE
         ticket_html = f"""
-        <div style="border: 4px double black; padding: 15px; background: white; color: black; font-family: monospace; position: relative; overflow: hidden;">
-            
-            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); font-size: 50px; opacity: 0.05; font-weight: bold; white-space: nowrap; pointer-events: none; z-index: 0;">
-                RENSSELAER
+        <div style="border: 4px double black; padding: 15px; background: white; color: black; font-family: monospace;">
+            <div style="text-align:center; font-weight:900; font-size:1.2em;">TITRE DE CIRCULATION</div>
+            <center><small>RÉPUBLIQUE DE RENSSELAER</small></center>
+            <hr>
+            <div style="font-size: 0.9em;">
+                <p style="margin:2px 0;"><b>DATE :</b> {datetime.now().strftime("%d/%m/%Y")}</p>
+                <p style="margin:2px 0;"><b>NOM :</b> {f_owner}</p>
+                <p style="margin:2px 0;"><b>MODÈLE :</b> {f_model if f_model else "..."}</p>
+                <p style="margin:2px 0;"><b>PLAQUE :</b> <span style="background:#eee; border:1px solid #000; padding:0 3px;">{f_plate if f_plate else "..."}</span></p>
+                <p style="margin:2px 0;"><b>ASSURANCE :</b> {f_assu}</p>
+                <p style="margin:2px 0;"><b>TAXE JEUNE :</b> {val_taxe_jeune}$</p>
             </div>
-
-            <div style="position: relative; z-index: 1;">
-                <div style="text-align:center; font-weight:900; font-size:1.2em;">TITRE DE CIRCULATION</div>
-                <center><small>RÉPUBLIQUE DE RENSSELAER</small></center>
-                <hr style="border-top: 1px dashed black;">
-                
-                <div style="font-size: 0.9em;">
-                    <p style="margin:4px 0;"><b>DATE :</b> {datetime.now().strftime("%d/%m/%Y")}</p>
-                    <p style="margin:4px 0;"><b>NOM :</b> {f_owner if f_owner != "---" else "---"}</p>
-                    <p style="margin:4px 0;"><b>MODÈLE :</b> {f_model if f_model else "..."}</p>
-                    <p style="margin:4px 0;"><b>PLAQUE :</b> <span style="background:#eee; border:1px solid #000; border-radius:3px; padding:0 6px; font-weight:bold; letter-spacing:1px;">{f_plate if f_plate else "..."}</span></p>
-                    <p style="margin:4px 0;"><b>ASSURANCE :</b> {f_assu}</p>
-                    <p style="margin:4px 0;"><b>TAXE JEUNE :</b> {val_taxe_jeune}$</p>
-                </div>
-                
-                <hr style="border-top: 1px dashed black;">
-                
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <div style="font-size: 8px; opacity: 0.6;">
-                        SÉCURITÉ NATIONALE<br>DOC-ID: {datetime.now().strftime("%H%M%S")}
-                    </div>
-                    <div style="text-align:right; font-weight:bold; font-size:1.2em;">TOTAL : {total_bill}$</div>
-                </div>
-                <br>
-                <center><small style="letter-spacing: 1px; opacity: 0.8;">VALIDÉ PAR LE TERMINAL</small></center>
-            </div>
+            <hr>
+            <div style="text-align:right; font-weight:bold; font-size:1.2em;">TOTAL : {total_bill}$</div>
+            <br>
+            <center><small>Certifié conforme par le Terminal National</small></center>
         </div>
         """
-        # C'est cette ligne avec unsafe_allow_html=True qui répare tout !
         st.markdown(ticket_html, unsafe_allow_html=True)
+
+    # --- SECTION RADIATION ---
+    st.divider()
+    st.markdown("#### 🗑️ Radiation de Plaque")
+    c_r1, c_r2 = st.columns(2)
+    with c_r1: r_plq = st.text_input("Plaque à radier", key="rad_p_v7").upper()
+    with c_r2: r_cod = st.text_input("Code secret", type="password", key="rad_c_v7")
+    
+    if st.button("CONFIRMER LA RADIATION", use_container_width=True, key="btn_rad_v7"):
+        match = df_i[df_i["Numéro de la plaque"].astype(str).str.upper() == r_plq]
+        if not match.empty:
+            if str(r_cod) == str(match.iloc[0]["CODE"]) or st.session_state.user_auth == "Staff":
+                df_i = df_i.drop(match.index[0])
+                cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i)
+                st.cache_data.clear()
+                st.success("Plaque radiée.")
+                time.sleep(1)
+                st.rerun()
+            else: st.error("Code incorrect.")
                 
 # --- ONGLET 2 : SERVICES AGENT (AMENDES / POINTS / CONSULTATION) ---
 if st.session_state.user_auth in ["RCT", "Staff"]:
@@ -520,6 +464,7 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                         </div>
                         """
                         st.markdown(ticket_html, unsafe_allow_html=True)
+                        
 # --- ONGLET 3 : ADMINISTRATION (STAFF UNIQUEMENT) ---
 if st.session_state.user_auth == "Staff":
     with tabs[2]:
