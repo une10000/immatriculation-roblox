@@ -176,7 +176,7 @@ if st.session_state.user_auth is None:
     </div>
     """, unsafe_allow_html=True=
     st.warning("⚠️ **AVERTISSEMENT :** Toute action effectuée sur ce terminal est enregistrée. L'usurpation d'identité d'agent est punie par la loi fédérale.")
-    
+    
 c1, c2, c3 = st.columns(3)
 with c1:
         st.markdown("### 👥 CIVIL")
