@@ -576,42 +576,42 @@ f_pts = st.number_input("Points à retirer",
                         key="f_pts_fix", 
                         disabled=(st.session_state.user_auth == "RCT"))
 
-                    label_btn = "🚨 ENVOYER & DÉBITER POINTS" if st.session_state.user_auth == "Staff" else "🚨 ENVOYER LA FACTURE (RCT)"
+label_btn = "🚨 ENVOYER & DÉBITER POINTS" if st.session_state.user_auth == "Staff" else "🚨 ENVOYER LA FACTURE (RCT)"
                     
-                    if st.button(label_btn, use_container_width=True):
-                        if f_motif:
-                            with st.spinner("Mise à jour..."):
-                                # 1. GESTION DES POINTS (STAFF UNIQUEMENT)
-                                if f_pts > 0 and st.session_state.user_auth == "Staff":
-                                    idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
-                                    df_p.at[idx_p, "PTS"] = max(0, int(df_p.at[idx_p, "PTS"]) - f_pts)
-                                    cloud_conn.update(worksheet="Points Permis", data=df_p)
+if st.button(label_btn, use_container_width=True):
+    if f_motif:
+        with st.spinner("Mise à jour..."):
+            # 1. GESTION DES POINTS (STAFF UNIQUEMENT)
+            if f_pts > 0 and st.session_state.user_auth == "Staff":
+                idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
+                df_p.at[idx_p, "PTS"] = max(0, int(df_p.at[idx_p, "PTS"]) - f_pts)
+                cloud_conn.update(worksheet="Points Permis", data=df_p)
                                 
-                                # 2. CRÉATION DE LA FACTURE
-                                df_factures = cloud_conn.read(worksheet="Factures")
-                                new_id = random.randint(10000, 99999)
+                # 2. CRÉATION DE LA FACTURE
+                df_factures = cloud_conn.read(worksheet="Factures")
+                new_id = random.randint(10000, 99999)
                                 
-                                # Note pour le Staff si le RCT voulait enlever des points
-                                detail_pts = f" | -{f_pts}pts demandés" if st.session_state.user_auth == "RCT" and f_pts > 0 else f" | -{f_pts}pts"
+                # Note pour le Staff si le RCT voulait enlever des points
+                detail_pts = f" | -{f_pts}pts demandés" if st.session_state.user_auth == "RCT" and f_pts > 0 else f" | -{f_pts}pts"
                                 
-                                new_row = {
-                                    "ID": new_id, 
-                                    "Cible": target, 
-                                    "Emetteur": st.session_state.user_auth,
-                                    "Montant": f_val, 
-                                    "Motif": f"{f_motif} (Plaque: {f_plate_link}{detail_pts})",
-                                    "Statut": "EN ATTENTE"
-                                }
+                new_row = {
+                    "ID": new_id, 
+                    "Cible": target, 
+                    "Emetteur": st.session_state.user_auth,
+                    "Montant": f_val, 
+                    "Motif": f"{f_motif} (Plaque: {f_plate_link}{detail_pts})",
+                    "Statut": "EN ATTENTE"
+                }
                                 
-                                df_factures = pd.concat([df_factures, pd.DataFrame([new_row])], ignore_index=True)
-                                cloud_conn.update(worksheet="Factures", data=df_factures)
+                df_factures = pd.concat([df_factures, pd.DataFrame([new_row])], ignore_index=True)
+                cloud_conn.update(worksheet="Factures", data=df_factures)
                                 
-                                st.success("✅ Facture envoyée avec succès !")
-                                st.cache_data.clear()
-                                time.sleep(1)
-                                st.rerun()
-                        else:
-                            st.error("⚠️ Le motif est obligatoire.")
+                st.success("✅ Facture envoyée avec succès !")
+                st.cache_data.clear()
+                time.sleep(1)
+                st.rerun()
+            else:
+                st.error("⚠️ Le motif est obligatoire.")
             # 2. AU MILIEU : APERÇU TICKET
             with col_ticket:
                 st.markdown("### 🖼️ Aperçu Live")
