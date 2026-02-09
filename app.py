@@ -373,34 +373,50 @@ with tabs[0]:
                 st.rerun()
             else: st.error("Code incorrect.")
                 
-# --- ONGLET 2 : SERVICES RCT (AMENDES & POINTS) ---
+# --- ONGLET 2 : SERVICES RCT (AMENDES UNIQUEMENT) ---
 if st.session_state.user_auth in ["RCT", "Staff"]:
     with tabs[1]:
         st.markdown("### 👮 Interface de Service RCT")
-        st.info("Utilisez cette interface pour réguler la circulation et sanctionner les infractions.")
         
         if target == "---":
             st.warning("⚠️ Veuillez sélectionner un citoyen dans le dossier en haut pour agir.")
         else:
-            st.write(f"Actions en cours sur : **{target}**")
-            c1, c2 = st.columns(2)
+            # AFFICHAGE DU NOM EN GRAND
+            st.markdown(f"""
+                <div style="background-color: #000; padding: 20px; border-radius: 10px; border-left: 10px solid #d32f2f; margin-bottom: 20px;">
+                    <h1 style="color: white; margin: 0; letter-spacing: 2px;">👤 {target.upper()}</h1>
+                    <p style="color: #d32f2f; font-weight: bold; margin: 0;">CITOYEN SOUS SURVEILLANCE NATIONALE</p>
+                </div>
+            """, unsafe_allow_html=True)
+
+            # SECTION AMENDES SEULE
+            st.subheader("💰 Amendes de Service")
+            st.info("Le retrait de points est désormais géré exclusivement par le Tribunal Supérieur.")
             
-            with c1:
-                st.subheader("⚖️ Sanctions Permis")
-                # CONDITION DE SÉCURITÉ : Seul le Staff peut modifier les points
-                if st.session_state.user_auth == "Staff":
-                    p_loss = st.number_input("Nombre de points à retirer", min_value=0, max_value=25, step=1, key="k_pts_loss")
-                    if st.button("RETIRER LES POINTS", use_container_width=True):
-                        idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
-                        df_p.at[idx_p, "PTS"] = max(0, int(df_p.at[idx_p, "PTS"]) - p_loss)
-                        cloud_conn.update(worksheet="Points Permis", data=df_p)
-                        record_log("Staff", f"Points -{p_loss} sur {target}")
+            with st.container(border=True):
+                tax_val = st.number_input("Montant de l'amende ($)", min_value=0, step=50, key="fine_val_final")
+                
+                if st.button("ÉMETTRE L'AMENDE ET PERCEVOIR", use_container_width=True):
+                    if tax_val > 0:
+                        idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
+                        curr_solde = float(str(df_b.at[idx_b, "Solde"]).replace('$', ''))
+                        
+                        # Débit du civil
+                        df_b.at[idx_b, "Solde"] = curr_solde - tax_val
+                        
+                        # Versement automatique au compte RCT (ACC_RCT)
+                        rct_idx = df_b[df_b["Nom Roblox"] == ACC_RCT].index[0]
+                        df_b.at[rct_idx, "Solde"] = float(str(df_b.at[rct_idx, "Solde"]).replace('$', '')) + tax_val
+                        
+                        cloud_conn.update(worksheet="Banque", data=df_b)
+                        record_log(st.session_state.user_auth, f"Amende {tax_val}$ émise pour {target}")
+                        
                         st.cache_data.clear()
-                        st.success(f"{p_loss} points retirés.")
+                        st.success(f"✅ Amende de {tax_val}$ enregistrée. Transfert effectué vers le compte RCT.")
+                        time.sleep(1)
                         st.rerun()
-                else:
-                    st.error("🚫 ACCÈS REFUSÉ : Seul le Grade STAFF peut retirer des points.")
-                    st.caption("Contactez un administrateur pour une suspension de permis.")
+                    else:
+                        st.error("Veuillez saisir un montant supérieur à 0$.")
             
             with c2:
                 st.subheader("💰 Amendes de Service")
