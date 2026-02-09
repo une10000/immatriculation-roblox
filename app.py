@@ -523,67 +523,68 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
             """, unsafe_allow_html=True)
 
             col_fine, col_pts, col_veh = st.columns([1, 1, 1.3])
+# 1. ÉMISSION DE FACTURE (AVEC APERÇU LIVE POUR L'AGENT)
+with col_fine:
+    st.subheader("🧾 Émettre Facture")
+    with st.container(border=True):
+        # Entrées de données
+        f_val = st.number_input("Montant ($)", min_value=0, step=50, key="f_val_fix")
+        f_motif = st.text_input("Motif", placeholder="ex: Excès de vitesse", key="f_mot_fix")
+        
+        # Dropdown des plaques
+        v_list = ["AUCUN / PIÉTON"] + df_i[df_i["Nom d'utilisateur ROBLOX"] == target]["Numéro de la plaque"].tolist()
+        f_plate_link = st.selectbox("Véhicule concerné :", v_list, key="f_plate_link")
+        
+        st.divider()
+        st.caption("🖼️ APERÇU DU TICKET (LIVE)")
+        
+        # --- LE TICKET EN LIVE (S'affiche pendant qu'on remplit) ---
+        prefix_name = "POLICE NATIONALE" if st.session_state.user_auth == "Staff" else "RÉSEAU RCT"
+        ticket_color = "#d32f2f" if st.session_state.user_auth == "Staff" else "#2c3e50"
+        
+        st.markdown(f"""
+        <div style="border: 2px solid #000; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; box-shadow: 6px 6px 0px {ticket_color};">
+            <center><b style="font-size:1.1em; text-decoration: underline;">PROJET DE FACTURE</b><br>
+            <small>{prefix_name}</small></center>
+            <hr style="border-top: 1px dashed #000; margin: 10px 0;">
+            <div style="font-size: 0.9em; line-height: 1.2;">
+                <b>CIBLE     :</b> {target}<br>
+                <b>PLAQUE    :</b> <span style="background:#eee; border:1px solid #000; padding:0 2px;">{f_plate_link}</span><br>
+                <b>MOTIF     :</b> {f_motif if f_motif else "..."}<br>
+            </div>
+            <hr style="border-top: 1px dashed #000; margin: 10px 0;">
+            <div style="text-align: right; font-weight: bold; font-size: 1.2em;">
+                TOTAL : {f_val}$
+            </div>
+        </div>
+        <br>
+        """, unsafe_allow_html=True)
 
-# 1. ÉMISSION DE FACTURE (AVEC SÉLECTION DE PLAQUE & APERÇU TICKET)
-            with col_fine:
-                st.subheader("🧾 Émettre Facture")
-                with st.container(border=True):
-                    f_val = st.number_input("Montant ($)", min_value=0, step=50, key="f_val_fix")
-                    f_motif = st.text_input("Motif", placeholder="ex: Excès de vitesse", key="f_mot_fix")
+        # Bouton d'envoi final
+        if st.button("CONFIRMER ET ENVOYER", use_container_width=True, key="btn_final_send"):
+            if f_val > 0 and f_motif:
+                with st.spinner("Envoi..."):
+                    df_factures = cloud_conn.read(worksheet="Factures")
+                    motif_complet = f"{f_motif} (Plaque: {f_plate_link})"
                     
-                    # --- NOUVEAU : DROPDOWN DES PLAQUES DU CITOYEN ---
-                    v_list = ["AUCUN / PIÉTON"] + df_i[df_i["Nom d'utilisateur ROBLOX"] == target]["Numéro de la plaque"].tolist()
-                    f_plate_link = st.selectbox("Véhicule concerné :", v_list, key="f_plate_link")
+                    new_row = {
+                        "ID": random.randint(10000, 99999),
+                        "Cible": target,
+                        "Emetteur": st.session_state.user_auth,
+                        "Montant": f_val,
+                        "Motif": motif_complet,
+                        "Statut": "EN ATTENTE"
+                    }
                     
-                    if st.button("ENVOYER LA FACTURE", use_container_width=True, key="btn_final_send"):
-                        if f_val > 0 and f_motif:
-                            with st.spinner("Liaison avec le serveur..."):
-                                # 1. Lire la table des factures
-                                df_factures = cloud_conn.read(worksheet="Factures")
-                                
-                                # 2. Préparer la ligne (On ajoute la plaque au motif pour la base de données)
-                                motif_complet = f"{f_motif} (Véhicule: {f_plate_link})"
-                                new_id = random.randint(10000, 99999)
-                                
-                                new_row = {
-                                    "ID": new_id,
-                                    "Cible": target,
-                                    "Emetteur": st.session_state.user_auth,
-                                    "Montant": f_val,
-                                    "Motif": motif_complet,
-                                    "Statut": "EN ATTENTE"
-                                }
-                                
-                                # 3. Ajouter et Envoyer
-                                df_factures = pd.concat([df_factures, pd.DataFrame([new_row])], ignore_index=True)
-                                cloud_conn.update(worksheet="Factures", data=df_factures)
-                                
-                                # --- APERÇU DU TICKET GÉNÉRÉ (POUR L'AGENT) ---
-                                prefix_name = "POLICE NATIONALE" if st.session_state.user_auth == "Staff" else "RÉSEAU RCT"
-                                st.markdown(f"""
-                                <div style="border: 2px solid #000; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; margin-top: 15px; box-shadow: 6px 6px 0px #d32f2f;">
-                                    <center><b style="font-size:1.1em; text-decoration: underline;">FACTURE ÉMISE</b><br>
-                                    <small>{prefix_name}</small></center>
-                                    <hr style="border-top: 1px dashed #000; margin: 10px 0;">
-                                    <div style="font-size: 0.9em; line-height: 1.2;">
-                                        <b>RÉFÉRENCE :</b> #{new_id}<br>
-                                        <b>CIBLE     :</b> {target}<br>
-                                        <b>PLAQUE    :</b> <span style="background:#eee; border:1px solid #000; padding:0 2px;">{f_plate_link}</span><br>
-                                        <b>MOTIF     :</b> {f_motif}<br>
-                                    </div>
-                                    <hr style="border-top: 1px dashed #000; margin: 10px 0;">
-                                    <div style="text-align: right; font-weight: bold; font-size: 1.2em;">
-                                        TOTAL : {f_val}$
-                                    </div>
-                                    <center><small style="font-size: 0.6em; opacity: 0.6; margin-top:10px; display:block;">COPIE AGENT - RCRP OS</small></center>
-                                </div>
-                                """, unsafe_allow_html=True)
-                                
-                                st.success("✅ Facture envoyée avec succès !")
-                                st.cache_data.clear()
-                                # On ne fait pas de rerun pour laisser l'agent voir son ticket émis
-                        else:
-                            st.error("⚠️ Erreur : Montant ou Motif vide.")
+                    df_factures = pd.concat([df_factures, pd.DataFrame([new_row])], ignore_index=True)
+                    cloud_conn.update(worksheet="Factures", data=df_factures)
+                    
+                    st.success("✅ Facture transmise au civil !")
+                    st.cache_data.clear()
+                    time.sleep(1)
+                    st.rerun()
+            else:
+                st.error("⚠️ Remplissez le montant et le motif.")
 
             # 2. GESTION DU PERMIS
             with col_pts:
