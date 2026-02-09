@@ -353,7 +353,6 @@ try:
                 # ... (Après le code du bouton "💳 RÉGLER LA FACTURE")
 
             # --- AJOUT ICI : BOUTON ANNULER POUR LES ADMINS ---
-                # --- BOUTON ANNULER POUR LES ADMINS (CORRIGÉ) ---
             if st.session_state.user_auth in ["Staff", "Admin"]:
                 st.write("") 
                 if st.button(f"🗑️ ANNULER L'ERREUR (Facture #{fac['ID']})", key=f"admin_del_{fac['ID']}", use_container_width=True):
