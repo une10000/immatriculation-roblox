@@ -334,10 +334,29 @@ with st.container():
         # On affiche la vraie erreur pour comprendre
             st.error(f"Erreur technique : {e}")
 
-# --- SECTION FACTURATION (AUTORISÉE RCT ET STAFF) ---
 if st.session_state.user_auth in ["Staff", "RCT"]:
     st.subheader("🧾 Formulaire de Sanction")
-    # Remets tes lignes de number_input ici
+    
+    with st.container(border=True):
+        col1, col2 = st.columns(2)
+        with col1:
+            montant = st.number_input("Montant de l'amende ($)", min_value=0, step=10)
+        
+        with col2:
+            # ON CACHE LES POINTS POUR LE RCT
+            if st.session_state.user_auth == "Staff":
+                points = st.number_input("Points à retirer", min_value=0, max_value=25, step=1)
+            else:
+                points = 0 # Le RCT retire 0 point par défaut
+                st.info("ℹ️ RCT : Retrait de points indisponible.")
+
+        motif = st.text_input("Motif de la sanction")
+
+        if st.button("VALIDER LA SANCTION", use_container_width=True):
+            # Ton code pour envoyer à Google Sheets
+            # Utilise 'points' qui vaudra 0 pour le RCT
+            st.success("Sanction enregistrée !")
+
 # --- SECTION VÉHICULES CORRIGÉE ---
 # --- SECTION VÉHICULES UNIFORMISÉE ---
 st.write("### 🚗 VÉHICULES ENREGISTRÉS")
