@@ -451,7 +451,7 @@ with tab_dossier:
                                 st.error("Veuillez remplir tous les champs.")
 
     st.divider()
-    st.subheader("📋 Liste des Résidents de Palm City")
+    st.subheader("📋 Liste des Résidents de Rensselaer County Roleplay FR")
     q_cit = st.text_input("🔍 Rechercher un résident", key="q_cit").lower()
     
     for idx, r in df_banque.iterrows():
