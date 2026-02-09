@@ -284,56 +284,61 @@ with st.container():
                             </div>
                         """, unsafe_allow_html=True)
             else: 
-                st.error("Aucun compte trouvé.") # ======================================================================================
-        # NOUVEAU : SYSTÈME DE PAIEMENT DES FACTURES (SOUS LE SOLDE)
-        # ======================================================================================
-        st.divider()
-        try:
-            df_all_f = cloud_conn.read(worksheet="Factures").fillna("")
-            mes_factures = df_all_f[(df_all_f["Cible"] == target) & (df_all_f["Statut"] == "EN ATTENTE")]
+                st.error("Aucun compte trouvé.") 
+# ======================================================================================
+        # NOUVEAU : SYSTÈME DE PAIEMENT DES FACTURES (CORRIGÉ RCT/POLICE)
+        # ======================================================================================
+        st.divider()
+        try:
+            df_all_f = cloud_conn.read(worksheet="Factures").fillna("")
+            mes_factures = df_all_f[(df_all_f["Cible"] == target) & (df_all_f["Statut"] == "EN ATTENTE")]
 
-            if not mes_factures.empty:
-                st.error(f"⚠️ {len(mes_factures)} FACTURE(S) EN ATTENTE DE PAIEMENT")
-                for _, fac in mes_factures.iterrows():
-                    with st.container(border=True):
-                        c_f1, c_f2 = st.columns([2, 1])
-                        c_f1.markdown(f"**OBJET :** {fac['Motif']}")
-                        c_f1.caption(f"Émis par : {fac['Emetteur']} | Réf : #{fac['ID']}")
-                        
-                        if c_f2.button(f"RÉGLER {fac['Montant']}$", key=f"pay_{fac['ID']}", use_container_width=True):
-                            # Récupération du solde actuel
-                            idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
-                            solde_raw = str(df_b.at[idx_b, "Solde"]).replace('$', '').replace(',', '')
-                            solde_actuel = float(solde_raw)
-                            montant_facture = float(fac['Montant'])
-                            
-                            if solde_actuel >= montant_facture:
-                                # 1. Débit du Civil
-                                df_b.at[idx_b, "Solde"] = solde_actuel - montant_facture
-                                
-                                # 2. Crédit du compte RCT (ou Averis selon l'émetteur si tu veux)
-                                rct_idx = df_b[df_b["Nom Roblox"] == ACC_RCT].index[0]
-                                solde_rct = float(str(df_b.at[rct_idx, "Solde"]).replace('$', '').replace(',', ''))
-                                df_b.at[rct_idx, "Solde"] = solde_rct + montant_facture
-                                
-                                # 3. Mise à jour de la facture
-                                df_all_f.loc[df_all_f["ID"] == fac["ID"], "Statut"] = "PAYÉ"
-                                
-                                # 4. Envoi au Cloud
-                                cloud_conn.update(worksheet="Banque", data=df_b)
-                                cloud_conn.update(worksheet="Factures", data=df_all_f)
-                                
-                                record_log(target, f"Paiement facture #{fac['ID']} ({montant_facture}$)")
-                                st.success("Paiement effectué avec succès !")
-                                st.cache_data.clear()
-                                time.sleep(1)
-                                st.rerun()
-                            else:
-                                st.error("Fonds insuffisants pour régler cette facture.")
-            else:
-                st.info("✅ Aucune dette en attente pour ce citoyen.")
-        except Exception as e:
-            st.warning("Système de facturation indisponible (Vérifiez l'onglet 'Factures')")
+            if not mes_factures.empty:
+                st.error(f"⚠️ {len(mes_factures)} FACTURE(S) EN ATTENTE DE PAIEMENT")
+                for _, fac in mes_factures.iterrows():
+                    with st.container(border=True):
+                        c_f1, c_f2 = st.columns([2, 1])
+                        # Identification visuelle de l'émetteur
+                        prefix = "🚔 POLICE" if fac['Emetteur'] == "Staff" else "🛠️ RCT"
+                        c_f1.markdown(f"**{prefix} :** {fac['Motif']}")
+                        c_f1.caption(f"Réf : #{fac['ID']} | Montant : {fac['Montant']}$")
+                        
+                        if c_f2.button(f"RÉGLER {fac['Montant']}$", key=f"pay_{fac['ID']}", use_container_width=True):
+                            idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
+                            solde_raw = str(df_b.at[idx_b, "Solde"]).replace('$', '').replace(',', '')
+                            solde_actuel = float(solde_raw)
+                            montant_facture = float(fac['Montant'])
+                            
+                            if solde_actuel >= montant_facture:
+                                # 1. Débit du Civil
+                                df_b.at[idx_b, "Solde"] = solde_actuel - montant_facture
+                                
+                                # 2. Crédit selon l'émetteur (RCT ou Police/Staff)
+                                # Pour la police/staff, on envoie au compte RCT ou Gouvernement
+                                target_bank_acc = ACC_RCT 
+                                
+                                rct_idx = df_b[df_b["Nom Roblox"] == target_bank_acc].index[0]
+                                solde_dest = float(str(df_b.at[rct_idx, "Solde"]).replace('$', '').replace(',', ''))
+                                df_b.at[rct_idx, "Solde"] = solde_dest + montant_facture
+                                
+                                # 3. Mise à jour statut
+                                df_all_f.loc[df_all_f["ID"] == fac["ID"], "Statut"] = "PAYÉ"
+                                
+                                # 4. Sync Cloud
+                                cloud_conn.update(worksheet="Banque", data=df_b)
+                                cloud_conn.update(worksheet="Factures", data=df_all_f)
+                                
+                                record_log(target, f"Paiement facture {prefix} #{fac['ID']}")
+                                st.success("Paiement effectué !")
+                                st.cache_data.clear()
+                                time.sleep(1)
+                                st.rerun()
+                            else:
+                                st.error("Fonds insuffisants.")
+            else:
+                st.info("✅ Aucune dette en attente.")
+        except Exception as e:
+            st.warning("Système de facturation indisponible")
         # --- SECTION VÉHICULES CORRIGÉE ---
         st.write(f"🚘 **VÉHICULES ENREGISTRÉS**")
         v_data = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
