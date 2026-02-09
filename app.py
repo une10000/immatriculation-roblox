@@ -374,8 +374,7 @@ with tabs[0]:
             else: st.error("Code incorrect.")
                 
 # --- ONGLET 2 : SERVICES RCT (AMENDES & RADAR VÉHICULES) ---
-if st.session_state.user_auth in ["RCT", "Staff"]:
-    with tabs[1]:
+with tabs[1]:
         st.markdown("### 👮 Interface de Service RCT")
         
         if target == "---":
@@ -395,7 +394,7 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
             with col_action:
                 st.subheader("💰 Perception d'Amende")
                 with st.container(border=True):
-                    tax_val = st.number_input("Montant de l'amende ($)", min_value=0, step=50, key="fine_val_v9")
+                    tax_val = st.number_input("Montant de l'amende ($)", min_value=0, step=50, key="fine_val_v10")
                     
                     if st.button("ÉMETTRE ET PERCEVOIR", use_container_width=True):
                         if tax_val > 0:
@@ -413,24 +412,23 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                             st.success(f"✅ Amende de {tax_val}$ perçue.")
                             time.sleep(1)
                             st.rerun()
-           with col_info:
-                st.subheader("🚗 Véhicules Enregistrés")
-                # Filtrage des véhicules appartenant au citoyen sélectionné
+                        else:
+                            st.error("Entrez un montant.")
+
+            with col_info:
+                st.subheader("🚗 Radar Véhicules")
                 v_player = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
                 
                 if v_player.empty:
-                    st.info(f"Aucun véhicule immatriculé pour {target}.")
+                    st.info(f"Aucun véhicule pour {target}.")
                 else:
                     for _, v in v_player.iterrows():
-                        # Style de la carte véhicule
                         with st.container(border=True):
                             st.markdown(f"**📌 PLAQUE : {v['Numéro de la plaque']}**")
-                            st.write(f"**Modèle :** {v['Marque du véhicule']}")
+                            st.write(f"Modèle : {v['Marque du véhicule']}")
                             
-                            # LOGIQUE : Seule l'assurance RCT est considérée comme "Valide" ici
-                            # Si c'est "Aucune" ou "AVERIS", on affiche l'alerte pour l'agent
+                            # Détection Assurance RCT
                             type_assu = str(v['Assurance'])
-                            
                             if "RCT" in type_assu:
                                 st.success("✅ ASSURANCE RCT")
                             else:
