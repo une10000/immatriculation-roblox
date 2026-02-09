@@ -332,7 +332,7 @@ with st.container():
                                 st.error("Fonds insuffisants.")
         except Exception as e:
         # On affiche la vraie erreur pour comprendre
-        st.error(f"Erreur technique : {e}")
+            st.error(f"Erreur technique : {e}")
 
 # --- SECTION FACTURATION (AUTORISÉE RCT ET STAFF) ---
 if st.session_state.user_auth in ["Staff", "RCT"]:
