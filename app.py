@@ -246,20 +246,20 @@ if st.session_state.user_auth is None:
 else:
     salut_complet = "Bonsoir🌕"
     # ... (Le reste du code de nuit reste inchangé pour garder tes étoiles)
-    else:
-        salut_complet = "Bonsoir🌕"
-        pattern_style = (
-            "background-color: #05070a; "
-            "background-image: "
-            "radial-gradient(1px 1px at 25% 35%, white, transparent), "
-            "radial-gradient(1px 1px at 50% 10%, white, transparent), "
-            "radial-gradient(2px 2px at 10% 80%, white, transparent), "
-            "radial-gradient(1px 1px at 90% 20%, white, transparent), "
-            "radial-gradient(1.5px 1.5px at 70% 60%, white, transparent); "
-            "background-size: 150px 150px, 200px 200px, 250px 250px, 180px 180px, 220px 220px;"
-        )
-        t_color = "#FFFFFF"
-        glow = "0 0 40px rgba(255,255,255,0.9), 0 0 80px rgba(255,255,255,0.4)"
+else:
+    salut_complet = "Bonsoir🌕"
+    pattern_style = (
+        "background-color: #05070a; "
+        "background-image: "
+        "radial-gradient(1px 1px at 25% 35%, white, transparent), "
+        "radial-gradient(1px 1px at 50% 10%, white, transparent), "
+        "radial-gradient(2px 2px at 10% 80%, white, transparent), "
+        "radial-gradient(1px 1px at 90% 20%, white, transparent), "
+        "radial-gradient(1.5px 1.5px at 70% 60%, white, transparent); "
+        "background-size: 150px 150px, 200px 200px, 250px 250px, 180px 180px, 220px 220px;"
+    )
+    t_color = "#FFFFFF"
+    glow = "0 0 40px rgba(255,255,255,0.9), 0 0 80px rgba(255,255,255,0.4)"
 
     # --- AFFICHAGE UNITAIRE ---
     st.markdown(f"""
