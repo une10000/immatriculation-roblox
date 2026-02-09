@@ -382,10 +382,68 @@ if st.session_state.user_auth == "Staff":
 
 tabs = st.tabs(tab_labels)
 
-# --- ONGLET 1 : IMMATRICULATION (Déjà OK dans ton code) ---
+# --- ONGLET 1 : IMMATRICULATION & RADIATION ---
 with tabs[0]:
-    # ... (Garde ton code actuel de l'onglet 0 ici)
-    pass 
+    st.markdown("### 📝 Gestion des Titres de Circulation")
+    
+    col_f, col_t = st.columns([1.3, 1])
+    
+    with col_f:
+        with st.container(border=True):
+            f_owner = st.selectbox("Propriétaire du véhicule", ["---"] + df_b["Nom Roblox"].tolist(), key="k_owner_v7")
+            f_model = st.text_input("Marque & Modèle précis", key="k_model_v7")
+            f_plate = st.text_input("Numéro de Plaque souhaité", key="k_plate_v7").upper()
+            f_assu = st.selectbox("Type d'Assurance", ["Aucune", "AVERIS (130$)", "RCT (150$)"], key="k_assu_v7")
+            f_code = st.text_input("Définir un Code de Radiation (Secret)", type="password", key="k_code_v7")
+            
+            # Calcul de la Taxe Jeune
+            val_taxe_jeune = 0
+            if f_owner != "---":
+                try:
+                    date_brute = df_b[df_b["Nom Roblox"] == f_owner]["Date d'arrivée"].values[0]
+                    date_arr = datetime.strptime(str(date_brute), "%d/%m/%Y")
+                    if (datetime.now() - date_arr).days < 30:
+                        val_taxe_jeune = 50
+                        st.warning(f"🔰 JEUNE CONDUCTEUR détecté (+{val_taxe_jeune}$)")
+                except: pass
+
+            taxe_gouv = 175
+            taxe_assu = 130 if "AVERIS" in f_assu else (150 if "RCT" in f_assu else 0)
+            total_bill = taxe_gouv + taxe_assu + val_taxe_jeune
+            
+            if st.button(f"S'ACQUITTER DE {total_bill}$ ET ENREGISTRER", use_container_width=True):
+                if f_owner != "---" and f_plate and f_code:
+                    # Ton code de paiement ici (déjà fonctionnel dans ton script)
+                    st.success("Enregistré !")
+
+    # --- LE RETOUR DU TICKET RÉTRO (ICI !) ---
+    with col_t:
+        st.markdown("### 🖼️ APERÇU DU TITRE (LIVE)")
+        
+        ticket_html = f"""
+        <div style="border: 4px double black; padding: 20px; background: white; color: black; font-family: 'Courier New', Courier, monospace; box-shadow: 10px 10px 0px #000;">
+            <div style="text-align:center; font-weight:900; font-size:1.4em; text-decoration: underline;">TITRE DE CIRCULATION</div>
+            <center><small>RÉPUBLIQUE DE RENSSELAER</small><br>
+            <code>FEDERAL TERMINAL ACCESS</code></center>
+            <hr style="border-top: 2px dashed black;">
+            <div style="font-size: 1.1em;">
+                <p style="margin:5px 0;"><b>DATE :</b> {datetime.now().strftime("%d/%m/%Y")}</p>
+                <p style="margin:5px 0;"><b>PROPRIO :</b> {f_owner}</p>
+                <p style="margin:5px 0;"><b>MODÈLE :</b> {f_model.upper() if f_model else "---"}</p>
+                <p style="margin:5px 0;"><b>PLAQUE :</b> <span style="background:#000; color:#fff; padding:2px 5px;">{f_plate if f_plate else "---"}</span></p>
+                <p style="margin:5px 0;"><b>ASSURANCE :</b> {f_assu}</p>
+                <p style="margin:5px 0;"><b>TAXE JEUNE :</b> {val_taxe_jeune}$</p>
+            </div>
+            <hr style="border-top: 2px dashed black;">
+            <div style="text-align:right; font-weight:bold; font-size:1.4em;">TOTAL : {total_bill}$</div>
+            <br>
+            <center>
+                <small>VALIDE POUR LE RÉSEAU ROUTIER NATIONAL</small><br>
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=60x60&data=RCRP-{f_plate}" style="margin-top:10px; opacity:0.8;">
+            </center>
+        </div>
+        """
+        st.markdown(ticket_html, unsafe_allow_html=True)
 
 # --- ONGLET 2 : SERVICES AGENT (CORRIGÉ : PAS DE DOUBLONS, PAS D'ERREURS) ---
 if st.session_state.user_auth in ["RCT", "Staff"]:
