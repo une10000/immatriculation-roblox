@@ -8,10 +8,10 @@ import time
 # 1. CONFIGURATION SYSTÈME & DESIGN (CSS ÉTENDU)
 # ======================================================================================
 st.set_page_config(
-    page_title="RCRP - Système de Gestion Intégral Professionnel",
-    page_icon="🏛️",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    page_title="RCRP - Système de Gestion Intégral Professionnel",
+    page_icon="🏛️",
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
 st.markdown("""
