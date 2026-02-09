@@ -256,22 +256,30 @@ with st.container():
         # Section Véhicules (Dossier Citoyen)
         with col3:
             v_data = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
-            st.write(f"🚘 **VÉHICULES ({len(v_data)})**")
-            if not v_data.empty:
-                for _, veh in v_data.iterrows():
-                    # Format "Petit Reçu" avec bouton de radiation intégré
+            # --- FIN DES 3 COLONNES (Points / Banque / Vide) ---
+        
+        st.write(f"🚘 **VÉHICULES ENREGISTRÉS ({len(v_data)})**")
+        
+        if not v_data.empty:
+            # On crée dynamiquement autant de colonnes qu'il y a de véhicules
+            # On limite à 3 ou 4 par ligne pour que ça reste lisible
+            v_cols = st.columns(3) 
+            
+            for i, (_, veh) in enumerate(v_data.iterrows()):
+                # On distribue les véhicules dans les colonnes (0, 1, 2, puis on revient à 0)
+                with v_cols[i % 3]:
                     with st.container(border=True):
-                        # Le visuel du titre
                         st.markdown(f"""
-                        <div style="border: 1px solid #000; padding: 5px; background: white; color: black; font-family: monospace; font-size: 0.8em;">
+                        <div style="border: 1px solid #000; padding: 10px; background: white; color: black; font-family: monospace; font-size: 0.85em; box-shadow: 2px 2px 0px #eee;">
                             <center><b>TITRE DE PROPRIÉTÉ</b></center>
+                            <hr style="margin:5px 0; border-top:1px solid #ddd;">
                             <b>PLQ :</b> {veh['Numéro de la plaque']}<br>
                             <b>MOD :</b> {veh['Marque du véhicule']}<br>
                             <b>ASS :</b> {veh['Assurance']}
                         </div>
                         """, unsafe_allow_html=True)
                         
-                        # Bouton de radiation spécifique à ce véhicule
+                        # Bouton de radiation intégré
                         with st.expander("🗑️ Radier"):
                             r_cod_check = st.text_input("Code Secret", type="password", key=f"rad_val_{veh['Numéro de la plaque']}")
                             if st.button("CONFIRMER", key=f"btn_del_{veh['Numéro de la plaque']}", use_container_width=True):
@@ -284,8 +292,8 @@ with st.container():
                                     st.rerun()
                                 else:
                                     st.error("Code incorrect")
-            else: 
-                st.write("Aucun véhicule enregistré.")
+        else:
+            st.info("Aucun véhicule enregistré pour ce citoyen.")
 
 st.divider()
 # ======================================================================================
