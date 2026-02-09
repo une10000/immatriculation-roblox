@@ -212,7 +212,7 @@ if st.session_state.user_auth is not None:
 # ======================================================================================
 
 if st.session_state.user_auth is None:
-    # 1. CALCUL DES MOTIFS (FORCÉS POUR ÊTRE VISIBLES)
+    # 1. CALCUL DES MOTIFS
     from datetime import datetime, timedelta, timezone
     t_now_lock = datetime.now(timezone.utc) + timedelta(hours=1)
     h_lock = t_now_lock.hour
@@ -235,12 +235,12 @@ if st.session_state.user_auth is None:
         )
         t_color = "#FFFFFF"
 
-    # AFFICHAGE DU MESSAGE DE BIENVENUE (Marge réduite en bas : 5px)
+    # AFFICHAGE DU MESSAGE DE BIENVENUE (Coins : Haut arrondis, Bas carrés)
     st.markdown(f"""
         <div style="
             text-align: center; 
             margin-top: -30px; 
-            margin-bottom: 5px; 
+            margin-bottom: 0px; 
             padding: 50px 20px; 
             border-radius: 20px 20px 0 0;
             color: {t_color};
@@ -255,9 +255,9 @@ if st.session_state.user_auth is None:
         </div>
     """, unsafe_allow_html=True)
 
-    # 2. EN-TÊTE RENSSELAER (Rapproché avec margin-top négative)
+    # 2. EN-TÊTE RENSSELAER (Coins : Haut carrés, Bas arrondis + Margin-top 0)
     st.markdown("""
-    <div class="header-box" style="margin-top: -10px;">
+    <div class="header-box" style="margin-top: 0px; border-radius: 0 0 20px 20px;">
     <center>
         <h2 style="margin-bottom:0;">🏛️ RÉPUBLIQUE DE RENSSELAER</h2>
         <p style="font-size: 1em; opacity: 0.8;">TERMINAL FÉDÉRAL D'OPÉRATIONS NATIONALES</p>
