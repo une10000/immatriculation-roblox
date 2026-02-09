@@ -541,52 +541,37 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                 if v_player.empty:
                     st.info("Aucun véhicule enregistré.")
                 else:
-                    # --- DANS L'ONGLET 2 : SERVICES AGENT ---
-# Remplace la boucle for dans la section # 3. RADAR VÉHICULES par ceci :
-
-for i, (_, v) in enumerate(v_player.iterrows()):
-    # 1. INITIALISATION DES VARIABLES
-    assu_type = str(v['Assurance'])
-    user_role = st.session_state.user_auth # "RCT" ou "Staff"
-    
-    # 2. LOGIQUE CONDITIONNELLE SELON LE RÔLE
-    if user_role == "RCT":
-        # Spécifique RCT : Danger si pas chez nous
-        if "RCT" in assu_type:
-            status_color = "#2e7d32" # Vert
-            status_text = "VÉHICULE EN RÈGLE (RCT)"
-            text_color = "white"
-        else:
-            status_color = "#fbc02d" # Jaune Danger
-            status_text = "⚠️ DANGER : NON-ASSURÉ RCT"
-            text_color = "black"
-    else:
-        # Pour le Staff / Police : En règle si n'importe quelle assurance existe
-        if assu_type != "Aucune":
-            status_color = "#2e7d32" # Vert
-            status_text = "VÉHICULE EN RÈGLE"
-            text_color = "white"
-        else:
-            status_color = "#d32f2f" # Rouge
-            status_text = "⚠️ DÉFAUT D'ASSURANCE"
-            text_color = "white"
-
-    # 3. RENDU DU REÇU
-    ticket_html = f"""
-    <div style="border: 2px solid #000; padding: 10px; background: white; color: black; font-family: monospace; margin-bottom: 15px; box-shadow: 3px 3px 0px #888;">
-        <div style="text-align:center; font-weight:bold; font-size:0.9em; border-bottom: 1px solid #000; margin-bottom: 5px;">RÉPUBLIQUE DE RENSSELAER</div>
-        <div style="font-size: 0.8em; line-height: 1.2;">
-            <b>DATE :</b> {v['Horodateur']}<br>
-            <b>MODÈLE :</b> {v['Marque du véhicule']}<br>
-            <b>PLAQUE :</b> <span style="background:#eee; border:1px solid #000; padding:0 2px;">{v['Numéro de la plaque']}</span><br>
-            <b>ASSU :</b> {assu_type}
-        </div>
-        <div style="margin-top: 5px; text-align: center; background: {status_color}; color: {text_color}; font-weight: bold; font-size: 0.7em; padding: 4px; border-radius: 2px;">
-            {status_text}
-        </div>
-    </div>
-    """
-    st.markdown(ticket_html, unsafe_allow_html=True)
+                    for i, (_, v) in enumerate(v_player.iterrows()):
+                        # LOGIQUE D'ALERTE RCT
+                        # On vérifie si l'assurance contient "RCT"
+                        is_rct = "RCT" in str(v['Assurance'])
+                        
+                        if is_rct:
+                            status_color = "#2e7d32" # Vert
+                            status_text = "VÉHICULE EN RÈGLE (RCT)"
+                            text_color = "white"
+                        else:
+                            # Danger Jaune si pas assuré RCT (donc Averis ou Aucune)
+                            status_color = "#fbc02d" # Jaune
+                            status_text = "⚠️ DANGER : NON-ASSURÉ RCT"
+                            text_color = "black"
+                        
+                        # Le Reçu version "Consultation Agent"
+                        ticket_html = f"""
+                        <div style="border: 2px solid #000; padding: 10px; background: white; color: black; font-family: monospace; margin-bottom: 15px; box-shadow: 3px 3px 0px #888;">
+                            <div style="text-align:center; font-weight:bold; font-size:0.9em; border-bottom: 1px solid #000; margin-bottom: 5px;">RÉPUBLIQUE DE RENSSELAER</div>
+                            <div style="font-size: 0.8em; line-height: 1.2;">
+                                <b>DATE :</b> {v['Horodateur']}<br>
+                                <b>MODÈLE :</b> {v['Marque du véhicule']}<br>
+                                <b>PLAQUE :</b> <span style="background:#eee; border:1px solid #000; padding:0 2px;">{v['Numéro de la plaque']}</span><br>
+                                <b>ASSU :</b> {v['Assurance']}
+                            </div>
+                            <div style="margin-top: 5px; text-align: center; background: {status_color}; color: {text_color}; font-weight: bold; font-size: 0.7em; padding: 4px; border-radius: 2px;">
+                                {status_text}
+                            </div>
+                        </div>
+                        """
+                        st.markdown(ticket_html, unsafe_allow_html=True)
 # --- ONGLET 3 : ADMINISTRATION (STAFF UNIQUEMENT) ---
 if st.session_state.user_auth == "Staff":
     with tabs[2]:
