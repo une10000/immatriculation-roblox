@@ -403,32 +403,46 @@ with tabs[0]:
     # --- ICI ON FERME col_f ET ON OUVRE col_t ---
     with col_t:
         st.markdown("### 🖼️ APERÇU LIVE")
-        ticket_html = f"""
-        <div style="border: 4px double black; padding: 15px; background: white; color: black; font-family: monospace; position: relative; overflow: hidden;">
-            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); font-size: 60px; opacity: 0.03; font-weight: bold; white-space: nowrap; pointer-events: none;">
-                RENSSELAER
-            </div>
+        
+        # On utilise le container natif de Streamlit (plus stable)
+        with st.container(border=True):
+            # En-tête du ticket
+            st.markdown(f"""
+                <div style="text-align:center; font-family:monospace;">
+                    <h4 style="margin:0;">TITRE DE CIRCULATION</h4>
+                    <small>RÉPUBLIQUE DE RENSSELAER</small>
+                    <hr style="border-top: 1px dashed #ccc;">
+                </div>
+            """, unsafe_allow_html=True)
             
-            <div style="text-align:center; font-weight:900; font-size:1.2em;">TITRE DE CIRCULATION</div>
-            <center><small>RÉPUBLIQUE DE RENSSELAER</small></center>
-            <hr style="border-top: 1px dashed black;">
+            # Corps du ticket (Texte standard Streamlit pour la stabilité)
+            st.write(f"📅 **DATE :** {datetime.now().strftime('%d/%m/%Y')}")
+            st.write(f"👤 **NOM :** {f_owner}")
+            st.write(f"🚘 **MODÈLE :** {f_model if f_model else '...'}")
             
-            <div style="font-size: 0.9em; position: relative; z-index: 1;">
-                <p style="margin:4px 0;"><b>DATE :</b> {datetime.now().strftime("%d/%m/%Y")}</p>
-                <p style="margin:4px 0;"><b>NOM :</b> {f_owner}</p>
-                <p style="margin:4px 0;"><b>MODÈLE :</b> {f_model if f_model else "..."}</p>
-                <p style="margin:4px 0;"><b>PLAQUE :</b> <span style="background:#eee; border:1px solid #000; border-radius:3px; padding:0 6px; font-weight:bold; letter-spacing:1px;">{f_plate if f_plate else "..."}</span></p>
-                <p style="margin:4px 0;"><b>ASSURANCE :</b> {f_assu}</p>
-                <p style="margin:4px 0;"><b>TAXE JEUNE :</b> {val_taxe_jeune}$</p>
-            </div>
-            <hr style="border-top: 1px dashed black;">
-            <div style="text-align:right; font-weight:bold; font-size:1.2em;">TOTAL : {total_bill}$</div>
-            <br>
-            <center><small style="opacity:0.6;">DOC-ID: {datetime.now().strftime('%H%M%S')}</small><br>
-            <small>Certifié conforme par le Terminal National</small></center>
-        </div>
-        """
-        st.markdown(ticket_html, unsafe_allow_html=True)
+            # Plaque stylisée
+            st.markdown(f"🆔 **PLAQUE :** <span style='background:#eee; border:1px solid #000; border-radius:3px; padding:2px 8px; font-weight:bold; font-family:monospace;'>{f_plate if f_plate else '...'}</span>", unsafe_allow_html=True)
+            
+            st.write(f"🛡️ **ASSURANCE :** {f_assu}")
+            
+            # AFFICHAGE TAXE JEUNE
+            if val_taxe_jeune > 0:
+                st.write(f"🔰 **TAXE JEUNE :** {val_taxe_jeune}$")
+            else:
+                st.write(f"🔰 **TAXE JEUNE :** 0$")
+            
+            # Pied de page avec "Filigrane" simple
+            st.markdown(f"""
+                <hr style="border-top: 1px dashed #ccc;">
+                <div style="text-align:right; font-family:monospace;">
+                    <h3 style="margin:0;">TOTAL : {total_bill}$</h3>
+                    <small style="opacity:0.4;">SÉCURITÉ : RCRP-{datetime.now().strftime('%S%M')}</small>
+                </div>
+                <div style="text-align:center; margin-top:10px; opacity:0.1; font-weight:bold; font-size:40px; transform:rotate(-10deg);">
+                    OFFICIEL
+                </div>
+                <center><small style="opacity:0.5;">Certifié conforme par le Terminal National</small></center>
+            """, unsafe_allow_html=True)
                 
 # --- ONGLET 2 : SERVICES AGENT (AMENDES / POINTS / CONSULTATION) ---
 if st.session_state.user_auth in ["RCT", "Staff"]:
