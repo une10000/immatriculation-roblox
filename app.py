@@ -1,6 +1,6 @@
 # ======================================================================================
 # PROJECT       : RCRP FR OS - ULTIMATE EDITION
-# VERSION       : 14.5.2
+# VERSION       : 14.6.0
 # BUILD DATE    : 09/02/2026
 # ======================================================================================
 
@@ -275,7 +275,7 @@ if st.session_state.user_auth is None:
         <h2 style="margin-bottom:0;">🏛️ RÉPUBLIQUE DE RENSSELAER</h2>
         <p style="font-size: 1em; opacity: 0.8;">TERMINAL FÉDÉRAL D'OPÉRATIONS NATIONALES</p>
         <hr style="border-color: rgba(255,255,255,0.1); margin: 10px 0;">
-        <small style="opacity: 0.6;">VERSION 34.5.0 | SÉCURISÉ PAR PROTOCOLE RCRP-OS</small>
+        <small style="opacity: 0.6;">VERSION 14.6.0 | SÉCURISÉ PAR PROTOCOLE RCRP-OS</small>
     </center>
     </div>
     """, unsafe_allow_html=True)
