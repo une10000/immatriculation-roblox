@@ -256,7 +256,7 @@ with tab_immat:
             ------------------------------------------<br>
             FRAIS DE DOSSIER : {taxe_base}$<br>
             ASSURANCE        : {taxe_assu}$<br>
-            TAXE RÉSIDENCE   : {taxe_nouveau}$<br>
+            TAXE JEUNE PERMIS   : {taxe_nouveau}$<br>
             ------------------------------------------<br>
             <b>TOTAL À RÉGLER : {total_ttc}$</b>
         </div>
