@@ -374,6 +374,7 @@ with tabs[0]:
             else: st.error("Code incorrect.")
                 
 # --- ONGLET 2 : SERVICES RCT (AMENDES UNIQUEMENT) ---
+# --- ONGLET 2 : SERVICES RCT (AMENDES & RADAR VÉHICULES) ---
 if st.session_state.user_auth in ["RCT", "Staff"]:
     with tabs[1]:
         st.markdown("### 👮 Interface de Service RCT")
@@ -381,42 +382,56 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
         if target == "---":
             st.warning("⚠️ Veuillez sélectionner un citoyen dans le dossier en haut pour agir.")
         else:
-            # AFFICHAGE DU NOM EN GRAND (Bandeau d'identité)
+            # AFFICHAGE DU NOM EN GRAND
             st.markdown(f"""
                 <div style="background-color: #000; padding: 20px; border-radius: 10px; border-left: 10px solid #d32f2f; margin-bottom: 20px;">
                     <h1 style="color: white; margin: 0; letter-spacing: 2px; font-size: 2.5em;">👤 {target.upper()}</h1>
-                    <p style="color: #d32f2f; font-weight: bold; margin: 0;">CITOYEN SOUS SURVEILLANCE NATIONALE</p>
+                    <p style="color: #d32f2f; font-weight: bold; margin: 0;">DOSSIER AGENT - CONSULTATION EN COURS</p>
                 </div>
             """, unsafe_allow_html=True)
 
-            # SECTION AMENDES
-            st.subheader("💰 Amendes de Service")
-            st.info("Note : Le retrait de points est désormais géré exclusivement par le Tribunal Supérieur.")
-            
-            with st.container(border=True):
-                tax_val = st.number_input("Montant de l'amende ($)", min_value=0, step=50, key="fine_val_final_v8")
+            # Division en deux colonnes : Action à gauche / Infos véhicules à droite
+            col_action, col_info = st.columns([1, 1])
+
+            with col_action:
+                st.subheader("💰 Perception d'Amende")
+                with st.container(border=True):
+                    tax_val = st.number_input("Montant de l'amende ($)", min_value=0, step=50, key="fine_val_v9")
+                    
+                    if st.button("ÉMETTRE ET PERCEVOIR", use_container_width=True):
+                        if tax_val > 0:
+                            idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
+                            curr_solde = float(str(df_b.at[idx_b, "Solde"]).replace('$', ''))
+                            
+                            df_b.at[idx_b, "Solde"] = curr_solde - tax_val
+                            rct_idx = df_b[df_b["Nom Roblox"] == ACC_RCT].index[0]
+                            df_b.at[rct_idx, "Solde"] = float(str(df_b.at[rct_idx, "Solde"]).replace('$', '')) + tax_val
+                            
+                            cloud_conn.update(worksheet="Banque", data=df_b)
+                            record_log(st.session_state.user_auth, f"Amende {tax_val}$ émise pour {target}")
+                            
+                            st.cache_data.clear()
+                            st.success(f"✅ Amende de {tax_val}$ perçue.")
+                            time.sleep(1)
+                            st.rerun()
+
+            with col_info:
+                st.subheader("🚗 Véhicules Enregistrés")
+                # Filtrage des véhicules appartenant au citoyen sélectionné
+                v_player = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
                 
-                if st.button("ÉMETTRE L'AMENDE ET PERCEVOIR", use_container_width=True):
-                    if tax_val > 0:
-                        idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
-                        curr_solde = float(str(df_b.at[idx_b, "Solde"]).replace('$', ''))
-                        
-                        # Débit du civil
-                        df_b.at[idx_b, "Solde"] = curr_solde - tax_val
-                        
-                        # Versement automatique au compte RCT (ACC_RCT)
-                        rct_idx = df_b[df_b["Nom Roblox"] == ACC_RCT].index[0]
-                        df_b.at[rct_idx, "Solde"] = float(str(df_b.at[rct_idx, "Solde"]).replace('$', '')) + tax_val
-                        
-                        cloud_conn.update(worksheet="Banque", data=df_b)
-                        record_log(st.session_state.user_auth, f"Amende {tax_val}$ émise pour {target}")
-                        
-                        st.cache_data.clear()
-                        st.success(f"✅ Amende de {tax_val}$ enregistrée pour {target}.")
-                        time.sleep(1)
-                        st.rerun()
-                    else:
-                        st.error("Veuillez saisir un montant supérieur à 0$.")
+                if v_player.empty:
+                    st.info(f"Aucun véhicule immatriculé pour {target}.")
+                else:
+                    for _, v in v_player.iterrows():
+                        with st.expander(f"📌 PLAQUE : {v['Numéro de la plaque']}", expanded=True):
+                            st.write(f"**Modèle :** {v['Marque du véhicule']}")
+                            st.write(f"**Assurance :** {v['Assurance']}")
+                            # Petit indicateur visuel pour l'assurance
+                            if v['Assurance'] == "Aucune":
+                                st.error("⚠️ DÉFAUT D'ASSURANCE")
+                            else:
+                                st.success("✔️ ASSURÉ")
 
 # --- ONGLET 3 : ADMINISTRATION (STAFF UNIQUEMENT) ---
 if st.session_state.user_auth == "Staff":
