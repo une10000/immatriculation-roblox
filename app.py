@@ -246,7 +246,7 @@ if st.session_state.user_auth is None:
 else:
     salut_complet = "Bonsoir🌕"
     # ... (Le reste du code de nuit reste inchangé pour garder tes étoiles)
-else:
+    else:
     salut_complet = "Bonsoir🌕"
     pattern_style = (
         "background-color: #05070a; "
