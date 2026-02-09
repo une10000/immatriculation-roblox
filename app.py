@@ -210,81 +210,74 @@ if st.session_state.user_auth is not None:
 # ======================================================================================
 # 5. LOCKSCREEN (CONNEXION)
 # ======================================================================================
-# --- LE NOUVEAU BLOC : MESSAGE DE BIENVENUE DYNAMIQUE ---
-    from datetime import datetime, timedelta, timezone
-    t_now = datetime.now(timezone.utc) + timedelta(hours=1)
-    heure_actuelle = t_now.hour
 
-    if 5 <= heure_actuelle < 18:
-        salutation = "Bonjour"
-        emoji_salut = "☀️"
+if st.session_state.user_auth is None:
+    # 1. Ton En-tête
+    st.markdown("""
+    <div class="header-box">
+    <center>
+        <h1>🏛️ RÉPUBLIQUE DE RENSSELAER</h1>
+        <p style="font-size: 1.2em;">TERMINAL FÉDÉRAL D'OPÉRATIONS NATIONALES</p>
+        <hr style="border-color: rgba(255,255,255,0.2);">
+        <small>VERSION 34.5.0 | SÉCURISÉ PAR PROTOCOLE RCRP-OS</small>
+    </center>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.warning("⚠️ **AVERTISSEMENT :** Toute action effectuée sur ce terminal est enregistrée.")
+
+    # 2. Le Message de Bienvenue (Calculé une seule fois)
+    from datetime import datetime, timedelta, timezone
+    t_now_lock = datetime.now(timezone.utc) + timedelta(hours=1)
+    h_lock = t_now_lock.hour
+
+    if 5 <= h_lock < 18:
+        salut, emo = "Bonjour", "☀️"
     else:
-        salutation = "Bonsoir"
-        emoji_salut = "🌙"
+        salut, emo = "Bonsoir", "🌙"
 
     st.markdown(f"""
-        <div style="text-align: center; margin-top: 30px; margin-bottom: 10px;">
-            <h1 style="font-size: 4em; margin-bottom: 0px; font-weight: 800;">{salutation} ! {emoji_salut}</h1>
+        <div style="text-align: center; margin-top: 30px; margin-bottom: 30px;">
+            <h1 style="font-size: 4em; margin-bottom: 0px; font-weight: 800;">{salut} ! {emo}</h1>
             <p style="font-size: 1.3em; opacity: 0.7;">Prêt pour votre service ?</p>
         </div>
     """, unsafe_allow_html=True)
-    
-    st.warning("⚠️ **AVERTISSEMENT :** Toute action effectuée sur ce terminal est enregistrée.")
 
-    # --- LE NOUVEAU BLOC : MESSAGE DE BIENVENUE DYNAMIQUE ---
-    from datetime import datetime, timedelta, timezone
-    t_now = datetime.now(timezone.utc) + timedelta(hours=1)
-    heure_actuelle = t_now.hour
-
-    if 5 <= heure_actuelle < 18:
-        salutation = "Bonjour"
-        emoji_salut = "☀️"
-    else:
-        salutation = "Bonsoir"
-        emoji_salut = "🌙"
-
-    st.markdown(f"""
-        <div style="text-align: center; margin-top: 30px; margin-bottom: 10px;">
-            <h1 style="font-size: 4em; margin-bottom: 0px; font-weight: 800; color: white;">{salutation} ! {emoji_salut}</h1>
-            <p style="font-size: 1.3em; color: rgba(255,255,255,0.7);">Prêt pour votre service ?</p>
-        </div>
-    """, unsafe_allow_html=True)
-    # -------------------------------------------------------
-
-    # La suite de ton code (les colonnes pour Nom / MDP)
-    col1, col2 = st.columns(2)
-    # ... etc
+    # 3. Les Colonnes de connexion
     c1, c2, c3 = st.columns(3)
+    
     with c1:
         st.markdown("### 👥 CIVIL")
-        if st.button("ACCÉDER AU TERMINAL"):
+        if st.button("ACCÉDER AU TERMINAL", use_container_width=True):
             st.session_state.user_auth = "Civil"
             st.rerun()
             
     with c2:
         st.markdown("### 👨‍🔧 AGENT RCT")
-        login_rct = st.text_input("Identifiant Agent", type="password")
-        if st.button("AUTHENTIFICATION RCT"):
+        login_rct = st.text_input("Identifiant Agent", type="password", key="l_rct")
+        if st.button("AUTHENTIFICATION RCT", use_container_width=True):
             if login_rct == KEY_RCT:
                 st.session_state.user_auth = "RCT"
                 st.rerun()
-            else: st.error("Clé invalide.")
+            else: 
+                st.error("Clé invalide.")
                 
     with c3:
         st.markdown("### 🛡️ STAFF/POLICE")
-        login_staff = st.text_input("Clé Maîtresse", type="password")
-        if st.button("ACCÈS ADMINISTRATEUR"):
+        login_staff = st.text_input("Clé Maîtresse", type="password", key="l_staff")
+        if st.button("ACCÈS ADMINISTRATEUR", use_container_width=True):
             if login_staff == KEY_STAFF:
                 st.session_state.user_auth = "Staff"
                 st.rerun()
             else: 
                 st.error("Accès refusé.")
-    
-if st.session_state.user_auth is None:
+
+    # ON ARRÊTE LE SCRIPT ICI SI PAS CONNECTÉ
     st.stop()
 
-# --- LE RESTE DU CODE (SECTION 6, 7, 8) COMMENCE ICI ---
-        
+# ======================================================================================
+# LE RESTE DU CODE (S'affiche uniquement après connexion)
+# ======================================================================================
 # ======================================================================================
 # 6. MODULE : DOSSIER CITOYEN UNIFIÉ (VISIBILITÉ TOTALE)
 # ======================================================================================
