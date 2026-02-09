@@ -227,39 +227,36 @@ if st.session_state.user_auth is None:
     t_now_lock = datetime.now(timezone.utc) + timedelta(hours=1)
     h_lock = t_now_lock.hour
     heure_formattee = t_now_lock.strftime("%H:%M")
-    # --- LOGIQUE JOUR / NUIT ---
+# --- LOGIQUE JOUR / NUIT ---
     if 5 <= h_lock < 18:
         salut_complet = "Bonjour☀️"
         pattern_style = (
-        "background-color: #87CEEB; "
-        "background-image: "
-        "radial-gradient(circle at 15% 35%, white 10%, transparent 20%), "   # Nuage 1 agrandi
-        "radial-gradient(circle at 22% 42%, white 12%, transparent 22%), "   # Nuage 2 agrandi
-        "radial-gradient(circle at 35% 30%, white 9%, transparent 18%), "    # Nuage 3 agrandi
-        "radial-gradient(circle at 70% 55%, white 12%, transparent 25%), "   # Nuage 4 agrandi
-        "radial-gradient(circle at 80% 50%, white 15%, transparent 30%), "   # Nuage 5 agrandi
-        "radial-gradient(circle at 88% 60%, white 10%, transparent 20%); "   # Nuage 6 agrandi
-        "background-size: 400px 400px;" # Taille du motif augmentée pour plus d'espace
-    )
-    t_color = "#1E1E1E"
-    glow = "0 0 15px rgba(255, 165, 0, 0.3)"
-else:
-    salut_complet = "Bonsoir🌕"
-    # ... (Le reste du code de nuit reste inchangé pour garder tes étoiles)
+            "background-color: #87CEEB; "
+            "background-image: "
+            "radial-gradient(circle at 15% 35%, white 10%, transparent 20%), "
+            "radial-gradient(circle at 22% 42%, white 12%, transparent 22%), "
+            "radial-gradient(circle at 35% 30%, white 9%, transparent 18%), "
+            "radial-gradient(circle at 70% 55%, white 12%, transparent 25%), "
+            "radial-gradient(circle at 80% 50%, white 15%, transparent 30%), "
+            "radial-gradient(circle at 88% 60%, white 10%, transparent 20%); "
+            "background-size: 400px 400px;"
+        )
+        t_color = "#1E1E1E"
+        glow = "0 0 15px rgba(255, 165, 0, 0.3)"
     else:
-    salut_complet = "Bonsoir🌕"
-    pattern_style = (
-        "background-color: #05070a; "
-        "background-image: "
-        "radial-gradient(1px 1px at 25% 35%, white, transparent), "
-        "radial-gradient(1px 1px at 50% 10%, white, transparent), "
-        "radial-gradient(2px 2px at 10% 80%, white, transparent), "
-        "radial-gradient(1px 1px at 90% 20%, white, transparent), "
-        "radial-gradient(1.5px 1.5px at 70% 60%, white, transparent); "
-        "background-size: 150px 150px, 200px 200px, 250px 250px, 180px 180px, 220px 220px;"
-    )
-    t_color = "#FFFFFF"
-    glow = "0 0 40px rgba(255,255,255,0.9), 0 0 80px rgba(255,255,255,0.4)"
+        salut_complet = "Bonsoir🌕"
+        pattern_style = (
+            "background-color: #05070a; "
+            "background-image: "
+            "radial-gradient(1px 1px at 25% 35%, white, transparent), "
+            "radial-gradient(1px 1px at 50% 10%, white, transparent), "
+            "radial-gradient(2px 2px at 10% 80%, white, transparent), "
+            "radial-gradient(1px 1px at 90% 20%, white, transparent), "
+            "radial-gradient(1.5px 1.5px at 70% 60%, white, transparent); "
+            "background-size: 150px 150px, 200px 200px, 250px 250px, 180px 180px, 220px 220px;"
+        )
+        t_color = "#FFFFFF"
+        glow = "0 0 40px rgba(255,255,255,0.9), 0 0 80px rgba(255,255,255,0.4)"
 
     # --- AFFICHAGE UNITAIRE ---
     st.markdown(f"""
