@@ -179,33 +179,33 @@ if st.session_state.user_auth is None:
     
 c1, c2, c3 = st.columns(3)
 with c1:
-        st.markdown("### 👥 CIVIL")
-        st.write("Accès libre pour consultation et immatriculation.")
-        if st.button("ACCÉDER AU TERMINAL"):
-            st.session_state.user_auth = "Civil"
-            record_log("Civil", "Connexion Public")
-            st.rerun()
-            
+    st.markdown("### 👥 CIVIL")
+    st.write("Accès libre pour consultation et immatriculation.")
+    if st.button("ACCÉDER AU TERMINAL"):
+        st.session_state.user_auth = "Civil"
+        record_log("Civil", "Connexion Public")
+        st.rerun()
+        
 with c2:
-        st.markdown("### 👨‍🔧 🛻🪝 AGENT RCT")
-        login_rct = st.text_input("Identifiant Agent", type="password")
-        if st.button("AUTHENTIFICATION RCT"):
-            if login_rct == KEY_RCT:
-                st.session_state.user_auth = "RCT"
-                record_log("RCT", "Connexion Service")
-                st.rerun()
-            else: st.error("Clé invalide.")
+    st.markdown("### 👨‍🔧 🛻🪝 AGENT RCT")
+    login_rct = st.text_input("Identifiant Agent", type="password")
+    if st.button("AUTHENTIFICATION RCT"):
+        if login_rct == KEY_RCT:
+            st.session_state.user_auth = "RCT"
+            record_log("RCT", "Connexion Service")
+            st.rerun()
+        else: st.error("Clé invalide.")
             
 with c3:
-        st.markdown("### 🛡️👮‍♂️ STAFF/POLICE")
-        login_staff = st.text_input("Clé Maîtresse", type="password")
-        if st.button("ACCÈS ADMINISTRATEUR"):
-            if login_staff == KEY_STAFF:
-                st.session_state.user_auth = "Staff"
-                record_log("Staff", "Connexion Admin")
-                st.rerun()
-            else: st.error("Accès refusé.")
-    st.stop()
+    st.markdown("### 🛡️👮‍♂️ STAFF/POLICE")
+    login_staff = st.text_input("Clé Maîtresse", type="password")
+    if st.button("ACCÈS ADMINISTRATEUR"):
+        if login_staff == KEY_STAFF:
+            st.session_state.user_auth = "Staff"
+            record_log("Staff", "Connexion Admin")
+            st.rerun()
+        else: st.error("Accès refusé.")
+            st.stop()
 
 # ======================================================================================
 # 6. MODULE : DOSSIER CITOYEN UNIFIÉ (VISIBILITÉ TOTALE)
