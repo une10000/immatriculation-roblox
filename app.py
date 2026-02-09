@@ -211,68 +211,71 @@ if st.session_state.user_auth is not None:
 # 5. LOCKSCREEN (CONNEXION)
 # ======================================================================================
 
+# ======================================================================================
+# 5. LOCKSCREEN (CONNEXION)
+# ======================================================================================
+
 if st.session_state.user_auth is None:
-    # 1. Ton En-tête
-    st.markdown("""
-    <div class="header-box">
-    <center>
-        <h1>🏛️ RÉPUBLIQUE DE RENSSELAER</h1>
-        <p style="font-size: 1.2em;">TERMINAL FÉDÉRAL D'OPÉRATIONS NATIONALES</p>
-        <hr style="border-color: rgba(255,255,255,0.2);">
-        <small>VERSION 34.5.0 | SÉCURISÉ PAR PROTOCOLE RCRP-OS</small>
-    </center>
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.warning("⚠️ **AVERTISSEMENT :** Toute action effectuée sur ce terminal est enregistrée.")
-
-    # 2. Le Message de Bienvenue (Calculé une seule fois)
+    # 1. MESSAGE DE BIENVENUE EN PREMIER (Calculé sur UTC+1)
     from datetime import datetime, timedelta, timezone
     t_now_lock = datetime.now(timezone.utc) + timedelta(hours=1)
     h_lock = t_now_lock.hour
 
-    if 5 <= h_lock < 18:
-        salut, emo = "Bonjour", "☀️"
-    else:
-        salut, emo = "Bonsoir", "🌙"
+    salut, emo = ("Bonjour", "☀️") if 5 <= h_lock < 18 else ("Bonsoir", "🌙")
 
     st.markdown(f"""
-        <div style="text-align: center; margin-top: 30px; margin-bottom: 30px;">
-            <h1 style="font-size: 4em; margin-bottom: 0px; font-weight: 800;">{salut} ! {emo}</h1>
-            <p style="font-size: 1.3em; opacity: 0.7;">Prêt pour votre service ?</p>
+        <div style="text-align: center; margin-top: -30px; margin-bottom: 20px;">
+            <h1 style="font-size: 4.5em; margin-bottom: 0px; font-weight: 800;">{salut} ! {emo}</h1>
+            <p style="font-size: 1.2em; opacity: 0.7;">Système d'Immatriculation National</p>
         </div>
     """, unsafe_allow_html=True)
 
-    # 3. Les Colonnes de connexion
+    # 2. TON EN-TÊTE RENSSELAER (Maintenant en deuxième)
+    st.markdown("""
+    <div class="header-box">
+    <center>
+        <h2 style="margin-bottom:0;">🏛️ RÉPUBLIQUE DE RENSSELAER</h2>
+        <p style="font-size: 1em; opacity: 0.8;">TERMINAL FÉDÉRAL D'OPÉRATIONS NATIONALES</p>
+        <hr style="border-color: rgba(255,255,255,0.1); margin: 10px 0;">
+        <small style="opacity: 0.6;">VERSION 34.5.0 | SÉCURISÉ PAR PROTOCOLE RCRP-OS</small>
+    </center>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.warning("⚠️ **AVERTISSEMENT :** Toute action effectuée sur ce terminal est enregistrée.")
+
+    st.write("---")
+
+    # 3. COLONNES D'ACCÈS AVEC TEXT BOX D'INFOS
     c1, c2, c3 = st.columns(3)
     
     with c1:
         st.markdown("### 👥 CIVIL")
+        st.info("Accès public pour consulter votre solde, vos véhicules et vos factures impayées.")
         if st.button("ACCÉDER AU TERMINAL", use_container_width=True):
             st.session_state.user_auth = "Civil"
             st.rerun()
             
     with c2:
         st.markdown("### 👨‍🔧 AGENT RCT")
+        st.info("Interface technique pour la gestion des plaques et des services de remorquage.")
         login_rct = st.text_input("Identifiant Agent", type="password", key="l_rct")
         if st.button("AUTHENTIFICATION RCT", use_container_width=True):
             if login_rct == KEY_RCT:
                 st.session_state.user_auth = "RCT"
                 st.rerun()
-            else: 
-                st.error("Clé invalide.")
+            else: st.error("Clé invalide.")
                 
     with c3:
         st.markdown("### 🛡️ STAFF/POLICE")
+        st.info("Accès restreint aux autorités pour l'administration et les remboursements.")
         login_staff = st.text_input("Clé Maîtresse", type="password", key="l_staff")
         if st.button("ACCÈS ADMINISTRATEUR", use_container_width=True):
             if login_staff == KEY_STAFF:
                 st.session_state.user_auth = "Staff"
                 st.rerun()
-            else: 
-                st.error("Accès refusé.")
+            else: st.error("Accès refusé.")
 
-    # ON ARRÊTE LE SCRIPT ICI SI PAS CONNECTÉ
     st.stop()
 
 # ======================================================================================
