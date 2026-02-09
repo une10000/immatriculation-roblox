@@ -521,7 +521,7 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                     <p style="color: #d32f2f; font-weight: bold; margin: 0;">UNITÉ D'INTERVENTION - ACCÈS AUTORISÉ</p>
                 </div>
             """, unsafe_allow_html=True)
-EMISSION FACTURE
+# --- EMISSION FACTURE ---
 # --- NOUVELLE STRUCTURE EN 3 COLONNES ---
 col_saisie, col_ticket, col_vehicules = st.columns([1, 1, 1])
 
