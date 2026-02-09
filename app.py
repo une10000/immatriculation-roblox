@@ -349,35 +349,51 @@ try:
             """, unsafe_allow_html=True)
 
 # --- BOUTON DE PAIEMENT ---
-            # 1. On crée le bouton
-if st.button(f"💳 RÉGLER LA FACTURE #{fac['ID']}", key=f"pay_{fac['ID']}"):
-    # --- TOUT CE QUI EST EN DESSOUS DOIT ÊTRE DÉCALÉ (INDENTÉ) ---
-    idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
-    solde_raw = str(df_b.at[idx_b, "Solde"]).replace('$', '').replace(',', '')
-    solde_actuel = float(solde_raw)
-    montant_facture = float(fac['Montant'])
-    
-    if solde_actuel >= montant_facture:
-        # Débit du civil
-        df_b.at[idx_b, "Solde"] = solde_actuel - montant_facture
-        
-        # Crédit RCT
-        rct_idx = df_b[df_b["Nom Roblox"] == ACC_RCT].index[0]
-        solde_dest = float(str(df_b.at[rct_idx, "Solde"]).replace('$', '').replace(',', ''))
-        df_b.at[rct_idx, "Solde"] = solde_dest + montant_facture
-        
-        # Changement de statut
-        df_all_f.loc[df_all_f["ID"] == fac["ID"], "Statut"] = "PAYÉ"
-        
-        # ENVOI VERS GOOGLE SHEETS
-        cloud_conn.update(worksheet="Banque", data=df_b)
-        cloud_conn.update(worksheet="Factures", data=df_all_f)
-        
-        st.success("✅ Paiement effectué !")
-        st.cache_data.clear()
-        time.sleep(1)
-        st.rerun()
-    # --- FIN DU BLOC DÉCALÉ ---
+        if st.button(f"💳 RÉGLER LA FACTURE #{fac['ID']}", key=f"pay_{fac['ID']}", use_container_width=True):
+            # TOUT CE QUI EST ICI EST DÉCALÉ -> NE S'EXÉCUTE QUE SI ON CLIQUE
+            idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
+            solde_raw = str(df_b.at[idx_b, "Solde"]).replace('$', '').replace(',', '')
+            solde_actuel = float(solde_raw)
+            montant_facture = float(fac['Montant'])
+            
+            if solde_actuel >= montant_facture:
+                # Débit du civil
+                df_b.at[idx_b, "Solde"] = solde_actuel - montant_facture
+                
+                # Crédit RCT
+                rct_idx = df_b[df_b["Nom Roblox"] == ACC_RCT].index[0]
+                solde_dest = float(str(df_b.at[rct_idx, "Solde"]).replace('$', '').replace(',', ''))
+                df_b.at[rct_idx, "Solde"] = solde_dest + montant_facture
+                
+                # Changement de statut
+                df_all_f.loc[df_all_f["ID"] == fac["ID"], "Statut"] = "PAYÉ"
+                
+                # Envoi Google Sheets
+                cloud_conn.update(worksheet="Banque", data=df_b)
+                cloud_conn.update(worksheet="Factures", data=df_all_f)
+                
+                st.success("✅ Paiement effectué !")
+                st.cache_data.clear()
+                time.sleep(1)
+                st.rerun()
+            else:
+                st.error("❌ Solde insuffisant.")
+
+        # --- BOUTON ANNULER (POUR LES ADMINS) ---
+        if st.session_state.user_auth in ["Staff", "Admin"]:
+            if st.button(f"🗑️ ANNULER LA FACTURE #{fac['ID']}", key=f"admin_del_{fac['ID']}", use_container_width=True):
+                try:
+                    df_f_sync = cloud_conn.read(worksheet="Factures")
+                    row_up = df_f_sync[df_f_sync["ID"] == fac["ID"]].index[0] + 2
+                    cloud_conn.update(worksheet="Factures", range=f"E{row_up}", data=[["ANNULÉ"]])
+                    
+                    record_log(st.session_state.user_auth, f"Annulation facture #{fac['ID']}")
+                    st.warning("Facture annulée.")
+                    st.cache_data.clear()
+                    time.sleep(1)
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Erreur d'annulation : {e}")
 # ... (Le reste de ton code pour les véhicules continue ensuite)
                 idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
                 solde_raw = str(df_b.at[idx_b, "Solde"]).replace('$', '').replace(',', '')
