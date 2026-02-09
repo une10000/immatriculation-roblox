@@ -477,19 +477,85 @@ with tabs[0]:
         st.markdown(ticket_html, unsafe_allow_html=True)
                 
 # --- ONGLET 2 : SERVICES AGENT (FACTURES / POINTS / CONSULTATION) ---
+# --- ONGLET 2 : SERVICES AGENT (FACTURES / POINTS / CONSULTATION) ---
 if st.session_state.user_auth in ["RCT", "Staff"]:
     with tabs[1]:
-        st.markdown("### 👮 Interface de Service RCT / Staff")
-        
         if target == "---":
-            st.warning("⚠️ Veuillez sélectionner un citoyen dans le dossier en haut pour agir.")
+            st.warning("⚠️ Veuillez sélectionner un citoyen en haut pour agir.")
         else:
+            role_label = "UNITÉ RCT" if st.session_state.user_auth == "RCT" else "UNITÉ POLICE / STAFF"
             st.markdown(f"""
                 <div style="background-color: #000; padding: 20px; border-radius: 10px; border-left: 10px solid #d32f2f; margin-bottom: 20px;">
                     <h1 style="color: white; margin: 0; letter-spacing: 2px; font-size: 2.5em;">👤 {target.upper()}</h1>
-                    <p style="color: #d32f2f; font-weight: bold; margin: 0;">UNITÉ D'INTERVENTION - ACCÈS AUTORISÉ</p>
+                    <p style="color: #d32f2f; font-weight: bold; margin: 0;">{role_label} - INTERFACE D'ACTION</p>
                 </div>
             """, unsafe_allow_html=True)
+
+            c_act, c_scanner = st.columns([1, 1])
+
+            with c_act:
+                if st.session_state.user_auth == "RCT":
+                    st.subheader("🧾 Émettre Facture RCT")
+                else:
+                    st.subheader("⚖️ Sanction Policière")
+                
+                with st.container(border=True):
+                    f_val = st.number_input("Montant de l'amende/facture ($)", min_value=0, step=50, key="fine_val")
+                    f_motif = st.text_input("Motif de l'infraction", placeholder="ex: Excès de vitesse / Remorquage", key="fine_mot")
+                    
+                    # Les points n'apparaissent QUE pour la police
+                    p_loss = 0
+                    if st.session_state.user_auth == "Staff":
+                        p_loss = st.number_input("Points à retirer (Automatique)", min_value=0, max_value=25, step=1, key="pts_val")
+
+                    if st.button("VALIDER LA SANCTION", use_container_width=True):
+                        if f_motif:
+                            # 1. GESTION DE L'ARGENT (Facture en attente pour tous)
+                            if f_val > 0:
+                                new_f = pd.DataFrame([{
+                                    "ID": random.randint(10000, 99999),
+                                    "Cible": target,
+                                    "Emetteur": st.session_state.user_auth,
+                                    "Montant": f_val,
+                                    "Motif": f_motif,
+                                    "Statut": "EN ATTENTE"
+                                }])
+                                df_factures = cloud_conn.read(worksheet="Factures")
+                                cloud_conn.update(worksheet="Factures", data=pd.concat([df_factures, new_f]))
+                            
+                            # 2. GESTION DES POINTS (Retrait auto QUE pour la police)
+                            if st.session_state.user_auth == "Staff" and p_loss > 0:
+                                idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
+                                old_pts = int(df_p.at[idx_p, "PTS"])
+                                new_pts = max(0, old_pts - p_loss)
+                                df_p.at[idx_p, "PTS"] = new_pts
+                                if new_pts == 0: df_p.at[idx_p, "Validité"] = "NON"
+                                cloud_conn.update(worksheet="Points Permis", data=df_p)
+                                record_log("Police", f"Sanction {target} : -{p_loss} pts et facture {f_val}$")
+                            else:
+                                record_log(st.session_state.user_auth, f"Facture envoyée à {target} ({f_val}$)")
+                            
+                            st.success("✅ Opération terminée ! Base de données mise à jour.")
+                            st.cache_data.clear()
+                            time.sleep(1)
+                            st.rerun()
+                        else:
+                            st.error("Veuillez saisir un motif.")
+
+            with c_scanner:
+                st.subheader("🔍 Informations Véhicules")
+                v_player = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
+                if v_player.empty:
+                    st.info("Aucun véhicule enregistré.")
+                else:
+                    for i, (_, v) in enumerate(v_player.iterrows()):
+                        st.markdown(f"""
+                            <div style="border: 2px solid #000; padding: 10px; background: white; color: black; font-family: monospace; margin-bottom: 5px;">
+                                <b>PLAQUE :</b> {v['Numéro de la plaque']}<br>
+                                <b>MODÈLE :</b> {v['Marque du véhicule']}<br>
+                                <b>ASSURANCE :</b> {v['Assurance']}
+                            </div>
+                        """, unsafe_allow_html=True)
 
             col_fine, col_pts, col_veh = st.columns([1, 1, 1.3])
 
