@@ -165,17 +165,17 @@ for log in reversed(st.session_state.audit_logs[-8:]):
 # ======================================================================================
 
 if st.session_state.user_auth is None:
-    st.markdown("""
-        <div class="header-box">
-            <center>
-                <h1>🏛️ RÉPUBLIQUE DE RENSSELAER</h1>
-                <p style="font-size: 1.2em;">TERMINAL FÉDÉRAL D'OPÉRATIONS NATIONALES</p>
-                <hr style="border-color: rgba(255,255,255,0.2);">
-                <small>VERSION 34.5.0 | SÉCURISÉ PAR PROTOCOLE RCRP-OS</small>
-            </center>
-        </div>
-    """, unsafe_allow_html=True)
-    
+    st.markdown("""
+    <div class="header-box">
+    <center>
+    <h1>🏛️ RÉPUBLIQUE DE RENSSELAER</h1>
+    <p style="font-size: 1.2em;">TERMINAL FÉDÉRAL D'OPÉRATIONS NATIONALES</p>
+    <hr style="border-color: rgba(255,255,255,0.2);">
+    <small>VERSION 34.5.0 | SÉCURISÉ PAR PROTOCOLE RCRP-OS</small>
+    </center>
+    </div>
+    """, unsafe_allow_html=True
+                
     st.warning("⚠️ **AVERTISSEMENT :** Toute action effectuée sur ce terminal est enregistrée. L'usurpation d'identité d'agent est punie par la loi fédérale.")
     
     c1, c2, c3 = st.columns(3)
