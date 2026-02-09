@@ -580,20 +580,43 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
+# 3. À DROITE : GARAGE DU CITOYEN (STYLE TICKETS DE PROPRIÉTÉ)
+with col_vehicules:
+    st.markdown("### 🚗 Titres de Propriété")
+    mes_v = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
+    
+    if not mes_v.empty:
+        for _, v in mes_v.iterrows():
+            # Détermination de la couleur d'assurance
+            assu = str(v['Assurance']).upper()
+            status_color = "#2e7d32" if any(x in assu for x in ["RCT", "AVERIS"]) else "#d32f2f"
+            status_text = "ASSURÉ & HOMOLOGUÉ" if status_color == "#2e7d32" else "DEFAUT D'ASSURANCE"
 
-            # 3. À DROITE : TOUTES LES VOITURES (GARAGE)
-            with col_vehicules:
-                st.markdown("### 🚗 Garage du Citoyen")
-                mes_v = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
-                if not mes_v.empty:
-                    for _, v in mes_v.iterrows():
-                        with st.expander(f"🚘 {v['Numéro de la plaque']}", expanded=True):
-                            st.write(f"**Modèle :** {v['Marque du véhicule']}")
-                            # Vérifie si une photo existe
-                            photo = v.get('Lien de la photo') # Adapte le nom de la colonne si besoin
-                            if photo: st.image(photo, use_container_width=True)
-                else:
-                    st.info("Aucun véhicule.")
+            # --- LE TICKET DE PROPRIÉTÉ ---
+            st.markdown(f"""
+            <div style="border: 2px solid #000; padding: 12px; background: white; color: black; font-family: 'Courier New', monospace; margin-bottom: 15px; box-shadow: 4px 4px 0px #ccc;">
+                <div style="text-align: center; font-weight: bold; font-size: 0.9em; border-bottom: 1px solid #000; margin-bottom: 8px;">
+                    CARTE GRISE NATIONALE
+                </div>
+                <div style="font-size: 0.8em; line-height: 1.4;">
+                    <b>PROPRIO :</b> {target}<br>
+                    <b>MODÈLE  :</b> {v['Marque du véhicule']}<br>
+                    <b>PLAQUE  :</b> <span style="background: #000; color: #fff; padding: 0 4px;">{v['Numéro de la plaque']}</span><br>
+                    <b>ASSUR.  :</b> {v['Assurance']}
+                </div>
+                <div style="margin-top: 8px; border-top: 1px dashed #000; padding-top: 5px; text-align: center;">
+                    <b style="color: {status_color}; font-size: 0.75em;">● {status_text}</b>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Affichage de la photo juste en dessous du ticket si elle existe
+            photo = v.get('Lien de la photo')
+            if photo:
+                st.image(photo, caption=f"Vue réelle - {v['Numéro de la plaque']}", use_container_width=True)
+            st.divider()
+    else:
+        st.info("Aucun véhicule enregistré pour ce citoyen.")
 
 # --- ONGLET 3 : ADMINISTRATION (STAFF ONLY) ---
 if st.session_state.user_auth == "Staff":
