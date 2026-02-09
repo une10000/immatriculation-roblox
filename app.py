@@ -278,7 +278,7 @@ with st.container():
                                 <p style="font-size: 8px; opacity: 0.3; font-family: monospace; margin: 0;">OFFICIAL BANK DATA<br>VERIFIED BY RCRP</p>
                             </div>
                         """, unsafe_allow_html=True)
-          else: 
+            else: 
                 st.error("Aucun compte trouvé.") 
 
             # --- HISTORIQUE DES FACTURES PAYÉES (ACCESSIBLE AUX CIVILS) ---
