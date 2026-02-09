@@ -501,7 +501,8 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                     f_val = st.number_input("Montant ($)", min_value=0, step=50, key="f_val_v15")
                     f_motif = st.text_input("Motif", placeholder="ex: Excès de vitesse", key="f_mot_v15")
                     
-                    if st.button("ENVOYER LA FACTURE", use_container_width=True):
+                    # Ajout d'une clé unique pour éviter le crash DuplicateElementId
+                    if st.button("ENVOYER LA FACTURE", use_container_width=True, key=f"btn_send_facture_{target}_{random.randint(0,999)}"):
                         if f_val > 0 and f_motif:
                             # Préparation de la donnée
                             new_f = pd.DataFrame([{
