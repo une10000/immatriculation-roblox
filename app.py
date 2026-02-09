@@ -210,45 +210,40 @@ if st.session_state.user_auth is not None:
 # ======================================================================================
 # 5. LOCKSCREEN (CONNEXION)
 # ======================================================================================
+# ======================================================================================
+# 5. LOCKSCREEN (CONNEXION)
+# ======================================================================================
 
 if st.session_state.user_auth is None:
-    # 1. CALCUL DU MOTIF DYNAMIQUE (Basé sur UTC+1)
+    # 1. CALCUL DU MOTIF DYNAMIQUE
     from datetime import datetime, timedelta, timezone
     t_now_lock = datetime.now(timezone.utc) + timedelta(hours=1)
     h_lock = t_now_lock.hour
 
     if 5 <= h_lock < 18:
         salut, emo = "Bonjour", "☀️"
-        # MOTIF JOUR : Hachures diagonales administratives
-        pattern_css = """
-            background-color: rgba(255, 215, 0, 0.03);
-            background-image: linear-gradient(45deg, rgba(0,0,0,0.05) 25%, transparent 25%, transparent 50%, rgba(0,0,0,0.05) 50%, rgba(0,0,0,0.05) 75%, transparent 75%, transparent);
-            background-size: 20px 20px;
-            border: 2px solid rgba(0,0,0,0.05);
-        """
+        # MOTIF JOUR : Hachures diagonales fines
+        css_style = (
+            "background-color: rgba(255, 215, 0, 0.03); "
+            "background-image: linear-gradient(45deg, rgba(0,0,0,0.05) 25%, transparent 25%, transparent 50%, rgba(0,0,0,0.05) 50%, rgba(0,0,0,0.05) 75%, transparent 75%, transparent); "
+            "background-size: 20px 20px; "
+            "border: 2px solid rgba(0,0,0,0.05);"
+        )
     else:
         salut, emo = "Bonsoir", "🌙"
-        # MOTIF NUIT : Grille tactique carbone
-        pattern_css = """
-            background-color: rgba(0, 0, 0, 0.1);
-            background-image: 
-                linear-gradient(30deg, rgba(255,255,255,0.02) 12%, transparent 12.5%, transparent 87%, rgba(255,255,255,0.02) 87.5%, rgba(255,255,255,0.02)),
-                linear-gradient(150deg, rgba(255,255,255,0.02) 12%, transparent 12.5%, transparent 87%, rgba(255,255,255,0.02) 87.5%, rgba(255,255,255,0.02)),
-                linear-gradient(60deg, rgba(255,255,255,0.03) 25%, transparent 25.5%, transparent 75%, rgba(255,255,255,0.03) 75%, rgba(255,255,255,0.03));
-            background-size: 30px 50px;
-            border: 2px solid rgba(255,255,255,0.05);
-        """
+        # MOTIF NUIT : Grille tactique carbone (Nid d'abeille simplifié)
+        css_style = (
+            "background-color: rgba(0, 0, 0, 0.2); "
+            "background-image: linear-gradient(30deg, rgba(255,255,255,0.02) 12%, transparent 12.5%, transparent 87%, rgba(255,255,255,0.02) 87.5%, rgba(255,255,255,0.02)), "
+            "linear-gradient(150deg, rgba(255,255,255,0.02) 12%, transparent 12.5%, transparent 87%, rgba(255,255,255,0.02) 87.5%, rgba(255,255,255,0.02)), "
+            "linear-gradient(60deg, rgba(255,255,255,0.03) 25%, transparent 25.5%, transparent 75%, rgba(255,255,255,0.03) 75%, rgba(255,255,255,0.03)); "
+            "background-size: 30px 50px; "
+            "border: 2px solid rgba(255,255,255,0.1);"
+        )
 
-    # AFFICHAGE DU MESSAGE DE BIENVENUE (Correction du bug d'affichage)
+    # AFFICHAGE DU MESSAGE (En une seule chaîne pour éviter les bugs)
     st.markdown(f"""
-        <div style="
-            text-align: center; 
-            margin-top: -30px; 
-            margin-bottom: 25px; 
-            padding: 40px 20px; 
-            border-radius: 20px; 
-            {pattern_css}
-        ">
+        <div style="text-align: center; margin-top: -30px; margin-bottom: 25px; padding: 40px 20px; border-radius: 20px; {css_style}">
             <h1 style="font-size: 4.5em; margin-bottom: 0px; font-weight: 800;">{salut} ! {emo}</h1>
             <p style="font-size: 1.2em; opacity: 0.7; letter-spacing: 3px; font-weight: bold;">SYSTÈME D'IMMATRICULATION NATIONAL</p>
         </div>
@@ -267,19 +262,16 @@ if st.session_state.user_auth is None:
     """, unsafe_allow_html=True)
     
     st.warning("⚠️ **AVERTISSEMENT :** Toute action effectuée sur ce terminal est enregistrée.")
-
     st.write("---")
 
     # 3. COLONNES D'ACCÈS
     c1, c2, c3 = st.columns(3)
-    
     with c1:
         st.markdown("### 👥 CIVIL")
         st.info("Accès public pour consulter votre profil.")
         if st.button("ACCÉDER AU TERMINAL", use_container_width=True):
             st.session_state.user_auth = "Civil"
             st.rerun()
-            
     with c2:
         st.markdown("### 👨‍🔧 AGENT RCT")
         st.info("Interface technique pour la gestion du RCT.")
@@ -289,7 +281,6 @@ if st.session_state.user_auth is None:
                 st.session_state.user_auth = "RCT"
                 st.rerun()
             else: st.error("Clé invalide.")
-                
     with c3:
         st.markdown("### 🛡️👮‍♂️ STAFF/POLICE")
         st.info("Accès restreint : Administration et contraventions.")
