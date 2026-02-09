@@ -581,15 +581,14 @@ new_id = random.randint(10000, 99999)
                                 
                                 # Le motif précise si des points auraient dû être retirés (pour info Staff)
 detail_pts = f" | -{f_pts}pts demandés" if st.session_state.user_auth == "RCT" and f_pts > 0 else f" | -{f_pts}pts"
-                                
-                                new_row = {
-                                    "ID": new_id, 
-                                    "Cible": target, 
-                                    "Emetteur": st.session_state.user_auth,
-                                    "Montant": f_val, 
-                                    "Motif": f"{f_motif} (Plaque: {f_plate_link}{detail_pts})",
-                                    "Statut": "EN ATTENTE"
-                                }
+new_row = {
+    "ID": new_id, 
+    "Cible": target, 
+    "Emetteur": st.session_state.user_auth,
+    "Montant": f_val, 
+    "Motif": f"{f_motif} (Plaque: {f_plate_link}{detail_pts})",
+    "Statut": "EN ATTENTE"
+}
                                 
                                 df_factures = pd.concat([df_factures, pd.DataFrame([new_row])], ignore_index=True)
                                 cloud_conn.update(worksheet="Factures", data=df_factures)
