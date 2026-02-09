@@ -203,8 +203,8 @@ if st.session_state.user_auth is None:
             else: 
                 st.error("Accès refusé.")
     
-    # TRÈS IMPORTANT : On arrête le code ici si on n'est pas connecté
-st.stop() 
+if st.session_state.user_auth is None:
+    st.stop()
 
 # --- LE RESTE DU CODE (SECTION 6, 7, 8) COMMENCE ICI ---
         
