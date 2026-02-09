@@ -159,7 +159,7 @@ if st.session_state.user_auth is not None:
         annee = t_now.strftime('%Y')
 
         # 4. Affichage groupé pour réduire l'espace
-        st.markdown(f"### 📅 {nom_jour},<br>{num_jour} {nom_mois} {annee}", unsafe_allow_html=True)
+        st.markdown(f"### 📅 <br> {nom_jour},<br>{num_jour} {nom_mois} {annee}", unsafe_allow_html=True)
         st.markdown(f"### ⏰ {t_now.strftime('%H:%M:%S')}")
         st.divider()
 
