@@ -280,6 +280,7 @@ with st.container():
                         """, unsafe_allow_html=True)
             else: 
                 st.markdown("---")
+                
 # --- HISTORIQUE DES FACTURES PAYÉES (ACCESSIBLE AUX CIVILS) ---
 st.markdown("### 📁 ARCHIVES COMPTABLES")
 with st.expander("Consulter mes factures déjà payées", expanded=False):
