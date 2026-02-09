@@ -219,7 +219,40 @@ with st.sidebar:
 # ======================================================================================
 
 tab_v, tab_p, tab_b, tab_s = st.tabs(["🚗 VÉHICULES", "🪪 POPULATION", "💰 BANQUE", "🛡️ ADMIN"])
+# À insérer dans l'onglet '🚗 VÉHICULES' ou '🛡️ ADMIN'
+st.subheader("🗑️ Gestion Personnelle (Radiation)")
+st.write("En tant que civil, vous pouvez radier votre véhicule uniquement avec votre code secret.")
 
+col_rad1, col_rad2 = st.columns(2)
+with col_rad1:
+    user_rad_plate = st.text_input("Plaque à supprimer :").upper()
+with col_rad2:
+    user_rad_code = st.text_input("Code Secret de la plaque :", type="password")
+
+if st.button("🚨 CONFIRMER MA RADIATION"):
+    # On cherche la plaque dans la base
+    match = df_i[df_i["Numéro de la plaque"].str.upper() == user_rad_plate]
+    
+    if not match.empty:
+        stored_code = str(match.iloc[0]["CODE"])
+        owner = match.iloc[0]["Nom d'utilisateur ROBLOX"]
+        
+        # Vérification : Le code est bon ET l'utilisateur est bien le proprio
+        if user_rad_code == stored_code:
+            # On supprime la ligne
+            idx_to_drop = match.index[0]
+            df_i_new = df_i.drop(idx_to_drop)
+            
+            cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i_new)
+            log_action(f"AUTO-RADIATION : {owner} a supprimé la plaque {user_rad_plate}")
+            st.cache_data.clear()
+            st.success("Votre véhicule a été retiré des registres fédéraux.")
+            time.sleep(1)
+            st.rerun()
+        else:
+            st.error("Code secret incorrect. Action refusée.")
+    else:
+        st.error("Plaque introuvable dans le système.")
 with tab_v:
     st.header("Gestion des Titres de Circulation")
     st.markdown("> **AIDE :** Remplissez le formulaire pour enregistrer un véhicule. Le reçu s'affichera à droite.")
