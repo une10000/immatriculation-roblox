@@ -251,7 +251,7 @@ if st.session_state.user_auth is None:
     
     with c1:
         st.markdown("### 👥 CIVIL")
-        st.info("Accès public pour consulter votre solde, vos véhicules et vos factures impayées.")
+        st.info("Accès public pour consulter votre profile")
         if st.button("ACCÉDER AU TERMINAL", use_container_width=True):
             st.session_state.user_auth = "Civil"
             st.rerun()
