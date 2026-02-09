@@ -634,7 +634,6 @@ if st.session_state.user_auth == "Staff":
 # --- ONGLET 3 : ADMINISTRATION (STAFF UNIQUEMENT) ---
 if st.session_state.user_auth == "Staff":
     with tabs[2]:
-        st.markdown("### 🛡️ Contrôle Administrateur")
         
         col_s1, col_s2 = st.columns(2)
         
