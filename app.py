@@ -223,7 +223,6 @@ with st.sidebar:
     st.subheader("Informations Temps Réel")
     st.write(f"📅 Date : {datetime.now().strftime('%d/%m/%Y')}")
     st.write(f"⏰ Heure : {datetime.now().strftime('%H:%M:%S')}")
-    st.write(f"🌍 Zone : Palm City Central")
     
     st.divider()
     if st.button("🔄 Actualiser les Données", use_container_width=True):
