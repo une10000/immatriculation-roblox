@@ -212,32 +212,44 @@ if st.session_state.user_auth is not None:
 # ======================================================================================
 
 if st.session_state.user_auth is None:
-    # 1. CALCUL DES MOTIFS LÉGERS (FLOTTANTS SANS CADRE)
+    # 1. CALCUL DES MOTIFS VISIBLES (Basé sur UTC+1)
     from datetime import datetime, timedelta, timezone
     t_now_lock = datetime.now(timezone.utc) + timedelta(hours=1)
     h_lock = t_now_lock.hour
 
     if 5 <= h_lock < 18:
         salut, emo = "Bonjour", "☀️"
-        # MOTIF JOUR : Petits points discrets (Polka dots)
+        # MOTIF JOUR : Points noirs bien marqués
         pattern_style = (
-            "background-image: radial-gradient(rgba(0,0,0,0.08) 1px, transparent 0); "
-            "background-size: 20px 20px; "
+            "background-image: radial-gradient(rgba(0,0,0,0.2) 2px, transparent 0); "
+            "background-size: 25px 25px; "
         )
     else:
         salut, emo = "Bonsoir", "🌙"
-        # MOTIF NUIT : Grille technique ultra-fine
+        # MOTIF NUIT : Grille blanche/bleutée bien visible
         pattern_style = (
-            "background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), "
-            "linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px); "
-            "background-size: 40px 40px; "
+            "background-image: linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), "
+            "linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px); "
+            "background-size: 45px 45px; "
         )
 
     # AFFICHAGE DU MESSAGE DE BIENVENUE
     st.markdown(f"""
-        <div style="text-align: center; margin-top: -30px; margin-bottom: 30px; padding: 50px 0; {pattern_style}">
-            <h1 style="font-size: 5.5em; margin-bottom: 0px; font-weight: 900; letter-spacing: -3px; line-height: 1;">{salut} ! {emo}</h1>
-            <p style="font-size: 1.1em; opacity: 0.6; letter-spacing: 5px; font-weight: bold; text-transform: uppercase; margin-top: 10px;">Unité Fédérale de Rensselaer</p>
+        <div style="
+            text-align: center; 
+            margin-top: -30px; 
+            margin-bottom: 30px; 
+            padding: 60px 20px; 
+            {pattern_style}
+            mask-image: radial-gradient(ellipse at center, black 50%, transparent 100%);
+            -webkit-mask-image: radial-gradient(ellipse at center, black 50%, transparent 100%);
+        ">
+            <h1 style="font-size: 5.5em; margin-bottom: 0px; font-weight: 900; letter-spacing: -3px; line-height: 1.1;">
+                {salut} ! {emo}
+            </h1>
+            <p style="font-size: 1.2em; opacity: 0.8; letter-spacing: 6px; font-weight: bold; text-transform: uppercase; margin-top: 15px;">
+                Unité Fédérale de Rensselaer
+            </p>
         </div>
     """, unsafe_allow_html=True)
 
@@ -256,7 +268,7 @@ if st.session_state.user_auth is None:
     st.warning("⚠️ **AVERTISSEMENT :** Toute action effectuée sur ce terminal est enregistrée.")
     st.write("---")
 
-    # 3. COLONNES D'ACCÈS AVEC TEXT BOX D'INFOS
+    # 3. COLONNES D'ACCÈS
     c1, c2, c3 = st.columns(3)
     
     with c1:
