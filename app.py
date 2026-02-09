@@ -21,7 +21,7 @@ initial_sidebar_state="expanded"
 st.markdown("""
     <style>
     /* Global Styles */
-    .main { background-color: #f8f9fa; }
+    .main { background-color: #87CEEB !important; }
     
     /* Inputs avec bordures noires massives pour captures d'écran */
     .stTextInput>div>div>input, .stNumberInput>div>div>input, 
