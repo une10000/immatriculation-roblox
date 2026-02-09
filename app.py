@@ -253,13 +253,39 @@ with st.container():
             else: st.error("Aucun compte bancaire.")
             
         # Section Véhicules
+        # Section Véhicules (Dossier Citoyen)
         with col3:
             v_data = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
             st.write(f"🚘 **VÉHICULES ({len(v_data)})**")
             if not v_data.empty:
                 for _, veh in v_data.iterrows():
-                    st.caption(f"• **{veh['Numéro de la plaque']}** — {veh['Marque du véhicule']}")
-            else: st.write("Aucun véhicule enregistré.")
+                    # Format "Petit Reçu" avec bouton de radiation intégré
+                    with st.container(border=True):
+                        # Le visuel du titre
+                        st.markdown(f"""
+                        <div style="border: 1px solid #000; padding: 5px; background: white; color: black; font-family: monospace; font-size: 0.8em;">
+                            <center><b>TITRE DE PROPRIÉTÉ</b></center>
+                            <b>PLQ :</b> {veh['Numéro de la plaque']}<br>
+                            <b>MOD :</b> {veh['Marque du véhicule']}<br>
+                            <b>ASS :</b> {veh['Assurance']}
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        # Bouton de radiation spécifique à ce véhicule
+                        with st.expander("🗑️ Radier"):
+                            r_cod_check = st.text_input("Code Secret", type="password", key=f"rad_val_{veh['Numéro de la plaque']}")
+                            if st.button("CONFIRMER", key=f"btn_del_{veh['Numéro de la plaque']}", use_container_width=True):
+                                if str(r_cod_check) == str(veh['CODE']) or st.session_state.user_auth == "Staff":
+                                    df_i = df_i[df_i["Numéro de la plaque"] != veh['Numéro de la plaque']]
+                                    cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i)
+                                    st.cache_data.clear()
+                                    st.success("Radié !")
+                                    time.sleep(1)
+                                    st.rerun()
+                                else:
+                                    st.error("Code incorrect")
+            else: 
+                st.write("Aucun véhicule enregistré.")
 
 st.divider()
 # ======================================================================================
