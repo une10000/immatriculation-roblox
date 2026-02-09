@@ -549,84 +549,99 @@ with tabs[0]:
         """
         st.markdown(ticket_html, unsafe_allow_html=True)
 # --- ONGLET 2 : SERVICES AGENT (FACTURES / POINTS / CONSULTATION) ---
+# --- ONGLET 2 : SERVICES AGENT (FACTURES / POINTS / VÉHICULES) ---
 if st.session_state.user_auth in ["RCT", "Staff"]:
     with tabs[1]:
-        st.markdown("### 👮 Interface de Service")
         if target == "---":
-            st.warning("⚠️ Sélectionnez un citoyen en haut de la page.")
+            st.warning("⚠️ Veuillez sélectionner un citoyen dans le dossier (Onglet 1).")
         else:
-            # Affichage du nom de la cible
-            st.markdown(f'<div style="background-color: #1e1e1e; padding: 15px; border-radius: 10px; border-left: 5px solid #d32f2f; color: white;">🔍 Cible : <b>{target}</b></div>', unsafe_allow_html=True)
-            st.write("")
+            st.markdown(f"### 👮 Gestion d'infraction : {target}")
+            
+            # Création des 3 colonnes
+            col1, col2, col3 = st.columns([1, 1.2, 0.8])
 
-            col_saisie, col_info = st.columns([1, 1])
-
-            with col_saisie:
+            # --- COLONNE 1 : LA SAISIE ---
+            with col1:
+                st.markdown("#### 📝 Saisie")
                 with st.container(border=True):
-                    st.markdown("#### 📝 Créer une Infraction")
+                    f_val = st.number_input("Montant ($)", min_value=0, step=50, key="f_val_v11")
                     
-                    f_val = st.number_input("Montant de l'amende ($)", min_value=0, step=50, key="v_val")
-                    
-                    # SECURITÉ : disabled=True si l'utilisateur est RCT
                     is_rct = (st.session_state.user_auth == "RCT")
                     f_pts = st.number_input(
                         "Points à retirer", 
                         min_value=0, max_value=12, step=1, 
-                        key="v_pts", 
-                        disabled=is_rct,
-                        help="Action réservée au Staff" if is_rct else ""
+                        key="f_pts_v11", 
+                        disabled=is_rct
                     )
                     
-                    f_motif = st.text_input("Motif de l'infraction", key="v_mot")
+                    f_motif = st.text_input("Motif", placeholder="ex: Excès de vitesse", key="f_mot_v11")
                     
-                    v_list = ["AUCUN / PIÉTON"] + df_i[df_i["Nom d'utilisateur ROBLOX"] == target]["Numéro de la plaque"].tolist()
-                    f_plate = st.selectbox("Véhicule concerné", v_list, key="v_plate")
+                    user_vehicles = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]["Numéro de la plaque"].tolist()
+                    v_list = ["AUCUN / PIÉTON"] + user_vehicles
+                    f_plate = st.selectbox("Plaque", v_list, key="f_plate_v11")
                     
-                    st.write("---")
-                    
-                    # Le bouton change de nom selon le grade
-                    label = "🚨 ENVOYER & DÉBITER" if not is_rct else "🚨 ENVOYER FACTURE"
-                    
-                    if st.button(label, use_container_width=True, type="primary"):
-                        if not f_motif:
-                            st.error("⚠️ Tu dois mettre un motif.")
-                        else:
-                            with st.spinner("Traitement..."):
-                                # 1. Retrait des points (SEULEMENT SI STAFF)
+                    btn_label = "🚨 VALIDER & DÉBITER" if not is_rct else "🚨 ENVOYER FACTURE"
+                    if st.button(btn_label, use_container_width=True, type="primary"):
+                        if f_motif:
+                            with st.spinner("Envoi..."):
+                                # 1. Points (Staff only)
                                 if f_pts > 0 and not is_rct:
                                     idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
                                     df_p.at[idx_p, "PTS"] = max(0, int(df_p.at[idx_p, "PTS"]) - f_pts)
                                     cloud_conn.update(worksheet="Points Permis", data=df_p)
                                 
-                                # 2. Envoi de la facture (POUR TOUS)
+                                # 2. Facture
                                 df_f = cloud_conn.read(worksheet="Factures")
-                                
-                                # Note dans le motif si le RCT a essayé de mettre des points
                                 note_pts = f" | -{f_pts}pts" if not is_rct else f" | (RCT: -{f_pts}pts suggérés)"
-                                
-                                new_facture = {
+                                new_row = {
                                     "ID": random.randint(1000, 9999),
                                     "Cible": target,
                                     "Emetteur": st.session_state.user_auth,
                                     "Montant": f_val,
                                     "Motif": f"{f_motif} [{f_plate}]{note_pts}",
-                                    "Statut": "EN ATTENTE"
+                                    "Status": "EN ATTENTE"
                                 }
-                                
-                                df_f = pd.concat([df_f, pd.DataFrame([new_facture])], ignore_index=True)
+                                df_f = pd.concat([df_f, pd.DataFrame([new_row])], ignore_index=True)
                                 cloud_conn.update(worksheet="Factures", data=df_f)
                                 
-                                st.success("✅ Opération réussie !")
+                                st.success("✅ Fait !")
                                 st.cache_data.clear()
                                 time.sleep(1)
                                 st.rerun()
+                        else:
+                            st.error("Motif obligatoire")
 
-            with col_info:
-                st.markdown("#### ℹ️ Aide au grade")
-                if is_rct:
-                    st.info("🔓 **Mode RCT** : Vous pouvez envoyer des factures, mais le retrait de points est désactivé.")
+            # --- COLONNE 2 : LE JOLI REÇU (AU MILIEU) ---
+            with col2:
+                st.markdown("#### 📄 Aperçu du Reçu")
+                # Petit design de reçu RP
+                st.markdown(f"""
+                <div style="background-color: #f9f9f9; padding: 20px; border: 2px dashed #333; color: #333; font-family: 'Courier New', Courier, monospace;">
+                    <center>
+                        <h3 style="margin:0;">RÉPUBLIQUE D'AVERIS</h3>
+                        <p style="font-size: 10px;">PRÉFECTURE DE POLICE</p>
+                        <hr>
+                    </center>
+                    <p><b>CITOYEN :</b> {target}</p>
+                    <p><b>AGENT :</b> {st.session_state.user_auth}</p>
+                    <p><b>MOTIF :</b> {f_motif if f_motif else '...'}</p>
+                    <p><b>VÉHICULE :</b> {f_plate}</p>
+                    <hr>
+                    <h2 style="text-align: right;">TOTAL : {f_val}$</h2>
+                    <p style="font-size: 12px; text-align: center;">Retrait de {f_pts} points {'(Bloqué RCT)' if is_rct else ''}</p>
+                </div>
+                """, unsafe_allow_html=True)
+
+            # --- COLONNE 3 : LES VOITURES (À DROITE) ---
+            with col3:
+                st.markdown("#### 🚗 Véhicules")
+                if user_vehicles:
+                    for v in user_vehicles:
+                        with st.container(border=True):
+                            st.write(f"🆔 **{v}**")
+                            # Tu peux ajouter ici une info supplémentaire si dispo (marque, etc.)
                 else:
-                    st.success("🔓 **Mode STAFF** : Accès complet (Factures + Points).")
+                    st.info("Aucun véhicule enregistré.")
 # --- ONGLET 3 : ADMINISTRATION (STAFF ONLY) ---
 if st.session_state.user_auth == "Staff":
     with tabs[2]:
