@@ -281,65 +281,68 @@ with st.container():
             else: 
                 st.error("Aucun compte trouvé.") 
 # ======================================================================================
-        # NOUVEAU : SYSTÈME DE PAIEMENT DES FACTURES (CORRIGÉ RCT/POLICE)
-        # ======================================================================================
-if not mes_factures.empty:
-                st.error(f"⚠️ {len(mes_factures)} FACTURE(S) EN ATTENTE DE PAIEMENT")
-                for _, fac in mes_factures.iterrows():
-                    # --- LE TICKET FACTURE STYLE NOSTALGIQUE ---
-                    prefix_name = "POLICE NATIONALE" if fac['Emetteur'] == "Staff" else "RÉSEAU RCT"
-                    st.markdown(f"""
-                    <div style="border: 2px solid #000; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; margin-bottom: 5px; box-shadow: 6px 6px 0px #000;">
-                        <center><b style="font-size:1.1em; text-decoration: underline;">FACTURE OFFICIELLE</b><br>
-                        <small>{prefix_name}</small></center>
-                        <hr style="border-top: 1px dashed #000; margin: 10px 0;">
-                        <div style="font-size: 0.9em; line-height: 1.2;">
-                            <b>RÉFÉRENCE :</b> #{fac['ID']}<br>
-                            <b>AGENT     :</b> {fac['Emetteur']}<br>
-                            <b>MOTIF     :</b> {fac['Motif']}<br>
-                        </div>
-                        <hr style="border-top: 1px dashed #000; margin: 10px 0;">
-                        <div style="text-align: center; color: #d32f2f; font-weight: bold; font-size: 1.3em;">
-                            MONTANT : {fac['Montant']}$
-                        </div>
-                        <center><small style="font-size: 0.6em; opacity: 0.5; margin-top:10px; display:block;">RCRP SYSTEM - FACTURE À RÉGLER</small></center>
-                    </div>
-                    """, unsafe_allow_html=True)
+# NOUVEAU : SYSTÈME DE PAIEMENT DES FACTURES (STYLE TICKET)
+# ======================================================================================
+try:
+    df_all_f = cloud_conn.read(worksheet="Factures").fillna("")
+    mes_factures = df_all_f[(df_all_f["Cible"] == target) & (df_all_f["Statut"] == "EN ATTENTE")]
 
-                    # Bouton de paiement juste en dessous du ticket
-                    if st.button(f"💳 RÉGLER LA FACTURE #{fac['ID']}", key=f"pay_{fac['ID']}", use_container_width=True):
-                        idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
-                        solde_raw = str(df_b.at[idx_b, "Solde"]).replace('$', '').replace(',', '')
-                        solde_actuel = float(solde_raw)
-                        montant_facture = float(fac['Montant'])
-                        
-                        if solde_actuel >= montant_facture:
-                            # 1. Débit du Civil
-                            df_b.at[idx_b, "Solde"] = solde_actuel - montant_facture
-                            
-                            # 2. Crédit selon l'émetteur
-                            target_bank_acc = ACC_RCT 
-                            rct_idx = df_b[df_b["Nom Roblox"] == target_bank_acc].index[0]
-                            solde_dest = float(str(df_b.at[rct_idx, "Solde"]).replace('$', '').replace(',', ''))
-                            df_b.at[rct_idx, "Solde"] = solde_dest + montant_facture
-                            
-                            # 3. Mise à jour statut
-                            df_all_f.loc[df_all_f["ID"] == fac["ID"], "Statut"] = "PAYÉ"
-                            
-                            # 4. Sync Cloud
-                            cloud_conn.update(worksheet="Banque", data=df_b)
-                            cloud_conn.update(worksheet="Factures", data=df_all_f)
-                            
-                            record_log(target, f"Paiement facture {fac['Emetteur']} #{fac['ID']}")
-                            st.success("✅ Paiement effectué !")
-                            st.cache_data.clear()
-                            time.sleep(1)
-                            st.rerun()
-                        else:
-                            st.error("❌ Fonds insuffisants.")
-        except Exception as e:
-        # On affiche la vraie erreur pour comprendre
-            st.error(f"Erreur technique : {e}")
+    if not mes_factures.empty:
+        st.error(f"⚠️ {len(mes_factures)} FACTURE(S) EN ATTENTE DE PAIEMENT")
+        for _, fac in mes_factures.iterrows():
+            # --- LE TICKET FACTURE STYLE NOSTALGIQUE ---
+            prefix_name = "POLICE NATIONALE" if fac['Emetteur'] == "Staff" else "RÉSEAU RCT"
+            st.markdown(f"""
+            <div style="border: 2px solid #000; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; margin-bottom: 5px; box-shadow: 6px 6px 0px #000;">
+                <center><b style="font-size:1.1em; text-decoration: underline;">FACTURE OFFICIELLE</b><br>
+                <small>{prefix_name}</small></center>
+                <hr style="border-top: 1px dashed #000; margin: 10px 0;">
+                <div style="font-size: 0.9em; line-height: 1.2;">
+                    <b>RÉFÉRENCE :</b> #{fac['ID']}<br>
+                    <b>AGENT     :</b> {fac['Emetteur']}<br>
+                    <b>MOTIF     :</b> {fac['Motif']}<br>
+                </div>
+                <hr style="border-top: 1px dashed #000; margin: 10px 0;">
+                <div style="text-align: center; color: #d32f2f; font-weight: bold; font-size: 1.3em;">
+                    MONTANT : {fac['Montant']}$
+                </div>
+                <center><small style="font-size: 0.6em; opacity: 0.5; margin-top:10px; display:block;">RCRP SYSTEM - DOCUMENT OFFICIEL</small></center>
+            </div>
+            <div style="margin-bottom: 15px;"></div>
+            """, unsafe_allow_html=True)
+
+            # Bouton de paiement
+            if st.button(f"💳 RÉGLER LA FACTURE #{fac['ID']}", key=f"pay_{fac['ID']}", use_container_width=True):
+                idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
+                solde_raw = str(df_b.at[idx_b, "Solde"]).replace('$', '').replace(',', '')
+                solde_actuel = float(solde_raw)
+                montant_facture = float(fac['Montant'])
+                
+                if solde_actuel >= montant_facture:
+                    # 1. Débit
+                    df_b.at[idx_b, "Solde"] = solde_actuel - montant_facture
+                    
+                    # 2. Crédit (Vers RCT)
+                    rct_idx = df_b[df_b["Nom Roblox"] == ACC_RCT].index[0]
+                    solde_dest = float(str(df_b.at[rct_idx, "Solde"]).replace('$', '').replace(',', ''))
+                    df_b.at[rct_idx, "Solde"] = solde_dest + montant_facture
+                    
+                    # 3. Statut
+                    df_all_f.loc[df_all_f["ID"] == fac["ID"], "Statut"] = "PAYÉ"
+                    
+                    # 4. Sync
+                    cloud_conn.update(worksheet="Banque", data=df_b)
+                    cloud_conn.update(worksheet="Factures", data=df_all_f)
+                    
+                    record_log(target, f"Paiement facture {fac['Emetteur']} #{fac['ID']}")
+                    st.success("✅ Paiement effectué !")
+                    st.cache_data.clear()
+                    time.sleep(1)
+                    st.rerun()
+                else:
+                    st.error("❌ Fonds insuffisants.")
+except Exception as e:
+    st.error(f"Erreur technique : {e}")
 
 # --- SECTION VÉHICULES CORRIGÉE ---
 # --- SECTION VÉHICULES UNIFORMISÉE ---
