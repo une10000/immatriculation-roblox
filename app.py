@@ -548,10 +548,9 @@ with tabs[0]:
         </div>
         """
         st.markdown(ticket_html, unsafe_allow_html=True)
-
 # --- ONGLET 2 : SERVICES AGENT (FACTURES / POINTS / CONSULTATION) ---
 if st.session_state.user_auth in ["RCT", "Staff"]:
-with tabs[1]:
+    with tabs[1]:
         st.markdown("### 👮 Interface de Service")
         
         if target == "---":
@@ -603,7 +602,7 @@ with tabs[1]:
                                 # 2. Envoi de la facture (POUR TOUS)
                                 df_f = cloud_conn.read(worksheet="Factures")
                                 
-                                # On ajoute une note si le RCT voulait retirer des points
+                                # Note dans le motif si le RCT a essayé de mettre des points
                                 note_pts = f" | -{f_pts}pts" if not is_rct else f" | (RCT: -{f_pts}pts suggérés)"
                                 
                                 new_facture = {
