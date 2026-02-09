@@ -283,14 +283,14 @@ with tabs[0]:
     
     with col_f:
         with st.container(border=True):
-            f_owner = st.selectbox("Propriétaire du véhicule", ["---"] + df_b["Nom Roblox"].tolist())
-            f_model = st.text_input("Marque & Modèle précis")
-            f_plate = st.text_input("Numéro de Plaque souhaité").upper()
-            f_assu = st.selectbox("Type d'Assurance", ["Aucune", "AVERIS (130$)", "RCT (150$)"])
-            f_code = st.text_input("Définir un Code de Radiation (Secret)", type="password")
+            f_owner = st.selectbox("Propriétaire du véhicule", ["---"] + df_b["Nom Roblox"].tolist(), key="sel_owner")
+            f_model = st.text_input("Marque & Modèle précis", key="in_model")
+            f_plate = st.text_input("Numéro de Plaque souhaité", key="in_plate").upper()
+            f_assu = st.selectbox("Type d'Assurance", ["Aucune", "AVERIS (130$)", "RCT (150$)"], key="sel_assu")
+            f_code = st.text_input("Définir un Code de Radiation (Secret)", type="password", key="in_code")
             
             # --- CASE À COCHER JEUNE CONDUCTEUR ---
-            f_jeune = st.checkbox("Mention Jeune Conducteur (Affiche ⚠️ sur le reçu)")
+            f_jeune = st.checkbox("Mention Jeune Conducteur (Affiche ⚠️ sur le reçu)", key="check_jeune")
             
             # Calcul financier dynamique
             taxe_gouv = 175
@@ -304,7 +304,7 @@ with tabs[0]:
 
             total_bill = taxe_gouv + taxe_assu
             
-            if st.button(f"S'ACQUITTER DE {total_bill}$ ET ENREGISTRER", use_container_width=True):
+            if st.button(f"S'ACQUITTER DE {total_bill}$ ET ENREGISTRER", use_container_width=True, key="btn_pay"):
                 if f_owner != "---" and f_plate and f_code:
                     if f_plate in df_i["Numéro de la plaque"].astype(str).values:
                         st.error("❌ Cette plaque est déjà attribuée.")
@@ -331,30 +331,33 @@ with tabs[0]:
                             cloud_conn.update(worksheet="Banque", data=df_b)
                             cloud_conn.update(worksheet="Copie de Immatriculations", data=pd.concat([df_i, new_row]))
                             
-                            # On garde en mémoire si c'est un jeune pour le reçu final
                             st.session_state.last_action = {
                                 "nom": f_owner, "plq": f_plate, "mod": f_model, 
                                 "prix": total_bill, "jeune": f_jeune
                             }
                             
                             record_log(st.session_state.user_auth, f"Immat {f_plate} pour {f_owner}")
-                            st.cache_data.clear(); st.rerun()
+                            st.cache_data.clear()
+                            st.rerun()
                         else: st.error("❌ Solde bancaire insuffisant.")
                 else: st.warning("⚠️ Veuillez remplir tous les champs.")
 
         st.divider()
         st.markdown("#### 🗑️ Radiation de Plaque")
-        # UNE SEULE FOIS ICI (Supprime le bloc en double dans ton code actuel)
-        rad_plate = st.text_input("Plaque à radier", key="rad_plate_unique").upper()
-        rad_key = st.text_input("Code de sécurité", type="password", key="rad_key_unique")
-        if st.button("RADIER LE VÉHICULE DU REGISTRE", use_container_width=True):
+        # Identifiants uniques pour éviter l'erreur rouge
+        rad_plate = st.text_input("Plaque à radier", key="rad_plate_final").upper()
+        rad_key = st.text_input("Code de sécurité", type="password", key="rad_key_final")
+        if st.button("RADIER LE VÉHICULE DU REGISTRE", use_container_width=True, key="btn_rad"):
             match = df_i[df_i["Numéro de la plaque"].astype(str).str.upper() == rad_plate]
             if not match.empty:
                 if str(rad_key) == str(match.iloc[0]["CODE"]) or st.session_state.user_auth == "Staff":
                     df_i = df_i.drop(match.index[0])
                     cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i)
                     record_log(st.session_state.user_auth, f"Radiation plaque {rad_plate}")
-                    st.cache_data.clear(); st.success("Véhicule radié."); time.sleep(1); st.rerun()
+                    st.cache_data.clear()
+                    st.success("Véhicule radié.")
+                    time.sleep(1)
+                    st.rerun()
                 else: st.error("Code incorrect.")
             else: st.error("Plaque introuvable.")
 
@@ -369,6 +372,7 @@ with tabs[0]:
         if f_jeune:
             mention_html = '<div style="color:red; font-weight:bold; text-align:center; border:2px solid red; padding:5px; margin-bottom:10px;">⚠️ JEUNE CONDUCTEUR ⚠️</div>'
         
+        # Le contenu est maintenant proprement rendu en HTML
         st.markdown(f"""
             <div class="receipt-container">
                 <div class="receipt-title">TITRE DE CIRCULATION</div>
@@ -386,8 +390,10 @@ with tabs[0]:
                 <center><small>Document certifié conforme par le terminal fédéral</small></center>
             </div>
         """, unsafe_allow_html=True)
+        
         if st.session_state.last_action:
             st.success("✅ TRANSACTION CONFIRMÉE")
+            
 # --- ONGLET 2 : SERVICES RCT (AMENDES & POINTS) ---
 if st.session_state.user_auth in ["RCT", "Staff"]:
     with tabs[1]:
