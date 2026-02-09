@@ -142,19 +142,19 @@ t_now = datetime.now()
 st.markdown(f"### 📅 {t_now.strftime('%d/%m/%Y')}")
 st.markdown(f"### ⏰ {t_now.strftime('%H:%M:%S')}")
 st.divider()
-        
+
 st.write(f"🔐 Accréditation : **{st.session_state.user_auth}**")
-        
+
 if st.button("🔄 FORCER SYNCHRO"):
     st.cache_data.clear()
     record_log(st.session_state.user_auth, "Synchro Cloud Manuelle")
     st.rerun()
-            
+    
 if st.button("🚪 DÉCONNEXION"):
     record_log(st.session_state.user_auth, "Déconnexion")
     st.session_state.user_auth = None
     st.rerun()
-        
+    
 st.divider()
 st.caption("📜 JOURNAUX D'AUDIT (SESSION)")
 for log in reversed(st.session_state.audit_logs[-8:]):
