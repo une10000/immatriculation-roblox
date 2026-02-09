@@ -521,7 +521,6 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                 </div>
             """, unsafe_allow_html=True)
 
-            # --- STRUCTURE EN 3 COLONNES ---
             col_saisie, col_ticket, col_vehicules = st.columns([1, 1, 1])
 
             # 1. À GAUCHE : LE FORMULAIRE
@@ -529,54 +528,70 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                 st.markdown("### 📝 Saisie")
                 with st.container(border=True):
                     f_val = st.number_input("Montant de l'amende ($)", min_value=0, step=50, key="f_val_fix")
-                    f_pts = st.number_input("Points à retirer", min_value=0, max_value=12, step=1, key="f_pts_fix")
-                    f_motif = st.text_input("Motif", placeholder="ex: Conduite dangereuse", key="f_mot_fix")
                     
+                    # --- PROTECTION POINTS : UNIQUEMENT POUR STAFF ---
+                    f_pts = 0
+                    if st.session_state.user_auth == "Staff":
+                        f_pts = st.number_input("Points à retirer", min_value=0, max_value=12, step=1, key="f_pts_fix")
+                    else:
+                        st.info("ℹ️ Retrait de points réservé au Staff.")
+                    
+                    f_motif = st.text_input("Motif", placeholder="ex: Excès de vitesse", key="f_mot_fix")
                     v_list = ["AUCUN / PIÉTON"] + df_i[df_i["Nom d'utilisateur ROBLOX"] == target]["Numéro de la plaque"].tolist()
                     f_plate_link = st.selectbox("Plaque concernée :", v_list, key="f_plate_link")
                     
-                    if st.button("🚨 ENVOYER & DÉBITER POINTS", use_container_width=True):
+                    if st.button("🚨 ENVOYER LA SANCTION", use_container_width=True):
                         if f_motif:
                             with st.spinner("Mise à jour..."):
-                                # Retrait des points
-                                if f_pts > 0:
+                                # LOGIQUE DE MISE À JOUR DES POINTS (STAFF UNIQUEMENT)
+                                if st.session_state.user_auth == "Staff" and f_pts > 0:
                                     idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
                                     df_p.at[idx_p, "PTS"] = max(0, int(df_p.at[idx_p, "PTS"]) - f_pts)
                                     cloud_conn.update(worksheet="Points Permis", data=df_p)
                                 
-                                # Facture
+                                # CRÉATION DE LA FACTURE (ACCESSIBLE AUX DEUX)
                                 df_factures = cloud_conn.read(worksheet="Factures")
                                 new_id = random.randint(10000, 99999)
+                                pts_msg = f" | -{f_pts}pts" if f_pts > 0 else ""
                                 new_row = {
-                                    "ID": new_id, "Cible": target, "Emetteur": st.session_state.user_auth,
-                                    "Montant": f_val, "Motif": f"{f_motif} (Plaque: {f_plate_link} | -{f_pts}pts)",
+                                    "ID": new_id, 
+                                    "Cible": target, 
+                                    "Emetteur": st.session_state.user_auth,
+                                    "Montant": f_val, 
+                                    "Motif": f"{f_motif} (Plaque: {f_plate_link}{pts_msg})",
                                     "Statut": "EN ATTENTE"
                                 }
                                 df_factures = pd.concat([df_factures, pd.DataFrame([new_row])], ignore_index=True)
                                 cloud_conn.update(worksheet="Factures", data=df_factures)
                                 
-                                st.success("✅ Succès !")
+                                record_log(st.session_state.user_auth, f"Sanction vers {target} ({f_val}$ / {f_pts}pts)")
+                                st.success("✅ Sanction enregistrée !")
                                 st.cache_data.clear()
                                 time.sleep(1)
                                 st.rerun()
                         else:
                             st.error("Motif obligatoire.")
 
-            # 2. AU MILIEU : APERÇU TICKET
+            # 2. AU MILIEU : APERÇU TICKET (Dynamique)
             with col_ticket:
                 st.markdown("### 🖼️ Aperçu Live")
-                prefix = "POLICE NATIONALE" if st.session_state.user_auth == "Staff" else "RÉSEAU RCT"
+                prefix = "POLICE NATIONALE" if st.session_state.user_auth == "Staff" else "UNITÉ RCT"
+                pts_display = f"-{f_pts}" if f_pts > 0 else "0"
                 st.markdown(f"""
                 <div style="border: 2px solid #000; padding: 15px; background: white; color: black; font-family: monospace; box-shadow: 6px 6px 0px #000;">
-                    <center><b style="text-decoration: underline;">FACTURE OFFICIELLE</b><br><small>{prefix}</small></center>
+                    <center><b style="text-decoration: underline;">PROCÈS-VERBAL</b><br><small>{prefix}</small></center>
                     <hr style="border-top: 1px dashed #000;">
                     <small><b>CIBLE :</b> {target}<br><b>PLAQUE :</b> {f_plate_link}<br><b>MOTIF :</b> {f_motif if f_motif else "..."}</small>
                     <hr style="border-top: 1px dashed #000;">
                     <div style="display: flex; justify-content: space-between; font-weight: bold;">
-                        <span style="color:red;">PTS: -{f_pts}</span><span>TOTAL: {f_val}$</span>
+                        <span style="color:red;">PTS: {pts_display}</span><span>TOTAL: {f_val}$</span>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
+
+            # 3. À DROITE : GARAGE DU CITOYEN
+            with col_vehicules:
+                # ... (Le code du garage reste le même que précédemment) ...
 
             # 3. À DROITE : GARAGE (Vérifie bien que ce bloc est décalé d'un cran sous le 'else:')
             with col_vehicules:
