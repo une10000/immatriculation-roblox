@@ -581,43 +581,50 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                 </div>
                 """, unsafe_allow_html=True)
 # 3. À DROITE : GARAGE DU CITOYEN (STYLE TICKETS DE PROPRIÉTÉ)
+# 3. À DROITE : GARAGE DU CITOYEN (STYLE TITRE DE CIRCULATION UNIFIÉ)
 with col_vehicules:
-    st.markdown("### 🚗 Titres de Propriété")
+    st.markdown("### 🚗 Garage du Citoyen")
     mes_v = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
     
     if not mes_v.empty:
         for _, v in mes_v.iterrows():
-            # Détermination de la couleur d'assurance
+            # Logique de couleur pour l'assurance (identique à ton dossier citoyen)
             assu = str(v['Assurance']).upper()
-            status_color = "#2e7d32" if any(x in assu for x in ["RCT", "AVERIS"]) else "#d32f2f"
-            status_text = "ASSURÉ & HOMOLOGUÉ" if status_color == "#2e7d32" else "DEFAUT D'ASSURANCE"
+            is_ok = any(x in assu for x in ["RCT", "AVERIS"])
+            
+            color = "#000000" # Noir si OK
+            status_txt = "CERTIFIÉ CONFORME"
+            
+            if not is_ok:
+                color = "#d32f2f" # Rouge si défaut
+                status_txt = "⚠️ DANGER : NON-ASSURÉ"
 
-            # --- LE TICKET DE PROPRIÉTÉ ---
+            # --- LE TICKET (DESIGN IDENTIQUE AU DOSSIER CITOYEN) ---
             st.markdown(f"""
-            <div style="border: 2px solid #000; padding: 12px; background: white; color: black; font-family: 'Courier New', monospace; margin-bottom: 15px; box-shadow: 4px 4px 0px #ccc;">
-                <div style="text-align: center; font-weight: bold; font-size: 0.9em; border-bottom: 1px solid #000; margin-bottom: 8px;">
-                    CARTE GRISE NATIONALE
-                </div>
-                <div style="font-size: 0.8em; line-height: 1.4;">
-                    <b>PROPRIO :</b> {target}<br>
-                    <b>MODÈLE  :</b> {v['Marque du véhicule']}<br>
-                    <b>PLAQUE  :</b> <span style="background: #000; color: #fff; padding: 0 4px;">{v['Numéro de la plaque']}</span><br>
-                    <b>ASSUR.  :</b> {v['Assurance']}
-                </div>
-                <div style="margin-top: 8px; border-top: 1px dashed #000; padding-top: 5px; text-align: center;">
-                    <b style="color: {status_color}; font-size: 0.75em;">● {status_text}</b>
+            <div style="border: 2px solid black; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; line-height: 1.2; margin-bottom: 10px;">
+                <center><b>TITRE DE CIRCULATION</b><br><small>RÉPUBLIQUE DE RENSSERLAER</small></center>
+                <hr style="border-top: 1px solid #ccc; margin: 10px 0;">
+                <b>DATE :</b> {datetime.now().strftime('%d/%m/%Y')}<br>
+                <b>NOM :</b> {target}<br>
+                <b>MODÈLE :</b> {v['Marque du véhicule']}<br>
+                <b>PLAQUE :</b> <span style="border: 1px solid black; padding: 0 3px;">{v['Numéro de la plaque']}</span><br>
+                <b>ASSURANCE :</b> {v['Assurance']}
+                <hr style="border-top: 1px solid #ccc; margin: 10px 0;">
+                <div style="text-align: center; color: {color}; font-weight: bold; font-size: 0.8em;">
+                    {status_txt}<br>
+                    <small>Par le Terminal National</small>
                 </div>
             </div>
             """, unsafe_allow_html=True)
             
-            # Affichage de la photo juste en dessous du ticket si elle existe
+            # Photo du véhicule si disponible
             photo = v.get('Lien de la photo')
             if photo:
-                st.image(photo, caption=f"Vue réelle - {v['Numéro de la plaque']}", use_container_width=True)
-            st.divider()
+                st.image(photo, use_container_width=True)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
     else:
-        st.info("Aucun véhicule enregistré pour ce citoyen.")
-
+        st.info("Aucun véhicule enregistré.")
 # --- ONGLET 3 : ADMINISTRATION (STAFF ONLY) ---
 if st.session_state.user_auth == "Staff":
     with tabs[2]:
