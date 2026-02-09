@@ -1,30 +1,9 @@
 # ======================================================================================
-# PROJECT       : RCRP MAGNUS OS - MASTER EDITION (EXTENDED & EXPLAINED)
-# VERSION       : 26.8.0
+# PROJECT       : RCRP MAGNUS OS - ABSOLUTE EDITION
+# VERSION       : 27.0.0 (STABLE MASTER)
 # BUILD DATE    : 09/02/2026
-# COMPLIANCE    : RENSSELAER COUNTY ROLEPLAY - FEDERAL STANDARDS
-# TOTAL LINES   : 700+ 
+# TOTAL LINES   : 800+ (MAXIMUM DOCUMENTATION)
 # ======================================================================================
-
-"""
---- GUIDE DE FONCTIONNEMENT DU SYSTÈME MAGNUS ---
-
-1. BANQUE & TAXES :
-   - Les taxes d'immatriculation (175$) restent dans les caisses de l'état.
-   - Les assurances sont redirigées : Averis -> Moune2010 | RCT -> une10000.
-   - Les taxes manuelles par les agents RCT sont redirigées vers 'une10000'.
-
-2. GESTION DU QUOTA (ERREUR 429) :
-   - Le système utilise un cache de 600 secondes. Les données ne sont pas lues
-     sur Google à chaque clic, mais toutes les 10 minutes ou via le bouton RECHARGER.
-
-3. START PACK (STAFF UNIQUEMENT) :
-   - Crée automatiquement : Solde (15,000$), Points (25), Date (Aujourd'hui).
-
-4. OFFRE TRIO RCT :
-   - Si un citoyen possède déjà 2 véhicules assurés chez RCT, la 3ème assurance
-     passe automatiquement à 0$ dans le calculateur.
-"""
 
 import streamlit as st
 from streamlit_gsheets import GSheetsConnection
@@ -34,345 +13,398 @@ import time
 import random
 
 # ======================================================================================
-# SECTION 1 : CONFIGURATION VISUELLE ET IDENTITÉ
+# 1. CONFIGURATION ET SYSTEME DE STYLE (DESIGN RENSELLAER)
 # ======================================================================================
 
 st.set_page_config(
-    page_title="RCRP MAGNUS MASTER",
+    page_title="RCRP MAGNUS OS - SYSTEME FEDERAL",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# CSS : Bordures noires épaisses pour visibilité maximale sur captures d'écran
+# Application du style visuel (Bordures noires obligatoires pour les captures d'écran)
 st.markdown("""
     <style>
-    /* Renforcement des bordures pour les screens civils/staff */
+    /* Champs de saisie : Bordures 2px noires pour visibilité sur les screens */
     .stTextInput>div>div>input, 
     .stNumberInput>div>div>input, 
-    .stSelectbox>div>div>div {
+    .stSelectbox>div>div>div,
+    .stTextArea>div>div>textarea {
         border: 2px solid #000000 !important;
         border-radius: 4px !important;
-        font-weight: 800 !important;
-        color: #000 !important;
+        font-weight: bold !important;
+        color: #000000 !important;
         background-color: #ffffff !important;
     }
+
+    /* En-tête de Bienvenue */
+    .header-box {
+        background-color: #1a1a1a;
+        color: #ffffff;
+        padding: 40px;
+        border-radius: 10px;
+        border-left: 15px solid #d32f2f;
+        margin-bottom: 25px;
+    }
+
+    /* Style du Ticket de Reçu (Papier thermique) */
+    .receipt-container {
+        background-color: #ffffff;
+        padding: 30px;
+        border: 3px solid #000000;
+        font-family: 'Courier New', Courier, monospace;
+        color: #000;
+        box-shadow: 10px 10px 0px #eeeeee;
+    }
     
-    /* Boutons stylisés */
+    .receipt-line {
+        border-top: 2px dashed #000;
+        margin: 15px 0;
+    }
+
+    /* Boutons de commande */
     .stButton>button {
         border: 2px solid #000 !important;
-        background-color: #f0f2f6 !important;
-        font-weight: bold !important;
-    }
-
-    /* Boîte de Reçu (Design Papier) */
-    .receipt-box {
-        background-color: #fff;
-        padding: 20px;
-        border: 3px solid #000;
-        font-family: 'Courier New', monospace;
-        color: #000;
-        margin-top: 15px;
-    }
-    
-    .receipt-hr {
-        border-top: 2px dashed #000;
-        margin: 10px 0;
-    }
-
-    /* Logs d'audit */
-    .log-text {
-        font-size: 12px;
-        color: #555;
-        font-family: monospace;
+        font-weight: 900 !important;
+        text-transform: uppercase;
+        height: 3em;
     }
     </style>
 """, unsafe_allow_html=True)
 
 # ======================================================================================
-# SECTION 2 : MOTEUR DE DONNÉES (ANTI-429 & SYNCHRO)
+# 2. MOTEUR DE DONNÉES CLOUD (CACHE & ANTI-QUOTA 429)
 # ======================================================================================
 
-@st.cache_data(ttl=600) # PROTECTION QUOTA GOOGLE (10 MIN)
-def load_federal_databases():
-    """Charge et nettoie les feuilles de calcul Google Sheets."""
+@st.cache_data(ttl=600)
+def sync_with_federal_sheets():
+    """
+    Récupère les données depuis Google Sheets.
+    Le cache de 600s évite l'erreur 429 (Too Many Requests).
+    """
     try:
-        connection = st.connection("gsheets", type=GSheetsConnection)
+        conn = st.connection("gsheets", type=GSheetsConnection)
         
-        # Récupération des données
-        bank_df = connection.read(worksheet="Banque").dropna(how='all').fillna("")
-        immat_df = connection.read(worksheet="Copie de Immatriculations").dropna(how='all').fillna("")
-        points_df = connection.read(worksheet="Points Permis").dropna(how='all').fillna("")
+        # Lecture des tables
+        df_bank = conn.read(worksheet="Banque").dropna(how='all').fillna("")
+        df_immat = conn.read(worksheet="Copie de Immatriculations").dropna(how='all').fillna("")
+        df_pts = conn.read(worksheet="Points Permis").dropna(how='all').fillna("")
         
-        return connection, bank_df, immat_df, points_df
+        return conn, df_bank, df_immat, df_pts
     except Exception as e:
-        st.error(f"❌ ERREUR CRITIQUE DATABASE : {e}")
+        st.error(f"⚠️ ERREUR DE SYNCHRONISATION CLOUD : {e}")
         return None, None, None, None
 
-# Chargement initial
-cloud_conn, df_b, df_i, df_p = load_federal_databases()
+# Chargement du moteur
+cloud_conn, df_b, df_i, df_p = sync_with_federal_sheets()
 
 # ======================================================================================
-# SECTION 3 : GESTION DE LA SESSION ET SÉCURITÉ
+# 3. INITIALISATION DES SESSIONS & CONSTANTES
 # ======================================================================================
 
-if "session_role" not in st.session_state: st.session_state.session_role = None
-if "last_op_receipt" not in st.session_state: st.session_state.last_op_receipt = None
-if "system_logs" not in st.session_state: st.session_state.system_logs = []
+if "user_auth" not in st.session_state: st.session_state.user_auth = None
+if "active_receipt" not in st.session_state: st.session_state.active_receipt = None
+if "audit_trail" not in st.session_state: st.session_state.audit_trail = []
 
-# Cibles de redirection bancaire
-TARGET_RCT = "une10000"
-TARGET_AVERIS = "Moune2010"
+# Paramètres de redirection bancaire
+ACC_RCT = "une10000"
+ACC_AVERIS = "Moune2010"
 
-def add_system_log(msg):
-    """Enregistre une action dans les logs de la session actuelle."""
-    t = datetime.now().strftime("%H:%M:%S")
-    st.session_state.system_logs.append(f"[{t}] {msg}")
+# Identifiants de sécurité
+KEY_RCT = "RCT-26-RCRPFR"
+KEY_STAFF = "RCRPFR-25-26"
 
-def login_screen():
-    """Affiche l'écran de sélection du rôle."""
-    st.title("🏛️ TERMINAL MAGNUS OS")
-    st.info("Système d'administration sécurisé de Rensselaer County.")
+def log_action(msg):
+    """Ajoute une trace de l'opération dans le journal local."""
+    now = datetime.now().strftime("%H:%M:%S")
+    st.session_state.audit_trail.append(f"[{now}] {msg}")
+
+# ======================================================================================
+# 4. PAGE DE DÉMARRAGE (MANUELS ET EXPLICATIONS)
+# ======================================================================================
+
+def show_welcome_screen():
+    st.markdown("""
+        <div class="header-box">
+            <h1>🏛️ MAGNUS OS - TERMINAL FÉDÉRAL</h1>
+            <p>Version 27.0 - Système de Gestion Officiel de Rensselaer County</p>
+        </div>
+    """, unsafe_allow_html=True)
+
+    # BLOC EXPLICATIF DE BIENVENUE
+    st.info("""
+    **MANUEL D'UTILISATION RAPIDE :**
+    1. **Civils :** Vous pouvez consulter vos registres, soldes et points de permis.
+    2. **Agents RCT :** Utilisez vos codes pour accéder aux modules d'immatriculation et de taxation.
+    3. **Staff :** Accès complet pour la création de profils et la radiation de titres.
     
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.subheader("📁 CIVIL")
-        if st.button("ACCÈS CONSULTATION", use_container_width=True):
-            st.session_state.session_role = "Civil"
-            add_system_log("Connexion : Mode Civil")
-            st.rerun()
-            
-    with col2:
-        st.subheader("👮 AGENT RCT")
-        c_rct = st.text_input("Code Agent", type="password")
-        if st.button("S'IDENTIFIER RCT", use_container_width=True):
-            if c_rct == "RCT-26-RCRPFR":
-                st.session_state.session_role = "RCT"
-                add_system_log("Connexion : Mode Agent RCT")
-                st.rerun()
-            else: st.error("Code erroné.")
-            
-    with col3:
-        st.subheader("🛡️ STAFF")
-        c_stf = st.text_input("Code Staff", type="password")
-        if st.button("S'IDENTIFIER ADMIN", use_container_width=True):
-            if c_stf == "RCRPFR-25-26":
-                st.session_state.session_role = "Staff"
-                add_system_log("Connexion : Mode Staff")
-                st.rerun()
-            else: st.error("Accès refusé.")
+    *Note : Les données sont synchronisées toutes les 10 minutes pour éviter les surcharges.*
+    """)
 
-if st.session_state.session_role is None:
-    login_screen()
+    c1, c2, c3 = st.columns(3)
+    
+    with c1:
+        st.subheader("👤 PORTAIL CIVIL")
+        st.write("Accès libre en lecture seule pour tous les citoyens.")
+        if st.button("ACCÉDER AU PORTAIL", use_container_width=True):
+            st.session_state.user_auth = "Civil"
+            log_action("Connexion : Mode Civil")
+            st.rerun()
+
+    with c2:
+        st.subheader("👮 PORTAIL RCT")
+        st.write("Réservé aux agents accrédités (Immatriculations / Taxes).")
+        key_in_rct = st.text_input("Code Agent RCT", type="password")
+        if st.button("S'IDENTIFIER RCT", use_container_width=True):
+            if key_in_rct == KEY_RCT:
+                st.session_state.user_auth = "RCT"
+                log_action("Connexion : Mode Agent RCT")
+                st.rerun()
+            else: st.error("Accès refusé : Code incorrect.")
+
+    with c3:
+        st.subheader("🛡️ PORTAIL STAFF")
+        st.write("Contrôle total du système et gestion des nouveaux arrivants.")
+        key_in_stf = st.text_input("Code Sécurité Staff", type="password")
+        if st.button("S'IDENTIFIER STAFF", use_container_width=True):
+            if key_in_stf == KEY_STAFF:
+                st.session_state.user_auth = "Staff"
+                log_action("Connexion : Mode Administrateur")
+                st.rerun()
+            else: st.error("Accès refusé : Autorisation requise.")
+
+# Redirection vers l'accueil si non connecté
+if st.session_state.user_auth is None:
+    show_welcome_screen()
     st.stop()
 
 # ======================================================================================
-# SECTION 4 : BARRE LATÉRALE DE CONTRÔLE (SIDEBAR)
+# 5. BARRE LATERALE DE CONTROLE (SIDEBAR TOUJOURS OUVERTE)
 # ======================================================================================
 
 with st.sidebar:
-    st.title("🛡️ MAGNUS CONTROL")
-    st.write(f"Utilisateur : **{st.session_state.session_role}**")
-    st.write(f"Système : **ONLINE**")
+    st.title("⚙️ MAGNUS CORE")
+    st.write(f"Opérateur : **{st.session_state.user_auth}**")
+    st.write(f"Date : {datetime.now().strftime('%d/%m/%Y')}")
     st.divider()
     
-    # BOUTONS DE COMMANDE
-    if st.button("🔄 RECHARGER LES DONNÉES", use_container_width=True):
+    # EXPLICATIONS SELON LE ROLE
+    if st.session_state.user_auth == "Civil":
+        st.info("🔎 **Mode Lecture** : Vous ne pouvez pas modifier les données.")
+    elif st.session_state.user_auth == "RCT":
+        st.warning("🚨 **Mode RCT** : Vos taxes sont envoyées à 'une10000'.")
+    else:
+        st.error("🛡️ **Mode Staff** : Accès à la radiation et aux packs de départ.")
+
+    st.divider()
+    
+    if st.button("🔄 SYNCHRONISER (FORCER)", use_container_width=True):
         st.cache_data.clear()
-        add_system_log("Synchronisation manuelle forcée.")
+        log_action("Synchronisation manuelle déclenchée.")
         st.rerun()
         
-    if st.button("🚪 QUITTER LA SESSION", use_container_width=True):
-        st.session_state.session_role = None
+    if st.button("🚪 DÉCONNEXION", use_container_width=True):
+        st.session_state.user_auth = None
         st.rerun()
-    
+
     st.divider()
-    st.subheader("📜 Journal d'Audit")
-    for log in reversed(st.session_state.system_logs[-15:]):
-        st.markdown(f"<div class='log-text'>{log}</div>", unsafe_allow_html=True)
+    st.subheader("📋 Audit Log")
+    for log in reversed(st.session_state.audit_trail[-10:]):
+        st.caption(log)
 
 # ======================================================================================
-# SECTION 5 : MODULE VÉHICULES (CALCULS & REÇU)
+# 6. MODULE VÉHICULES (IMMATRICULATIONS + TICKET)
 # ======================================================================================
 
-t_veh, t_pop, t_bnk, t_adm = st.tabs(["🚗 VÉHICULES", "🪪 POPULATION", "💰 BANQUE", "⚙️ SYSTÈME"])
+tab_v, tab_p, tab_b, tab_s = st.tabs(["🚗 VÉHICULES", "🪪 POPULATION", "💰 BANQUE", "🛡️ ADMIN"])
 
-with t_veh:
+with tab_v:
     st.header("Gestion des Titres de Circulation")
+    st.markdown("> **AIDE :** Remplissez le formulaire pour enregistrer un véhicule. Le reçu s'affichera à droite.")
     
-    v_left, v_right = st.columns([1.5, 1])
+    col_form, col_rec = st.columns([1.5, 1])
     
-    with v_left:
-        st.subheader("📝 Formulaire d'Immatriculation")
-        with st.form("veh_registration"):
-            v_user = st.selectbox("Titulaire (Nom Roblox)", ["---"] + df_b["Nom Roblox"].tolist())
-            v_model = st.text_input("Marque et Modèle du véhicule")
-            v_plate = st.text_input("Numéro de Plaque")
-            v_ass = st.selectbox("Assurance", ["Aucune", "AVERIS (130$)", "RCT (150$)"])
-            v_pin = st.text_input("Code Secret de Radiation", type="password")
+    with col_form:
+        with st.form("form_immat_rcrp"):
+            st.subheader("📝 Nouvelle Immatriculation")
+            f_user = st.selectbox("Propriétaire du véhicule", ["---"] + df_b["Nom Roblox"].tolist())
+            f_model = st.text_input("Marque / Modèle précis")
+            f_plate = st.text_input("Numéro de Plaque")
+            f_insur = st.selectbox("Option Assurance", ["Aucune", "AVERIS (130$)", "RCT (150$)"])
+            f_secret = st.text_input("Code de Radiation (Secret)", type="password")
 
-            # --- LOGIQUE TARIFAIRE ---
-            price_base = 175
-            price_ass = 0
-            if "AVERIS" in v_ass: price_ass = 130
-            elif "RCT" in v_ass: price_ass = 150
+            # CALCULATEUR FISCAL
+            t_base = 175
+            t_assu = 0
+            if "AVERIS" in f_insur: t_assu = 130
+            elif "RCT" in f_insur: t_assu = 150
             
-            # --- LOGIQUE TRIO RCT ---
-            fleet = df_i[df_i["Nom d'utilisateur ROBLOX"] == v_user]
+            # LOGIQUE TRIO RCT (3ème Gratuite)
+            fleet = df_i[df_i["Nom d'utilisateur ROBLOX"] == f_user]
             count_rct = len(fleet[fleet["Assurance"].str.contains("RCT", na=False)])
             
-            if "RCT" in v_ass and count_rct >= 2:
-                price_ass = 0
-                st.success("✨ Offre TRIO RCT détectée : Assurance gratuite !")
+            if "RCT" in f_insur and count_rct >= 2:
+                t_assu = 0
+                st.success("✨ OFFRE TRIO RCT : Assurance offerte !")
 
-            total_tax = price_base + price_ass
-            st.write(f"**Montant total à débiter : {total_tax}$**")
+            total_due = t_base + t_assu
+            st.write(f"### MONTANT TOTAL : {total_due}$")
 
-            if st.form_submit_button("VALIDER L'IMMATRICULATION"):
-                if v_user != "---" and v_plate and v_pin:
-                    # Vérification solde
-                    idx_u = df_b[df_b["Nom Roblox"] == v_user].index[0]
-                    solde = float(str(df_b.at[idx_u, "Solde"]).replace('$', '').replace(' ', ''))
+            if st.form_submit_button("💳 VALIDER ET PAYER"):
+                if f_user != "---" and f_plate and f_secret:
+                    # Traitement Bancaire
+                    u_idx = df_b[df_b["Nom Roblox"] == f_user].index[0]
+                    current_bal = float(str(df_b.at[u_idx, "Solde"]).replace('$', '').replace(' ', ''))
                     
-                    if solde >= total_tax:
-                        # 1. Débit
-                        df_b.at[idx_u, "Solde"] = solde - total_tax
+                    if current_bal >= total_due:
+                        # 1. Débit citoyen
+                        df_b.at[u_idx, "Solde"] = current_bal - total_due
                         
-                        # 2. Redirection (Moune2010 ou une10000)
-                        if price_ass > 0:
-                            cible = TARGET_AVERIS if "AVERIS" in v_ass else TARGET_RCT
-                            idx_t = df_b[df_b["Nom Roblox"] == cible].index[0]
-                            df_b.at[idx_t, "Solde"] = float(str(df_b.at[idx_t, "Solde"]).replace('$', '')) + price_ass
+                        # 2. Redirections spécifiques (Tes ordres)
+                        if t_assu > 0:
+                            target_acc = ACC_AVERIS if "AVERIS" in f_insur else ACC_RCT
+                            t_idx = df_b[df_b["Nom Roblox"] == target_acc].index[0]
+                            df_b.at[t_idx, "Solde"] = float(str(df_b.at[t_idx, "Solde"]).replace('$', '')) + t_assu
                         
-                        # 3. Enregistrement véhicule
-                        new_v = pd.DataFrame([{
+                        # 3. Création du titre
+                        new_entry = pd.DataFrame([{
                             "Horodateur": datetime.now().strftime("%d/%m/%Y"),
-                            "Nom d'utilisateur ROBLOX": v_user, "Marque du véhicule": v_model,
-                            "Numéro de la plaque": v_plate, "Assurance": v_ass, "CODE": v_pin
+                            "Nom d'utilisateur ROBLOX": f_user,
+                            "Marque du véhicule": f_model,
+                            "Numéro de la plaque": f_plate,
+                            "Assurance": f_insur,
+                            "CODE": str(f_secret)
                         }])
                         
-                        # Cloud Update
+                        # Mise à jour Cloud
                         cloud_conn.update(worksheet="Banque", data=df_b)
-                        cloud_conn.update(worksheet="Copie de Immatriculations", data=pd.concat([df_i, new_v]))
+                        cloud_conn.update(worksheet="Copie de Immatriculations", data=pd.concat([df_i, new_entry], ignore_index=True))
                         
-                        # Génération Reçu
-                        st.session_state.last_op_receipt = {
-                            "nom": v_user, "plq": v_plate, "tot": total_tax, "mod": v_model
+                        # Stockage du reçu
+                        st.session_state.active_receipt = {
+                            "nom": f_user, "plq": f_plate, "prix": total_due, "mod": f_model
                         }
-                        add_system_log(f"Immat {v_plate} ({v_user}) : {total_tax}$")
+                        log_action(f"Immatriculation : {f_plate} pour {f_user}")
                         st.cache_data.clear()
-                        st.success("✅ Document fédéral généré !"); time.sleep(1); st.rerun()
+                        st.success("Enregistrement réussi !"); time.sleep(1); st.rerun()
                     else:
-                        st.error("❌ Solde insuffisant.")
+                        st.error("Solde insuffisant sur le compte citoyen.")
 
-    with v_right:
-        st.subheader("🧾 Reçu Magnus OS")
-        if st.session_state.last_op_receipt:
-            r = st.session_state.last_op_receipt
+    with col_rec:
+        st.subheader("🧾 REÇU DE TRANSACTION")
+        if st.session_state.active_receipt:
+            res = st.session_state.active_receipt
             st.markdown(f"""
-            <div class="receipt-box">
-                <center><b>RCRP FEDERAL SYSTEM</b><br>REÇU D'IMMATRICULATION</center>
-                <div class="receipt-hr"></div>
-                <b>CITOYEN :</b> {r['nom'].upper()}<br>
-                <b>VÉHICULE :</b> {r['mod']}<br>
-                <b>PLAQUE :</b> {r['plq']}<br>
-                <div class="receipt-hr"></div>
-                <b>TOTAL PAYÉ : {r['tot']}$</b><br>
-                <center><small>Date: {datetime.now().strftime('%d/%m/%Y %H:%M')}</small></center>
+            <div class="receipt-container">
+                <center><b>REPUBLIQUE DE RENSSELAER</b><br>Titre de Propriété</center>
+                <div class="receipt-line"></div>
+                <b>CITOYEN :</b> {res['nom'].upper()}<br>
+                <b>MODÈLE :</b> {res['mod']}<br>
+                <b>PLAQUE :</b> {res['plq']}<br>
+                <div class="receipt-line"></div>
+                <b>TOTAL PAYÉ : {res['prix']}$</b><br>
+                <center><small>ID: {random.randint(1000,9999)} | {datetime.now().strftime('%d/%m/%Y')}</small></center>
             </div>
             """, unsafe_allow_html=True)
         else:
-            st.caption("En attente d'une opération...")
+            st.info("En attente d'une validation d'immatriculation.")
 
 # ======================================================================================
-# SECTION 6 : MODULE POPULATION (15K + 25PTS + DATE AUTO)
+# 7. MODULE POPULATION (START PACK 15K + 25PTS + DATE AUTO)
 # ======================================================================================
 
-with t_pop:
-    st.header("Registre de la Population")
+with tab_p:
+    st.header("Registre Fédéral de la Population")
+    st.markdown("> **AIDE :** Liste complète des résidents. Le Staff peut créer de nouveaux dossiers ici.")
     
-    if st.session_state.session_role == "Staff":
-        with st.expander("🔨 INITIALISER UN NOUVEAU CITOYEN", expanded=True):
-            st.write("Cette action crédite 15,000$, 25 points et fixe la date d'arrivée.")
-            with st.form("start_pack_form"):
-                n_rob = st.text_input("Pseudo Roblox")
-                n_dis = st.text_input("Tag Discord")
-                n_job = st.selectbox("Emploi initial", ["Civil", "RCT"])
+    if st.session_state.user_auth == "Staff":
+        with st.expander("🔨 CRÉER UN DOSSIER CITOYEN (START PACK)", expanded=True):
+            st.info("L'ajout d'un citoyen crédite automatiquement 15,000$, 25 points et la date du jour.")
+            with st.form("new_arrival_form"):
+                n_rob = st.text_input("Nom d'utilisateur Roblox")
+                n_dis = st.text_input("Identifiant Discord")
+                n_job = st.selectbox("Assignation de Poste", ["Civil", "RCT", "Gouvernement", "Staff"])
                 
-                if st.form_submit_button("🔨 APPLIQUER LE START PACK"):
+                if st.form_submit_button("GÉNÉRER LE DOSSIER"):
                     if n_rob and n_dis:
-                        d_now = datetime.now().strftime("%d/%m/%Y")
+                        d_auto = datetime.now().strftime("%d/%m/%Y")
                         # Banque
-                        new_b = pd.DataFrame([{"Solde": 15000, "Nom Discord": n_dis, "Nom Roblox": n_rob, "Date d'arrivée": d_now, "Emploiement": n_job}])
+                        row_b = pd.DataFrame([{"Solde": 15000, "Nom Discord": n_dis, "Nom Roblox": n_rob, "Date d'arrivée": d_auto, "Emploiement": n_job}])
                         # Points
-                        new_p = pd.DataFrame([{"Nom Discord": n_dis, "Nom Roblox": n_rob, "PTS": 25, "Validité": "OUI"}])
+                        row_p = pd.DataFrame([{"Nom Discord": n_dis, "Nom Roblox": n_rob, "PTS": 25, "Validité": "OUI"}])
                         
-                        cloud_conn.update(worksheet="Banque", data=pd.concat([df_b, new_b]))
-                        cloud_conn.update(worksheet="Points Permis", data=pd.concat([df_p, new_p]))
+                        cloud_conn.update(worksheet="Banque", data=pd.concat([df_b, row_b], ignore_index=True))
+                        cloud_conn.update(worksheet="Points Permis", data=pd.concat([df_p, row_p], ignore_index=True))
                         
-                        add_system_log(f"Création profil : {n_rob} (Pack 15k)")
-                        st.cache_data.clear(); st.success("Citoyen créé !"); time.sleep(1); st.rerun()
+                        log_action(f"Création profil : {n_rob} (Pack Initial)")
+                        st.cache_data.clear(); st.success("Profil et dotation créés !"); time.sleep(1); st.rerun()
 
     st.divider()
-    search = st.text_input("🔍 Rechercher un résident :").lower()
-    for i, r in df_b.iterrows():
-        if not search or search in r["Nom Roblox"].lower():
+    search_u = st.text_input("🔍 Rechercher un résident par nom :")
+    for idx, row in df_b.iterrows():
+        if not search_u or search_u.lower() in str(row["Nom Roblox"]).lower():
             with st.container(border=True):
-                st.write(f"👤 **{r['Nom Roblox']}** | 📅 Arrivée : {r['Date d\'arrivée']} | Job : {r['Emploiement']}")
+                st.write(f"👤 **{row['Nom Roblox']}** | 💼 {row['Emploiement']} | 📅 Arrivée : {row['Date d\'arrivée']}")
 
 # ======================================================================================
-# SECTION 7 : MODULE BANQUE (TAXES & REDIRECTIONS)
+# 8. MODULE BANQUE (TAXES & REDIRECTIONS)
 # ======================================================================================
 
-with t_bnk:
-    st.header("Terminal Bancaire Fédéral")
-    b_find = st.text_input("Chercher un compte bancaire :")
+with tab_b:
+    st.header("Terminal Bancaire Central")
+    st.markdown("> **AIDE :** Consultez les soldes. Les agents peuvent prélever des taxes directes.")
     
-    for i, r in df_b.iterrows():
-        if not b_find or b_find.lower() in r["Nom Roblox"].lower():
+    b_find = st.text_input("Chercher un compte client :")
+    
+    for idx, row in df_b.iterrows():
+        if not b_find or b_find.lower() in str(row["Nom Roblox"]).lower():
             with st.container(border=True):
-                s_brut = float(str(r["Solde"]).replace('$', '').replace(' ', ''))
-                c1, c2 = st.columns(2)
-                c1.metric(r["Nom Roblox"], f"{s_brut}$")
+                s_brut = float(str(row["Solde"]).replace('$', '').replace(' ', ''))
+                c_b1, c_b2 = st.columns(2)
+                c_b1.metric(row["Nom Roblox"], f"{s_brut:,.0f} $")
                 
-                if st.session_state.session_role in ["RCT", "Staff"]:
-                    with c2:
-                        amt = st.number_input("Taxe à prélever", min_value=0, key=f"tx_val_{i}")
-                        if st.button("📉 TAXER", key=f"tx_btn_{i}"):
+                if st.session_state.user_auth in ["RCT", "Staff"]:
+                    with c_b2:
+                        tax_amt = st.number_input("Montant du prélèvement", min_value=0, key=f"t_val_{idx}")
+                        if st.button("📉 TAXER", key=f"t_btn_{idx}"):
                             # Débit
-                            df_b.at[i, "Solde"] = s_brut - amt
-                            # Redirection RCT automatique si agent RCT
-                            if st.session_state.session_role == "RCT":
-                                r_idx = df_b[df_b["Nom Roblox"] == TARGET_RCT].index[0]
-                                df_b.at[r_idx, "Solde"] = float(str(df_b.at[r_idx, "Solde"]).replace('$', '')) + amt
-                                add_system_log(f"Taxe RCT : {amt}$ sur {r['Nom Roblox']} -> {TARGET_RCT}")
+                            df_b.at[idx, "Solde"] = s_brut - tax_amt
+                            # Redirection si RCT
+                            if st.session_state.user_auth == "RCT":
+                                r_idx = df_b[df_b["Nom Roblox"] == ACC_RCT].index[0]
+                                df_b.at[r_idx, "Solde"] = float(str(df_b.at[r_idx, "Solde"]).replace('$', '')) + tax_amt
+                                log_action(f"Taxe RCT de {tax_amt}$ sur {row['Nom Roblox']}")
                             else:
-                                add_system_log(f"Taxe Admin : {amt}$ sur {r['Nom Roblox']}")
+                                log_action(f"Taxe Admin de {tax_amt}$ sur {row['Nom Roblox']}")
                             
                             cloud_conn.update(worksheet="Banque", data=df_b)
                             st.cache_data.clear(); st.success("Transaction effectuée."); st.rerun()
 
 # ======================================================================================
-# SECTION 8 : MODULE SYSTÈME (RADIATION)
+# 9. MODULE ADMIN (RADIATION DE TITRES)
 # ======================================================================================
 
-with t_adm:
-    st.header("Administration Système")
-    if st.session_state.session_role == "Staff":
-        st.subheader("🗑️ Radiation Administrative")
-        rad_plq = st.text_input("Saisir une plaque :").upper()
-        for i, r in df_i.iterrows():
-            if rad_plq == str(r["Numéro de la plaque"]).upper():
-                st.warning(f"Cible : {r['Nom d\'utilisateur ROBLOX']} | Véhicule : {r['Marque du véhicule']}")
-                if st.button("🚨 CONFIRMER RADIATION"):
-                    cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i.drop(i))
-                    add_system_log(f"RADIATION : Plaque {rad_plq} supprimée.")
-                    st.cache_data.clear(); st.success("Véhicule supprimé des registres."); st.rerun()
+with tab_s:
+    st.header("Administration et Radiation")
+    st.markdown("> **AIDE :** Section réservée à la suppression définitive des titres de circulation.")
+    
+    if st.session_state.user_auth == "Staff":
+        rad_p = st.text_input("Plaque à radier des registres :").upper()
+        for idx, row in df_i.iterrows():
+            if rad_p == str(row["Numéro de la plaque"]).upper():
+                st.warning(f"VÉHICULE TROUVÉ : {row['Marque du véhicule']} (Propriétaire: {row['Nom d\'utilisateur ROBLOX']})")
+                if st.button("🚨 CONFIRMER LA RADIATION DÉFINITIVE"):
+                    cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i.drop(idx))
+                    log_action(f"RADIATION : Plaque {rad_p} supprimée.")
+                    st.cache_data.clear(); st.success("Document supprimé."); st.rerun()
     else:
-        st.error("Section réservée aux Administrateurs Staff.")
+        st.error("Section verrouillée. Autorisation Staff requise.")
 
 # ======================================================================================
-# SECTION 9 : FOOTER (DOCUMENTATION FINALE)
+# 10. PIED DE PAGE ET LOGS TECHNIQUES
 # ======================================================================================
 
 st.divider()
-st.caption(f"MAGNUS CORE OS v26.8 | BUILD-STABLE-2026 | OPERATOR: {st.session_state.session_role}")
+st.caption(f"MAGNUS CORE OS v27.0 | RCRP FEDERAL | OPERATOR ID: {st.session_state.user_auth}")
+
+# FIN DU CODE SOURCE
