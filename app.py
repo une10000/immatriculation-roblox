@@ -215,22 +215,43 @@ if st.session_state.user_auth is not None:
 # 5. LOCKSCREEN (CONNEXION)
 # ======================================================================================
 
+# ======================================================================================
+# 5. LOCKSCREEN (CONNEXION)
+# ======================================================================================
+
 if st.session_state.user_auth is None:
-    # 1. MESSAGE DE BIENVENUE EN PREMIER (Calculé sur UTC+1)
+    # 1. MESSAGE DE BIENVENUE AVEC MOTIFS DYNAMIQUES ADAPTATIFS
     from datetime import datetime, timedelta, timezone
     t_now_lock = datetime.now(timezone.utc) + timedelta(hours=1)
     h_lock = t_now_lock.hour
 
-    salut, emo = ("Bonjour", "☀️") if 5 <= h_lock < 18 else ("Bonsoir", "🌙")
+    # Configuration visuelle selon l'heure (utilisant RGBA pour la compatibilité clair/sombre)
+    if 5 <= h_lock < 18:
+        salut, emo = "Bonjour", "☀️"
+        bg_style = "linear-gradient(90deg, rgba(255, 215, 0, 0.15) 0%, rgba(255, 215, 0, 0.05) 100%)"
+        border_color = "rgba(255, 215, 0, 0.6)"
+    else:
+        salut, emo = "Bonsoir", "🌙"
+        bg_style = "linear-gradient(90deg, rgba(100, 149, 237, 0.15) 0%, rgba(138, 43, 226, 0.1) 100%)"
+        border_color = "rgba(138, 43, 226, 0.6)"
 
     st.markdown(f"""
-        <div style="text-align: center; margin-top: -30px; margin-bottom: 20px;">
+        <div style="
+            text-align: center; 
+            margin-top: -30px; 
+            margin-bottom: 25px; 
+            padding: 25px; 
+            background: {bg_style}; 
+            border-radius: 15px; 
+            border-left: 6px solid {border_color};
+            border-right: 6px solid {border_color};
+        ">
             <h1 style="font-size: 4.5em; margin-bottom: 0px; font-weight: 800;">{salut} ! {emo}</h1>
-            <p style="font-size: 1.2em; opacity: 0.7;">Système d'Immatriculation National</p>
+            <p style="font-size: 1.2em; opacity: 0.7; letter-spacing: 2px;">SYSTÈME D'IMMATRICULATION NATIONAL</p>
         </div>
     """, unsafe_allow_html=True)
 
-    # 2. TON EN-TÊTE RENSSELAER (Maintenant en deuxième)
+    # 2. EN-TÊTE RENSSELAER
     st.markdown("""
     <div class="header-box">
     <center>
@@ -251,7 +272,7 @@ if st.session_state.user_auth is None:
     
     with c1:
         st.markdown("### 👥 CIVIL")
-        st.info("Accès public pour consulter votre profile")
+        st.info("Accès public pour consulter votre profil.")
         if st.button("ACCÉDER AU TERMINAL", use_container_width=True):
             st.session_state.user_auth = "Civil"
             st.rerun()
@@ -264,7 +285,8 @@ if st.session_state.user_auth is None:
             if login_rct == KEY_RCT:
                 st.session_state.user_auth = "RCT"
                 st.rerun()
-            else: st.error("Clé invalide.")
+            else: 
+                st.error("Clé invalide.")
                 
     with c3:
         st.markdown("### 🛡️👮‍♂️ STAFF/POLICE")
@@ -274,8 +296,10 @@ if st.session_state.user_auth is None:
             if login_staff == KEY_STAFF:
                 st.session_state.user_auth = "Staff"
                 st.rerun()
-            else: st.error("Accès refusé.")
+            else: 
+                st.error("Accès refusé.")
 
+    # Arrêt du script pour afficher uniquement le lockscreen
     st.stop()
 
 # ======================================================================================
