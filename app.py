@@ -392,12 +392,12 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
             # Division en trois colonnes : Amendes / Sanctions / Véhicules
             col_fine, col_pts, col_veh = st.columns([1, 1, 1.2])
 
-            # 1. COLONNE AMENDES (RCT & Staff)
+            # 1. COLONNE AMENDES
             with col_fine:
                 st.subheader("💰 Amendes")
                 with st.container(border=True):
-                    tax_val = st.number_input("Montant ($)", min_value=0, step=50, key="fine_val_v11")
-                    if st.button("PERCEVOIR", use_container_width=True, key="btn_fine_v11"):
+                    tax_val = st.number_input("Montant ($)", min_value=0, step=50, key="fine_val_v12")
+                    if st.button("PERCEVOIR", use_container_width=True, key="btn_fine_v12"):
                         if tax_val > 0:
                             idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
                             curr_solde = float(str(df_b.at[idx_b, "Solde"]).replace('$', ''))
@@ -406,28 +406,24 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                             df_b.at[rct_idx, "Solde"] = float(str(df_b.at[rct_idx, "Solde"]).replace('$', '')) + tax_val
                             cloud_conn.update(worksheet="Banque", data=df_b)
                             record_log(st.session_state.user_auth, f"Amende {tax_val}$ sur {target}")
-                            st.cache_data.clear(); st.success("Amende perçue."); time.sleep(1); st.rerun()
+                            st.cache_data.clear(); st.success("Fait."); time.sleep(0.5); st.rerun()
 
-            # 2. COLONNE POINTS (RCT & Staff)
+            # 2. COLONNE POINTS
             with col_pts:
                 st.subheader("⚖️ Permis")
                 with st.container(border=True):
-                    p_loss = st.number_input("Points à retirer", min_value=0, max_value=25, step=1, key="pts_loss_v11")
-                    if st.button("RETIRER POINTS", use_container_width=True, key="btn_pts_v11"):
-                        if p_loss > 0:
-                            idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
-                            old_pts = int(df_p.at[idx_p, "PTS"])
-                            new_pts = max(0, old_pts - p_loss)
-                            df_p.at[idx_p, "PTS"] = new_pts
-                            
-                            # Si 0 points, on peut mettre la validité à NON
-                            if new_pts == 0: df_p.at[idx_p, "Validité"] = "NON"
-                            
-                            cloud_conn.update(worksheet="Points Permis", data=df_p)
-                            record_log(st.session_state.user_auth, f"Points -{p_loss} sur {target}")
-                            st.cache_data.clear(); st.success(f"{p_loss} pts retirés."); time.sleep(1); st.rerun()
+                    p_loss = st.number_input("Points à retirer", min_value=0, max_value=25, step=1, key="pts_loss_v12")
+                    if st.button("RETIRER POINTS", use_container_width=True, key="btn_pts_v12"):
+                        idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
+                        new_pts = max(0, int(df_p.at[idx_p, "PTS"]) - p_loss)
+                        df_p.at[idx_p, "PTS"] = new_pts
+                        if new_pts == 0: df_p.at[idx_p, "Validité"] = "NON"
+                        
+                        cloud_conn.update(worksheet="Points Permis", data=df_p)
+                        record_log(st.session_state.user_auth, f"Points -{p_loss} sur {target}")
+                        st.cache_data.clear(); st.success("Points retirés."); time.sleep(0.5); st.rerun()
 
-            # 3. COLONNE VÉHICULES (Radar)
+            # 3. COLONNE VÉHICULES (Radar Simplifié)
             with col_veh:
                 st.subheader("🚗 Radar")
                 v_player = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
@@ -436,12 +432,14 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                 else:
                     for _, v in v_player.iterrows():
                         with st.container(border=True):
-                            st.markdown(f"**Plaque : {v['Numéro de la plaque']}**")
+                            st.markdown(f"**PLQ : {v['Numéro de la plaque']}**")
                             st.caption(f"Modèle : {v['Marque du véhicule']}")
-                            if "RCT" in str(v['Assurance']):
-                                st.success("✅ RCT")
+                            
+                            # Vérification simple : Assuré ou pas
+                            if str(v['Assurance']) == "Aucune":
+                                st.error("❌ NON ASSURÉ")
                             else:
-                                st.error("⚠️ NON RCT")
+                                st.success("✔️ VÉHICULE ASSURÉ")
 # --- ONGLET 3 : ADMINISTRATION (STAFF UNIQUEMENT) ---
 if st.session_state.user_auth == "Staff":
     with tabs[2]:
