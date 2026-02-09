@@ -616,30 +616,27 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
 if st.session_state.user_auth == "Staff":
     with tabs[2]:
         st.markdown('<div class="header-box"><h2>🛠️ PANNEAU D\'ADMINISTRATION High-Sec</h2></div>', unsafe_allow_html=True)
-        
-# --- NOUVEAU : CRÉATION DE PROFIL CITOYEN (AVEC DISCORD) ---
+# --- NOUVEAU : CRÉATION DE PROFIL CITOYEN (SOLDE AUTO 15K) ---
 st.markdown("### 👤 Création de Dossier Citoyen")
 with st.container(border=True):
     c1, c2 = st.columns(2)
     with c1:
         new_name = st.text_input("Nom d'utilisateur ROBLOX", placeholder="Pseudo exact", key="admin_new_name")
-        new_discord = st.text_input("Utilisateur Discord", placeholder="pseudo#0000 ou pseudo", key="admin_new_discord")
-        new_job = st.selectbox("Emploiement initial", ["Sans-Emploi", "Agent RCT", "Entreprise Privée", "Service Public"], key="admin_new_job")
+        new_discord = st.text_input("Utilisateur Discord", placeholder="pseudo#0000", key="admin_new_discord")
     with c2:
-        new_solde = st.number_input("Solde de départ ($)", min_value=0, value=1000, step=100, key="admin_new_solde")
+        new_job = st.selectbox("Emploiement initial", ["Sans-Emploi", "Agent RCT", "Entreprise Privée", "Service Public"], key="admin_new_job")
         new_pts = st.slider("Points Permis (Départ)", 0, 25, 25, key="admin_new_pts")
 
     if st.button("🆕 GÉNÉRER LE DOSSIER NATIONAL", use_container_width=True):
         if new_name and new_name not in df_b["Nom Roblox"].values:
             with st.spinner("Initialisation du citoyen..."):
-                # Date automatique
                 today_str = datetime.now().strftime("%d/%m/%Y")
                 
-                # Ajout dans l'onglet Banque (Inclus maintenant le Discord et la Date)
+                # Ajout dans l'onglet Banque (Solde fixé à 15000)
                 new_bank_row = pd.DataFrame([{
                     "Nom Roblox": new_name,
-                    "Utilisateur Discord": new_discord, # Nouveau champ
-                    "Solde": new_solde,
+                    "Utilisateur Discord": new_discord,
+                    "Solde": 15000, 
                     "Emploiement": new_job,
                     "Date d'arrivée": today_str
                 }])
@@ -655,8 +652,8 @@ with st.container(border=True):
                 df_p_new = pd.concat([df_p, new_pts_row], ignore_index=True)
                 cloud_conn.update(worksheet="Points Permis", data=df_p_new)
 
-                record_log(st.session_state.user_auth, f"Création profil : {new_name} (Discord: {new_discord})")
-                st.success(f"✅ Dossier créé pour {new_name} le {today_str} !")
+                record_log(st.session_state.user_auth, f"Création profil : {new_name} (15k auto)")
+                st.success(f"✅ Dossier créé avec 15 000$ pour {new_name} !")
                 st.cache_data.clear()
                 time.sleep(1.5)
                 st.rerun()
