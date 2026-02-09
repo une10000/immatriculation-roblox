@@ -578,33 +578,47 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                     v_list = ["AUCUN / PIÉTON"] + df_i[df_i["Nom d'utilisateur ROBLOX"] == target]["Numéro de la plaque"].tolist()
                     f_plate_link = st.selectbox("Plaque concernée :", v_list, key="f_plate_link")
                     
-                    if st.button("🚨 ENVOYER & DÉBITER POINTS", use_container_width=True):
+# --- BOUTON DYNAMIQUE SELON LE GRADE ---
+                    label_btn = "🚨 ENVOYER & DÉBITER POINTS" if st.session_state.user_auth == "Staff" else "🚨 ENVOYER LA FACTURE (RCT)"
+                    
+                    if st.button(label_btn, use_container_width=True):
                         if f_motif:
                             with st.spinner("Mise à jour..."):
-                                # Retrait des points
+                                # 1. Retrait des points : UNIQUEMENT pour le Staff
                                 if f_pts > 0:
-                                    idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
-                                    df_p.at[idx_p, "PTS"] = max(0, int(df_p.at[idx_p, "PTS"]) - f_pts)
-                                    cloud_conn.update(worksheet="Points Permis", data=df_p)
+                                    if st.session_state.user_auth == "Staff":
+                                        idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
+                                        df_p.at[idx_p, "PTS"] = max(0, int(df_p.at[idx_p, "PTS"]) - f_pts)
+                                        cloud_conn.update(worksheet="Points Permis", data=df_p)
+                                    else:
+                                        st.error("⛔ Action refusée : Seul le Staff peut retirer des points.")
+                                        st.stop()
                                 
-                                # Facture
+                                # 2. Création de la Facture : Autorisé pour tous (RCT et Staff)
                                 df_factures = cloud_conn.read(worksheet="Factures")
                                 new_id = random.randint(10000, 99999)
+                                
+                                # Le motif précise si des points auraient dû être retirés (pour info Staff)
+                                detail_pts = f" | -{f_pts}pts demandés" if st.session_state.user_auth == "RCT" and f_pts > 0 else f" | -{f_pts}pts"
+                                
                                 new_row = {
-                                    "ID": new_id, "Cible": target, "Emetteur": st.session_state.user_auth,
-                                    "Montant": f_val, "Motif": f"{f_motif} (Plaque: {f_plate_link} | -{f_pts}pts)",
+                                    "ID": new_id, 
+                                    "Cible": target, 
+                                    "Emetteur": st.session_state.user_auth,
+                                    "Montant": f_val, 
+                                    "Motif": f"{f_motif} (Plaque: {f_plate_link}{detail_pts})",
                                     "Statut": "EN ATTENTE"
                                 }
+                                
                                 df_factures = pd.concat([df_factures, pd.DataFrame([new_row])], ignore_index=True)
                                 cloud_conn.update(worksheet="Factures", data=df_factures)
                                 
-                                st.success("✅ Succès !")
+                                st.success("✅ Facture envoyée avec succès !")
                                 st.cache_data.clear()
                                 time.sleep(1)
                                 st.rerun()
                         else:
                             st.error("Motif obligatoire.")
-
             # 2. AU MILIEU : APERÇU TICKET
             with col_ticket:
                 st.markdown("### 🖼️ Aperçu Live")
