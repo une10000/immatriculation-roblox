@@ -413,27 +413,39 @@ with tabs[0]:
 
     # Le ticket avec Filigrane Central et Bande de sécurité
         # Le ticket avec Filigrane Central et Bande de sécurité
-        # Le ticket avec la colonne Taxe Jeune FIXE
-        ticket_html = f"""
-        <div style="border: 4px double black; padding: 15px; background: white; color: black; font-family: monospace;">
-            <div style="text-align:center; font-weight:900; font-size:1.2em;">TITRE DE CIRCULATION</div>
-            <center><small>RÉPUBLIQUE DE RENSSELAER</small></center>
-            <hr>
-            <div style="font-size: 0.9em;">
-                <p style="margin:2px 0;"><b>DATE :</b> {datetime.now().strftime("%d/%m/%Y")}</p>
-                <p style="margin:2px 0;"><b>NOM :</b> {f_owner}</p>
-                <p style="margin:2px 0;"><b>MODÈLE :</b> {f_model if f_model else "..."}</p>
-                <p style="margin:2px 0;"><b>PLAQUE :</b> <span style="background:#eee; border:1px solid #000; padding:0 3px;">{f_plate if f_plate else "..."}</span></p>
-                <p style="margin:2px 0;"><b>ASSURANCE :</b> {f_assu}</p>
-                <p style="margin:2px 0;"><b>TAXE JEUNE :</b> {val_taxe_jeune}$</p>
+        with col_t:
+        st.markdown("### 🖼️ APERÇU DU TITRE")
+        
+        # Le ticket simplifié mais propre
+        with st.container(border=True):
+            st.markdown(f"""
+            <div style="text-align:center; font-family:monospace;">
+                <h3 style="margin:0;">TITRE DE CIRCULATION</h3>
+                <small>RÉPUBLIQUE DE RENSSELAER</small>
+                <hr style="border-top: 1px dashed #ccc;">
             </div>
-            <hr>
-            <div style="text-align:right; font-weight:bold; font-size:1.2em;">TOTAL : {total_bill}$</div>
+            """, unsafe_allow_html=True)
+            
+            # Utilisation de st.write pour la stabilité
+            st.write(f"📅 **DATE :** {datetime.now().strftime('%d/%m/%Y')}")
+            st.write(f"👤 **NOM :** {f_owner}")
+            st.write(f"🚘 **MODÈLE :** {f_model if f_model else '...'}")
+            
+            # La plaque avec son encadré gris
+            st.markdown(f"<b>PLAQUE :</b> <span style='background:#eee; border:1px solid #000; border-radius:3px; padding:0 8px; font-weight:bold; letter-spacing:1px;'>{f_plate if f_plate else '...'}</span>", unsafe_allow_html=True)
+            
+            st.write(f"🛡️ **ASSURANCE :** {f_assu}")
+            st.write(f"🔰 **TAXE JEUNE :** {val_taxe_jeune}$")
+            
+            st.markdown(f"""
+            <hr style="border-top: 1px dashed #ccc;">
+            <div style="text-align:right; font-family:monospace;">
+                <h3 style="margin:0;">TOTAL : {total_bill}$</h3>
+                <small style="opacity:0.5;">DOC-ID: {datetime.now().strftime('%y%m%d%H%M')}</small>
+            </div>
             <br>
-            <center><small>Certifié conforme par le Terminal National</small></center>
-        </div>
-        """
-        st.markdown(ticket_html, unsafe_allow_html=True)
+            <center><small style="opacity:0.6;">•••• VALIDÉ PAR LE TERMINAL ••••</small></center>
+            """, unsafe_allow_html=True)
                 
 # --- ONGLET 2 : SERVICES AGENT (AMENDES / POINTS / CONSULTATION) ---
 if st.session_state.user_auth in ["RCT", "Staff"]:
