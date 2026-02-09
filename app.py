@@ -522,13 +522,13 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                 </div>
             """, unsafe_allow_html=True)
 
-            col_fine, col_pts, col_veh = st.columns([1, 1, 1.3])
-# 1. ÉMISSION DE FACTURE (AVEC APERÇU LIVE POUR L'AGENT)
-# --- SECTION ÉMISSION DE FACTURE (POINTS AUTO + ARGENT EN ATTENTE) ---
+# --- AJOUTE BIEN CETTE LIGNE JUSTE AVANT LE WITH COL_FINE ---
+col_info, col_fine = st.columns([1, 1.5]) 
+
 with col_fine:
     st.subheader("🧾 Émettre Facture & Points")
     
-    # On garde les deux colonnes pour voir le véhicule à droite
+    # On garde les deux colonnes internes pour voir le véhicule à droite
     col_input, col_vehicule_view = st.columns([1.2, 1])
 
     with col_input:
