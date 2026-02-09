@@ -228,21 +228,22 @@ if st.session_state.user_auth is None:
     heure_formattee = t_now_lock.strftime("%H:%M")
     
     # --- LOGIQUE JOUR / NUIT ---
-    if 5 <= h_lock < 24:
+    if 5 <= h_lock < 18:
         salut_complet = "Bonjour☀️"
+        # Design Ciel Bleu avec Nuages MASSIFS
         pattern_style = (
             "background-color: #87CEEB; "
             "background-image: "
-            "radial-gradient(circle at 20% 30%, white 5%, transparent 10%), "
-            "radial-gradient(circle at 25% 35%, white 8%, transparent 15%), "
-            "radial-gradient(circle at 30% 30%, white 5%, transparent 10%), "
-            "radial-gradient(circle at 70% 60%, white 7%, transparent 15%), "
-            "radial-gradient(circle at 75% 65%, white 10%, transparent 20%), "
-            "radial-gradient(circle at 80% 60%, white 7%, transparent 15%); "
-            "background-size: 300px 300px;"
+            "radial-gradient(circle at 20% 40%, white 15%, transparent 25%), " # Nuage 1
+            "radial-gradient(circle at 28% 45%, white 18%, transparent 30%), " # Nuage 1 (suite)
+            "radial-gradient(circle at 35% 40%, white 15%, transparent 25%), " # Nuage 1 (fin)
+            "radial-gradient(circle at 75% 65%, white 20%, transparent 35%), " # Nuage 2
+            "radial-gradient(circle at 85% 70%, white 22%, transparent 40%); " # Nuage 2 (suite)
+            "background-size: 600px 600px;" # Taille augmentée pour de plus gros nuages
         )
         t_color = "#1E1E1E"
-        glow = "0 0 15px rgba(255, 165, 0, 0.3)"
+        # Un léger glow solaire
+        glow = "0 0 20px rgba(255, 255, 255, 0.6)"
     else:
         salut_complet = "Bonsoir🌕"
         pattern_style = (
