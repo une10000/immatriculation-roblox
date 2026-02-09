@@ -27,7 +27,7 @@ st.markdown("""
     .stTextInput>div>div>input, .stNumberInput>div>div>input, 
     .stSelectbox>div>div>div, .stTextArea>div>div>textarea {
         border: 2px solid #000000 !important;
-        border-radius: 4px !important;
+        border-radius: 0px !important;
         font-weight: bold !important;
         color: #000000 !important;
         background-color: #ffffff !important;
