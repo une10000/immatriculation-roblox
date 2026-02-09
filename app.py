@@ -632,51 +632,45 @@ if st.session_state.user_auth == "Staff":
         st.write("Gestion des accès et logs système.")
         # Ajoute tes outils admin ici si besoin
 # --- ONGLET 3 : ADMINISTRATION (STAFF UNIQUEMENT) ---
+# --- ONGLET 3 : ADMINISTRATION (STAFF ONLY) ---
 if st.session_state.user_auth == "Staff":
     with tabs[2]:
+        st.markdown('<div class="header-box"><h2>🛠️ PANNEAU D\'ADMINISTRATION High-Sec</h2></div>', unsafe_allow_html=True)
         
-        col_s1, col_s2 = st.columns(2)
+        col_admin_1, col_admin_2 = st.columns(2)
         
-        with col_s1:
-            st.subheader("🔨 Création de Profil Fédéral")
-            with st.form("admin_creation_form_v8"):
-                st.write("Procédure d'arrivée : 15,000$ + 25 Points Permis.")
-                new_rob = st.text_input("Nom Roblox du Citoyen")
-                new_dis = st.text_input("Identifiant Discord")
-                new_job = st.selectbox("Secteur", ["Civil", "RCT", "Gouverneur", "Justice", "Armée"])
-                
-                if st.form_submit_button("VALIDER L'INSCRIPTION NATIONALE"):
-                    if new_rob in df_b["Nom Roblox"].values:
-                        st.error("Citoyen déjà enregistré.")
-                    else:
-                        # DATE AUTOMATIQUE (Important pour la taxe jeune conducteur)
-                        date_arr = datetime.now().strftime("%d/%m/%Y")
-                        
-                        # Banque entry
-                        new_b = pd.DataFrame([{"Solde": 15000, "Nom Discord": new_dis, "Nom Roblox": new_rob, "Date d'arrivée": date_arr, "Emploiement": new_job}])
-                        # Permis entry
-                        new_p = pd.DataFrame([{"Nom Discord": new_dis, "Nom Roblox": new_rob, "PTS": 25, "Validité": "OUI"}])
-                        
-                        cloud_conn.update(worksheet="Banque", data=pd.concat([df_b, new_b]))
-                        cloud_conn.update(worksheet="Points Permis", data=pd.concat([df_p, new_p]))
-                        record_log("Staff", f"Création profil : {new_rob}")
-                        st.cache_data.clear()
-                        st.success(f"Profil de {new_rob} créé avec succès !")
-                        time.sleep(1)
-                        st.rerun()
-        
-        with col_s2:
-            st.subheader("⚙️ Maintenance Système")
-            if st.button("🗑️ VIDER LE CACHE DE SESSION", use_container_width=True):
-                st.cache_data.clear()
-                st.rerun()
+        with col_admin_1:
+            st.markdown("### 📜 Journaux d'Audit (Session Live)")
+            with st.container(border=True):
+                if st.session_state.audit_logs:
+                    # Affichage des logs avec un style terminal
+                    log_text = "\n".join(list(reversed(st.session_state.audit_logs)))
+                    st.code(log_text, language="bash")
+                else:
+                    st.info("Aucune activité enregistrée pour cette session.")
             
-            st.divider()
-            st.write("📊 **Statistiques Globales**")
-            # Nettoyage des données pour le calcul
-            total_money = df_b['Solde'].replace('[\$,]', '', regex=True).astype(float).sum()
-            st.write(f"Masse monétaire : **{total_money:,.0f}$**")
-            st.write(f"Parc Automobile : **{len(df_i)} véhicules**")
+            if st.button("🗑️ EFFACER LES LOGS DE SESSION"):
+                st.session_state.audit_logs = []
+                st.rerun()
+
+        with col_admin_2:
+            st.markdown("### ⚙️ Contrôle Système")
+            with st.container(border=True):
+                st.write("**État des Bases de Données :**")
+                st.success(f"✅ Banque : {len(df_b)} entrées")
+                st.success(f"✅ Immatriculations : {len(df_i)} entrées")
+                st.success(f"✅ Permis : {len(df_p)} entrées")
+                
+                st.divider()
+                if st.button("♻️ RÉINITIALISER LE CACHE GLOBAL", use_container_width=True):
+                    st.cache_data.clear()
+                    st.success("Cache vidé !")
+                    time.sleep(1)
+                    st.rerun()
+
+# --- SÉCURITÉ : NETTOYAGE DES VARIABLES FANTÔMES ---
+# Supprime ou commente absolument ces lignes si elles traînent encore en bas de ton fichier :
+# with col_vehicule_view: <--- C'EST ÇA QUI FAIT PLANTER L'AFFICHAGE !
 
 # ======================================================================================
 # 8. PIED DE PAGE
