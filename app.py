@@ -562,7 +562,7 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                         # On définit p_loss à 0 par sécurité pour le RCT
                         p_loss = 0
 
-# 3. SCANNER DE VÉHICULES (NOSTALGIQUE & SÉCURISÉ)
+# 3. SCANNER DE VÉHICULES (DESIGN UNIFIÉ & SÉCURITÉ DIFFÉRENCIÉE)
             with col_veh:
                 st.subheader("🚗 Titres de Circulation")
                 v_player = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
@@ -574,37 +574,42 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                         # --- LOGIQUE DE SÉCURITÉ ---
                         val_assu = str(v['Assurance']).upper()
                         is_rct_insured = "RCT" in val_assu
+                        # Pour les flics : assuré si RCT ou AVERIS
                         is_police_insured = any(x in val_assu for x in ["RCT", "AVERIS"])
                         
-                        # Réglage par défaut (Vert)
-                        status_bg = "#2e7d32" 
+                        # Réglage par défaut
+                        status_bg = "#2e7d32" # Vert
                         status_text = "VÉHICULE EN RÈGLE"
-                        text_color = "white"
-
-                        # CONDITION RCT : Danger si pas assuré RCT
+                        
+                        # RÈGLE RCT : Danger si pas RCT
                         if st.session_state.user_auth == "RCT":
                             if not is_rct_insured:
                                 status_bg = "#d32f2f" # Rouge
                                 status_text = "⚠️ DANGER : NON-ASSURÉ RCT"
                         
-                        # CONDITION POLICE : Danger seulement si aucune assurance
+                        # RÈGLE POLICE (STAFF) : En règle si assuré (tout court)
                         elif st.session_state.user_auth == "Staff":
                             if not is_police_insured:
-                                status_bg = "#d32f2f"
+                                status_bg = "#d32f2f" # Rouge
                                 status_text = "⚠️ VÉHICULE NON-ASSURÉ"
 
-                        # --- LE TICKET NOSTALGIQUE ---
+                        # --- LE TICKET NOSTALGIQUE UNIFIÉ ---
                         st.markdown(f"""
-                        <div style="border: 3px solid #000; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; margin-bottom: 15px; box-shadow: 5px 5px 0px #000;">
-                            <center><b style="font-size:1.1em; text-decoration: underline;">TITRE DE CIRCULATION</b></center>
-                            <div style="margin-top:10px; font-size: 0.9em;">
-                                <b>PLAQUE :</b> {v['Numéro de la plaque']}<br>
+                        <div style="border: 2px solid #000; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; margin-bottom: 20px; box-shadow: 6px 6px 0px #000;">
+                            <center><b style="font-size:1.1em; text-decoration: underline;">TITRE DE CIRCULATION</b><br>
+                            <small>RÉPUBLIQUE DE RENSSELAER</small></center>
+                            <hr style="border-top: 1px dashed #000; margin: 10px 0;">
+                            <div style="font-size: 0.9em; line-height: 1.2;">
+                                <b>DATE   :</b> {datetime.now().strftime("%d/%m/%Y")}<br>
+                                <b>PROPRIO:</b> {target}<br>
+                                <b>PLAQUE :</b> <span style="background:#eee; border:1px solid #000; padding:0 3px;">{v['Numéro de la plaque']}</span><br>
                                 <b>MODÈLE :</b> {v['Marque du véhicule']}<br>
                                 <b>ASSUR. :</b> {v['Assurance']}
                             </div>
-                            <div style="margin-top: 10px; text-align: center; background: {status_bg}; color: {text_color}; font-weight: bold; font-size: 0.8em; padding: 6px; border: 1px solid black;">
+                            <div style="margin-top: 15px; text-align: center; background: {status_bg}; color: white; font-weight: bold; font-size: 0.8em; padding: 8px; border: 1px solid black; text-transform: uppercase;">
                                 {status_text}
                             </div>
+                            <center><small style="font-size: 0.6em; opacity: 0.5;">DOCUMENT OFFICIEL RCRP OS</small></center>
                         </div>
                         """, unsafe_allow_html=True)
 # --- ONGLET 3 : ADMINISTRATION (STAFF UNIQUEMENT) ---
