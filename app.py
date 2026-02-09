@@ -278,47 +278,43 @@ with st.container():
                                 <p style="font-size: 8px; opacity: 0.3; font-family: monospace; margin: 0;">OFFICIAL BANK DATA<br>VERIFIED BY RCRP</p>
                             </div>
                         """, unsafe_allow_html=True)
-            else: 
-                st.markdown("---")
-                
-# --- HISTORIQUE DES FACTURES PAYÉES (ACCESSIBLE AUX CIVILS) ---
-st.markdown("### 📁 ARCHIVES COMPTABLES")
-with st.expander("Consulter mes factures déjà payées", expanded=False):
-    try:
-        # Lecture de la base factures
-        df_f_history = cloud_conn.read(worksheet="Factures").fillna("")
-        
-        # Filtre sur les factures PAYÉES du citoyen cible
-        historique = df_f_history[
-            (df_f_history["Cible"] == target) & 
-            (df_f_history["Statut"] == "PAYÉ")
-        ]
-        
-        if not historique.empty:
-            st.success(f"✅ {len(historique)} factures archivées au nom de {target}")
-            for _, f in historique.iterrows():
-                st.markdown(f"""
-                <div style="border: 1px solid #000; padding: 10px; background: #f9f9f9; color: black; font-family: 'Courier New', monospace; margin-bottom: 8px;">
-                    <div style="display: flex; justify-content: space-between; font-size: 0.8em;">
-                        <b>REF: #{f['ID']}</b>
-                        <b style="color: green;">ACQUITTÉE ✔</b>
-                    </div>
-                    <hr style="margin: 5px 0; border-top: 1px dashed #000;">
-                    <div style="font-size: 0.9em;">
-                        <b>MOTIF :</b> {f['Motif']}<br>
-                        <b>MONTANT :</b> {f['Montant']}$
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            # Somme totale payée (utile pour le RP "Gros contribuable")
-            total_versé = historique["Montant"].astype(float).sum()
-            st.caption(f"💰 Total cumulé versé à l'État : {total_versé}$")
-        else:
-            st.info("Aucune archive de paiement trouvée pour ce profil.")
-            
-    except Exception as e:
-        st.error(f"Erreur d'accès aux archives : {e}")
+          else: 
+                st.error("Aucun compte trouvé.") 
+
+            # --- HISTORIQUE DES FACTURES PAYÉES (ACCESSIBLE AUX CIVILS) ---
+            st.markdown("---")
+            st.markdown("### 📁 ARCHIVES COMPTABLES")
+            with st.expander("Consulter mes factures déjà payées", expanded=False):
+                try:
+                    # Lecture de la base factures
+                    df_f_history = cloud_conn.read(worksheet="Factures").fillna("")
+                    
+                    # Filtre sur les factures PAYÉES du citoyen cible
+                    historique = df_f_history[
+                        (df_f_history["Cible"] == target) & 
+                        (df_f_history["Statut"] == "PAYÉ")
+                    ]
+                    
+                    if not historique.empty:
+                        st.success(f"✅ {len(historique)} factures archivées")
+                        for _, f in historique.iterrows():
+                            st.markdown(f"""
+                            <div style="border: 1px solid #000; padding: 10px; background: #f9f9f9; color: black; font-family: 'Courier New', monospace; margin-bottom: 8px;">
+                                <div style="display: flex; justify-content: space-between; font-size: 0.8em;">
+                                    <b>REF: #{f['ID']}</b>
+                                    <b style="color: green;">ACQUITTÉE ✔</b>
+                                </div>
+                                <hr style="margin: 5px 0; border-top: 1px dashed #000;">
+                                <div style="font-size: 0.9em;">
+                                    <b>MOTIF :</b> {f['Motif']}<br>
+                                    <b>MONTANT :</b> {f['Montant']}$
+                                </div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                    else:
+                        st.info("Aucune archive de paiement trouvée.")
+                except Exception as e:
+                    st.error(f"Erreur d'accès aux archives : {e}")
 
 # ======================================================================================
 # 7. LOGIQUE DES ONGLETS (CORRIGÉE)
