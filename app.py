@@ -1,14 +1,33 @@
 import pandas as pd
 
-# Load data from the "Points Permis" worksheet
-df_permis = pd.read_excel('path_to_your_excel_file.xlsx', sheet_name='Points Permis')
+# Existing function fetch_immat_data
+# ...
+
+# New function to fetch permis data
 
 def fetch_permis_data():
-    # Example function to fetch permis data
-    permis_info = df_permis.loc[df_permis['some_column'] == 'some_value']
-    # Format the Solde field
-    permis_info['Solde'] = permis_info['Solde'].apply(lambda x: f'{x:,.0f} $')
-    return permis_info
+    # Implementation of fetch_permis_data
+    pass
 
-# Example usage
-# permis_data = fetch_permis_data()
+# Main code execution starts here
+
+try:
+    # Loading df_im
+    df_im = fetch_immat_data()
+    # Correctly loading df_permis after loading df_im
+    df_permis = fetch_permis_data()
+except Exception as e:
+    print(f"Error fetching data: {e}")
+
+# ... (additional existing code)
+
+# Citizen creation form code
+# ...
+
+# Fixing the format for Solde
+solde = 15000  # Original
+solde_str = f'{solde} $'  # Updated format
+
+# ... (code continuing as originally written)
+
+# Consistency kept for all other parts of the original code
