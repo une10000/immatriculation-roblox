@@ -212,50 +212,52 @@ if st.session_state.user_auth is not None:
 # ======================================================================================
 
 if st.session_state.user_auth is None:
-    # 1. CALCUL DES MOTIFS VISIBLES (Basé sur UTC+1)
+    # 1. CALCUL DES MOTIFS (FORCÉS POUR ÊTRE VISIBLES)
     from datetime import datetime, timedelta, timezone
     t_now_lock = datetime.now(timezone.utc) + timedelta(hours=1)
     h_lock = t_now_lock.hour
 
     if 5 <= h_lock < 18:
         salut, emo = "Bonjour", "☀️"
-        # MOTIF JOUR : Points noirs bien marqués
         pattern_style = (
-            "background-image: radial-gradient(rgba(0,0,0,0.2) 2px, transparent 0); "
-            "background-size: 25px 25px; "
+            "background-color: #f9f9f9; "
+            "background-image: radial-gradient(#d1d1d1 2px, transparent 0); "
+            "background-size: 24px 24px; "
         )
+        t_color = "#1E1E1E"
     else:
         salut, emo = "Bonsoir", "🌙"
-        # MOTIF NUIT : Grille blanche/bleutée bien visible
         pattern_style = (
-            "background-image: linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), "
-            "linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px); "
-            "background-size: 45px 45px; "
+            "background-color: #1a1a1a; "
+            "background-image: linear-gradient(rgba(255,255,255,0.15) 1px, transparent 1px), "
+            "linear-gradient(90deg, rgba(255,255,255,0.15) 1px, transparent 1px); "
+            "background-size: 40px 40px; "
         )
+        t_color = "#FFFFFF"
 
-    # AFFICHAGE DU MESSAGE DE BIENVENUE
+    # AFFICHAGE DU MESSAGE DE BIENVENUE (Marge réduite en bas : 5px)
     st.markdown(f"""
         <div style="
             text-align: center; 
             margin-top: -30px; 
-            margin-bottom: 30px; 
-            padding: 60px 20px; 
+            margin-bottom: 5px; 
+            padding: 50px 20px; 
+            border-radius: 20px 20px 0 0;
+            color: {t_color};
             {pattern_style}
-            mask-image: radial-gradient(ellipse at center, black 50%, transparent 100%);
-            -webkit-mask-image: radial-gradient(ellipse at center, black 50%, transparent 100%);
         ">
-            <h1 style="font-size: 5.5em; margin-bottom: 0px; font-weight: 900; letter-spacing: -3px; line-height: 1.1;">
+            <h1 style="font-size: 5.5em; margin-bottom: 0px; font-weight: 900; letter-spacing: -3px; line-height: 1;">
                 {salut} ! {emo}
             </h1>
-            <p style="font-size: 1.2em; opacity: 0.8; letter-spacing: 6px; font-weight: bold; text-transform: uppercase; margin-top: 15px;">
+            <p style="font-size: 1.2em; opacity: 0.8; letter-spacing: 5px; font-weight: bold; text-transform: uppercase; margin-top: 15px;">
                 Unité Fédérale de Rensselaer
             </p>
         </div>
     """, unsafe_allow_html=True)
 
-    # 2. EN-TÊTE RENSSELAER
+    # 2. EN-TÊTE RENSSELAER (Rapproché avec margin-top négative)
     st.markdown("""
-    <div class="header-box">
+    <div class="header-box" style="margin-top: -10px;">
     <center>
         <h2 style="margin-bottom:0;">🏛️ RÉPUBLIQUE DE RENSSELAER</h2>
         <p style="font-size: 1em; opacity: 0.8;">TERMINAL FÉDÉRAL D'OPÉRATIONS NATIONALES</p>
@@ -270,14 +272,12 @@ if st.session_state.user_auth is None:
 
     # 3. COLONNES D'ACCÈS
     c1, c2, c3 = st.columns(3)
-    
     with c1:
         st.markdown("### 👥 CIVIL")
         st.info("Accès public pour consulter votre profil.")
         if st.button("ACCÉDER AU TERMINAL", use_container_width=True):
             st.session_state.user_auth = "Civil"
             st.rerun()
-            
     with c2:
         st.markdown("### 👨‍🔧 AGENT RCT")
         st.info("Interface technique pour la gestion du RCT.")
@@ -287,7 +287,6 @@ if st.session_state.user_auth is None:
                 st.session_state.user_auth = "RCT"
                 st.rerun()
             else: st.error("Clé invalide.")
-                
     with c3:
         st.markdown("### 🛡️👮‍♂️ STAFF/POLICE")
         st.info("Accès restreint : Administration et contraventions.")
