@@ -387,31 +387,41 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
             
             with c1:
                 st.subheader("⚖️ Sanctions Permis")
-                p_loss = st.number_input("Nombre de points à retirer", min_value=0, max_value=25, step=1)
-                if st.button("RETIRER LES POINTS", use_container_width=True):
-                    idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
-                    df_p.at[idx_p, "PTS"] = max(0, int(df_p.at[idx_p, "PTS"]) - p_loss)
-                    cloud_conn.update(worksheet="Points Permis", data=df_p)
-                    record_log("RCT", f"Points -{p_loss} sur {target}")
-                    st.cache_data.clear(); st.success(f"{p_loss} points retirés."); st.rerun()
+                # CONDITION DE SÉCURITÉ : Seul le Staff peut modifier les points
+                if st.session_state.user_auth == "Staff":
+                    p_loss = st.number_input("Nombre de points à retirer", min_value=0, max_value=25, step=1, key="k_pts_loss")
+                    if st.button("RETIRER LES POINTS", use_container_width=True):
+                        idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
+                        df_p.at[idx_p, "PTS"] = max(0, int(df_p.at[idx_p, "PTS"]) - p_loss)
+                        cloud_conn.update(worksheet="Points Permis", data=df_p)
+                        record_log("Staff", f"Points -{p_loss} sur {target}")
+                        st.cache_data.clear()
+                        st.success(f"{p_loss} points retirés.")
+                        st.rerun()
+                else:
+                    st.error("🚫 ACCÈS REFUSÉ : Seul le Grade STAFF peut retirer des points.")
+                    st.caption("Contactez un administrateur pour une suspension de permis.")
             
             with c2:
                 st.subheader("💰 Amendes de Service")
-                tax_val = st.number_input("Montant de l'amende ($)", min_value=0, step=50)
+                # Les agents RCT et le Staff peuvent toujours mettre des amendes
+                tax_val = st.number_input("Montant de l'amende ($)", min_value=0, step=50, key="k_tax_fine")
                 if st.button("PERCEVOIR L'AMENDE", use_container_width=True):
                     idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
                     curr_solde = float(str(df_b.at[idx_b, "Solde"]).replace('$', ''))
+                    
+                    # Débit du civil
                     df_b.at[idx_b, "Solde"] = curr_solde - tax_val
                     
-                    # Versement à la RCT
+                    # Versement automatique au compte RCT
                     rct_idx = df_b[df_b["Nom Roblox"] == ACC_RCT].index[0]
                     df_b.at[rct_idx, "Solde"] = float(str(df_b.at[rct_idx, "Solde"]).replace('$', '')) + tax_val
                     
                     cloud_conn.update(worksheet="Banque", data=df_b)
-                    record_log("RCT", f"Amende {tax_val}$ sur {target}")
-                    st.cache_data.clear(); st.success("Amende perçue et transférée au compte RCT."); st.rerun()
-
-# --- ONGLET 3 : ADMINISTRATION (STAFF ONLY) ---
+                    record_log(st.session_state.user_auth, f"Amende {tax_val}$ sur {target}")
+                    st.cache_data.clear()
+                    st.success("Amende perçue et transférée au compte RCT.")
+                    st.rerun()
 if st.session_state.user_auth == "Staff":
     with tabs[2]:
         st.markdown("### 🛡️ Contrôle Administrateur")
