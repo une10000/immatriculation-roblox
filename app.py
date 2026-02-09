@@ -548,42 +548,43 @@ with tabs[0]:
         </div>
         """
         st.markdown(ticket_html, unsafe_allow_html=True)
-# --- ONGLET 2 : SERVICES AGENT (FACTURES / POINTS / CONSULTATION) ---
 # --- ONGLET 2 : SERVICES AGENT (FACTURES / POINTS / VÉHICULES) ---
 if st.session_state.user_auth in ["RCT", "Staff"]:
     with tabs[1]:
         if target == "---":
             st.warning("⚠️ Veuillez sélectionner un citoyen dans le dossier (Onglet 1).")
         else:
-            st.markdown(f"### 👮 Gestion d'infraction : {target}")
+            # En-tête avec ton style
+            st.markdown(f'<div style="background-color: #1e1e1e; padding: 15px; border-radius: 10px; border-left: 5px solid #d32f2f; color: white; margin-bottom: 20px;">👮 SERVICE AGENT : <b>{target}</b></div>', unsafe_allow_html=True)
             
-            # Création des 3 colonnes
-            col1, col2, col3 = st.columns([1, 1.2, 0.8])
+            # 3 colonnes : Saisie | Reçu | Véhicules
+            col_saisie, col_recu, col_vehicules = st.columns([1, 1.2, 0.8])
 
-            # --- COLONNE 1 : LA SAISIE ---
-            with col1:
+            with col_saisie:
                 st.markdown("#### 📝 Saisie")
                 with st.container(border=True):
-                    f_val = st.number_input("Montant ($)", min_value=0, step=50, key="f_val_v11")
+                    f_val = st.number_input("Montant ($)", min_value=0, step=50, key="f_val_v12")
                     
                     is_rct = (st.session_state.user_auth == "RCT")
                     f_pts = st.number_input(
                         "Points à retirer", 
                         min_value=0, max_value=12, step=1, 
-                        key="f_pts_v11", 
+                        key="f_pts_v12", 
                         disabled=is_rct
                     )
                     
-                    f_motif = st.text_input("Motif", placeholder="ex: Excès de vitesse", key="f_mot_v11")
+                    f_motif = st.text_input("Motif", placeholder="ex: Conduite dangereuse", key="f_mot_v12")
                     
                     user_vehicles = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]["Numéro de la plaque"].tolist()
                     v_list = ["AUCUN / PIÉTON"] + user_vehicles
-                    f_plate = st.selectbox("Plaque", v_list, key="f_plate_v11")
+                    f_plate = st.selectbox("Plaque", v_list, key="f_plate_v12")
                     
-                    btn_label = "🚨 VALIDER & DÉBITER" if not is_rct else "🚨 ENVOYER FACTURE"
-                    if st.button(btn_label, use_container_width=True, type="primary"):
+                    st.write("---")
+                    
+                    label_btn = "🚨 VALIDER & DÉBITER" if not is_rct else "🚨 ENVOYER FACTURE"
+                    if st.button(label_btn, use_container_width=True, type="primary"):
                         if f_motif:
-                            with st.spinner("Envoi..."):
+                            with st.spinner("Transmission..."):
                                 # 1. Points (Staff only)
                                 if f_pts > 0 and not is_rct:
                                     idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
@@ -599,49 +600,49 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                                     "Emetteur": st.session_state.user_auth,
                                     "Montant": f_val,
                                     "Motif": f"{f_motif} [{f_plate}]{note_pts}",
-                                    "Status": "EN ATTENTE"
+                                    "Statut": "EN ATTENTE"
                                 }
                                 df_f = pd.concat([df_f, pd.DataFrame([new_row])], ignore_index=True)
                                 cloud_conn.update(worksheet="Factures", data=df_f)
                                 
-                                st.success("✅ Fait !")
+                                st.success("✅ Facture envoyée !")
                                 st.cache_data.clear()
                                 time.sleep(1)
                                 st.rerun()
                         else:
                             st.error("Motif obligatoire")
 
-            # --- COLONNE 2 : LE JOLI REÇU (AU MILIEU) ---
-            with col2:
-                st.markdown("#### 📄 Aperçu du Reçu")
-                # Petit design de reçu RP
+            with col_recu:
+                st.markdown("#### 📄 Aperçu")
+                # LE REÇU AVEC TON INTERFACE HABITUELLE
                 st.markdown(f"""
-                <div style="background-color: #f9f9f9; padding: 20px; border: 2px dashed #333; color: #333; font-family: 'Courier New', Courier, monospace;">
-                    <center>
-                        <h3 style="margin:0;">RÉPUBLIQUE D'AVERIS</h3>
-                        <p style="font-size: 10px;">PRÉFECTURE DE POLICE</p>
-                        <hr>
-                    </center>
-                    <p><b>CITOYEN :</b> {target}</p>
-                    <p><b>AGENT :</b> {st.session_state.user_auth}</p>
-                    <p><b>MOTIF :</b> {f_motif if f_motif else '...'}</p>
-                    <p><b>VÉHICULE :</b> {f_plate}</p>
-                    <hr>
-                    <h2 style="text-align: right;">TOTAL : {f_val}$</h2>
-                    <p style="font-size: 12px; text-align: center;">Retrait de {f_pts} points {'(Bloqué RCT)' if is_rct else ''}</p>
+                <div style="background-color: #0e1117; padding: 20px; border-radius: 10px; border: 1px solid #31333f; color: white;">
+                    <div style="text-align: center; border-bottom: 2px solid #d32f2f; padding-bottom: 10px; margin-bottom: 15px;">
+                        <h3 style="margin: 0; color: #d32f2f;">REÇU OFFICIEL</h3>
+                        <small>POLICE D'AVERIS</small>
+                    </div>
+                    <p style="margin: 5px 0;"><b>Cible :</b> {target}</p>
+                    <p style="margin: 5px 0;"><b>Agent :</b> {st.session_state.user_auth}</p>
+                    <p style="margin: 5px 0;"><b>Motif :</b> {f_motif if f_motif else '...'}</p>
+                    <p style="margin: 5px 0;"><b>Plaque :</b> {f_plate}</p>
+                    <div style="background-color: #d32f2f; padding: 10px; border-radius: 5px; margin-top: 15px; text-align: center;">
+                        <h2 style="margin: 0; color: white;">{f_val}$</h2>
+                        <small style="color: white;">Retrait : {f_pts} points</small>
+                    </div>
                 </div>
                 """, unsafe_allow_html=True)
 
-            # --- COLONNE 3 : LES VOITURES (À DROITE) ---
-            with col3:
+            with col_vehicules:
                 st.markdown("#### 🚗 Véhicules")
                 if user_vehicles:
                     for v in user_vehicles:
-                        with st.container(border=True):
-                            st.write(f"🆔 **{v}**")
-                            # Tu peux ajouter ici une info supplémentaire si dispo (marque, etc.)
+                        st.markdown(f"""
+                        <div style="background-color: #1e1e1e; padding: 10px; border-radius: 5px; border-left: 3px solid #d32f2f; margin-bottom: 5px;">
+                            🆔 <b>{v}</b>
+                        </div>
+                        """, unsafe_allow_html=True)
                 else:
-                    st.info("Aucun véhicule enregistré.")
+                    st.info("Aucun véhicule.")
 # --- ONGLET 3 : ADMINISTRATION (STAFF ONLY) ---
 if st.session_state.user_auth == "Staff":
     with tabs[2]:
