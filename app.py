@@ -542,7 +542,7 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                                 cloud_conn.update(worksheet="Factures", data=df_factures)
                                 
                                 # 4. Confirmation
-                                st.success(f"✅ Envoyé sur Sheets pour {target} !")
+                                st.success(f"✅ La facture a bien étée envoyée pour {target} !")
                                 st.cache_data.clear()
                                 time.sleep(1)
                                 st.rerun()
