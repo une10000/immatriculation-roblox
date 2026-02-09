@@ -96,7 +96,7 @@ cloud_conn = st.connection("gsheets", type=GSheetsConnection)
 @st.cache_data(ttl=300)
 def fetch_database():
     """Récupération synchronisée de toutes les tables"""
-    try:
+    try:
         df_bank = cloud_conn.read(worksheet="Banque").dropna(how='all').fillna("")
         df_immat = cloud_conn.read(worksheet="Copie de Immatriculations").dropna(how='all').fillna("")
         df_pts = cloud_conn.read(worksheet="Points Permis").dropna(how='all').fillna("")
