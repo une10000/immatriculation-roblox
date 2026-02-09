@@ -98,12 +98,12 @@ def fetch_database():
     """Récupération synchronisée de toutes les tables"""
     try:
         df_bank = cloud_conn.read(worksheet="Banque").dropna(how='all').fillna("")
-        df_immat = cloud_conn.read(worksheet="Copie de Immatriculations").dropna(how='all').fillna("")
-        df_pts = cloud_conn.read(worksheet="Points Permis").dropna(how='all').fillna("")
-        return df_bank, df_immat, df_pts
-    except Exception as e:
-        st.error(f"⚠️ ERREUR DE LIAISON BDD : {e}")
-        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+        df_immat = cloud_conn.read(worksheet="Copie de Immatriculations").dropna(how='all').fillna("")
+        df_pts = cloud_conn.read(worksheet="Points Permis").dropna(how='all').fillna("")
+        return df_bank, df_immat, df_pts
+    except Exception as e:
+        st.error(f"⚠️ ERREUR DE LIAISON BDD : {e}")
+        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
 df_b, df_i, df_p = fetch_database()
 
