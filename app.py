@@ -283,17 +283,6 @@ with st.container():
                                     st.error("Code incorrect")
         else:
             st.info("Aucun véhicule.")
-
-# ======================================================================================
-# 7. LOGIQUE DES ONGLETS (RESTRUCTURED)
-# ======================================================================================
-# Assure-toi que tout ce qui suit est bien aligné à gauche (pas d'indentation inutile)
-tab_labels = ["🚗 IMMATRICULATION"]
-if st.session_state.user_auth in ["RCT", "Staff"]: tab_labels.append("👮 SERVICES AGENT")
-if st.session_state.user_auth == "Staff": tab_labels.append("🛠️ ADMINISTRATION")
-
-tabs = st.tabs(tab_labels)
-# ... la suite du code pour tabs[0], tabs[1] etc.
 # ======================================================================================
 # 7. LOGIQUE DES ONGLETS (CORRIGÉE)
 # ======================================================================================
