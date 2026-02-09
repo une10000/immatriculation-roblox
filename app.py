@@ -417,7 +417,6 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                         st.rerun()
                     else:
                         st.error("Veuillez saisir un montant supérieur à 0$.")
-            
             with c2:
                 st.subheader("💰 Amendes de Service")
                 # Les agents RCT et le Staff peuvent toujours mettre des amendes
