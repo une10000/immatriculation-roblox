@@ -214,14 +214,8 @@ if st.session_state.user_auth is None:
     # --- CONFIGURATION INTERFACE & CORRECTIFS ---
     st.markdown("""
         <style>
-            /* Supprime la barre latérale "fantôme" lors de la déconnexion */
-            [data-testid="stSidebar"], [data-testid="stSidebarNav"] {
-                display: none;
-            }
-            /* Masque l'icône de chargement en haut à droite pour plus de fluidité */
-            [data-testid="stStatusWidget"] {
-                display: none;
-            }
+            [data-testid="stSidebar"], [data-testid="stSidebarNav"] { display: none; }
+            [data-testid="stStatusWidget"] { display: none; }
         </style>
     """, unsafe_allow_html=True)
 
@@ -233,11 +227,11 @@ if st.session_state.user_auth is None:
     h_lock = t_now_lock.hour
     heure_formattee = t_now_lock.strftime("%H:%M")
     
+    # --- LOGIQUE JOUR / NUIT ---
     if 5 <= h_lock < 18:
         salut_complet = "Bonjour☀️"
-        # Design Ciel Bleu avec Nuages en CSS
         pattern_style = (
-            "background-color: #87CEEB; "  # Bleu ciel
+            "background-color: #87CEEB; "
             "background-image: "
             "radial-gradient(circle at 20% 30%, white 5%, transparent 10%), "
             "radial-gradient(circle at 25% 35%, white 8%, transparent 15%), "
@@ -248,10 +242,23 @@ if st.session_state.user_auth is None:
             "background-size: 300px 300px;"
         )
         t_color = "#1E1E1E"
-        # Un léger glow orangé pour simuler le soleil sur le texte
         glow = "0 0 15px rgba(255, 165, 0, 0.3)"
+    else:
+        salut_complet = "Bonsoir🌕"
+        pattern_style = (
+            "background-color: #05070a; "
+            "background-image: "
+            "radial-gradient(1px 1px at 25% 35%, white, transparent), "
+            "radial-gradient(1px 1px at 50% 10%, white, transparent), "
+            "radial-gradient(2px 2px at 10% 80%, white, transparent), "
+            "radial-gradient(1px 1px at 90% 20%, white, transparent), "
+            "radial-gradient(1.5px 1.5px at 70% 60%, white, transparent); "
+            "background-size: 150px 150px, 200px 200px, 250px 250px, 180px 180px, 220px 220px;"
+        )
+        t_color = "#FFFFFF"
+        glow = "0 0 40px rgba(255,255,255,0.9), 0 0 80px rgba(255,255,255,0.4)"
 
-    # AFFICHAGE UNITAIRE (Texte et Lune collés dans le même h1)
+    # --- AFFICHAGE UNITAIRE ---
     st.markdown(f"""
         <div style="text-align: center; margin-top: -30px; padding: 70px 20px 45px 20px; border-radius: 20px 20px 0 0; color: {t_color}; {pattern_style}">
             <h1 style="font-size: 5.5em; margin: 0; font-weight: 900; letter-spacing: -3px; text-shadow: {glow};">
@@ -264,11 +271,11 @@ if st.session_state.user_auth is None:
         </div>
     """, unsafe_allow_html=True)
 
-    # 2. EN-TÊTE RÉPUBLIQUE
+    # 2. EN-TÊTE RÉPUBLIQUE (Avec ajout du logo révisé)
     st.markdown("""
-    <div class="header-box" style="margin-top: 0px; border-radius: 0 0 20px 20px; border-top: 1px solid rgba(255,255,255,0.05);">
+    <div class="header-box" style="margin-top: 0px; border-radius: 0 0 20px 20px; border-top: 1px solid rgba(255,255,255,0.05); padding: 20px;">
     <center>
-        <h2 style="margin-bottom:0;">🏛️ RÉPUBLIQUE DE RENSSELAER</h2>
+        <span style="font-size: 40px;">👤</span> <h2 style="margin-bottom:0; margin-top:10px;">🏛️ RÉPUBLIQUE DE RENSSELAER</h2>
         <p style="font-size: 1em; opacity: 0.8;">TERMINAL FÉDÉRAL D'OPÉRATIONS NATIONALES</p>
         <hr style="border-color: rgba(255,255,255,0.1); margin: 10px 0;">
         <small style="opacity: 0.6;">VERSION 14.6.0 | SÉCURISÉ PAR PROTOCOLE RCRP-OS</small>
