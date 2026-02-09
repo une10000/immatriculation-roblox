@@ -479,7 +479,7 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                         record_log(st.session_state.user_auth, f"Points -{p_loss} sur {target}")
                         st.cache_data.clear(); st.success("Points retirés."); time.sleep(0.5); st.rerun()
 
-            # 3. RADAR VÉHICULES (Format Reçu)
+            # 3. RADAR VÉHICULES (Format Reçu avec Alerte RCT)
             with col_veh:
                 st.subheader("🚗 Titres de Circulation")
                 v_player = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
@@ -487,11 +487,20 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                 if v_player.empty:
                     st.info("Aucun véhicule enregistré.")
                 else:
-                    for _, v in v_player.iterrows():
-                        # Définition du statut assurance pour le design
-                        is_assu = v['Assurance'] != "Aucune"
-                        status_color = "#2e7d32" if is_assu else "#d32f2f"
-                        status_text = "VÉHICULE EN RÈGLE" if is_assu else "DÉFAUT D'ASSURANCE"
+                    for i, (_, v) in enumerate(v_player.iterrows()):
+                        # LOGIQUE D'ALERTE RCT
+                        # On vérifie si l'assurance contient "RCT"
+                        is_rct = "RCT" in str(v['Assurance'])
+                        
+                        if is_rct:
+                            status_color = "#2e7d32" # Vert
+                            status_text = "VÉHICULE EN RÈGLE (RCT)"
+                            text_color = "white"
+                        else:
+                            # Danger Jaune si pas assuré RCT (donc Averis ou Aucune)
+                            status_color = "#fbc02d" # Jaune
+                            status_text = "⚠️ DANGER : NON-ASSURÉ RCT"
+                            text_color = "black"
                         
                         # Le Reçu version "Consultation Agent"
                         ticket_html = f"""
@@ -503,7 +512,7 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                                 <b>PLAQUE :</b> <span style="background:#eee; border:1px solid #000; padding:0 2px;">{v['Numéro de la plaque']}</span><br>
                                 <b>ASSU :</b> {v['Assurance']}
                             </div>
-                            <div style="margin-top: 5px; text-align: center; background: {status_color}; color: white; font-weight: bold; font-size: 0.7em; padding: 2px;">
+                            <div style="margin-top: 5px; text-align: center; background: {status_color}; color: {text_color}; font-weight: bold; font-size: 0.7em; padding: 4px; border-radius: 2px;">
                                 {status_text}
                             </div>
                         </div>
