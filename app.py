@@ -574,11 +574,10 @@ f_pts = st.number_input("Points à retirer",
                         key="f_pts_fix", 
                         disabled=(st.session_state.user_auth == "RCT"))
 
-                    label_btn = "🚨 ENVOYER & DÉBITER POINTS" if st.session_state.user_auth == "Staff" else "🚨 ENVOYER LA FACTURE (RCT)"
-                    
-                    if st.button(label_btn, use_container_width=True):
-                        if f_motif:
-                            with st.spinner("Mise à jour..."):
+label_btn = "🚨 ENVOYER & DÉBITER POINTS" if st.session_state.user_auth == "Staff" else "🚨 ENVOYER LA FACTURE (RCT)"
+if st.button(label_btn, use_container_width=True):
+    if f_motif:
+        with st.spinner("Mise à jour..."):
                                 # 1. GESTION DES POINTS (STAFF UNIQUEMENT)
                                 if f_pts > 0 and st.session_state.user_auth == "Staff":
                                     idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
