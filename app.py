@@ -419,4 +419,4 @@ with tab_banque:
                                 st.rerun()
 
 st.markdown("---")
-st.markdown("<center><b>RCRP SYSTEM v16.7</b> - Interface Gouvernementale de Palm City</center>", unsafe_allow_html=True)
+st.markdown("<center><b>RCRP SYSTEM v16.7</b> - Interface Rensselaer County Roleplay FR</center>", unsafe_allow_html=True)
