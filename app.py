@@ -280,33 +280,7 @@ with st.container():
                         """, unsafe_allow_html=True)
             else: 
                 st.error("Aucun compte trouvé.") 
-                # --- OPTION : HISTORIQUE DES FACTURES PAYÉES (POUR LES CIVILS) ---
-st.markdown("---")
-with st.expander("📁 VOIR L'HISTORIQUE DES FACTURES (Archives Payées)"):
-    # On lit la base des factures
-    df_factures_all = cloud_conn.read(worksheet="Factures")
-    
-    # On filtre uniquement les factures PAYÉES pour ce citoyen (target)
-    historique = df_factures_all[
-        (df_factures_all["Cible"] == target) & 
-        (df_factures_all["Statut"] == "PAYÉ")
-    ]
-    
-    if not historique.empty:
-        # On affiche un petit tableau propre ou une liste de tickets
-        for _, f in historique.iterrows():
-            st.markdown(f"""
-            <div style="border-left: 5px solid #2e7d32; padding: 10px; background: #f0f2f6; margin-bottom: 5px; color: black;">
-                <small><b>REF:</b> #{f['ID']} | <b>DATE:</b> {f.get('Date', 'N/A')}</small><br>
-                <b>OBJET :</b> {f['Motif']}<br>
-                <div style="display: flex; justify-content: space-between;">
-                    <span><b>MONTANT :</b> {f['Montant']}$</span>
-                    <span style="color: green; font-weight: bold;">✔ ACQUITTÉE</span>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-    else:
-        st.info("Aucune ancienne facture trouvée dans les archives.")
+
 # ======================================================================================
 # NOUVEAU : SYSTÈME DE PAIEMENT DES FACTURES (STYLE TICKET)
 # ======================================================================================
