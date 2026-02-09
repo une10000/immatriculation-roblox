@@ -137,8 +137,12 @@ if st.session_state.user_auth is not None:
         st.image("https://media.discordapp.net/attachments/1441508709024006315/1467106550656270484/Capture_decran_2025-12-01_a_21.03.31.png?ex=698b0a73&is=6989b8f3&hm=76c2f537e9acfb1dd2c2dd1d930fa8e2cb88cce4e00e6109f20925d68d289d75&=&format=webp&quality=lossless&width=2732&height=1508", use_container_width=True)
         
         st.divider()
-        # HEURE ET DATE A GAUCHE
-        t_now = datetime.now()
+        # --- HEURE ET DATE UTC+1 ---
+        from datetime import datetime, timedelta, timezone
+        
+        # On récupère l'heure UTC actuelle et on ajoute 1 heure pour la France/Belgique/Suisse
+        t_now = datetime.now(timezone.utc) + timedelta(hours=1)
+        
         st.markdown(f"### 📅 {t_now.strftime('%d/%m/%Y')}")
         st.markdown(f"### ⏰ {t_now.strftime('%H:%M:%S')}")
         st.divider()
