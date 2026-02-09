@@ -211,6 +211,20 @@ if st.session_state.user_auth is not None:
 # ======================================================================================
 
 if st.session_state.user_auth is None:
+    # --- CONFIGURATION INTERFACE & CORRECTIFS ---
+    st.markdown("""
+        <style>
+            /* Supprime la barre latérale "fantôme" lors de la déconnexion */
+            [data-testid="stSidebar"], [data-testid="stSidebarNav"] {
+                display: none;
+            }
+            /* Masque l'icône de chargement en haut à droite pour plus de fluidité */
+            [data-testid="stStatusWidget"] {
+                display: none;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+
     # 1. CALCUL DU MOMENT ET DE L'HEURE (UTC+1)
     import time
     from datetime import datetime, timedelta, timezone
@@ -238,10 +252,10 @@ if st.session_state.user_auth is None:
             "background-size: 150px 150px, 200px 200px, 250px 250px, 180px 180px, 220px 220px;"
         )
         t_color = "#FFFFFF"
-        # Glow très fort qui englobe tout le texte
+        # Glow très fort (Halo blanc puissant)
         glow = "0 0 40px rgba(255,255,255,0.9), 0 0 80px rgba(255,255,255,0.4)"
 
-    # AFFICHAGE UNIFIÉ (Texte et Lune collés)
+    # AFFICHAGE UNITAIRE (Texte et Lune collés dans le même h1)
     st.markdown(f"""
         <div style="text-align: center; margin-top: -30px; padding: 70px 20px 45px 20px; border-radius: 20px 20px 0 0; color: {t_color}; {pattern_style}">
             <h1 style="font-size: 5.5em; margin: 0; font-weight: 900; letter-spacing: -3px; text-shadow: {glow};">
