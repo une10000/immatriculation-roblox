@@ -227,13 +227,12 @@ with st.container():
     if target != "---":
         col1, col2, col3 = st.columns(3)
         
-        # Section Points & Permis avec Bandeau de Sécurité
+        # --- COLONNE 1 : POINTS & PERMIS ---
         with col1:
             p_data = df_p[df_p["Nom Roblox"] == target]
             if not p_data.empty:
                 pts_val = int(p_data.iloc[0]["PTS"])
                 
-                # Organisation interne identique à la banque
                 c_pts, c_vide, c_motif_p = st.columns([3, 0.5, 2])
                 
                 with c_pts:
@@ -242,7 +241,6 @@ with st.container():
                     st.markdown(f"Statut : <b style='color:{status_color};'>{'VALIDE' if pts_val > 0 else 'SUSPENDU'}</b>", unsafe_allow_html=True)
                 
                 with c_motif_p:
-                    # MOTIFS ROUTIERS (Poussés à droite)
                     st.markdown("""
                         <div style="text-align: right; line-height: 1; padding-top: 5px;">
                             <div style="opacity: 0.15; font-size: 40px; margin-bottom: -10px;">🛡️</div>
@@ -254,13 +252,11 @@ with st.container():
             else:
                 st.error("Aucun permis trouvé.")
 
-        # Section Banque avec Bandeau de Sécurité
+        # --- COLONNE 2 : BANQUE ---
         with col2:
             b_data = df_b[df_b["Nom Roblox"] == target]
             if not b_data.empty:
-                # Utilisation d'un container pour regrouper le tout
                 with st.container(border=False):
-                    # On crée 3 colonnes internes pour gérer l'alignement précis
                     c_info, c_vide, c_motif = st.columns([3, 1, 2])
                     
                     with c_info:
@@ -269,7 +265,6 @@ with st.container():
                         st.caption(f"📅 Arrivée : {b_data.iloc[0]['Date d\'arrivée']}")
                     
                     with c_motif:
-                        # SUPERPOSITION DE MOTIFS (Plus à droite et plus complet)
                         st.markdown("""
                             <div style="text-align: right; line-height: 1; padding-top: 5px;">
                                 <div style="opacity: 0.15; font-size: 40px; margin-bottom: -10px;">🏛️</div>
@@ -281,25 +276,25 @@ with st.container():
             else: 
                 st.error("Aucun compte trouvé.") 
 
-            # --- HISTORIQUE DES FACTURES PAYÉES (ACCESSIBLE AUX CIVILS) ---
-            st.markdown("---")
-            st.markdown("### 📁 ARCHIVES COMPTABLES")
-            with st.expander("Consulter mes factures déjà payées", expanded=False):
-                try:
-                    # Lecture de la base factures
-                    df_f_history = cloud_conn.read(worksheet="Factures").fillna("")
-                    
-                    # Filtre sur les factures PAYÉES du citoyen cible
-                    historique = df_f_history[
-                        (df_f_history["Cible"] == target) & 
-                        (df_f_history["Statut"] == "PAYÉ")
-                    ]
-                    
-                    if not historique.empty:
-                        st.success(f"✅ {len(historique)} factures archivées")
+        # --- COLONNE 3 : ARCHIVES COMPTABLES ---
+        with col3:
+            st.markdown("### 📁 ARCHIVES")
+            try:
+                # Lecture de la base factures
+                df_f_history = cloud_conn.read(worksheet="Factures").fillna("")
+                
+                # Filtre sur les factures PAYÉES
+                historique = df_f_history[
+                    (df_f_history["Cible"] == target) & 
+                    (df_f_history["Statut"] == "PAYÉ")
+                ]
+                
+                if not historique.empty:
+                    # Utilisation d'un container défilable pour garder l'interface propre
+                    with st.container(height=300):
                         for _, f in historique.iterrows():
                             st.markdown(f"""
-                            <div style="border: 1px solid #000; padding: 10px; background: #f9f9f9; color: black; font-family: 'Courier New', monospace; margin-bottom: 8px;">
+                            <div style="border: 1px solid #000; padding: 10px; background: #f9f9f9; color: black; font-family: 'Courier New', monospace; margin-bottom: 8px; border-left: 5px solid green;">
                                 <div style="display: flex; justify-content: space-between; font-size: 0.8em;">
                                     <b>REF: #{f['ID']}</b>
                                     <b style="color: green;">ACQUITTÉE ✔</b>
@@ -311,10 +306,10 @@ with st.container():
                                 </div>
                             </div>
                             """, unsafe_allow_html=True)
-                    else:
-                        st.info("Aucune archive de paiement trouvée.")
-                except Exception as e:
-                    st.error(f"Erreur d'accès aux archives : {e}")
+                else:
+                    st.info("Aucun paiement archivé.")
+            except Exception as e:
+                st.error(f"Erreur d'accès aux archives : {e}")
 
 # ======================================================================================
 # 7. LOGIQUE DES ONGLETS (CORRIGÉE)
