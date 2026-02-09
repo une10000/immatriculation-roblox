@@ -135,10 +135,11 @@ if st.session_state.user_auth is not None:
     with st.sidebar:
         # LOGO RCRP
         st.image("https://media.discordapp.net/attachments/1441508709024006315/1467106550656270484/Capture_decran_2025-12-01_a_21.03.31.png?ex=698b0a73&is=6989b8f3&hm=76c2f537e9acfb1dd2c2dd1d930fa8e2cb88cce4e00e6109f20925d68d289d75&=&format=webp&quality=lossless&width=2732&height=1508", use_container_width=True)
-        st.divider()
+st.divider()
         from datetime import datetime, timedelta, timezone
+        import streamlit.components.v1 as components
 
-        # 1. Calcul de l'heure UTC+1
+        # 1. Calcul de l'heure UTC+1 (pour la date statique)
         t_now = datetime.now(timezone.utc) + timedelta(hours=1)
 
         # 2. Dictionnaires de traduction
@@ -152,15 +153,44 @@ if st.session_state.user_auth is not None:
             "September": "Septembre", "October": "Octobre", "November": "Novembre", "December": "Décembre"
         }
 
-        # 3. Construction des variables
+        # 3. Construction de la date
         nom_jour = jours[t_now.strftime('%A')]
         num_jour = t_now.strftime('%d')
         nom_mois = mois[t_now.strftime('%B')]
         annee = t_now.strftime('%Y')
 
-        # 4. Affichage groupé pour réduire l'espace
-        st.markdown(f"### 📅 <br> {nom_jour},<br>{num_jour} {nom_mois} {annee}", unsafe_allow_html=True)
-        st.markdown(f"### ⏰ <br> {t_now.strftime('%H:%M:%S')}")
+        # 4. Affichage de la Date (Statique)
+        st.markdown(f"""
+            <div style="text-align: center; line-height: 1.0;">
+                <h3 style="margin-bottom: 5px;">📅</h3>
+                <h3 style="margin-top: 0;">{nom_jour},<br>{num_jour} {nom_mois} {annee}</h3>
+            </div>
+        """, unsafe_allow_html=True)
+
+        # 5. Affichage de l'Horloge (Dynamique - défile en temps réel)
+        st.markdown("<h3 style='text-align: center; margin-bottom: 0;'>⏰</h3>", unsafe_allow_html=True)
+        
+        components.html("""
+            <div id="clock" style="
+                font-family: 'Source Sans Pro', sans-serif; 
+                font-size: 28px; 
+                font-weight: bold; 
+                text-align: center; 
+                color: #31333F;
+                margin-top: -10px;
+            "></div>
+            <script>
+                function updateClock() {
+                    const now = new Date();
+                    // Calcule l'heure UTC+1
+                    const options = { timeZone: 'Europe/Paris', hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' };
+                    const timeString = now.toLocaleTimeString('fr-FR', options);
+                    document.getElementById('clock').textContent = timeString;
+                }
+                setInterval(updateClock, 1000);
+                updateClock();
+            </script>
+        """, height=50)
         st.divider()
 
         st.write(f"🔐 Accréditation : **{st.session_state.user_auth}**")
