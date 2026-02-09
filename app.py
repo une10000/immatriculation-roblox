@@ -278,13 +278,13 @@ with st.container():
 
         # --- COLONNE 3 : ARCHIVES COMPTABLES ---
             with col3:
-            st.markdown("### 📁 ARCHIVES")
-            try:
+                st.markdown("### 📁 ARCHIVES")
+                try:
                 # 1. Lecture de la base factures
-                df_f_history = cloud_conn.read(worksheet="Factures").fillna("")
+                    df_f_history = cloud_conn.read(worksheet="Factures").fillna("")
                 
                 # 2. Filtre sur les factures PAYÉES pour ce citoyen
-                historique = df_f_history[
+                    historique = df_f_history[
                     (df_f_history["Cible"] == target) & 
                     (df_f_history["Statut"] == "PAYÉ")
                 ]
