@@ -413,7 +413,6 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                             st.success(f"✅ Amende de {tax_val}$ perçue.")
                             time.sleep(1)
                             st.rerun()
-
            with col_info:
                 st.subheader("🚗 Véhicules Enregistrés")
                 # Filtrage des véhicules appartenant au citoyen sélectionné
