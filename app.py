@@ -524,67 +524,87 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
 
             col_fine, col_pts, col_veh = st.columns([1, 1, 1.3])
 # 1. ÉMISSION DE FACTURE (AVEC APERÇU LIVE POUR L'AGENT)
+# --- SECTION ÉMISSION DE FACTURE AVEC POINTS ET APERÇU VÉHICULE ---
 with col_fine:
-    st.subheader("🧾 Émettre Facture")
-    with st.container(border=True):
-        # Entrées de données
-        f_val = st.number_input("Montant ($)", min_value=0, step=50, key="f_val_fix")
-        f_motif = st.text_input("Motif", placeholder="ex: Excès de vitesse", key="f_mot_fix")
-        
-        # Dropdown des plaques
-        v_list = ["AUCUN / PIÉTON"] + df_i[df_i["Nom d'utilisateur ROBLOX"] == target]["Numéro de la plaque"].tolist()
-        f_plate_link = st.selectbox("Véhicule concerné :", v_list, key="f_plate_link")
-        
-        st.divider()
-        st.caption("🖼️ APERÇU DU TICKET (LIVE)")
-        
-        # --- LE TICKET EN LIVE (S'affiche pendant qu'on remplit) ---
-        prefix_name = "POLICE NATIONALE" if st.session_state.user_auth == "Staff" else "RÉSEAU RCT"
-        ticket_color = "#d32f2f" if st.session_state.user_auth == "Staff" else "#2c3e50"
-        
-        st.markdown(f"""
-        <div style="border: 2px solid #000; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; box-shadow: 6px 6px 0px {ticket_color};">
-            <center><b style="font-size:1.1em; text-decoration: underline;">PROJET DE FACTURE</b><br>
-            <small>{prefix_name}</small></center>
-            <hr style="border-top: 1px dashed #000; margin: 10px 0;">
-            <div style="font-size: 0.9em; line-height: 1.2;">
-                <b>CIBLE     :</b> {target}<br>
-                <b>PLAQUE    :</b> <span style="background:#eee; border:1px solid #000; padding:0 2px;">{f_plate_link}</span><br>
-                <b>MOTIF     :</b> {f_motif if f_motif else "..."}<br>
-            </div>
-            <hr style="border-top: 1px dashed #000; margin: 10px 0;">
-            <div style="text-align: right; font-weight: bold; font-size: 1.2em;">
-                TOTAL : {f_val}$
-            </div>
-        </div>
-        <br>
-        """, unsafe_allow_html=True)
+    st.subheader("🧾 Émettre Facture & Retrait de Points")
+    
+    # On crée deux colonnes internes pour garder le véhicule à droite
+    col_input, col_vehicule_view = st.columns([1.2, 1])
 
-        # Bouton d'envoi final
-        if st.button("CONFIRMER ET ENVOYER", use_container_width=True, key="btn_final_send"):
-            if f_val > 0 and f_motif:
-                with st.spinner("Envoi..."):
-                    df_factures = cloud_conn.read(worksheet="Factures")
-                    motif_complet = f"{f_motif} (Plaque: {f_plate_link})"
-                    
-                    new_row = {
-                        "ID": random.randint(10000, 99999),
-                        "Cible": target,
-                        "Emetteur": st.session_state.user_auth,
-                        "Montant": f_val,
-                        "Motif": motif_complet,
-                        "Statut": "EN ATTENTE"
-                    }
-                    
-                    df_factures = pd.concat([df_factures, pd.DataFrame([new_row])], ignore_index=True)
-                    cloud_conn.update(worksheet="Factures", data=df_factures)
-                    
-                    st.success("✅ Facture transmise au civil !")
-                    st.cache_data.clear()
-                    time.sleep(1)
-                    st.rerun()
+    with col_input:
+        with st.container(border=True):
+            f_val = st.number_input("Montant ($)", min_value=0, step=50, key="f_val_fix")
+            f_pts = st.number_input("Points à retirer", min_value=0, max_value=12, step=1, key="f_pts_fix")
+            f_motif = st.text_input("Motif", placeholder="ex: Excès de vitesse", key="f_mot_fix")
+            
+            # Dropdown des plaques
+            v_list = ["AUCUN / PIÉTON"] + df_i[df_i["Nom d'utilisateur ROBLOX"] == target]["Numéro de la plaque"].tolist()
+            f_plate_link = st.selectbox("Véhicule concerné :", v_list, key="f_plate_link")
+            
+            st.caption("🖼️ APERÇU DU TICKET")
+            
+            # --- LE TICKET EN LIVE AVEC POINTS ---
+            prefix_name = "POLICE NATIONALE" if st.session_state.user_auth == "Staff" else "RÉSEAU RCT"
+            st.markdown(f"""
+            <div style="border: 2px solid #000; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; box-shadow: 6px 6px 0px #000;">
+                <center><b style="font-size:1.1em; text-decoration: underline;">FACTURE OFFICIELLE</b><br>
+                <small>{prefix_name}</small></center>
+                <hr style="border-top: 1px dashed #000; margin: 10px 0;">
+                <div style="font-size: 0.85em; line-height: 1.2;">
+                    <b>CIBLE  :</b> {target}<br>
+                    <b>PLAQUE :</b> {f_plate_link}<br>
+                    <b>MOTIF  :</b> {f_motif if f_motif else "..."}<br>
+                </div>
+                <hr style="border-top: 1px dashed #000; margin: 10px 0;">
+                <div style="display: flex; justify-content:建设; font-weight: bold;">
+                    <div style="width: 50%; color: #d32f2f;">POINTS : -{f_pts}</div>
+                    <div style="width: 50%; text-align: right; font-size: 1.1em;">TOTAL : {f_val}$</div>
+                </div>
+            </div>
+            <br>
+            """, unsafe_allow_html=True)
+
+            if st.button("CONFIRMER ET ENVOYER", use_container_width=True):
+                if f_val >= 0 and f_motif:
+                    with st.spinner("Traitement..."):
+                        # 1. Gestion des Factures
+                        df_factures = cloud_conn.read(worksheet="Factures")
+                        motif_complet = f"{f_motif} (Plaque: {f_plate_link} | -{f_pts} pts)"
+                        new_row = {
+                            "ID": random.randint(10000, 99999),
+                            "Cible": target,
+                            "Emetteur": st.session_state.user_auth,
+                            "Montant": f_val,
+                            "Motif": motif_complet,
+                            "Statut": "EN ATTENTE"
+                        }
+                        df_factures = pd.concat([df_factures, pd.DataFrame([new_row])], ignore_index=True)
+                        cloud_conn.update(worksheet="Factures", data=df_factures)
+
+                        # 2. Retrait de points automatique
+                        if f_pts > 0:
+                            idx_civ = df_i[df_i["Nom d'utilisateur ROBLOX"] == target].index[0]
+                            points_actuels = int(df_i.at[idx_civ, "Nombre de points sur le permis"])
+                            df_i.at[idx_civ, "Nombre de points sur le permis"] = max(0, points_actuels - f_pts)
+                            cloud_conn.update(worksheet="Immatriculation", data=df_i)
+                        
+                        st.success(f"✅ Facture envoyée et -{f_pts} points retirés !")
+                        st.cache_data.clear()
+                        time.sleep(1)
+                        st.rerun()
+
+    # --- COLONNE DE DROITE : VISION DU VÉHICULE ---
+    with col_vehicule_view:
+        st.caption("🚘 Véhicule sélectionné")
+        if f_plate_link != "AUCUN / PIÉTON":
+            v_data = df_i[df_i["Numéro de la plaque"] == f_plate_link].iloc[0]
+            st.warning(f"**Modèle:** {v_data['Modèle du véhicule']}")
+            if "Lien de la photo" in v_data and v_data["Lien de la photo"]:
+                st.image(v_data["Lien de la photo"], use_container_width=True)
             else:
-                st.error("⚠️ Remplissez le montant et le motif.")
+                st.info("Aucune photo disponible")
+        else:
+            st.write("Pas de véhicule sélectionné.")
 
             # 2. GESTION DU PERMIS
             with col_pts:
