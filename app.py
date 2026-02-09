@@ -141,7 +141,7 @@ if st.session_state.user_auth is not None:
         # 1. Calcul de l'heure UTC+1
         t_now = datetime.now(timezone.utc) + timedelta(hours=1)
 
-        # 2. Dictionnaires de traduction (pour éviter les bugs de serveur)
+        # 2. Dictionnaires de traduction
         jours = {
             "Monday": "Lundi", "Tuesday": "Mardi", "Wednesday": "Mercredi",
             "Thursday": "Jeudi", "Friday": "Vendredi", "Saturday": "Samedi", "Sunday": "Dimanche"
@@ -152,15 +152,14 @@ if st.session_state.user_auth is not None:
             "September": "Septembre", "October": "Octobre", "November": "Novembre", "December": "Décembre"
         }
 
-        # 3. Construction de la date
+        # 3. Construction des variables
         nom_jour = jours[t_now.strftime('%A')]
         num_jour = t_now.strftime('%d')
         nom_mois = mois[t_now.strftime('%B')]
         annee = t_now.strftime('%Y')
 
-        # 4. Affichage
-        st.markdown(f"### 📅 {nom_jour},")
-        st.markdown(f"### {num_jour} {nom_mois} {annee}")
+        # 4. Affichage groupé pour réduire l'espace
+        st.markdown(f"### 📅 {nom_jour},<br>{num_jour} {nom_mois} {annee}", unsafe_allow_html=True)
         st.markdown(f"### ⏰ {t_now.strftime('%H:%M:%S')}")
         st.divider()
 
