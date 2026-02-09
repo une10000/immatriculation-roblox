@@ -310,24 +310,37 @@ with tabs[0]:
 
             total_bill = taxe_gouv + taxe_assu + val_taxe_jeune
             
-            if st.button(f"S'ACQUITTER DE {total_bill}$ ET ENREGISTRER", use_container_width=True, key="btn_pay_v7"):
+            if st.button(f"S'ACQUITTER DE {total_bill}$ ET ENREGISTRER", use_container_width=True, key="btn_pay_final"):
                 if f_owner != "---" and f_plate and f_code:
                     u_idx = df_b[df_b["Nom Roblox"] == f_owner].index[0]
                     u_solde = float(str(df_b.at[u_idx, "Solde"]).replace('$', ''))
                     
                     if u_solde >= total_bill:
+                        # --- TRAITEMENT DU PAIEMENT ---
                         df_b.at[u_idx, "Solde"] = u_solde - total_bill
+                        
+                        # Redirection des fonds (Averis vers Moune2010, RCT vers compte RCT)
                         if taxe_assu > 0:
-                            target_acc = ACC_AVERIS if "AVERIS" in f_assu else ACC_RCT
+                            target_acc = "Moune2010" if "AVERIS" in f_assu else ACC_RCT
                             a_idx = df_b[df_b["Nom Roblox"] == target_acc].index[0]
                             df_b.at[a_idx, "Solde"] = float(str(df_b.at[a_idx, "Solde"]).replace('$', '')) + taxe_assu
                         
+                        # --- ENREGISTREMENT ---
                         new_row = pd.DataFrame([{"Horodateur": datetime.now().strftime("%d/%m/%Y"), "Nom d'utilisateur ROBLOX": f_owner, "Marque du véhicule": f_model, "Numéro de la plaque": f_plate, "Assurance": f_assu, "CODE": f_code}])
                         cloud_conn.update(worksheet="Banque", data=df_b)
                         cloud_conn.update(worksheet="Copie de Immatriculations", data=pd.concat([df_i, new_row]))
+                        
+                        # --- MESSAGE DE CONFIRMATION (NOUVEAU) ---
+                        st.balloons() # Optionnel : petites confettis pour le côté "cool"
+                        st.success(f"✅ Paiement de {total_bill}$ validé ! Votre plaque {f_plate} est désormais enregistrée.")
+                        
                         st.cache_data.clear()
+                        time.sleep(2) # On attend 2 secondes pour que l'utilisateur voit le message
                         st.rerun()
-                    else: st.error("❌ Solde insuffisant.")
+                    else: 
+                        st.error("❌ Solde insuffisant sur votre compte bancaire.")
+                else:
+                    st.warning("⚠️ Veuillez remplir tous les champs (Propriétaire, Plaque et Code).")
 
     with col_t:
         st.markdown("### 🖼️ APERÇU DU TITRE (LIVE)")
