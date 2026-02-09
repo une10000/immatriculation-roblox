@@ -626,25 +626,28 @@ with col_vehicules:
     else:
         st.info("Aucun véhicule enregistré.")
 # --- ONGLET 3 : ADMINISTRATION (STAFF ONLY) ---
-# --- NOUVEAU : CRÉATION DE PROFIL CITOYEN ---
-        st.divider()
+if st.session_state.user_auth == "Staff":
+    with tabs[2]:
+        st.markdown('<div class="header-box"><h2>🛠️ PANNEAU D\'ADMINISTRATION High-Sec</h2></div>', unsafe_allow_html=True)
+        
+        # 1. SECTION CRÉATION DE PROFIL (En haut pour être prioritaire)
         st.markdown("### 👤 Création de Dossier Citoyen")
         with st.container(border=True):
             c1, c2 = st.columns(2)
             with c1:
-                new_name = st.text_input("Nom d'utilisateur ROBLOX", placeholder="Pseudo exact")
-                new_job = st.selectbox("Emploiement initial", ["Sans-Emploi", "Agent RCT", "Entreprise Privée", "Service Public"])
+                new_name = st.text_input("Nom d'utilisateur ROBLOX", placeholder="Pseudo exact", key="admin_new_name")
+                new_job = st.selectbox("Emploiement initial", ["Sans-Emploi", "Agent RCT", "Entreprise Privée", "Service Public"], key="admin_new_job")
             with c2:
-                new_solde = st.number_input("Solde de départ ($)", min_value=0, value=1000, step=100)
-                new_pts = st.slider("Points Permis (Départ)", 0, 25, 25)
+                new_solde = st.number_input("Solde de départ ($)", min_value=0, value=1000, step=100, key="admin_new_solde")
+                new_pts = st.slider("Points Permis (Départ)", 0, 25, 25, key="admin_new_pts")
 
             if st.button("🆕 GÉNÉRER LE DOSSIER NATIONAL", use_container_width=True):
                 if new_name and new_name not in df_b["Nom Roblox"].values:
                     with st.spinner("Initialisation du citoyen..."):
-                        # 1. Ajout dans la table Banque
-                        # On ajoute la date automatique ici
+                        # Date automatique
                         today_str = datetime.now().strftime("%d/%m/%Y")
                         
+                        # Ajout Banque
                         new_bank_row = pd.DataFrame([{
                             "Nom Roblox": new_name,
                             "Solde": new_solde,
@@ -654,7 +657,7 @@ with col_vehicules:
                         df_b_new = pd.concat([df_b, new_bank_row], ignore_index=True)
                         cloud_conn.update(worksheet="Banque", data=df_b_new)
 
-                        # 2. Ajout dans la table Points Permis
+                        # Ajout Points
                         new_pts_row = pd.DataFrame([{
                             "Nom Roblox": new_name,
                             "PTS": new_pts,
@@ -670,28 +673,20 @@ with col_vehicules:
                         st.rerun()
                 else:
                     st.error("⚠️ Nom invalide ou citoyen déjà existant.")
-if st.session_state.user_auth == "Staff":
-    with tabs[2]:
-        st.markdown("### 🛠️ Panneau d'Administration")
-        st.write("Gestion des accès et logs système.")
-        # Ajoute tes outils admin ici si besoin
-# --- ONGLET 3 : ADMINISTRATION (STAFF UNIQUEMENT) ---
-# --- ONGLET 3 : ADMINISTRATION (STAFF ONLY) ---
-if st.session_state.user_auth == "Staff":
-    with tabs[2]:
-        st.markdown('<div class="header-box"><h2>🛠️ PANNEAU D\'ADMINISTRATION High-Sec</h2></div>', unsafe_allow_html=True)
-        
+
+        st.divider()
+
+        # 2. SECTION LOGS ET CONTRÔLE (En bas)
         col_admin_1, col_admin_2 = st.columns(2)
         
         with col_admin_1:
             st.markdown("### 📜 Journaux d'Audit (Session Live)")
             with st.container(border=True):
                 if st.session_state.audit_logs:
-                    # Affichage des logs avec un style terminal
                     log_text = "\n".join(list(reversed(st.session_state.audit_logs)))
                     st.code(log_text, language="bash")
                 else:
-                    st.info("Aucune activité enregistrée pour cette session.")
+                    st.info("Aucune activité enregistrée.")
             
             if st.button("🗑️ EFFACER LES LOGS DE SESSION"):
                 st.session_state.audit_logs = []
@@ -711,7 +706,6 @@ if st.session_state.user_auth == "Staff":
                     st.success("Cache vidé !")
                     time.sleep(1)
                     st.rerun()
-
 # --- SÉCURITÉ : NETTOYAGE DES VARIABLES FANTÔMES ---
 # Supprime ou commente absolument ces lignes si elles traînent encore en bas de ton fichier :
 # with col_vehicule_view: <--- C'EST ÇA QUI FAIT PLANTER L'AFFICHAGE !
