@@ -139,58 +139,53 @@ if st.session_state.user_auth is not None:
         from datetime import datetime, timedelta, timezone
         import streamlit.components.v1 as components
 
-        # 1. Calcul de l'heure UTC+1 (pour la date statique)
+        # 1. Calcul de l'heure UTC+1
         t_now = datetime.now(timezone.utc) + timedelta(hours=1)
 
         # 2. Dictionnaires de traduction
-        jours = {
-            "Monday": "Lundi", "Tuesday": "Mardi", "Wednesday": "Mercredi",
-            "Thursday": "Jeudi", "Friday": "Vendredi", "Saturday": "Samedi", "Sunday": "Dimanche"
-        }
-        mois = {
-            "January": "Janvier", "February": "Février", "March": "Mars", "April": "Avril",
-            "May": "Mai", "June": "Juin", "July": "Juillet", "August": "Août",
-            "September": "Septembre", "October": "Octobre", "November": "Novembre", "December": "Décembre"
-        }
+        jours = {"Monday": "Lundi", "Tuesday": "Mardi", "Wednesday": "Mercredi", "Thursday": "Jeudi", "Friday": "Vendredi", "Saturday": "Samedi", "Sunday": "Dimanche"}
+        mois = {"January": "Janvier", "February": "Février", "March": "Mars", "April": "Avril", "May": "Mai", "June": "Juin", "July": "Juillet", "August": "Août", "September": "Septembre", "October": "Octobre", "November": "Novembre", "December": "Décembre"}
 
-        # 3. Construction de la date
+        # 3. Variables de date
         nom_jour = jours[t_now.strftime('%A')]
         num_jour = t_now.strftime('%d')
         nom_mois = mois[t_now.strftime('%B')]
         annee = t_now.strftime('%Y')
 
-        # 4. Affichage de la Date (Statique)
+        # 4. Bloc Date (Aligné à gauche et serré)
         st.markdown(f"""
-            <div style="text-align: center; line-height: 1.0;">
-                <h3 style="margin-bottom: 5px;">📅</h3>
-                <h3 style="margin-top: 0;">{nom_jour},<br>{num_jour} {nom_mois} {annee}</h3>
+            <div style="text-align: left; line-height: 1.1;">
+                <span style="font-size: 1.5em;">📅</span><br>
+                <b style="font-size: 1.2em;">{nom_jour},</b><br>
+                <span style="font-size: 1.1em;">{num_jour} {nom_mois} {annee}</span>
             </div>
         """, unsafe_allow_html=True)
 
-        # 5. Affichage de l'Horloge (Dynamique - défile en temps réel)
-        st.markdown("<h3 style='text-align: center; margin-bottom: 0;'>⏰</h3>", unsafe_allow_html=True)
+        st.write("") # Petit espace entre date et heure
+
+        # 5. Bloc Horloge Dynamique (Aligné à gauche)
+        st.markdown("<div style='text-align: left; font-size: 1.5em; margin-bottom: 0;'>⏰</div>", unsafe_allow_html=True)
         
-        components.html("""
+        components.html(f"""
             <div id="clock" style="
                 font-family: 'Source Sans Pro', sans-serif; 
-                font-size: 28px; 
+                font-size: 24px; 
                 font-weight: bold; 
-                text-align: center; 
+                text-align: left; 
                 color: #31333F;
-                margin-top: -10px;
+                margin-top: -5px;
             "></div>
             <script>
-                function updateClock() {
+                function updateClock() {{
                     const now = new Date();
-                    // Calcule l'heure UTC+1
-                    const options = { timeZone: 'Europe/Paris', hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' };
+                    const options = {{ timeZone: 'Europe/Paris', hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }};
                     const timeString = now.toLocaleTimeString('fr-FR', options);
                     document.getElementById('clock').textContent = timeString;
-                }
+                }}
                 setInterval(updateClock, 1000);
                 updateClock();
             </script>
-        """, height=50)
+        """, height=40)
         st.divider()
 
         st.write(f"🔐 Accréditation : **{st.session_state.user_auth}**")
