@@ -525,6 +525,10 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
 # --- NOUVELLE STRUCTURE EN 3 COLONNES ---
 col_saisie, col_ticket, col_vehicules = st.columns([1, 1, 1])
 
+# --- NETTOYAGE ET STRUCTURE EN 3 COLONNES ---
+# On définit 3 colonnes propres pour l'écran
+col_saisie, col_ticket, col_vehicules = st.columns([1, 1, 1])
+
 # 1. À GAUCHE : LE FORMULAIRE DE SAISIE
 with col_saisie:
     st.markdown("### 📝 Saisie")
@@ -533,21 +537,21 @@ with col_saisie:
         f_pts = st.number_input("Points à retirer", min_value=0, max_value=12, step=1, key="f_pts_fix")
         f_motif = st.text_input("Motif", placeholder="ex: Conduite dangereuse", key="f_mot_fix")
         
-        # Sélection de la plaque pour le ticket
+        # Liste des plaques du citoyen sélectionné
         v_list = ["AUCUN / PIÉTON"] + df_i[df_i["Nom d'utilisateur ROBLOX"] == target]["Numéro de la plaque"].tolist()
         f_plate_link = st.selectbox("Plaque concernée :", v_list, key="f_plate_link")
         
         if st.button("🚨 ENVOYER & DÉBITER POINTS", use_container_width=True):
             if f_motif:
-                with st.spinner("Action en cours..."):
-                    # Retrait des points immédiat
+                with st.spinner("Mise à jour du dossier..."):
+                    # Retrait des points immédiat dans la base
                     if f_pts > 0:
                         idx_civ = df_i[df_i["Nom d'utilisateur ROBLOX"] == target].index[0]
                         pts_actuels = int(df_i.at[idx_civ, "Nombre de points sur le permis"])
                         df_i.at[idx_civ, "Nombre de points sur le permis"] = max(0, pts_actuels - f_pts)
                         cloud_conn.update(worksheet="Immatriculation", data=df_i)
                     
-                    # Création de la facture
+                    # Création de la facture en attente
                     df_factures = cloud_conn.read(worksheet="Factures")
                     new_id = random.randint(10000, 99999)
                     new_row = {
@@ -561,12 +565,14 @@ with col_saisie:
                     df_factures = pd.concat([df_factures, pd.DataFrame([new_row])], ignore_index=True)
                     cloud_conn.update(worksheet="Factures", data=df_factures)
                     
-                    st.success("Fait !")
+                    st.success("✅ Points retirés et facture envoyée !")
                     st.cache_data.clear()
                     time.sleep(1)
                     st.rerun()
+            else:
+                st.error("⚠️ Motif obligatoire !")
 
-# 2. AU MILIEU : LE TICKET LIVE
+# 2. AU MILIEU : L'APERÇU TICKET (LIVE)
 with col_ticket:
     st.markdown("### 🖼️ Aperçu Live")
     prefix_name = "POLICE NATIONALE" if st.session_state.user_auth == "Staff" else "RÉSEAU RCT"
@@ -585,21 +591,25 @@ with col_ticket:
             <div style="color: #d32f2f;">POINTS : -{f_pts}</div>
             <div style="text-align: right; font-size: 1.1em;">TOTAL : {f_val}$</div>
         </div>
+        <center><small style="font-size: 0.55em; opacity: 0.5; margin-top:10px; display:block;">POINTS RETIRÉS IMMÉDIATEMENT<br>AMENDE À RÉGLER PAR LE CIVIL</small></center>
     </div>
     """, unsafe_allow_html=True)
 
-# 3. À DROITE : TOUS SES VÉHICULES
+# 3. À DROITE : GARAGE COMPLET DU CITOYEN
 with col_vehicules:
     st.markdown("### 🚗 Garage du Citoyen")
     mes_vehicules = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
+    
     if not mes_vehicules.empty:
         for _, v in mes_vehicules.iterrows():
-            with st.expander(f"🚘 {v['Numéro de la plaque']}"):
+            with st.expander(f"🚘 {v['Numéro de la plaque']}", expanded=True):
                 st.write(f"**Modèle :** {v['Modèle du véhicule']}")
                 if v.get('Lien de la photo'):
                     st.image(v['Lien de la photo'], use_container_width=True)
+                else:
+                    st.caption("Aucune photo disponible")
     else:
-        st.info("Aucun véhicule enregistré.")
+        st.info("Aucun véhicule enregistré pour ce citoyen.")
 
     # --- COLONNE DE DROITE : VISION DU VÉHICULE ---
     with col_vehicule_view:
