@@ -204,7 +204,8 @@ with c3:
             st.session_state.user_auth = "Staff"
             record_log("Staff", "Connexion Admin")
             st.rerun()
-        else: st.error("Accès refusé.")
+        else: 
+            st.error("Accès refusé.")
             st.stop()
         
 # ======================================================================================
