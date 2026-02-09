@@ -225,7 +225,8 @@ if st.session_state.user_auth is None:
         t_color = "#1E1E1E"
         glow = "none"
     else:
-        salut, emo = "Bonsoir", "🌙"
+        # CHANGEMENT : Emoji lune ronde et Glow intensifié
+        salut, emo = "Bonsoir", "🌕"
         pattern_style = (
             "background-color: #05070a; "
             "background-image: "
@@ -237,14 +238,15 @@ if st.session_state.user_auth is None:
             "background-size: 150px 150px, 200px 200px, 250px 250px, 180px 180px, 220px 220px;"
         )
         t_color = "#FFFFFF"
-        glow = "0 0 20px rgba(255,255,255,0.4)"
+        # Glow puissant (blanc avec halo large)
+        glow = "0 0 30px rgba(255,255,255,0.8), 0 0 60px rgba(255,255,255,0.4)"
 
-    # AFFICHAGE RÉPARÉ (Plus simple pour éviter le texte brut au milieu)
+    # AFFICHAGE RÉPARÉ (Compact et aligné)
     st.markdown(f"""
         <div style="text-align: center; margin-top: -30px; padding: 70px 20px 45px 20px; border-radius: 20px 20px 0 0; color: {t_color}; {pattern_style}">
-            <div style="display: inline-block;">
-                <h1 style="font-size: 5.5em; margin: 0; font-weight: 900; letter-spacing: -3px; text-shadow: {glow}; display: inline-block;">{salut} !</h1>
-                <span style="font-size: 4.5em; vertical-align: middle; margin-left: 10px;">{emo}</span>
+            <div style="display: flex; justify-content: center; align-items: center; gap: 20px;">
+                <h1 style="font-size: 5.5em; margin: 0; font-weight: 900; letter-spacing: -3px; text-shadow: {glow};">{salut}</h1>
+                <span style="font-size: 5em; filter: drop-shadow({glow});">{emo}</span>
             </div>
             <p style="font-size: 1.1em; opacity: 0.7; letter-spacing: 5px; font-weight: bold; text-transform: uppercase; margin-top: 20px;">Unité Fédérale de Rensselaer</p>
             <div style="font-family: monospace; font-size: 2.2em; letter-spacing: 5px; opacity: 0.8; font-weight: bold; border-top: 1px solid {t_color}33; display: inline-block; padding-top: 10px; margin-top: 5px;">
