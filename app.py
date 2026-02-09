@@ -226,7 +226,7 @@ with st.container():
     if target != "---":
         col1, col2, col3 = st.columns(3)
         
-        # --- COLONNE 1 : PERMIS (FILIGRANE) ---
+        # --- COLONNE 1 : PERMIS (FILIGRANE AUTO) ---
         with col1:
             p_data = df_p[df_p["Nom Roblox"] == target]
             if not p_data.empty:
@@ -237,12 +237,12 @@ with st.container():
                     status_color = "green" if pts_val > 0 else "red"
                     st.markdown(f"Statut : <b style='color:{status_color};'>{'VALIDE' if pts_val > 0 else 'SUSPENDU'}</b>", unsafe_allow_html=True)
                 with c_motif_p:
-                    # Filigrane discret
+                    # FILIGRANE PERMIS
                     st.markdown('<div style="opacity: 0.1; font-size: 50px; text-align: right; margin-top: -10px;">🚗</div>', unsafe_allow_html=True)
             else:
                 st.error("Aucun permis trouvé.")
 
-        # --- COLONNE 2 : BANQUE (FILIGRANE) ---
+        # --- COLONNE 2 : BANQUE (FILIGRANE BANQUE) ---
         with col2:
             b_data = df_b[df_b["Nom Roblox"] == target]
             if not b_data.empty:
@@ -250,10 +250,9 @@ with st.container():
                 with c_info:
                     st.metric("SOLDE BANCAIRE", f"{b_data.iloc[0]['Solde']}$")
                     st.write(f"🏢 **{b_data.iloc[0]['Emploiement']}**")
-                    # Ajout automatique de la date de création si présente
-                    st.caption(f"📅 Arrivée : {b_data.iloc[0].get('Date d\'arrivée', 'Non renseignée')}")
+                    st.caption(f"📅 Arrivée : {b_data.iloc[0].get('Date d\'arrivée', 'Inconnue')}")
                 with c_motif_b:
-                    # Filigrane discret
+                    # FILIGRANE BANQUE
                     st.markdown('<div style="opacity: 0.1; font-size: 50px; text-align: right; margin-top: -10px;">🏛️</div>', unsafe_allow_html=True)
             else:
                 st.error("Aucun compte trouvé.")
@@ -281,8 +280,8 @@ with st.container():
                         </div>
                         """, unsafe_allow_html=True)
                         
-                        # Correction DuplicateElementKey : Clé incluant l'index i
                         with st.expander("🗑️ Radier"):
+                            # Clé unique pour éviter l'erreur de tes captures (ligne 319)
                             r_cod_check = st.text_input("Code Secret", type="password", key=f"rad_v6_{veh['Numéro de la plaque']}_{i}")
                             if st.button("CONFIRMER", key=f"btn_v6_{veh['Numéro de la plaque']}_{i}", use_container_width=True):
                                 if str(r_cod_check) == str(veh['CODE']) or st.session_state.user_auth == "Staff":
@@ -306,7 +305,7 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
         if target == "---":
             st.warning("⚠️ Veuillez sélectionner un citoyen dans le dossier en haut pour agir.")
         else:
-            # BANDEAU IDENTITÉ
+            # BANDEAU D'IDENTITÉ
             st.markdown(f"""
                 <div style="background-color: #000; padding: 20px; border-radius: 10px; border-left: 10px solid #d32f2f; margin-bottom: 20px;">
                     <h1 style="color: white; margin: 0; letter-spacing: 2px; font-size: 2.5em;">👤 {target.upper()}</h1>
@@ -325,7 +324,6 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                             idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
                             curr_solde = float(str(df_b.at[idx_b, "Solde"]).replace('$', ''))
                             df_b.at[idx_b, "Solde"] = curr_solde - tax_val
-                            # Argent vers le compte RCT paramétré
                             rct_idx = df_b[df_b["Nom Roblox"] == ACC_RCT].index[0]
                             df_b.at[rct_idx, "Solde"] = float(str(df_b.at[rct_idx, "Solde"]).replace('$', '')) + tax_val
                             cloud_conn.update(worksheet="Banque", data=df_b)
@@ -355,14 +353,14 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                     for i, (_, v) in enumerate(v_agent.iterrows()):
                         assu = str(v['Assurance'])
                         
-                        # LOGIQUE DE COULEUR : DANGER JAUNE SI RCT ET PAS ASSURÉ RCT
+                        # LOGIQUE DANGER JAUNE (UNIQUEMENT POUR GRADE RCT)
                         if st.session_state.user_auth == "RCT":
                             if "RCT" in assu:
                                 s_color, s_txt, t_color = "#2e7d32", "VÉHICULE EN RÈGLE (RCT)", "white"
                             else:
                                 s_color, s_txt, t_color = "#fbc02d", "⚠️ DANGER : NON-ASSURÉ RCT", "black"
                         else:
-                            # Pour Staff/Police : Vert si n'importe quelle assurance, Rouge si aucune
+                            # LOGIQUE POUR STAFF : VERT SI ASSURÉ, ROUGE SI AUCUNE
                             if assu != "Aucune":
                                 s_color, s_txt, t_color = "#2e7d32", "VÉHICULE EN RÈGLE", "white"
                             else:
