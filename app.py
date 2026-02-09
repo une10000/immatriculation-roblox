@@ -445,70 +445,80 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
 
             col_fine, col_pts, col_veh = st.columns([1, 1, 1.3])
 
-            # 1. AMENDES
+            # 1. GESTION DES AMENDES (RECOUVREMENT RCT)
             with col_fine:
-                st.subheader("💰 Amendes")
+                st.subheader("💰 Recouvrement")
                 with st.container(border=True):
-                    tax_val = st.number_input("Montant ($)", min_value=0, step=50, key="fine_val_v13")
-                    if st.button("PERCEVOIR", use_container_width=True):
+                    tax_val = st.number_input("Montant de l'amende ($)", min_value=0, step=50, key="fine_val_v13")
+                    if st.button("PERCEVOIR & ENREGISTRER", use_container_width=True):
                         if tax_val > 0:
                             idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
                             curr_solde = float(str(df_b.at[idx_b, "Solde"]).replace('$', ''))
-                            df_b.at[idx_b, "Solde"] = curr_solde - tax_val
-                            rct_idx = df_b[df_b["Nom Roblox"] == ACC_RCT].index[0]
-                            df_b.at[rct_idx, "Solde"] = float(str(df_b.at[rct_idx, "Solde"]).replace('$', '')) + tax_val
-                            cloud_conn.update(worksheet="Banque", data=df_b)
-                            record_log(st.session_state.user_auth, f"Amende {tax_val}$ sur {target}")
-                            st.cache_data.clear(); st.success("Fait."); time.sleep(0.5); st.rerun()
+                            
+                            if curr_solde >= tax_val:
+                                # Débit du civil
+                                df_b.at[idx_b, "Solde"] = curr_solde - tax_val
+                                # Crédit du compte RCT
+                                rct_idx = df_b[df_b["Nom Roblox"] == ACC_RCT].index[0]
+                                df_b.at[rct_idx, "Solde"] = float(str(df_b.at[rct_idx, "Solde"]).replace('$', '')) + tax_val
+                                
+                                cloud_conn.update(worksheet="Banque", data=df_b)
+                                record_log(st.session_state.user_auth, f"Amende de {tax_val}$ perçue sur {target}")
+                                st.cache_data.clear()
+                                st.success("Paiement validé")
+                                time.sleep(0.5)
+                                st.rerun()
+                            else:
+                                st.error("Solde insuffisant pour l'amende.")
 
-            # 2. POINTS
+            # 2. GESTION DU PERMIS
             with col_pts:
-                st.subheader("⚖️ Permis")
+                st.subheader("⚖️ Contrôle Permis")
                 with st.container(border=True):
-                    p_loss = st.number_input("Points à retirer", min_value=0, max_value=25, step=1, key="pts_loss_v13")
-                    if st.button("RETIRER POINTS", use_container_width=True):
+                    p_loss = st.number_input("Retrait de points", min_value=0, max_value=25, step=1, key="pts_loss_v13")
+                    if st.button("APPLIQUER SANCTION", use_container_width=True):
                         idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
                         new_pts = max(0, int(df_p.at[idx_p, "PTS"]) - p_loss)
                         df_p.at[idx_p, "PTS"] = new_pts
                         if new_pts == 0: df_p.at[idx_p, "Validité"] = "NON"
+                        
                         cloud_conn.update(worksheet="Points Permis", data=df_p)
-                        record_log(st.session_state.user_auth, f"Points -{p_loss} sur {target}")
-                        st.cache_data.clear(); st.success("Points retirés."); time.sleep(0.5); st.rerun()
+                        record_log(st.session_state.user_auth, f"Retrait de {p_loss} points à {target}")
+                        st.cache_data.clear()
+                        st.success("Points mis à jour")
+                        time.sleep(0.5)
+                        st.rerun()
 
-            # 3. RADAR VÉHICULES (Format Reçu avec Alerte RCT)
+            # 3. SCANNER DE VÉHICULES (ALERTE RCT)
             with col_veh:
-                st.subheader("🚗 Titres de Circulation")
+                st.subheader("🚗 Scanner de Titres")
                 v_player = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
                 
                 if v_player.empty:
-                    st.info("Aucun véhicule enregistré.")
+                    st.info("Aucun véhicule détecté.")
                 else:
                     for i, (_, v) in enumerate(v_player.iterrows()):
-                        # LOGIQUE D'ALERTE RCT
-                        # On vérifie si l'assurance contient "RCT"
+                        # LOGIQUE D'ALERTE RCT : Si l'assurance n'est pas "RCT (150$)", c'est une alerte
                         is_rct = "RCT" in str(v['Assurance'])
                         
                         if is_rct:
-                            status_color = "#2e7d32" # Vert
-                            status_text = "VÉHICULE EN RÈGLE (RCT)"
+                            status_bg = "#2e7d32" # Vert sécurité
+                            status_text = "VÉHICULE EN RÈGLE (ASSURÉ RCT)"
                             text_color = "white"
                         else:
-                            # Danger Jaune si pas assuré RCT (donc Averis ou Aucune)
-                            status_color = "#fbc02d" # Jaune
-                            status_text = "⚠️ DANGER : NON-ASSURÉ RCT"
+                            status_bg = "#fbc02d" # Jaune alerte
+                            status_text = "⚠️ ATTENTION : NON-ASSURÉ RCT"
                             text_color = "black"
                         
-                        # Le Reçu version "Consultation Agent"
                         ticket_html = f"""
-                        <div style="border: 2px solid #000; padding: 10px; background: white; color: black; font-family: monospace; margin-bottom: 15px; box-shadow: 3px 3px 0px #888;">
-                            <div style="text-align:center; font-weight:bold; font-size:0.9em; border-bottom: 1px solid #000; margin-bottom: 5px;">RÉPUBLIQUE DE RENSSELAER</div>
-                            <div style="font-size: 0.8em; line-height: 1.2;">
-                                <b>DATE :</b> {v['Horodateur']}<br>
+                        <div style="border: 2px solid #000; padding: 10px; background: white; color: black; font-family: monospace; margin-bottom: 15px; box-shadow: 4px 4px 0px #000;">
+                            <div style="text-align:center; font-weight:bold; border-bottom: 1px solid #000; margin-bottom: 5px;">FICHE DE CIRCULATION</div>
+                            <div style="font-size: 0.85em; line-height: 1.3;">
+                                <b>PLAQUE :</b> <span style="background:#000; color:#fff; padding:0 4px;">{v['Numéro de la plaque']}</span><br>
                                 <b>MODÈLE :</b> {v['Marque du véhicule']}<br>
-                                <b>PLAQUE :</b> <span style="background:#eee; border:1px solid #000; padding:0 2px;">{v['Numéro de la plaque']}</span><br>
-                                <b>ASSU :</b> {v['Assurance']}
+                                <b>ASSURANCE :</b> {v['Assurance']}
                             </div>
-                            <div style="margin-top: 5px; text-align: center; background: {status_color}; color: {text_color}; font-weight: bold; font-size: 0.7em; padding: 4px; border-radius: 2px;">
+                            <div style="margin-top: 8px; text-align: center; background: {status_bg}; color: {text_color}; font-weight: bold; font-size: 0.75em; padding: 5px; border: 1px solid #000;">
                                 {status_text}
                             </div>
                         </div>
