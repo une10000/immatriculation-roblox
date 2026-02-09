@@ -136,14 +136,32 @@ if st.session_state.user_auth is not None:
         # LOGO RCRP
         st.image("https://media.discordapp.net/attachments/1441508709024006315/1467106550656270484/Capture_decran_2025-12-01_a_21.03.31.png?ex=698b0a73&is=6989b8f3&hm=76c2f537e9acfb1dd2c2dd1d930fa8e2cb88cce4e00e6109f20925d68d289d75&=&format=webp&quality=lossless&width=2732&height=1508", use_container_width=True)
         
-        st.divider()
-        # --- HEURE ET DATE UTC+1 ---
+st.divider()
         from datetime import datetime, timedelta, timezone
-        
-        # On récupère l'heure UTC actuelle et on ajoute 1 heure pour la France/Belgique/Suisse
+
+        # 1. Calcul de l'heure UTC+1
         t_now = datetime.now(timezone.utc) + timedelta(hours=1)
-        
-        st.markdown(f"### 📅 {t_now.strftime('%d/%m/%Y')}")
+
+        # 2. Dictionnaires de traduction (pour éviter les bugs de serveur)
+        jours = {
+            "Monday": "Lundi", "Tuesday": "Mardi", "Wednesday": "Mercredi",
+            "Thursday": "Jeudi", "Friday": "Vendredi", "Saturday": "Samedi", "Sunday": "Dimanche"
+        }
+        mois = {
+            "January": "Janvier", "February": "Février", "March": "Mars", "April": "Avril",
+            "May": "Mai", "June": "Juin", "July": "Juillet", "August": "Août",
+            "September": "Septembre", "October": "Octobre", "November": "Novembre", "December": "Décembre"
+        }
+
+        # 3. Construction de la date
+        nom_jour = jours[t_now.strftime('%A')]
+        num_jour = t_now.strftime('%d')
+        nom_mois = mois[t_now.strftime('%B')]
+        annee = t_now.strftime('%Y')
+
+        # 4. Affichage
+        st.markdown(f"### 📅 {nom_jour},")
+        st.markdown(f"### {num_jour} {nom_mois} {annee}")
         st.markdown(f"### ⏰ {t_now.strftime('%H:%M:%S')}")
         st.divider()
 
