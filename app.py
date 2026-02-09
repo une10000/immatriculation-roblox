@@ -535,25 +535,47 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                         record_log(st.session_state.user_auth, f"Points -{p_loss} sur {target}")
                         st.cache_data.clear(); st.success("Fait."); time.sleep(0.5); st.rerun()
 
-            # 3. SCANNER DE VÉHICULES (ALERTE RCT)
+# 3. SCANNER DE VÉHICULES (NOSTALGIQUE & SÉCURISÉ)
             with col_veh:
                 st.subheader("🚗 Titres de Circulation")
                 v_player = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
+                
                 if v_player.empty:
-                    st.info("Aucun véhicule.")
+                    st.info("Aucun véhicule enregistré.")
                 else:
                     for i, (_, v) in enumerate(v_player.iterrows()):
-                        is_assure_rct = "RCT" in str(v['Assurance'])
-                        if st.session_state.user_auth == "Staff" or is_assure_rct:
-                            status_bg, status_text, text_color = "#2e7d32", "VÉHICULE EN RÈGLE", "white"
-                        else:
-                            status_bg, status_text, text_color = "#fbc02d", "⚠️ DANGER : NON-ASSURÉ RCT", "black"
+                        # --- LOGIQUE DE SÉCURITÉ ---
+                        val_assu = str(v['Assurance']).upper()
+                        is_rct_insured = "RCT" in val_assu
+                        is_police_insured = any(x in val_assu for x in ["RCT", "AVERIS"])
                         
+                        # Réglage par défaut (Vert)
+                        status_bg = "#2e7d32" 
+                        status_text = "VÉHICULE EN RÈGLE"
+                        text_color = "white"
+
+                        # CONDITION RCT : Danger si pas assuré RCT
+                        if st.session_state.user_auth == "RCT":
+                            if not is_rct_insured:
+                                status_bg = "#d32f2f" # Rouge
+                                status_text = "⚠️ DANGER : NON-ASSURÉ RCT"
+                        
+                        # CONDITION POLICE : Danger seulement si aucune assurance
+                        elif st.session_state.user_auth == "Staff":
+                            if not is_police_insured:
+                                status_bg = "#d32f2f"
+                                status_text = "⚠️ VÉHICULE NON-ASSURÉ"
+
+                        # --- LE TICKET NOSTALGIQUE ---
                         st.markdown(f"""
-                        <div style="border: 2px solid #000; padding: 10px; background: white; color: black; font-family: monospace; margin-bottom: 10px;">
-                            <b>PLAQUE :</b> {v['Numéro de la plaque']}<br>
-                            <b>ASSU :</b> {v['Assurance']}
-                            <div style="margin-top: 5px; text-align: center; background: {status_bg}; color: {text_color}; font-weight: bold; font-size: 0.7em; padding: 4px;">
+                        <div style="border: 3px solid #000; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; margin-bottom: 15px; box-shadow: 5px 5px 0px #000;">
+                            <center><b style="font-size:1.1em; text-decoration: underline;">TITRE DE CIRCULATION</b></center>
+                            <div style="margin-top:10px; font-size: 0.9em;">
+                                <b>PLAQUE :</b> {v['Numéro de la plaque']}<br>
+                                <b>MODÈLE :</b> {v['Marque du véhicule']}<br>
+                                <b>ASSUR. :</b> {v['Assurance']}
+                            </div>
+                            <div style="margin-top: 10px; text-align: center; background: {status_bg}; color: {text_color}; font-weight: bold; font-size: 0.8em; padding: 6px; border: 1px solid black;">
                                 {status_text}
                             </div>
                         </div>
