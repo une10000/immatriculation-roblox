@@ -702,26 +702,30 @@ with tabs[0]:
                     u_solde = float(str(df_b.at[u_idx, "Solde"]).replace('$', '').replace(',', ''))
                     
                     if u_solde >= total_bill:
+                        # 1. Débit du client
                         df_b.at[u_idx, "Solde"] = u_solde - total_bill
                         
+                        # 2. Crédit de l'assurance (si applicable)
                         if taxe_assu > 0:
                             target_acc = "Moune2010" if "AVERIS" in f_assu else ACC_RCT
                             a_idx = df_b[df_b["Nom Roblox"] == target_acc].index[0]
                             old_solde = float(str(df_b.at[a_idx, "Solde"]).replace('$', '').replace(',', ''))
                             df_b.at[a_idx, "Solde"] = old_solde + taxe_assu
-                            horaire_complet = datetime.now().strftime("%d/%m/%Y %H:%M")
-                            from datetime import datetime, timedelta
-                            horaire_utc_plus_1 = (datetime.now() + timedelta(hours=1)).strftime("%d/%m/%Y %H:%M")
-                            
-                            new_row = pd.DataFrame([{
-                                "Horodateur": horaire_utc_plus_1,
-                                "Nom d'utilisateur ROBLOX": f_owner, 
-                                "Marque du véhicule": f_model, 
-                                "Numéro de la plaque": f_plate, 
-                                "Assurance": f_assu, 
-                                "CODE": f_code
-                            }])
                         
+                        # 3. Préparation des données (HORS du bloc assurance)
+                        from datetime import datetime, timedelta
+                        horaire_utc_plus_1 = (datetime.now() + timedelta(hours=1)).strftime("%d/%m/%Y %H:%M")
+                        
+                        new_row = pd.DataFrame([{
+                            "Horodateur": horaire_utc_plus_1,
+                            "Nom d'utilisateur ROBLOX": f_owner, 
+                            "Marque du véhicule": f_model, 
+                            "Numéro de la plaque": f_plate, 
+                            "Assurance": f_assu, 
+                            "CODE": f_code
+                        }])
+                        
+                        # 4. Mise à jour Cloud
                         cloud_conn.update(worksheet="Banque", data=df_b)
                         cloud_conn.update(
                             worksheet="Copie de Immatriculations",
@@ -729,7 +733,7 @@ with tabs[0]:
                         )
                         
                         st.balloons()
-                        st.success(f"✅ Véhicule enregistré ! Total payé : {total_bill}$")
+                        st.success(f"✅ Véhicule enregistré à {horaire_utc_plus_1} ! Total : {total_bill}$")
                         st.cache_data.clear()
                         time.sleep(2)
                         st.rerun()
