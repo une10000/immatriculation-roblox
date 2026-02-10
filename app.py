@@ -232,9 +232,15 @@ if st.session_state.user_auth is not None:
 # ======================================================================================
 # 5. LOCKSCREEN (CONNEXION) - UNITÉ FÉDÉRALE DE RENSSELAER
 # ======================================================================================
+# ======================================================================================
+# 5. LOCKSCREEN (CONNEXION) - UNITÉ FÉDÉRALE DE RENSSELAER
+# ======================================================================================
 if st.session_state.user_auth is None:
+    # --- AUTO-REFRESH (L'HORLOGE SE RECHARGE TOUTES LES 60s) ---
     from streamlit_autorefresh import st_autorefresh
     st_autorefresh(interval=60000, key="lockscreen_refresh")
+
+    # --- CONFIGURATION INTERFACE & CORRECTIFS ---
     st.markdown("""
         <style>
             [data-testid="stSidebar"], [data-testid="stSidebarNav"] { display: none; }
