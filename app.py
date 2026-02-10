@@ -361,7 +361,7 @@ st.markdown('<div class="header-box"><h2>📂 REGISTRE NATIONAL DES CITOYENS</h2
 with st.container():
     st.markdown("""
     <div class="info-card">
-        <b>GUIDE DE RECHERCHE :</b> Sélectionnez un nom dans la liste déroulante pour extraire instantanément le dossier financier...
+        <b>GUIDE DE RECHERCHE :</b> Sélectionnez un nom pour extraire le dossier complet et gérer les actions de terrain.
     </div>
     """, unsafe_allow_html=True)
     
@@ -369,131 +369,101 @@ with st.container():
     target = st.selectbox("Sélectionner un citoyen :", search_list)
     
     if target != "---":
+        # --- LIGNE 1 : INFOS GÉNÉRALES ---
         col1, col2, col3 = st.columns(3)
         
-        # --- COLONNE 1 : POINTS & PERMIS ---
         with col1:
             p_data = df_p[df_p["Nom Roblox"] == target]
             if not p_data.empty:
                 pts_val = int(p_data.iloc[0]["PTS"])
-                c_pts, c_vide, c_motif_p = st.columns([3, 0.5, 2])
-                with c_pts:
-                    st.metric("POINTS PERMIS", f"{pts_val}/25")
-                    status_color = "green" if pts_val > 0 else "red"
-                    st.markdown(f"Statut : <b style='color:{status_color};'>{'VALIDE' if pts_val > 0 else 'SUSPENDU'}</b>", unsafe_allow_html=True)
-            else:
-                st.error("Aucun permis trouvé.")
+                st.metric("POINTS PERMIS", f"{pts_val}/25")
+                status_color = "green" if pts_val > 0 else "red"
+                st.markdown(f"Statut : <b style='color:{status_color};'>{'VALIDE' if pts_val > 0 else 'SUSPENDU'}</b>", unsafe_allow_html=True)
 
-        # --- COLONNE 2 : BANQUE ---
         with col2:
             b_data = df_b[df_b["Nom Roblox"] == target]
             if not b_data.empty:
                 st.metric("SOLDE BANCAIRE", f"{b_data.iloc[0]['Solde']}$")
-                current_jobs_raw = str(b_data.iloc[0]['Emploiement'])
-                st.write(f"🏢 Métier : **{current_jobs_raw}**")
-                
-                if st.session_state.user_auth == "Staff":
-                    if st.button("✏️ Modifier le métier", key=f"edit_job_{target}", use_container_width=True):
-                        st.session_state[f"show_editor_{target}"] = not st.session_state.get(f"show_editor_{target}", False)
-                    if st.session_state.get(f"show_editor_{target}", False):
-                        with st.container(border=True):
-                            liste_metiers = ["Sans-Emploi", "Agent RCT", "Averis", "Police", "Staff", "Service Public", "Entreprise Privée"]
-                            new_jobs = st.multiselect("Sélection :", options=liste_metiers)
-                            if st.button("💾 Sauver", key=f"save_j_{target}", use_container_width=True):
-                                new_str = " / ".join(new_jobs) if new_jobs else "Sans-Emploi"
-                                idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
-                                df_b.at[idx_b, "Emploiement"] = new_str
-                                cloud_conn.update(worksheet="Banque", data=df_b)
-                                st.cache_data.clear()
-                                st.rerun()
+                st.write(f"🏢 Métier : **{b_data.iloc[0]['Emploiement']}**")
                 st.caption(f"📅 Arrivée : {b_data.iloc[0]['Date d\'arrivée']}")
-            else:
-                st.error("Aucun compte trouvé.")
 
-        # --- COLONNE 3 : ARCHIVES ---
         with col3:
-            st.markdown("### 📁 ARCHIVES")
-            try:
-                df_f_history = cloud_conn.read(worksheet="Factures").fillna("")
-                historique = df_f_history[(df_f_history["Cible"] == target) & (df_f_history["Statut"] == "PAYÉ")]
-                if not historique.empty:
-                    for _, f in historique.iterrows():
+            st.markdown("### 📁 ARCHIVES PAYÉES")
+            df_f_history = df_all_f[(df_all_f["Cible"] == target) & (df_all_f["Statut"] == "PAYÉ")].tail(3)
+            if not df_f_history.empty:
+                for _, f in df_f_history.iterrows():
+                    st.caption(f"✅ #{f['ID']} - {f['Motif']} ({f['Montant']}$)")
+            else:
+                st.info("Aucun historique.")
+
+        # ======================================================================================
+        # 6.1 LE PANNEAU D'ACTION (TON ANCIENNE DISPOSITION)
+        # ======================================================================================
+        if st.session_state.user_auth in ["Averis", "RCT"]:
+            st.markdown("---")
+            st.subheader(f"🛠️ GESTION DU DOSSIER : {target}")
+            
+            # TES 3 COLONNES SONT ICI :
+            c_left, c_mid, c_right = st.columns([1.2, 1, 1])
+
+            # 1. À GAUCHE : LE FORMULAIRE
+            with c_left:
+                st.markdown("#### 📝 FORMULAIRE")
+                with st.form("form_action_unifie"):
+                    type_action = st.radio("Action :", ["Facturation", "Immatriculation"], horizontal=True)
+                    
+                    if type_action == "Facturation":
+                        mt = st.number_input("Montant ($)", min_value=0, value=500)
+                        mo = st.text_input("Motif")
+                    else:
+                        plaque = st.text_input("Plaque (ex: ABC-123)")
+                        marque = st.text_input("Marque du véhicule")
+
+                    if st.form_submit_button("VALIDER L'ACTION"):
+                        if type_action == "Facturation":
+                            new_f = {"ID": len(df_all_f)+1, "Emetteur": st.session_state.user_auth, "Cible": target, "Montant": mt, "Motif": mo, "Statut": "EN ATTENTE"}
+                            df_all_f = pd.concat([df_all_f, pd.DataFrame([new_f])], ignore_index=True)
+                            cloud_conn.update(worksheet="Factures", data=df_all_f)
+                            st.success("Facture émise !")
+                        else:
+                            new_v = {"Nom d'utilisateur ROBLOX": target, "Numéro de la plaque": plaque.upper(), "Marque du véhicule": marque, "Horodateur": datetime.now().strftime("%d/%m/%Y"), "Assurance": st.session_state.user_auth}
+                            df_i = pd.concat([df_i, pd.DataFrame([new_v])], ignore_index=True)
+                            cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i)
+                            st.success("Véhicule immatriculé !")
+                        st.rerun()
+
+            # 2. AU MILIEU : LE TICKET REÇU
+            with c_mid:
+                st.markdown("#### 🎫 APERÇU TICKET")
+                # Si c'est une facture, on dessine le ticket en temps réel
+                if type_action == "Facturation":
+                    st.markdown(f"""
+                    <div style="border: 2px dashed #000; padding: 15px; background: white; color: black; font-family: monospace;">
+                        <center><b>*** REÇU {st.session_state.user_auth.upper()} ***</b></center>
+                        <br>
+                        <b>CLIENT :</b> {target}<br>
+                        <b>MOTIF :</b> {mo if mo else "..."}<br>
+                        <b>TOTAL :</b> {mt}$<br>
+                        <hr>
+                        <center><small>Document officiel RCRP</small></center>
+                    </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    st.info("Mode Immatriculation : Pas de ticket généré.")
+
+            # 3. À DROITE : LES VÉHICULES DU CITOYEN
+            with c_right:
+                st.markdown("#### 🚘 VÉHICULES")
+                v_list = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
+                if not v_list.empty:
+                    for _, v in v_list.iterrows():
                         st.markdown(f"""
-                        <div style="border: 1px solid #000; padding: 10px; background: #f9f9f9; color: black; margin-bottom: 8px; border-left: 5px solid green;">
-                            <div style="display: flex; justify-content: space-between; font-size: 0.8em;">
-                                <b>REF: #{f['ID']}</b>
-                                <b style="color: green;">ACQUITTÉE ✔</b>
-                            </div>
-                            <hr style="margin: 5px 0; border-top: 1px dashed #000;">
-                            <div style="font-size: 0.9em;">
-                                <b>MOTIF :</b> {f['Motif']}<br>
-                                <b>MONTANT :</b> {f['Montant']}$
-                            </div>
+                        <div style="background:#f0f2f6; padding:8px; border-radius:5px; margin-bottom:5px; border-left:4px solid #000;">
+                            <b>{v['Numéro de la plaque']}</b><br><small>{v['Marque du véhicule']}</small>
                         </div>
                         """, unsafe_allow_html=True)
                 else:
-                    st.info("Aucun paiement archivé.")
-            except: pass
-
-        # ======================================================================================
-        # 6.1 INTERFACE AVERIS (COPIE CONFORME RCT)
-        # ======================================================================================
-        if st.session_state.user_auth == "Averis":
-            st.markdown("---")
-            st.subheader("🏢 ACTIONS AVERIS")
-            t1, t2 = st.tabs(["🚘 IMMATRICULATION", "📑 FACTURATION"])
-            with t1:
-                with st.form("form_immat_averis"):
-                    plaque = st.text_input("Plaque")
-                    marque = st.text_input("Marque")
-                    date_auto = datetime.now().strftime("%d/%m/%Y")
-                    if st.form_submit_button("Enregistrer Véhicule"):
-                        new_v = {"Nom d'utilisateur ROBLOX": target, "Numéro de la plaque": plaque.upper(), "Marque du véhicule": marque, "Horodateur": date_auto, "Assurance": "AVERIS"}
-                        df_i = pd.concat([df_i, pd.DataFrame([new_v])], ignore_index=True)
-                        cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i)
-                        st.success("Enregistré par Averis")
-                        st.rerun()
-            with t2:
-                with st.form("form_fact_averis"):
-                    mt = st.number_input("Montant", min_value=0, value=500)
-                    mo = st.text_input("Motif")
-                    if st.form_submit_button("Émettre Facture"):
-                        # IMPORTANT : L'émetteur est "Averis", donc l'argent ira à Moune2010 lors du paiement
-                        new_f = {"ID": len(df_all_f)+1, "Emetteur": "Averis", "Cible": target, "Montant": mt, "Motif": mo, "Statut": "EN ATTENTE"}
-                        df_all_f = pd.concat([df_all_f, pd.DataFrame([new_f])], ignore_index=True)
-                        cloud_conn.update(worksheet="Factures", data=df_all_f)
-                        st.success("Facture Averis envoyée (Paiement vers Moune2010)")
-                        st.rerun()
-
-        # ======================================================================================
-        # 6.2 INTERFACE RCT
-        # ======================================================================================
-        if st.session_state.user_auth == "RCT":
-            st.markdown("---")
-            st.subheader("👨‍🔧 ACTIONS RCT")
-            t1, t2 = st.tabs(["🚘 IMMATRICULATION", "📑 FACTURATION"])
-            with t1:
-                with st.form("form_immat_rct"):
-                    plaque = st.text_input("Plaque")
-                    marque = st.text_input("Marque")
-                    date_auto = datetime.now().strftime("%d/%m/%Y")
-                    if st.form_submit_button("Enregistrer Véhicule"):
-                        new_v = {"Nom d'utilisateur ROBLOX": target, "Numéro de la plaque": plaque.upper(), "Marque du véhicule": marque, "Horodateur": date_auto, "Assurance": "RCT"}
-                        df_i = pd.concat([df_i, pd.DataFrame([new_v])], ignore_index=True)
-                        cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i)
-                        st.success("Enregistré par RCT")
-                        st.rerun()
-            with t2:
-                with st.form("form_fact_rct"):
-                    mt = st.number_input("Montant", min_value=0, value=500)
-                    mo = st.text_input("Motif")
-                    if st.form_submit_button("Émettre Facture"):
-                        # L'émetteur est "RCT", donc l'argent ira à une10000
-                        new_f = {"ID": len(df_all_f)+1, "Emetteur": "RCT", "Cible": target, "Montant": mt, "Motif": mo, "Statut": "EN ATTENTE"}
-                        df_all_f = pd.concat([df_all_f, pd.DataFrame([new_f])], ignore_index=True)
-                        cloud_conn.update(worksheet="Factures", data=df_all_f)
-                        st.success("Facture RCT envoyée (Paiement vers une10000)")
-                        st.rerun()
+                    st.write("Aucun véhicule.")
 # ======================================================================================
 # 7. LOGIQUE DES ONGLETS (CORRIGÉE)
 # ======================================================================================
