@@ -715,15 +715,14 @@ with tabs[0]:
                         st.error("❌ Solde insuffisant.")
                 else:
                     st.warning("⚠️ Veuillez remplir tous les champs.")
-                    
-with col_t:
-        st.markdown("### 🖼️ APERÇU DU TITRE (LIVE)")
+                    with col_t:
+        st.write("### 🖼️ APERÇU DU TITRE (LIVE)")
         
         # Logique pour la couleur de la taxe jeune
         color_taxe = "#333" if val_taxe_jeune == 0 else "#d9534f"
         label_taxe = "Taxe Jeune Conducteur" if val_taxe_jeune == 0 else "⚠️ Taxe Jeune Conducteur"
 
-        # Construction du HTML
+        # On prépare le contenu du ticket
         ticket_html = f"""
         <div style="border: 2px dashed #555; padding: 20px; background-color: #f9f9f9; color: #333; font-family: 'Courier New', Courier, monospace; border-radius: 10px;">
             <div style="text-align:center; margin-bottom: 10px;">
@@ -746,7 +745,7 @@ with col_t:
                 <p style="margin: 2px 0; display: flex; justify-content: space-between;">
                     <span>Frais d'assurance :</span> <span>{taxe_assu}$</span>
                 </p>
-                <p style="margin: 2px 0; display: flex; justify-content: space-between; color: {color_taxe};">
+                <p style="margin: 2px 0; display: flex; justify-content: space-between; color: {color_taxe}; font-weight: bold;">
                     <span>{label_taxe} :</span> <span>{val_taxe_jeune}$</span>
                 </p>
             </div>
@@ -754,14 +753,10 @@ with col_t:
             <div style="border-top: 2px solid #333; padding-top: 10px; text-align: right;">
                 <span style="font-size: 1.3em; font-weight: bold;">TOTAL PAYÉ : {total_bill}$</span>
             </div>
-            
-            <div style="margin-top: 20px; text-align: center; font-size: 0.8em; color: #777;">
-                <p><i>Ce document certifie l'enregistrement du véhicule.<br>Système National RCRP.</i></p>
-            </div>
         </div>
         """
         
-        # LA LIGNE À NE PAS OUBLIER :
+        # --- LA CORRECTION EST ICI ---
         st.markdown(ticket_html, unsafe_allow_html=True)
 # --- ONGLET 2 : SERVICES AGENT (FACTURES / POINTS / CONSULTATION) ---
 if st.session_state.user_auth in ["RCT", "Staff"]:
