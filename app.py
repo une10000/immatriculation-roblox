@@ -590,16 +590,14 @@ if not v_data.empty:
     v_cols = st.columns(3)
     for i, (_, veh) in enumerate(v_data.iterrows()):
         with v_cols[i % 3]:
-            # --- 1. RÉCUPÉRATION DE LA DATE (Colonne Horodateur) ---
-            # On prend la colonne Horodateur, sinon N/A
+            # --- RÉCUPÉRATION TECHNIQUE DE LA DATE ---
             date_val = veh.get('Horodateur', 'N/A')
-            date_display = str(date_val)[:10] if date_val != 'N/A' else "Non daté"
+            date_display = str(date_val)[:10] if date_val != 'N/A' else "Non spécifiée"
 
-            # --- 2. LOGIQUE DE SÉCURITÉ RCT ---
+            # --- LOGIQUE DE SÉCURITÉ RCT ---
             assu = str(veh.get('Assurance', '')).upper()
             role = st.session_state.user_auth
             
-            # Couleurs et statuts
             color = "green"
             status_txt = "✅ VÉHICULE EN RÈGLE"
             
@@ -608,22 +606,22 @@ if not v_data.empty:
                     color = "green"
                     status_txt = "✅ ASSURÉ RCT"
                 elif "AVERIS" in assu:
-                    color = "#E67E22" # Orange
+                    color = "#E67E22"
                     status_txt = "⚠️ ATTENTION : ASSURÉ AVERIS"
                 else:
-                    color = "#d32f2f" # Rouge
+                    color = "#d32f2f"
                     status_txt = "🚨 DANGER : NON-ASSURÉ"
 
-            # --- 3. LE REÇU (TITRE DE CIRCULATION) ---
+            # --- TON DESIGN D'ORIGINE ---
             st.markdown(f"""
-            <div style="border: 2px solid black; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; line-height: 1.2; min-height: 220px;">
+            <div style="border: 2px solid black; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; line-height: 1.2;">
                 <center><b>TITRE DE CIRCULATION</b><br><small>RÉPUBLIQUE DE RENSSERLAER</small></center>
                 <hr style="border-top: 1px solid #ccc; margin: 10px 0;">
-                <b>DATE IMMAT :</b> {date_display}<br>
+                <b>DATE :</b> {date_display}<br>
                 <b>NOM :</b> {target}<br>
-                <b>MODÈLE :</b> {veh.get('Marque du véhicule', 'Inconnu')}<br>
-                <b>PLAQUE :</b> <span style="border: 1px solid black; padding: 0 3px; font-weight: bold;">{veh.get('Numéro de la plaque', '---')}</span><br>
-                <b>ASSURANCE :</b> {veh.get('Assurance', 'N/A')}
+                <b>MODÈLE :</b> {veh.get('Marque du véhicule', '')}<br>
+                <b>PLAQUE :</b> <span style="border: 1px solid black; padding: 0 3px;">{veh.get('Numéro de la plaque', '')}</span><br>
+                <b>ASSURANCE :</b> {veh.get('Assurance', '')}
                 <hr style="border-top: 1px solid #ccc; margin: 10px 0;">
                 <div style="text-align: center; color: {color}; font-weight: bold; font-size: 0.8em;">
                     {status_txt}<br>
@@ -631,8 +629,7 @@ if not v_data.empty:
                 </div>
             </div>
             """, unsafe_allow_html=True)
-
-            # --- 4. OPTION DE RADIATION ---
+                                        
             with st.expander("🗑️ Radier"):
                 r_cod_check = st.text_input("Code Secret", type="password", key=f"rad_input_{veh['Numéro de la plaque']}_{i}")
                 if st.button("CONFIRMER", key=f"btn_confirm_{veh['Numéro de la plaque']}_{i}", use_container_width=True):
@@ -641,7 +638,6 @@ if not v_data.empty:
                             df_all_immat = cloud_conn.read(worksheet="Copie de Immatriculations")
                             df_updated = df_all_immat[df_all_immat["Numéro de la plaque"] != veh['Numéro de la plaque']]
                             cloud_conn.update(worksheet="Copie de Immatriculations", data=df_updated)
-                            
                             st.cache_data.clear()
                             st.success("Radié !")
                             time.sleep(1)
@@ -650,7 +646,6 @@ if not v_data.empty:
                             st.error(f"Erreur : {e}")
                     else:
                         st.error("Code incorrect")
-
 else:
     st.info("Aucun véhicule trouvé.")
 # ======================================================================================
