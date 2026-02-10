@@ -455,10 +455,6 @@ with col3:
                                     except Exception as e_inner:
                                         st.error(f"Détail erreur : {e_inner}")
                             
-                            # --- TICKET VISUEL ---
-                            # --- TICKET VISUEL MIS À JOUR ---
-                            # On essaie d'extraire la plaque si elle est dans le motif, sinon on met ---
-                            # Note: Si tu stockes la plaque ailleurs, remplace f['Plaque'] par la bonne colonne
                             plaque_archive = f.get('Plaque', '---') 
 
                             st.markdown(f"""
@@ -487,9 +483,6 @@ with col3:
 # ======================================================================================
 # 7. LOGIQUE DES ONGLETS (CORRIGÉE)
 # ======================================================================================
-
-# =============================================================
-
 # ======================================================================================
 # NOUVEAU : SYSTÈME DE PAIEMENT DES FACTURES (STYLE TICKET)
 # ======================================================================================
