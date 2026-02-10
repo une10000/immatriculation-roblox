@@ -233,16 +233,19 @@ if st.session_state.user_auth is not None:
 # 5. LOCKSCREEN (CONNEXION) - UNITÉ FÉDÉRALE DE RENSSELAER
 # ======================================================================================
 if st.session_state.user_auth is None:
-    # --- CONFIGURATION INTERFACE (Alignement Total & Ligne Rouge) ---
+    # --- CONFIGURATION INTERFACE (Alignement et Ligne Rouge) ---
     st.markdown("""
         <style>
             [data-testid="stSidebar"], [data-testid="stSidebarNav"] { display: none; }
             [data-testid="stStatusWidget"] { display: none; }
             
-            /* On redescend le bloc pour voir les arrondis du haut */
-            .block-container { padding-top: 3rem !important; }
+            /* On redescend le tout pour les arrondis du haut */
+            .block-container { padding-top: 3.5rem !important; }
             
-            /* Force l'iframe (Bonjour) à prendre toute la largeur sans marges */
+            /* On supprime les espaces par défaut entre les éléments Streamlit */
+            [data-testid="stVerticalBlock"] > div { gap: 0rem !important; }
+
+            /* L'iframe du haut (Bonjour) */
             iframe { 
                 display: block; 
                 width: 100% !important; 
@@ -251,17 +254,18 @@ if st.session_state.user_auth is None:
                 border-radius: 20px 20px 0 0 !important;
             }
 
-            /* Le bloc République soudé avec sa ligne rouge à gauche */
-            .republique-box-fix {
-                background-color: #1a1c23; /* Couleur sombre raccord avec tes screens */
-                margin-top: -36px; /* Soudure parfaite */
+            /* Le bloc République (Bas) avec sa ligne rouge */
+            .republique-box-welded {
+                background-color: #1a1c23;
+                margin-top: -38px !important; /* FORCE LA SOUDURE */
                 border-radius: 0 0 20px 20px; 
-                border-left: 6px solid #ff4b4b; /* TA LIGNE ROUGE ICI */
+                border-left: 6px solid #ff4b4b; /* TA LIGNE ROUGE */
                 padding: 30px 20px;
                 text-align: center;
                 width: 100%;
                 box-sizing: border-box;
-                box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+                position: relative;
+                z-index: 10;
             }
         </style>
     """, unsafe_allow_html=True)
@@ -282,7 +286,7 @@ if st.session_state.user_auth is None:
         t_color = "#FFFFFF"
         glow = "0 0 40px rgba(255,255,255,0.9), 0 0 80px rgba(255,255,255,0.4)"
 
-    # --- LE BLOC HAUT (Bonjour) ---
+    # --- BLOC HAUT (Bonjour) ---
     import streamlit.components.v1 as components
     components.html(f"""
         <body style="margin: 0; padding: 0; overflow: hidden;">
@@ -311,10 +315,10 @@ if st.session_state.user_auth is None:
         </body>
     """, height=380)
 
-    # --- LE BLOC BAS (République avec ligne rouge) ---
+    # --- BLOC BAS (République soudé + Ligne rouge) ---
     st.markdown(f"""
-    <div class="republique-box-fix">
-        <span style="font-size: 40px; filter: drop-shadow(0 0 10px rgba(255,255,255,0.2));">👤</span> 
+    <div class="republique-box-welded">
+        <span style="font-size: 40px;">👤</span> 
         <h2 style="margin-bottom:0; margin-top:10px; font-family: Helvetica, sans-serif; color: white; letter-spacing: 2px;">🏛️ RÉPUBLIQUE DE RENSSELAER</h2>
         <p style="font-size: 0.9em; opacity: 0.7; font-family: Helvetica, sans-serif; color: white; text-transform: uppercase; letter-spacing: 1px;">Terminal Fédéral d'Opérations Nationales</p>
         <hr style="border-color: rgba(255,255,255,0.1); margin: 20px 0;">
