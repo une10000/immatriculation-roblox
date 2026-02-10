@@ -353,57 +353,7 @@ if st.session_state.user_auth is None:
 # LE RESTE DU CODE (S'affiche uniquement après connexion)
 # ======================================================================================
 # ======================================================================================
-# 6. MODULE : DOSSIER CITOYEN UNIFIÉ (VERSION CORRIGÉE)
-# ======================================================================================
-
-st.markdown('<div class="header-box"><h2>📂 REGISTRE NATIONAL DES CITOYENS</h2></div>', unsafe_allow_html=True)
-
-with st.container():
-    st.markdown("""
-    <div class="info-card">
-        <b>GUIDE DE RECHERCHE :</b> Sélectionnez un nom pour extraire le dossier complet et gérer les actions de terrain.
-    </div>
-    """, unsafe_allow_html=True)
-    
-    search_list = ["---"] + sorted(df_b["Nom Roblox"].unique().tolist())
-    target = st.selectbox("Sélectionner un citoyen :", search_list)
-    
-    if target != "---":
-        # --- LIGNE 1 : INFOS GÉNÉRALES ---
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            p_data = df_p[df_p["Nom Roblox"] == target]
-            if not p_data.empty:
-                pts_val = int(p_data.iloc[0]["PTS"])
-                st.metric("POINTS PERMIS", f"{pts_val}/25")
-                status_color = "green" if pts_val > 0 else "red"
-                st.markdown(f"Statut : <b style='color:{status_color};'>{'VALIDE' if pts_val > 0 else 'SUSPENDU'}</b>", unsafe_allow_html=True)
-
-        with col2:
-            b_data = df_b[df_b["Nom Roblox"] == target]
-            if not b_data.empty:
-                st.metric("SOLDE BANCAIRE", f"{b_data.iloc[0]['Solde']}$")
-                st.write(f"🏢 Métier : **{b_data.iloc[0]['Emploiement']}**")
-                st.caption(f"📅 Arrivée : {b_data.iloc[0].get('Date d\'arrivée', '01/01/2026')}")
-
-        with col3:
-            st.markdown("### 📁 ARCHIVES PAYÉES")
-            try:
-                # CORRECTION ICI : On recharge proprement les factures pour éviter le NameError
-                df_factures_temp = cloud_conn.read(worksheet="Factures").fillna("")
-                df_f_history = df_factures_temp[(df_factures_temp["Cible"] == target) & (df_factures_temp["Statut"] == "PAYÉ")].tail(3)
-                
-                if not df_f_history.empty:
-                    for _, f in df_f_history.iterrows():
-                        st.caption(f"✅ #{f['ID']} - {f['Motif']} ({f['Montant']}$)")
-                else:
-                    st.info("Aucun historique.")
-            except Exception as e:
-                st.error("Erreur d'accès aux archives.")
-
-        # ======================================================================================
-        # 6.1 LE PANNEAU D'ACTION (DISPOSITION 3 COLONNES)
+        # 6.1 LE PANNEAU D'ACTION (STYLE TICKET CLASSIQUE RÉTABLI)
         # ======================================================================================
         if st.session_state.user_auth in ["Averis", "RCT"]:
             st.markdown("---")
@@ -414,7 +364,6 @@ with st.container():
             # 1. À GAUCHE : LE FORMULAIRE
             with c_left:
                 st.markdown("#### 📝 FORMULAIRE")
-                # On utilise un prefix unique pour éviter les conflits Streamlit
                 with st.form(key=f"form_action_{target}"):
                     type_action = st.radio("Action :", ["Facturation", "Immatriculation"], horizontal=True)
                     
@@ -426,45 +375,73 @@ with st.container():
                         marque = st.text_input("Marque du véhicule")
 
                     if st.form_submit_button("VALIDER L'ACTION"):
-                        df_f_up = cloud_conn.read(worksheet="Factures") # On refresh avant d'écrire
+                        df_f_up = cloud_conn.read(worksheet="Factures").fillna("")
+                        
                         if type_action == "Facturation":
-                            new_f = {"ID": len(df_f_up)+1, "Emetteur": st.session_state.user_auth, "Cible": target, "Montant": mt, "Motif": mo, "Statut": "EN ATTENTE"}
+                            # Ajout auto de la date limite (+24h)
+                            limite = (datetime.now() + timedelta(hours=24)).strftime("%d/%m/%Y %H:%M:%S")
+                            new_f = {
+                                "ID": len(df_f_up) + 1, 
+                                "Emetteur": st.session_state.user_auth, 
+                                "Cible": target, 
+                                "Montant": mt, 
+                                "Motif": mo, 
+                                "Statut": "EN ATTENTE",
+                                "Date_Limite": limite
+                            }
                             df_f_up = pd.concat([df_f_up, pd.DataFrame([new_f])], ignore_index=True)
                             cloud_conn.update(worksheet="Factures", data=df_f_up)
                             st.success("Facture émise !")
                         else:
-                            df_v_up = cloud_conn.read(worksheet="Copie de Immatriculations")
-                            new_v = {"Nom d'utilisateur ROBLOX": target, "Numéro de la plaque": plaque.upper(), "Marque du véhicule": marque, "Horodateur": datetime.now().strftime("%d/%m/%Y"), "Assurance": st.session_state.user_auth}
+                            # Immatriculation avec ajout auto de la date
+                            df_v_up = cloud_conn.read(worksheet="Copie de Immatriculations").fillna("")
+                            new_v = {
+                                "Nom d'utilisateur ROBLOX": target, 
+                                "Numéro de la plaque": plaque.upper(), 
+                                "Marque du véhicule": marque, 
+                                "Horodateur": datetime.now().strftime("%d/%m/%Y"), # Date auto
+                                "Assurance": st.session_state.user_auth
+                            }
                             df_v_up = pd.concat([df_v_up, pd.DataFrame([new_v])], ignore_index=True)
                             cloud_conn.update(worksheet="Copie de Immatriculations", data=df_v_up)
                             st.success("Véhicule immatriculé !")
+                        
                         st.cache_data.clear()
+                        time.sleep(1)
                         st.rerun()
 
-            # 2. AU MILIEU : LE TICKET REÇU
+            # 2. AU MILIEU : L'APERÇU TICKET (TON ANCIEN STYLE)
             with c_mid:
                 st.markdown("#### 🎫 APERÇU TICKET")
                 if type_action == "Facturation":
+                    # Détermination du nom de l'agence
+                    agency = "SERVICES AVERIS" if st.session_state.user_auth == "Averis" else "RÉSEAU RCT"
+                    
                     st.markdown(f"""
-                    <div style="border: 2px dashed #000; padding: 15px; background: white; color: black; font-family: monospace;">
-                        <center><b>*** REÇU {st.session_state.user_auth.upper()} ***</b></center>
-                        <br>
-                        <b>CLIENT :</b> {target}<br>
-                        <b>MOTIF :</b> {mo if mo else "..."}<br>
-                        <b>TOTAL :</b> {mt}$<br>
-                        <hr>
-                        <center><small>Document officiel RCRP<br>{datetime.now().strftime("%d/%m/%Y")}</small></center>
+                    <div style="border: 2px solid #000; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; box-shadow: 6px 6px 0px #000; margin-top: 10px;">
+                        <center><b style="font-size:1.1em; text-decoration: underline;">SOUCHE OFFICIELLE</b><br>
+                        <small>{agency}</small></center>
+                        <hr style="border-top: 1px dashed #000; margin: 10px 0;">
+                        <div style="font-size: 0.9em;">
+                            <b>CITOYEN :</b> {target}<br>
+                            <b>AGENT   :</b> {st.session_state.user_auth}<br>
+                            <b>MOTIF   :</b> {mo if mo else "..."}
+                        </div>
+                        <hr style="border-top: 1px dashed #000; margin: 10px 0;">
+                        <div style="text-align: center; font-weight: bold; font-size: 1.2em;">
+                            TOTAL : {mt}$
+                        </div>
+                        <center><small style="font-size: 0.7em; opacity: 0.6; display:block; margin-top:10px;">GÉNÉRÉ LE {datetime.now().strftime("%d/%m/%Y")}</small></center>
                     </div>
                     """, unsafe_allow_html=True)
                 else:
-                    st.info("Mode Immatriculation : Enregistrement base de données.")
+                    st.info("Mode Immatriculation : Les données seront envoyées vers la base 'Immatriculations'.")
 
             # 3. À DROITE : LES VÉHICULES DU CITOYEN
             with c_right:
                 st.markdown("#### 🚘 VÉHICULES")
-                # On recharge les immatriculations pour être à jour
-                v_list = cloud_conn.read(worksheet="Copie de Immatriculations")
-                v_target = v_list[v_list["Nom d'utilisateur ROBLOX"] == target]
+                # On utilise df_i qui est déjà chargé en début de script
+                v_target = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
                 if not v_target.empty:
                     for _, v in v_target.iterrows():
                         st.markdown(f"""
@@ -473,7 +450,7 @@ with st.container():
                         </div>
                         """, unsafe_allow_html=True)
                 else:
-                    st.write("Aucun véhicule.")
+                    st.write("Aucun véhicule enregistré.")
 # ======================================================================================
 # 7. LOGIQUE DES ONGLETS (CORRIGÉE)
 # ======================================================================================
