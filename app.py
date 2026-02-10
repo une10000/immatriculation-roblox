@@ -811,45 +811,38 @@ if alertes:
             st.divider()
 else:
     st.success("✅ Aucune facture en retard. Tous les citoyens sont à jour.")
-        if target == "---":
-            st.warning("⚠️ Sélectionnez un citoyen en haut de la page.")
-        else:
+    if target == "---":
+        st.warning("⚠️ Sélectionnez un citoyen en haut de la page.")
+    else:
             # 3 colonnes : Saisie | Facture (Milieu) | Véhicules (Droite)
-            col_saisie, col_facture, col_vehicules = st.columns([1, 1.2, 0.8])
-
-            with col_saisie:
-                with st.container(border=True):
-                    st.markdown("#### 📝 Saisie")
-                    f_val = st.number_input("Montant ($)", min_value=0, step=50, key="v_val_final")
-                    
-                    is_rct = (st.session_state.user_auth == "RCT")
-                    f_pts = st.number_input(
-                        "Points à retirer", 
-                        min_value=0, max_value=12, step=1, 
-                        key="v_pts_final", 
-                        disabled=is_rct
-                    )
-                    
-                    f_motif = st.text_input("Motif", key="v_mot_final")
-                    
-                    # Récupération des données véhicules pour la cible
-                    target_veh = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
-                    v_list = ["AUCUN / PIÉTON"] + target_veh["Numéro de la plaque"].tolist()
-                    f_plate = st.selectbox("Véhicule concerné", v_list, key="v_plate_final")
-                    
-                    st.write("---")
-                    label = "🚨 ENVOYER & DÉBITER" if not is_rct else "🚨 ENVOYER FACTURE"
-                    
-                    if st.button(label, use_container_width=True, type="primary"):
-                        if not f_motif:
-                            st.error("Motif obligatoire.")
-                        else:
-                            # Logique d'envoi (Points + Facture)
-                            if f_pts > 0 and not is_rct:
-                                idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
-                                df_p.at[idx_p, "PTS"] = max(0, int(df_p.at[idx_p, "PTS"]) - f_pts)
-                                cloud_conn.update(worksheet="Points Permis", data=df_p)
-                            
+        col_saisie, col_facture, col_vehicules = st.columns([1, 1.2, 0.8])
+        with col_saisie:
+            with st.container(border=True):
+                st.markdown("#### 📝 Saisie")
+                f_val = st.number_input("Montant ($)", min_value=0, step=50, key="v_val_final")
+                is_rct = (st.session_state.user_auth == "RCT")
+                f_pts = st.number_input(
+                    "Points à retirer", 
+                    min_value=0, max_value=12, step=1, 
+                    key="v_pts_final", 
+                    disabled=is_rct
+                )
+                f_motif = st.text_input("Motif", key="v_mot_final")
+                # Récupération des données véhicules pour la cible
+                target_veh = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
+                v_list = ["AUCUN / PIÉTON"] + target_veh["Numéro de la plaque"].tolist()
+                f_plate = st.selectbox("Véhicule concerné", v_list, key="v_plate_final")
+                st.write("---")
+                label = "🚨 ENVOYER & DÉBITER" if not is_rct else "🚨 ENVOYER FACTURE"
+                if st.button(label, use_container_width=True, type="primary"):
+                    if not f_motif:
+                        st.error("Motif obligatoire.")
+                    else:
+                        # Logique d'envoi (Points + Facture)
+                        if f_pts > 0 and not is_rct:
+                            idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
+                            df_p.at[idx_p, "PTS"] = max(0, int(df_p.at[idx_p, "PTS"]) - f_pts)
+                            cloud_conn.update(worksheet="Points Permis", data=df_p)
                             df_f = cloud_conn.read(worksheet="Factures")
                             new_row = {
                                 "ID": random.randint(1000, 9999),
