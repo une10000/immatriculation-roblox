@@ -354,7 +354,7 @@ with st.container():
             else:
                 st.error("Aucun permis trouvé.")
 
-      # --- COLONNE 2 : BANQUE ---
+      ## --- COLONNE 2 : BANQUE ---
         with col2:
             b_data = df_b[df_b["Nom Roblox"] == target]
             if not b_data.empty:
@@ -363,46 +363,50 @@ with st.container():
                 with c_info:
                     st.metric("SOLDE BANCAIRE", f"{b_data.iloc[0]['Solde']}$")
                     
-                    # Ligne Métier avec le petit crayon
+                    # Ligne Métier avec bouton rectangulaire
                     current_jobs_raw = str(b_data.iloc[0]['Emploiement'])
-                    col_txt, col_btn = st.columns([0.8, 0.2])
                     
-                    with col_txt:
+                    # On crée deux sous-colonnes pour aligner le texte et le bouton
+                    col_txt_job, col_btn_edit = st.columns([0.7, 0.3])
+                    
+                    with col_txt_job:
                         st.write(f"🏢 Métiers : **{current_jobs_raw}**")
                     
-                    # Le bouton crayon n'apparaît que pour le Staff
                     if st.session_state.user_auth == "Staff":
-                        with col_btn:
-                            edit_mode = st.button("✏️", help="Modifier les métiers")
+                        with col_btn_edit:
+                            # Un petit bouton rectangulaire au lieu de l'emoji
+                            edit_clicked = st.button("MODIFIER", key=f"btn_edit_{target}", use_container_width=True)
                         
-                        # Si on a cliqué sur le crayon, on ouvre la zone de modif
-                        if edit_mode or st.session_state.get(f"active_edit_{target}", False):
-                            st.session_state[f"active_edit_{target}"] = True # Garde le menu ouvert
-                            
-                            liste_metiers = ["Sans-Emploi", "Agent RCT", "Averis", "Police", "Staff", "Service Public", "Entreprise Privée"]
-                            current_jobs_list = [j.strip() for j in current_jobs_raw.split("/") if j.strip()]
-                            
-                            new_jobs_list = st.multiselect("Sélectionner les métiers :", options=liste_metiers, default=current_jobs_list)
-                            
-                            c1, c2 = st.columns(2)
-                            with c1:
-                                if st.button("💾 Sauvegarder", use_container_width=True, type="primary"):
-                                    new_jobs_str = " / ".join(new_jobs_list) if new_jobs_list else "Sans-Emploi"
-                                    idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
-                                    df_b.at[idx_b, "Emploiement"] = new_jobs_str
-                                    cloud_conn.update(worksheet="Banque", data=df_b)
-                                    st.session_state[f"active_edit_{target}"] = False
-                                    st.cache_data.clear()
-                                    st.rerun()
-                            with c2:
-                                if st.button("❌ Annuler", use_container_width=True):
-                                    st.session_state[f"active_edit_{target}"] = False
-                                    st.rerun()
+                        # Gestion de l'affichage du menu de modification
+                        if edit_clicked:
+                            st.session_state[f"show_editor_{target}"] = not st.session_state.get(f"show_editor_{target}", False)
+
+                        if st.session_state.get(f"show_editor_{target}", False):
+                            with st.container(border=True):
+                                liste_metiers = ["Sans-Emploi", "Agent RCT", "Averis", "Police", "Staff", "Service Public", "Entreprise Privée"]
+                                current_jobs_list = [j.strip() for j in current_jobs_raw.split("/") if j.strip()]
+                                
+                                new_jobs_list = st.multiselect("Nouveaux métiers :", options=liste_metiers, default=current_jobs_list)
+                                
+                                ce1, ce2 = st.columns(2)
+                                with ce1:
+                                    if st.button("💾 SAUVEGARDER", use_container_width=True, type="primary"):
+                                        new_jobs_str = " / ".join(new_jobs_list) if new_jobs_list else "Sans-Emploi"
+                                        idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
+                                        df_b.at[idx_b, "Emploiement"] = new_jobs_str
+                                        cloud_conn.update(worksheet="Banque", data=df_b)
+                                        st.session_state[f"show_editor_{target}"] = False
+                                        st.cache_data.clear()
+                                        st.rerun()
+                                with ce2:
+                                    if st.button("ANNULER", use_container_width=True):
+                                        st.session_state[f"show_editor_{target}"] = False
+                                        st.rerun()
                     
                     st.caption(f"📅 Arrivée : {b_data.iloc[0]['Date d\'arrivée']}")
                 
                 with c_motif:
-                    # Ton code HTML pour les logos 🏛️ et 💳
+                    # Ton code HTML pour les logos 🏛️ et 💳 (Inchangé)
                     st.markdown("""
                         <div style="text-align: right; line-height: 1; padding-top: 5px;">
                             <div style="opacity: 0.15; font-size: 40px; margin-bottom: -10px;">🏛️</div>
