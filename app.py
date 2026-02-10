@@ -592,7 +592,8 @@ if not v_data.empty:
         with v_cols[i % 3]:
             # --- RÉCUPÉRATION TECHNIQUE DE LA DATE ---
             date_val = veh.get('Horodateur', 'N/A')
-            date_display = str(date_val)[:10] if date_val != 'N/A' else "Non spécifiée"
+            # On retire le [:10] qui coupait l'heure
+            date_display = str(date_val) if date_val != 'N/A' else "Non spécifiée"
 
             # --- LOGIQUE DE SÉCURITÉ RCT ---
             assu = str(veh.get('Assurance', '')).upper()
@@ -709,14 +710,17 @@ with tabs[0]:
                             old_solde = float(str(df_b.at[a_idx, "Solde"]).replace('$', '').replace(',', ''))
                             df_b.at[a_idx, "Solde"] = old_solde + taxe_assu
                         
-                        new_row = pd.DataFrame([{
-                            "Horodateur": datetime.now().strftime("%d/%m/%Y"),
-                            "Nom d'utilisateur ROBLOX": f_owner, 
-                            "Marque du véhicule": f_model, 
-                            "Numéro de la plaque": f_plate, 
-                            "Assurance": f_assu, 
-                            "CODE": f_code
-                        }])
+                        # --- AJOUT DE %H:%M POUR L'HEURE ---
+horaire_complet = datetime.now().strftime("%d/%m/%Y %H:%M")
+
+new_row = pd.DataFrame([{
+    "Horodateur": horaire_complet,
+    "Nom d'utilisateur ROBLOX": f_owner, 
+    "Marque du véhicule": f_model, 
+    "Numéro de la plaque": f_plate, 
+    "Assurance": f_assu, 
+    "CODE": f_code
+}])
                         
                         cloud_conn.update(worksheet="Banque", data=df_b)
                         cloud_conn.update(
