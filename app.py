@@ -233,21 +233,19 @@ if st.session_state.user_auth is not None:
 # 5. LOCKSCREEN (CONNEXION) - UNITÉ FÉDÉRALE DE RENSSELAER
 # ======================================================================================
 if st.session_state.user_auth is None:
-    # --- CONFIGURATION INTERFACE (Correction Finale Alignement & Arrondis) ---
+    # --- CONFIGURATION INTERFACE (Correction Géométrie & Arrondis) ---
     st.markdown("""
         <style>
-            /* Masquage des éléments Streamlit */
             [data-testid="stSidebar"], [data-testid="stSidebarNav"] { display: none; }
             [data-testid="stStatusWidget"] { display: none; }
             
-            /* Ajustement de la zone de contenu pour voir les arrondis du haut */
+            /* On redescend un peu le tout pour ne pas coller au bord du navigateur */
             .block-container { 
-                padding-top: 2.5rem !important; 
+                padding-top: 3rem !important; 
                 padding-bottom: 0rem !important; 
-                max-width: 800px; /* Optionnel : pour que ce soit plus beau sur grand écran */
             }
             
-            /* Style de l'iframe (le bloc Bonjour) */
+            /* Force l'iframe à être souple mais bien cadrée */
             iframe { 
                 display: block; 
                 width: 100% !important; 
@@ -255,16 +253,17 @@ if st.session_state.user_auth is None:
                 border: none !important;
                 border-radius: 20px 20px 0 0 !important;
             }
-            
-            /* Style spécifique pour l'en-tête République pour qu'il soit identique en largeur */
-            .header-box-lock {
+
+            /* Le bloc République qui doit s'aligner pile poil */
+            .republique-box {
                 background-color: #0e1117;
-                margin-top: -36px; 
+                margin-top: -36px; /* Pour souder au bloc jaune */
                 border-radius: 0 0 20px 20px; 
                 border: 1px solid rgba(255,255,255,0.05);
-                border-top: none;
-                padding: 20px;
+                padding: 30px 20px;
                 text-align: center;
+                width: 100%;
+                box-sizing: border-box;
             }
         </style>
     """, unsafe_allow_html=True)
@@ -285,18 +284,18 @@ if st.session_state.user_auth is None:
         t_color = "#FFFFFF"
         glow = "0 0 40px rgba(255,255,255,0.9), 0 0 80px rgba(255,255,255,0.4)"
 
-    # --- LE "MACHIN" HAUT (Bonjour + Horloge) ---
+    # --- LE BLOC HAUT (Bonjour) ---
     import streamlit.components.v1 as components
     components.html(f"""
         <body style="margin: 0; padding: 0; overflow: hidden;">
             <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; text-align: center; padding: 60px 20px; border-radius: 20px 20px 0 0; color: {t_color}; {pattern_style} height: 320px; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.1); border-bottom: none;">
-                <h1 style="font-size: 5.5em; margin: 0; font-weight: 900; letter-spacing: -3px; text-shadow: {glow}; line-height: 1.1;">
+                <h1 style="font-size: 5.2em; margin: 0; font-weight: 900; letter-spacing: -3px; text-shadow: {glow}; line-height: 1.1;">
                     {salut_complet}
                 </h1>
-                <p style="font-size: 1.1em; opacity: 0.8; letter-spacing: 5px; font-weight: bold; text-transform: uppercase; margin: 25px 0;">
+                <p style="font-size: 1em; opacity: 0.8; letter-spacing: 5px; font-weight: bold; text-transform: uppercase; margin: 25px 0;">
                     Unité Fédérale de Rensselaer
                 </p>
-                <div id="clock" style="font-size: 3.5em; letter-spacing: 5px; font-weight: bold; border-top: 2px solid {t_color}33; display: inline-block; padding-top: 10px;">
+                <div id="clock" style="font-size: 3.5em; letter-spacing: 3px; font-weight: bold; border-top: 2px solid {t_color}33; display: inline-block; padding-top: 10px;">
                     00:00:00
                 </div>
             </div>
@@ -314,18 +313,18 @@ if st.session_state.user_auth is None:
         </body>
     """, height=380)
 
-    # 2. EN-TÊTE RÉPUBLIQUE (Le bloc bas)
+    # --- LE BLOC BAS (République) ---
     st.markdown(f"""
-    <div class="header-box-lock">
-        <span style="font-size: 40px;">👤</span> 
-        <h2 style="margin-bottom:0; margin-top:10px; font-family: Helvetica, sans-serif; color: white;">🏛️ RÉPUBLIQUE DE RENSSELAER</h2>
-        <p style="font-size: 1em; opacity: 0.8; font-family: Helvetica, sans-serif; color: white;">TERMINAL FÉDÉRAL D'OPÉRATIONS NATIONALES</p>
-        <hr style="border-color: rgba(255,255,255,0.1); margin: 10px 0;">
-        <small style="opacity: 0.6; font-family: Helvetica, sans-serif; color: white;">VERSION 14.6.0 | SÉCURISÉ PAR PROTOCOLE RCRP-OS</small>
+    <div class="republique-box">
+        <span style="font-size: 40px; filter: drop-shadow(0 0 10px rgba(255,255,255,0.2));">👤</span> 
+        <h2 style="margin-bottom:0; margin-top:10px; font-family: Helvetica, sans-serif; color: white; letter-spacing: 2px;">🏛️ RÉPUBLIQUE DE RENSSELAER</h2>
+        <p style="font-size: 0.9em; opacity: 0.7; font-family: Helvetica, sans-serif; color: white; text-transform: uppercase; letter-spacing: 1px;">Terminal Fédéral d'Opérations Nationales</p>
+        <hr style="border-color: rgba(255,255,255,0.1); margin: 20px 0;">
+        <small style="opacity: 0.5; font-family: Helvetica, sans-serif; color: white;">VERSION 14.6.0 | SÉCURISÉ PAR PROTOCOLE RCRP-OS</small>
     </div>
     """, unsafe_allow_html=True)
     
-    st.write("") # Petit espace
+    st.write("") 
     st.warning("⚠️ **AVERTISSEMENT :** Toute action effectuée sur ce terminal est enregistrée.")
     st.write("---")
 
@@ -333,21 +332,21 @@ if st.session_state.user_auth is None:
     c1, c2, c3 = st.columns(3)
     with c1:
         st.markdown("### 👥 CIVIL")
-        if st.button("ACCÉDER AU TERMINAL", key="btn_civil", use_container_width=True):
+        if st.button("ACCÉDER AU TERMINAL", key="btn_civ", use_container_width=True):
             st.session_state.user_auth = "Civil"
             st.rerun()
     with c2:
         st.markdown("### 👨‍🔧 AGENT RCT")
-        login_rct = st.text_input("Identifiant Agent", type="password", key="l_rct")
-        if st.button("AUTHENTIFICATION RCT", key="btn_rct", use_container_width=True):
+        login_rct = st.text_input("Identifiant Agent", type="password", key="l_rct_lock")
+        if st.button("AUTHENTIFICATION RCT", key="btn_rct_lock", use_container_width=True):
             if login_rct == KEY_RCT:
                 st.session_state.user_auth = "RCT"
                 st.rerun()
             else: st.error("Clé invalide.")
     with c3:
         st.markdown("### 🛡️ STAFF/POLICE")
-        login_staff = st.text_input("Clé Maîtresse", type="password", key="l_staff")
-        if st.button("ACCÈS ADMINISTRATEUR", key="btn_staff", use_container_width=True):
+        login_staff = st.text_input("Clé Maîtresse", type="password", key="l_st_lock")
+        if st.button("ACCÈS ADMINISTRATEUR", key="btn_st_lock", use_container_width=True):
             if login_staff == KEY_STAFF:
                 st.session_state.user_auth = "Staff"
                 st.rerun()
