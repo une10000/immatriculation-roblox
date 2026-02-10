@@ -354,7 +354,7 @@ with st.container():
             else:
                 st.error("Aucun permis trouvé.")
 
-        # --- COLONNE 2 : BANQUE ---
+       # --- COLONNE 2 : BANQUE ---
         with col2:
             b_data = df_b[df_b["Nom Roblox"] == target]
             if not b_data.empty:
@@ -363,25 +363,33 @@ with st.container():
                 with c_info:
                     st.metric("SOLDE BANCAIRE", f"{b_data.iloc[0]['Solde']}$")
                     
-                    # --- LOGIQUE DE MODIFICATION DU JOB ---
-                    current_job = b_data.iloc[0]['Emploiement']
-                    
+                    # --- GESTION DES MÉTIERS ---
+                    current_jobs_raw = str(b_data.iloc[0]['Emploiement'])
+                    # On transforme le texte "Police / Staff" en liste ['Police', 'Staff']
+                    current_jobs_list = [j.strip() for j in current_jobs_raw.split("/") if j.strip()]
+
                     if st.session_state.user_auth == "Staff":
-                        # Si Staff : on affiche un champ modifiable
-                        new_job = st.text_input("🏢 Métier :", value=current_job, key=f"edit_job_{target}")
+                        # Liste des métiers disponibles dans la dropdown
+                        liste_metiers = ["Sans-Emploi", "Agent RCT", "Averis", "Police", "Staff", "Service Public", "Entreprise Privée"]
                         
-                        # Si le texte a été changé, on propose de sauvegarder
-                        if new_job != current_job:
-                            if st.button("💾 Sauvegarder Job", use_container_width=True):
-                                idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
-                                df_b.at[idx_b, "Emploiement"] = new_job
-                                cloud_conn.update(worksheet="Banque", data=df_b)
-                                st.success("Mis à jour !")
-                                st.cache_data.clear()
-                                st.rerun()
+                        # Dropdown (Multiselect)
+                        new_jobs_list = st.multiselect("🏢 Métiers :", options=liste_metiers, default=current_jobs_list)
+                        
+                        # Bouton pour sauvegarder
+                        if st.button("💾 Sauvegarder", use_container_width=True):
+                            # On re-transforme la liste en texte avec des "/" pour la base de données
+                            new_jobs_str = " / ".join(new_jobs_list) if new_jobs_list else "Sans-Emploi"
+                            
+                            idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
+                            df_b.at[idx_b, "Emploiement"] = new_jobs_str
+                            cloud_conn.update(worksheet="Banque", data=df_b)
+                            
+                            st.success("Métiers mis à jour !")
+                            st.cache_data.clear()
+                            st.rerun()
                     else:
-                        # Si Civil/RCT : on affiche juste le texte comme avant
-                        st.write(f"🏢 Métier : **{current_job}**")
+                        # Pour les non-staff, on affiche juste le texte
+                        st.write(f"🏢 Métier : **{current_jobs_raw}**")
                     
                     st.caption(f"📅 Arrivée : {b_data.iloc[0]['Date d\'arrivée']}")
                 
