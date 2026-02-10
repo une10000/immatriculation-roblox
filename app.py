@@ -83,13 +83,15 @@ df_b, df_i, df_p = fetch_database()
 if "user_auth" not in st.session_state: st.session_state.user_auth = None
 if "audit_logs" not in st.session_state: st.session_state.audit_logs = []
 
-# --- CONFIGURATION DES SALAIRES ---
-SALAIRES_FIXES = {
-    "Civil": 15000,
-    "RCT": 17000,    # (15k + 2k) -> Débit 2k à une10000
-    "Averis": 17000, # (15k + 2k) -> Débit 2k à Moune2010
-    "Police": 18000, # (15k + 3k)
-    "Staff": 19000   # (15k + 4k)
+# --- CONFIGURATION DES SALAIRES (À mettre au début du script) ---
+PRIME_JOB = {
+    "Agent RCT": 2000,
+    "Averis": 2000,
+    "Police": 3000,
+    "Staff": 4000,
+    "Entreprise Privée": 0,
+    "Service Public": 500,
+    "Sans-Emploi": 0
 }
 
 # Codes de Service
@@ -947,17 +949,15 @@ with st.container(border=True):
     target_paie = st.selectbox("Sélectionner le bénéficiaire :", sorted(df_b["Nom Roblox"].unique().tolist()), key="paie_auto_target")
     
     if target_paie:
-        # 2. On récupère ses jobs dans la base de données
+        # 2. On récupère ses jobs
         user_jobs_raw = df_b[df_b["Nom Roblox"] == target_paie]["Emploiement"].values[0]
-        # On transforme le texte "RCT / Police" en liste ["Agent RCT", "Police"]
         user_jobs_list = [j.strip() for j in str(user_jobs_raw).split("/")]
         
-        # 3. CALCUL AUTOMATIQUE
-        # Base de 15k + Somme des primes de ses jobs
+        # 3. CALCUL AUTOMATIQUE (Utilise PRIME_JOB défini plus haut)
         calcul_primes = sum(PRIME_JOB.get(j, 0) for j in user_jobs_list)
-        total_final = 15000 + calcul_primes
+        total_final = 15000 + calcul_primes # Base de 15k
         
-        # 4. AFFICHAGE POUR LE STAFF
+        # 4. AFFICHAGE
         st.info(f"📋 **Jobs détectés :** {', '.join(user_jobs_list)}")
         st.metric("MONTANT CALCULÉ", f"{total_final}$", f"+{calcul_primes}$ de primes")
 
@@ -966,30 +966,32 @@ with st.container(border=True):
                 # --- LOGIQUE DE DÉBIT AUTO ---
                 if "Agent RCT" in user_jobs_list:
                     idx_rct = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
-                    df_b.at[idx_rct, "Solde"] = float(str(df_b.at[idx_rct, "Solde"]).replace('$', '')) - 2000
+                    solde_rct = float(str(df_b.at[idx_rct, "Solde"]).replace('$', '').replace(',', ''))
+                    df_b.at[idx_rct, "Solde"] = solde_rct - 2000
                 
                 if "Averis" in user_jobs_list:
                     idx_av = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
-                    df_b.at[idx_av, "Solde"] = float(str(df_b.at[idx_av, "Solde"]).replace('$', '')) - 2000
+                    solde_av = float(str(df_b.at[idx_av, "Solde"]).replace('$', '').replace(',', ''))
+                    df_b.at[idx_av, "Solde"] = solde_av - 2000
 
                 # --- VERSEMENT ---
                 idx_ben = df_b[df_b["Nom Roblox"] == target_paie].index[0]
                 solde_actuel = float(str(df_b.at[idx_ben, "Solde"]).replace('$', '').replace(',', ''))
                 df_b.at[idx_ben, "Solde"] = solde_actuel + total_final
                 
-                # --- RESET IMMAT ---
+                # --- RESET IMMAT (Nettoyage de la feuille) ---
                 df_immat_reset = pd.DataFrame(columns=df_i.columns)
                 
-                # --- SYNC ---
+                # --- SYNC CLOUD ---
                 cloud_conn.update(worksheet="Banque", data=df_b)
                 cloud_conn.update(worksheet="Copie de Immatriculations", data=df_immat_reset)
                 
-                record_log(st.session_state.user_auth, f"PAIE AUTO : {target_paie} a reçu {total_final}$")
-                st.success("Paie effectuée et plaques réinitialisées !")
+                record_log(st.session_state.user_auth, f"PAIE AUTO : {target_paie} (+{total_final}$)")
+                st.success(f"✅ Payé {total_final}$ et immatriculations effacées !")
                 st.cache_data.clear()
                 st.rerun()
             except Exception as e:
-                st.error(f"Erreur : {e}")
+                st.error(f"Erreur technique : {e}")
         # --- SECTION 2 : LOGS ET STATISTIQUES ---
         col_admin_left, col_admin_right = st.columns(2)
         
