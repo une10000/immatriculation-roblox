@@ -657,12 +657,6 @@ if st.session_state.user_auth == "Staff": tab_labels.append("🛠️ ADMINISTRAT
 
 tabs = st.tabs(tab_labels)
 
-tab_labels = ["🚗 IMMATRICULATION"]
-if st.session_state.user_auth in ["RCT", "Staff"]: tab_labels.append("👮 SERVICES AGENT")
-if st.session_state.user_auth == "Staff": tab_labels.append("🛠️ ADMINISTRATION")
-
-tabs = st.tabs(tab_labels)
-
 # --- ONGLET 1 : IMMATRICULATION & RADIATION (AVEC OFFRE TRIO) ---
 with tabs[0]:
     st.markdown("### 📝 Gestion des Titres de Circulation")
