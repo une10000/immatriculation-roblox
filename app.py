@@ -200,28 +200,28 @@ if st.session_state.user_auth is not None:
             record_log(st.session_state.user_auth, "Synchro Cloud Manuelle")
             st.rerun()
 
-        # --- BOUTON DÉCONNEXION (Bien aligné au même niveau) ---
         if st.button("🚪 DÉCONNEXION", use_container_width=True):
-            # 1. Nettoyage visuel immédiat
-            placeholder = st.empty()
-            placeholder.write("🔄 Déconnexion en cours...")
-
-            # 2. Logique de nettoyage
+            # 1. On enregistre le log avant de tout couper
             try:
                 record_log(st.session_state.user_auth, "Déconnexion")
             except:
                 pass
-                
-            # Remonter en haut de page
-            components.html("<script>window.parent.window.scrollTo(0,0);</script>", height=0)
             
-            # Vider la session et le cache
+            # 2. On vide la session côté serveur
             st.cache_data.clear()
             for key in list(st.session_state.keys()):
                 del st.session_state[key]
             
-            # Relancer
-            st.rerun()
+            # 3. LE HACK RADICAL : On force le navigateur à recharger la page proprement
+            # Cela va réinitialiser l'URL et vider le cache visuel
+            components.html("""
+                <script>
+                    window.parent.location.reload();
+                </script>
+            """, height=0)
+            
+            # 4. Sécurité pour arrêter le script Streamlit
+            st.stop()
             
         st.divider()
         st.caption("📜 JOURNAUX D'AUDIT (SESSION)")
