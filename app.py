@@ -742,9 +742,9 @@ with tabs[0]:
 
 with col_t:
     st.write("### 🖼️ APERÇU DU TITRE (LIVE)")
-
-    date_actuelle = datetime.now().strftime("%d/%m/%Y")
+    date_actuelle = datetime.now().strftime("%d/%m/%Y %H:%M")
     nom_user = f_owner if f_owner != "---" else "---"
+# ... reste de tes variables
     marque_v = f_model if f_model else "---"
     plaque_v = f_plate if f_plate else "---"
     nom_assu = f_assu if f_assu != "Aucune" else "NON ASSURÉ"
