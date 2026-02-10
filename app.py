@@ -718,37 +718,44 @@ with tabs[0]:
 with col_t:
         st.write("### 🖼️ APERÇU DU TITRE (LIVE)")
         
-        # Construction du ticket sans la taxe conducteur
+        # On définit les variables proprement avant
+        date_actuelle = datetime.now().strftime("%d/%m/%Y")
+        nom_user = f_owner if f_owner != "---" else "---"
+        marque_v = f_model if f_model else "---"
+        plaque_v = f_plate if f_plate else "---"
+        nom_assu = f_assu if f_assu != "Aucune" else "NON ASSURÉ"
+
+        # Utilisation de guillemets simples à l'intérieur pour ne pas casser les triples guillemets
         ticket_html = f"""
-<div style="border: 2px dashed #555; padding: 20px; background-color: #f9f9f9; color: #333; font-family: 'Courier New', Courier, monospace; border-radius: 10px;">
-    <div style="text-align:center; margin-bottom: 10px;">
-        <h2 style="margin:0; font-size: 1.4em;">RECU OFFICIEL</h2>
+<div style='border: 2px dashed #555; padding: 20px; background-color: #f9f9f9; color: #333; font-family: monospace; border-radius: 10px;'>
+    <div style='text-align:center; margin-bottom: 10px;'>
+        <h2 style='margin:0; font-size: 1.4em;'>RECU OFFICIEL</h2>
         <small>GOUVERNEMENT DE RENSSELAER</small>
     </div>
     
-    <div style="border-top: 1px dashed #ccc; border-bottom: 1px dashed #ccc; padding: 10px 0; margin: 10px 0;">
-        <p style="margin: 5px 0;"><strong>DATE :</strong> {datetime.now().strftime("%d/%m/%Y")}</p>
-        <p style="margin: 5px 0;"><strong>UTILISATEUR :</strong> {f_owner if f_owner != "---" else "---"}</p>
-        <p style="margin: 5px 0;"><strong>MARQUE :</strong> {f_model if f_model else "---"}</p>
-        <p style="margin: 5px 0;"><strong>NUMÉRO DE PLAQUE :</strong> <span style="background:#333; color:white; padding:2px 6px; border-radius:3px;">{f_plate if f_plate else "---"}</span></p>
-        <p style="margin: 5px 0;"><strong>ASSURANCE :</strong> {f_assu if f_assu != "Aucune" else "NON ASSURÉ"}</p>
+    <div style='border-top: 1px dashed #ccc; border-bottom: 1px dashed #ccc; padding: 10px 0; margin: 10px 0;'>
+        <p style='margin: 5px 0;'><strong>DATE :</strong> {date_actuelle}</p>
+        <p style='margin: 5px 0;'><strong>UTILISATEUR :</strong> {nom_user}</p>
+        <p style='margin: 5px 0;'><strong>MARQUE :</strong> {marque_v}</p>
+        <p style='margin: 5px 0;'><strong>NUMÉRO DE PLAQUE :</strong> <span style='background:#333; color:white; padding:2px 6px; border-radius:3px;'>{plaque_v}</span></p>
+        <p style='margin: 5px 0;'><strong>ASSURANCE :</strong> {nom_assu}</p>
     </div>
     
-    <div style="margin-bottom: 10px;">
-        <p style="margin: 2px 0; display: flex; justify-content: space-between;">
+    <div style='margin-bottom: 10px;'>
+        <p style='margin: 2px 0; display: flex; justify-content: space-between;'>
             <span>Frais d'immatriculation :</span> <span>175$</span>
         </p>
-        <p style="margin: 2px 0; display: flex; justify-content: space-between;">
+        <p style='margin: 2px 0; display: flex; justify-content: space-between;'>
             <span>Frais d'assurance :</span> <span>{taxe_assu}$</span>
         </p>
     </div>
     
-    <div style="border-top: 2px solid #333; padding-top: 10px; text-align: right;">
-        <span style="font-size: 1.3em; font-weight: bold;">TOTAL PAYÉ : {total_bill}$</span>
+    <div style='border-top: 2px solid #333; padding-top: 10px; text-align: right;'>
+        <span style='font-size: 1.3em; font-weight: bold;'>TOTAL PAYÉ : {total_bill}$</span>
     </div>
 </div>
 """
-        # On force l'affichage HTML
+        # Commande finale
         st.markdown(ticket_html, unsafe_allow_html=True)
 # --- ONGLET 2 : SERVICES AGENT (FACTURES / POINTS / CONSULTATION) ---
 if st.session_state.user_auth in ["RCT", "Staff"]:
