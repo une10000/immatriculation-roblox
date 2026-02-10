@@ -551,11 +551,8 @@ if not mes_factures.empty:
                         st.rerun()
                     except Exception as e:
                         st.error(f"Erreur d'annulation : {e}")
-
-# --- FIN DU TRY PROFIL ---
-# --- FIN DU TRY PROFIL ---
-        except Exception as e:
-            st.error(f"Erreur d'affichage profil : {e}")
+                    except Exception as e:
+                        st.error(f"Erreur d'affichage profil : {e}")
 # --- SECTION VÉHICULES CORRIGÉE ---
 # --- SECTION VÉHICULES UNIFORMISÉE ---
 st.write("### 🚗 VÉHICULES ENREGISTRÉS")
