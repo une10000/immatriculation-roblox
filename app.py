@@ -1,10 +1,10 @@
 import streamlit as st
 import pandas as pd
+import time
 from datetime import datetime, timedelta, timezone
-# AJOUT DE L'IMPORT MANQUANT ICI :
 from streamlit_gsheets import GSheetsConnection
 
-# 1. INTERFACE & DESIGN
+# 1. INTERFACE & DESIGN (DOIT ÊTRE LA PREMIÈRE COMMANDE STREAMLIT)
 st.set_page_config(
     page_title="RCRP FR OS - SYSTÈME NATIONAL",
     page_icon="🏛️",
