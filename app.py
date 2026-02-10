@@ -83,10 +83,16 @@ df_b, df_i, df_p = fetch_database()
 if "user_auth" not in st.session_state: st.session_state.user_auth = None
 if "audit_logs" not in st.session_state: st.session_state.audit_logs = []
 
-# Constantes du projet
-SOLDE_DEPART = 15000 
-ACC_RCT = "une10000"
-ACC_AVERIS = "Moune2010" 
+# --- LOGIQUE DES SALAIRES & SURPLUS ---
+BASE_CIVILE = 15000
+
+# Bonus et leurs sources de débit
+SURPLUS_CONFIG = {
+    "RCT": {"bonus": 2000, "source": "une10000"},
+    "Averis": {"bonus": 2000, "source": "Moune2010"},
+    "Police": {"bonus": 3000, "source": None}, # Pas de compte débit spécifié
+    "Staff": {"bonus": 4000, "source": None}   # Pas de compte débit spécifié
+}
 
 # Codes de Service
 KEY_RCT = "RCT-26-RCRPFR"
@@ -924,6 +930,7 @@ if st.session_state.user_auth == "Staff":
                         record_log(st.session_state.user_auth, f"Création profil : {new_name} (Solde: 15k)")
                         st.success(f"✅ Dossier créé pour {new_name} !")
                         st.cache_data.clear()
+                        import time
                         time.sleep(1.5)
                         st.rerun()
                 else:
@@ -931,6 +938,55 @@ if st.session_state.user_auth == "Staff":
 
         st.divider()
 
+        # --- SECTION 2 : SYSTÈME DE PAIE & RESET NATIONAL ---
+        st.markdown("### 🧧 Gestion des Salaires & Reset National")
+        with st.container(border=True):
+            col_p1, col_p2 = st.columns(2)
+            
+            with col_p1:
+                citoyen_a_payer = st.selectbox("Sélectionner le citoyen :", sorted(df_b["Nom Roblox"].unique().tolist()), key="admin_paie_target")
+                fonctions_select = st.multiselect("Ajouter Surplus :", list(SURPLUS_CONFIG.keys()), key="admin_paie_jobs")
+            
+            # Calcul dynamique
+            bonus_total = sum(SURPLUS_CONFIG[f]["bonus"] for f in fonctions_select)
+            total_virement = BASE_CIVILE + bonus_total
+            
+            with col_p2:
+                st.metric("TOTAL À VERSER", f"{total_virement}$")
+                st.caption(f"Base: {BASE_CIVILE}$ | Surplus: {bonus_total}$")
+                st.warning("⚠️ ACTION : VERSEMENT + RESET COMPLET DES IMMATRICULATIONS")
+
+            if st.button("🧧 VALIDER LA PAIE ET TOUT EFFACER", use_container_width=True):
+                try:
+                    # 1. Mise à jour Banque (Crédit bénéficiaire)
+                    idx_ben = df_b[df_b["Nom Roblox"] == citoyen_a_payer].index[0]
+                    solde_ben = float(str(df_b.at[idx_ben, "Solde"]).replace('$', '').replace(',', ''))
+                    df_b.at[idx_ben, "Solde"] = solde_ben + total_virement
+                    
+                    # 2. Débit des sources pour Surplus
+                    for f in fonctions_select:
+                        source_acc = SURPLUS_CONFIG[f]["source"]
+                        if source_acc and source_acc in df_b["Nom Roblox"].values:
+                            idx_src = df_b[df_b["Nom Roblox"] == source_acc].index[0]
+                            solde_src = float(str(df_b.at[idx_src, "Solde"]).replace('$', '').replace(',', ''))
+                            df_b.at[idx_src, "Solde"] = solde_src - SURPLUS_CONFIG[f]["bonus"]
+                    
+                    # 3. Préparation du Reset Immat (On garde les colonnes, on vide les lignes)
+                    df_immat_reset = pd.DataFrame(columns=df_i.columns)
+                    
+                    # 4. Envoi au Cloud
+                    cloud_conn.update(worksheet="Banque", data=df_b)
+                    cloud_conn.update(worksheet="Copie de Immatriculations", data=df_immat_reset)
+                    
+                    # 5. Logs et Finalisation
+                    record_log(st.session_state.user_auth, f"PAIE & RESET : {citoyen_a_payer} (+{total_virement}$)")
+                    st.success("✅ Salaire versé et immatriculations réinitialisées !")
+                    st.cache_data.clear()
+                    import time
+                    time.sleep(1.5)
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Erreur technique : {e}")
         # --- SECTION 2 : LOGS ET STATISTIQUES ---
         col_admin_left, col_admin_right = st.columns(2)
         
