@@ -819,8 +819,8 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                                 "Emetteur": st.session_state.user_auth,
                                 "Montant": f_val,
                                 "Motif": f"{f_motif} [{f_plate}]",
-                                "Statut": "EN ATTENTE"
-                                "Date_Limite": (datetime.now() + timedelta(hours=24)).sftrtime("%d/%m/%Y %H:%M:%S")
+                                "Statut": "EN ATTENTE",  # <-- Ajout d'une virgule ici
+                                "Date_Limite": (datetime.now() + timedelta(hours=24)).strftime("%d/%m/%Y %H:%M:%S") # <-- Corrigé .strftime (au lieu de .sftrtime)
                             }
                             df_f = pd.concat([df_f, pd.DataFrame([new_row])], ignore_index=True)
                             cloud_conn.update(worksheet="Factures", data=df_f)
