@@ -719,11 +719,11 @@ with tabs[0]:
 with col_t:
         st.markdown("### 🖼️ APERÇU DU TITRE (LIVE)")
         
-        # Détermination de l'affichage de la taxe jeune
-        color_taxe = "#333" if val_taxe_jeune == 0 else "#d9534f" # Noir si 0, Rouge si 50
+        # Logique pour la couleur de la taxe jeune
+        color_taxe = "#333" if val_taxe_jeune == 0 else "#d9534f"
         label_taxe = "Taxe Jeune Conducteur" if val_taxe_jeune == 0 else "⚠️ Taxe Jeune Conducteur"
 
-        # Interface du ticket
+        # Construction du HTML
         ticket_html = f"""
         <div style="border: 2px dashed #555; padding: 20px; background-color: #f9f9f9; color: #333; font-family: 'Courier New', Courier, monospace; border-radius: 10px;">
             <div style="text-align:center; margin-bottom: 10px;">
@@ -746,7 +746,7 @@ with col_t:
                 <p style="margin: 2px 0; display: flex; justify-content: space-between;">
                     <span>Frais d'assurance :</span> <span>{taxe_assu}$</span>
                 </p>
-                <p style="margin: 2px 0; display: flex; justify-content: space-between; color: {color_taxe}; font-weight: {'bold' if val_taxe_jeune > 0 else 'normal'};">
+                <p style="margin: 2px 0; display: flex; justify-content: space-between; color: {color_taxe};">
                     <span>{label_taxe} :</span> <span>{val_taxe_jeune}$</span>
                 </p>
             </div>
@@ -761,7 +761,7 @@ with col_t:
         </div>
         """
         
-        # IMPORTANT : On utilise unsafe_allow_html pour que ça s'affiche comme sur ta capture
+        # LA LIGNE À NE PAS OUBLIER :
         st.markdown(ticket_html, unsafe_allow_html=True)
 # --- ONGLET 2 : SERVICES AGENT (FACTURES / POINTS / CONSULTATION) ---
 if st.session_state.user_auth in ["RCT", "Staff"]:
