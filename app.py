@@ -233,6 +233,10 @@ if st.session_state.user_auth is not None:
 # 5. LOCKSCREEN (CONNEXION) - UNITÉ FÉDÉRALE DE RENSSELAER
 # ======================================================================================
 if st.session_state.user_auth is None:
+    # --- AUTO-REFRESH (L'HORLOGE SE RECHARGE TOUTES LES 60s) ---
+    from streamlit_autorefresh import st_autorefresh
+    st_autorefresh(interval=60000, key="lockscreen_refresh")
+
     # --- CONFIGURATION INTERFACE & CORRECTIFS ---
     st.markdown("""
         <style>
@@ -242,31 +246,23 @@ if st.session_state.user_auth is None:
     """, unsafe_allow_html=True)
 
     # 1. CALCUL DU MOMENT ET DE L'HEURE (UTC+1)
-    import time
     from datetime import datetime, timedelta, timezone
     
     t_now_lock = datetime.now(timezone.utc) + timedelta(hours=1)
     h_lock = t_now_lock.hour
     heure_formattee = t_now_lock.strftime("%H:%M")
-# --- LOGIQUE JOUR / NUIT ---
+
+    # --- LOGIQUE JOUR / NUIT ---
     if 5 <= h_lock < 18:
         salut_complet = "Bonjour☀️"
-        # Ajout d'un soleil physique en haut à droite + rayons synchronisés
         pattern_style = (
             "background-color: #87CEEB; "
             "background-image: "
-            # 1. Les rayons qui partent du coin haut-droite (85% 10%)
-            "conic-gradient(from 200deg at 85% 10%, "
-            "transparent 0deg, rgba(255,255,255,0.4) 15deg, transparent 30deg, "
-            "rgba(255,223,137,0.5) 45deg, transparent 60deg, "
-            "rgba(255,255,255,0.4) 75deg, transparent 90deg), "
-            # 2. Le petit soleil brillant dans l'angle
+            "conic-gradient(from 200deg at 85% 10%, transparent 0deg, rgba(255,255,255,0.4) 15deg, transparent 30deg, rgba(255,223,137,0.5) 45deg, transparent 60deg, rgba(255,255,255,0.4) 75deg, transparent 90deg), "
             "radial-gradient(circle at 85% 10%, #FFF9E3 0%, #FFD700 15%, rgba(255,215,0,0.4) 30%, transparent 60%), "
-            # 3. Les nuages vaporeux habituels
             "radial-gradient(circle at 50% 25%, rgba(255,255,255,0.8) 0%, transparent 60%), "
             "radial-gradient(circle at 50% 75%, rgba(255,255,255,0.6) 0%, transparent 65%); "
-            "background-repeat: no-repeat; "
-            "background-size: cover;"
+            "background-repeat: no-repeat; background-size: cover;"
         )
         t_color = "#1E1E1E"
         glow = "0 0 30px rgba(255, 255, 255, 1), 0 0 60px rgba(255, 200, 0, 0.6)"
@@ -337,8 +333,7 @@ if st.session_state.user_auth is None:
                 st.rerun()
             else: st.error("Accès refusé.")
 
-    time.sleep(60)
-    st.rerun()
+    # ON ARRÊTE LE SCRIPT ICI POUR NE PAS AFFICHER LE RESTE SOUS LE LOCKSCREEN
     st.stop()
 # ======================================================================================
 # LE RESTE DU CODE (S'affiche uniquement après connexion)
