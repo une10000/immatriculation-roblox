@@ -226,21 +226,21 @@ if st.session_state.user_auth is None:
     t_now_lock = datetime.now(timezone.utc) + timedelta(hours=1)
     h_lock = t_now_lock.hour
     heure_formattee = t_now_lock.strftime("%H:%M")
-
-    # --- LOGIQUE JOUR / NUIT ---
+# --- LOGIQUE JOUR / NUIT ---
     if 5 <= h_lock < 18:
         salut_complet = "Bonjour☀️"
-        # Fond bleu uni avec nuages vaporeux centrés (évite les bords coupés)
+        # Ajout de Sun Rays avec un conic-gradient discret
         pattern_style = (
             "background-color: #87CEEB; "
             "background-image: "
-            "radial-gradient(circle at 50% 25%, rgba(255,255,255,0.7) 0%, transparent 50%), "
-            "radial-gradient(circle at 50% 75%, rgba(255,255,255,0.6) 0%, transparent 55%); "
+            "conic-gradient(from 170deg at 50% 0%, rgba(255,255,255,0.1) 0deg, transparent 10deg, rgba(255,255,255,0.1) 20deg, transparent 30deg, rgba(255,255,255,0.05) 40deg, transparent 60%), " # Sun Rays
+            "radial-gradient(circle at 50% 25%, rgba(255,255,255,0.7) 0%, transparent 50%), " # Nuage centre-haut
+            "radial-gradient(circle at 50% 75%, rgba(255,255,255,0.6) 0%, transparent 55%); " # Nuage centre-bas
             "background-repeat: no-repeat; "
             "background-size: cover;"
         )
         t_color = "#1E1E1E"
-        glow = "0 0 15px rgba(255, 165, 0, 0.3)"
+        glow = "0 0 20px rgba(255, 255, 255, 0.8), 0 0 40px rgba(255, 165, 0, 0.4)" # Glow un peu boosté pour le soleil
     else:
         salut_complet = "Bonsoir🌕"
         pattern_style = (
