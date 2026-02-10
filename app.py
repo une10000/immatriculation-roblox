@@ -456,23 +456,34 @@ with col3:
                                         st.error(f"Détail erreur : {e_inner}")
                             
                             # --- TICKET VISUEL ---
+                            # --- TICKET VISUEL MIS À JOUR ---
+                            # On essaie d'extraire la plaque si elle est dans le motif, sinon on met ---
+                            # Note: Si tu stockes la plaque ailleurs, remplace f['Plaque'] par la bonne colonne
+                            plaque_archive = f.get('Plaque', '---') 
+
                             st.markdown(f"""
-                            <div style="border: 1px solid #000; padding: 10px; background: #f9f9f9; color: black; font-family: 'Courier New', monospace; margin-bottom: 8px; border-left: 5px solid green;">
-                                <div style="display: flex; justify-content: space-between; font-size: 0.8em;">
+                            <div style="border: 1px solid #000; padding: 12px; background: #f9f9f9; color: black; font-family: 'Courier New', monospace; margin-bottom: 12px; border-left: 5px solid green; box-shadow: 2px 2px 5px rgba(0,0,0,0.1);">
+                                <div style="display: flex; justify-content: space-between; font-size: 0.8em; margin-bottom: 5px;">
                                     <b>REF: #{f['ID']}</b>
                                     <b style="color: green;">ACQUITTÉE ✔</b>
                                 </div>
-                                <hr style="margin: 5px 0; border-top: 1px dashed #000;">
-                                <div style="font-size: 0.9em;">
-                                    <b>MOTIF :</b> {f['Motif']}<br>
-                                    <b>MONTANT :</b> {f['Montant']}$
+                                
+                                <div style="border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 8px 0; margin: 5px 0;">
+                                    <div style="margin-bottom: 4px;"><b>MOTIF :</b> {f['Motif']}</div>
+                                    <div style="display: flex; align-items: center;">
+                                        <b>VÉHICULE :</b> 
+                                        <span style="margin-left: 10px; border: 1px solid #333; padding: 1px 6px; background: #eee; font-weight: bold; border-radius: 3px;">
+                                            {plaque_archive}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px;">
+                                    <span style="font-size: 0.8em; color: #666;">CERTIFIÉ PAR RCT</span>
+                                    <strong style="font-size: 1.1em;">TOTAL : {f['Montant']}$</strong>
                                 </div>
                             </div>
                             """, unsafe_allow_html=True)
-                else:
-                    st.info("Aucun paiement archivé.")
-            except Exception as e_outer:
-                st.error(f"Erreur d'accès aux archives : {e_outer}")
 # ======================================================================================
 # 7. LOGIQUE DES ONGLETS (CORRIGÉE)
 # ======================================================================================
