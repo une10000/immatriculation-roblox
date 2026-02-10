@@ -24,20 +24,20 @@ st.set_page_config(
 h_sys = (datetime.now(timezone.utc) + timedelta(hours=1)).hour
 is_night = not (5 <= h_sys < 18)
 
-# Couleurs dynamiques selon le mode (Forçage pour le mode clair)
+# Couleurs dynamiques selon le mode (Forçage pour la lisibilité)
 bg_page = "#0e1117" if is_night else "#ffffff"
-bg_card = "#1a1c23" if is_night else "#f8f9fa"
+bg_card = "#1a1c23" if is_night else "#f1f3f5"
 bg_input = "#262730" if is_night else "#ffffff"
 text_primary = "#ffffff" if is_night else "#000000"
 border_ui = "#444444" if is_night else "#000000"
 
 st.markdown(f"""
     <style>
-    /* Global Styles - On force l'application entière pour le mode clair */
+    /* Global Styles - Forçage du fond d'application */
     .stApp {{ background-color: {bg_page} !important; }}
     
-    /* Forcer la couleur du texte sur tous les éléments */
-    .stMarkdown, p, label, span, div {{ color: {text_primary} !important; }}
+    /* Forcer la couleur du texte (Evite le gris sur blanc en mode clair) */
+    .stMarkdown, p, label, span, div, .stHeader {{ color: {text_primary} !important; }}
 
     /* Inputs avec bordures massives - Correction visuelle Jour/Nuit */
     .stTextInput>div>div>input, .stNumberInput>div>div>input, 
@@ -56,21 +56,12 @@ st.markdown(f"""
         padding: 35px;
         border-radius: 12px;
         border-left: 20px solid #d32f2f;
-        margin-bottom: 10px;
+        margin-bottom: 25px;
         box-shadow: 0 4px 15px rgba(0,0,0,0.4);
     }}
     .header-box h1, .header-box p {{ color: white !important; margin: 0; }}
 
-    /* Message Système Sec (Tacle Averis) */
-    .rct-notice {{
-        font-family: 'Courier New', Courier, monospace;
-        border-bottom: 2px solid {border_ui};
-        padding: 15px 0;
-        margin-bottom: 25px;
-        font-size: 0.95em;
-    }}
-
-    /* Info Cards */
+    /* Info Cards (Le Guide de recherche, etc.) */
     .info-card {{
         background-color: {bg_card};
         padding: 20px;
@@ -98,31 +89,23 @@ st.markdown(f"""
         font-weight: 900 !important;
         text-transform: uppercase;
         height: 3.8em;
+        transition: all 0.2s;
+    }}
+    .stButton>button:hover {{
+        background-color: {text_primary} !important;
+        color: {bg_input} !important;
     }}
     
-    /* Fix Labels */
-    label {{
-        color: {text_primary} !important;
-        font-weight: bold !important;
-    }}
+    /* Correction Labels */
+    label {{ color: {text_primary} !important; font-weight: bold !important; }}
     </style>
 """, unsafe_allow_html=True)
 
-# --- AFFICHAGE DE L'EN-TÊTE ---
+# --- EN-TÊTE ---
 st.markdown("""
     <div class="header-box">
         <h1>🏛️ RÉPUBLIQUE DE RENSSELAER</h1>
         <p>Système National d'Exploitation (OS v14.6.0)</p>
-    </div>
-""", unsafe_allow_html=True)
-
-# --- LE TACLE RCT (SEC & RIME) ---
-st.markdown(f"""
-    <div class="rct-notice">
-        <strong>[AVERTISSEMENT]</strong> Un avocat ne vous sortira pas du fossé. La RCT, si. <br>
-        Averis qui ? Les experts du blabla qui restent au lit !<br>
-        <span style="color: #d32f2f; font-weight: bold;">></span> 
-        Souscrivez à la RCT pour rouler l'esprit léger. Laissez Averis et ses avocats se faire remorquer !
     </div>
 """, unsafe_allow_html=True)
 
