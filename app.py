@@ -7,9 +7,10 @@
 import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 import time
 import random
+from textwrap import dedent
 
 # 1. INTERFACE & DESIGN
 st.set_page_config(
@@ -466,13 +467,28 @@ with st.container():
 # ======================================================================================
 # NOUVEAU : SYSTÈME DE PAIEMENT DES FACTURES (STYLE TICKET)
 # ======================================================================================
-try:
-    df_all_f = cloud_conn.read(worksheet="Factures").fillna("")
-    mes_factures = df_all_f[(df_all_f["Cible"] == target) & (df_all_f["Statut"] == "EN ATTENTE")]
-
-    if not mes_factures.empty:
+if not mes_factures.empty:
         st.error(f"⚠️ {len(mes_factures)} FACTURE(S) EN ATTENTE DE PAIEMENT")
         for _, fac in mes_factures.iterrows():
+            
+            # --- CALCUL DU TIMER (NOUVEAU) ---
+            try:
+                # On transforme le texte de la BDD en vraie date Python
+                date_limite = datetime.strptime(str(fac['Date_Limite']), "%d/%m/%Y %H:%M:%S")
+                temps_restant = date_limite - datetime.now()
+                
+                if temps_restant.total_seconds() > 0:
+                    h, rem = divmod(int(temps_restant.total_seconds()), 3600)
+                    m, _ = divmod(rem, 60)
+                    timer_info = f"⌛ EXPIRE DANS : {h}h {m}min"
+                    t_color = "#f39c12"  # Orange si c'est encore bon
+                else:
+                    timer_info = "⚠️ DÉLAI DÉPASSÉ (IMPAYÉ)"
+                    t_color = "#d32f2f"  # Rouge si c'est trop tard
+            except:
+                timer_info = "⌛ Délai : 24 heures"
+                t_color = "#555"
+
             # --- LE TICKET FACTURE STYLE NOSTALGIQUE ---
             prefix_name = "POLICE NATIONALE" if fac['Emetteur'] == "Staff" else "RÉSEAU RCT"
             st.markdown(f"""
@@ -484,6 +500,7 @@ try:
                     <b>RÉFÉRENCE :</b> #{fac['ID']}<br>
                     <b>AGENT     :</b> {fac['Emetteur']}<br>
                     <b>MOTIF     :</b> {fac['Motif']}<br>
+                    <b style="color: {t_color};">{timer_info}</b>
                 </div>
                 <hr style="border-top: 1px dashed #000; margin: 10px 0;">
                 <div style="text-align: center; color: #d32f2f; font-weight: bold; font-size: 1.3em;">
@@ -493,7 +510,6 @@ try:
             </div>
             <div style="margin-bottom: 15px;"></div>
             """, unsafe_allow_html=True)
-
 # --- BOUTON DE PAIEMENT ---
         if st.button(f"💳 RÉGLER LA FACTURE #{fac['ID']}", key=f"pay_{fac['ID']}", use_container_width=True):
             # TOUT CE QUI EST ICI EST DÉCALÉ -> NE S'EXÉCUTE QUE SI ON CLIQUE
