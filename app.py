@@ -647,8 +647,7 @@ if not v_data.empty:
                     else:
                         st.error("Code incorrect")
 else:
-    st.info("Aucun véhicule trouvé.")
-# ======================================================================================
+    st.info("Aucun véhicule trouvé.")=================================================
 # 7. LOGIQUE DES ONGLETS (CORRIGÉE)
 # ======================================================================================
 tab_labels = ["🚗 IMMATRICULATION"]
