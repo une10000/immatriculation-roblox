@@ -549,7 +549,6 @@ if not mes_factures.empty:
             if st.button(f"🗑️ ANNULER LA FACTURE #{fac['ID']}", key=f"admin_del_{fac['ID']}", use_container_width=True):
                 try:
                     df_f_sync = cloud_conn.read(worksheet="Factures")
-                    # On cherche la ligne exacte dans le Sheet (+2 pour l'index)
                     row_up = df_f_sync[df_f_sync["ID"] == fac["ID"]].index[0] + 2
                     cloud_conn.update(worksheet="Factures", range=f"E{row_up}", data=[["ANNULÉ"]])
                     
@@ -561,7 +560,8 @@ if not mes_factures.empty:
                 except Exception as e:
                     st.error(f"Erreur d'annulation : {e}")
 
-# Fin du bloc try principal (celui qui englobe toute la recherche profil)
+# --- ATTENTION : C'EST ICI QUE ÇA SE JOUE ---
+# Ce bloc "except" doit être aligné avec le TOUT PREMIER "try" de ta page profil
 except Exception as e:
     st.error(f"Erreur d'affichage profil : {e}")
 # --- SECTION VÉHICULES CORRIGÉE ---
