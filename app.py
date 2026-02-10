@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta, timezone
+# AJOUT DE L'IMPORT MANQUANT ICI :
+from streamlit_gsheets import GSheetsConnection
 
 # 1. INTERFACE & DESIGN
 st.set_page_config(
@@ -27,26 +29,24 @@ st.markdown("""
     /* SI L'APPAREIL EST EN MODE CLAIR */
     @media (prefers-color-scheme: light) {
         :root {
-            --bg-color: #ffffff;
-            --text-color: #000000;
-            --input-bg: #f0f2f6;
-            --border-color: #d3d3d3;
+            --bg-color: #ffffff !important;
+            --text-color: #000000 !important;
+            --input-bg: #f0f2f6 !important;
+            --border-color: #d3d3d3 !important;
         }
+        /* Correction spécifique pour le fond Streamlit */
+        .stApp { background-color: #ffffff !important; }
+        .stMarkdown, p, label, span, div, h1, h2, h3 { color: #000000 !important; }
     }
 
-    /* Application des variables */
-    .stApp { background-color: var(--bg-color) !important; }
-
-    html, body, [data-testid="stWidgetLabel"], .stMarkdown, p, label, span, div { 
-        color: var(--text-color) !important; 
-    }
+    /* Application globale */
+    .stApp { background-color: var(--bg-color); }
 
     /* Style des champs de saisie */
     input, .stSelectbox>div>div, textarea {
         background-color: var(--input-bg) !important;
         color: var(--text-color) !important;
         border: 2px solid var(--border-color) !important;
-        border-radius: 4px !important;
     }
 
     /* Style des boutons */
@@ -55,15 +55,14 @@ st.markdown("""
         color: var(--text-color) !important;
         border: 2px solid var(--border-color) !important;
         font-weight: 900 !important;
-        text-transform: uppercase;
-        width: 100%;
-        height: 3.5em;
     }
     </style>
 """, unsafe_allow_html=True)
+
 # ======================================================================================
 # 2. MOTEUR DE DONNÉES (SYNC)
 # ======================================================================================
+# Maintenant GSheetsConnection est bien reconnu grâce à l'import en haut
 cloud_conn = st.connection("gsheets", type=GSheetsConnection)
 
 @st.cache_data(ttl=300)
@@ -78,7 +77,6 @@ def fetch_database():
         return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
 df_b, df_i, df_p = fetch_database()
-
 # ======================================================================================
 # 3. ÉTAT DE LA SESSION & PARAMÈTRES
 # ======================================================================================
