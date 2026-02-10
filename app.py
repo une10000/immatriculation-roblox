@@ -17,23 +17,39 @@ st.set_page_config(
     page_title="RCRP FR OS - SYSTÈME NATIONAL",
     page_icon="🏛️",
     layout="wide",
-initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded"
 )
-st.markdown("""
+
+# --- CALCUL DE LA LUMINOSITÉ SYSTÈME ---
+from datetime import datetime, timedelta, timezone
+# Heure actuelle (UTC+1 pour Rensselaer)
+h_sys = (datetime.now(timezone.utc) + timedelta(hours=1)).hour
+is_night = not (5 <= h_sys < 18)
+
+# Couleurs dynamiques selon le mode
+bg_page = "#0e1117" if is_night else "#f8f9fa"
+bg_card = "#1a1c23" if is_night else "#ffffff"
+bg_input = "#262730" if is_night else "#ffffff"
+text_primary = "#ffffff" if is_night else "#000000"
+border_ui = "#444444" if is_night else "#000000"
+
+st.markdown(f"""
     <style>
     /* Global Styles */
-    .main { background-color: #f8f9fa; }
+    .main {{ background-color: {bg_page}; }}
     
-    /* Inputs avec bordures noires massives - Sans forcer le blanc/noir ici */
+    /* Inputs avec bordures massives - Dynamique Jour/Nuit */
     .stTextInput>div>div>input, .stNumberInput>div>div>input, 
-    .stSelectbox>div>div>div, .stTextArea>div>div>textarea {
-        border: 2px solid #000000 !important;
+    .stSelectbox>div>div>div, .stTextArea>div>div>textarea {{
+        border: 2px solid {border_ui} !important;
         border-radius: 4px !important;
         font-weight: bold !important;
-    }
+        color: {text_primary} !important;
+        background-color: {bg_input} !important;
+    }}
 
     /* En-tête RCRP FR */
-    .header-box {
+    .header-box {{
         background: linear-gradient(90deg, #121212 0%, #2c3e50 100%);
         color: #ffffff;
         padding: 35px;
@@ -41,41 +57,50 @@ st.markdown("""
         border-left: 20px solid #d32f2f;
         margin-bottom: 25px;
         box-shadow: 0 4px 15px rgba(0,0,0,0.4);
-    }
+    }}
 
-    /* Info Cards */
-    .info-card {
-        background-color: #ffffff;
+    /* Info Cards (Le Guide de recherche, etc.) */
+    .info-card {{
+        background-color: {bg_card};
         padding: 20px;
-        border: 1px solid #dee2e6;
+        border: 1px solid {border_ui};
         border-left: 5px solid #d32f2f;
         margin-bottom: 20px;
-    }
+        color: {text_primary};
+    }}
 
-    /* Reçu Fédéral */
-    .receipt-container {
-        background-color: #ffffff;
+    /* Reçu Fédéral (Look Officiel - On le garde clair pour le réalisme ou on l'adapte) */
+    .receipt-container {{
+        background-color: {bg_card};
         padding: 30px;
-        border: 4px double #000000;
+        border: 4px double {text_primary};
         font-family: 'Courier New', Courier, monospace;
-        color: #000;
-        box-shadow: 10px 10px 0px #000000;
-    }
+        color: {text_primary};
+        box-shadow: 10px 10px 0px {border_ui};
+    }}
     
     /* Boutons RCRP */
-    .stButton>button {
-        border: 2px solid #000 !important;
+    .stButton>button {{
+        border: 2px solid {text_primary} !important;
+        background-color: {bg_input} !important;
+        color: {text_primary} !important;
         font-weight: 900 !important;
         text-transform: uppercase;
         letter-spacing: 1px;
         height: 3.8em;
         transition: all 0.2s;
-    }
-    .stButton>button:hover {
-        background-color: #000 !important;
-        color: #fff !important;
+    }}
+    .stButton>button:hover {{
+        background-color: {text_primary} !important;
+        color: {bg_input} !important;
         transform: translateY(-2px);
-    }
+    }}
+    
+    /* Fix pour les labels Streamlit (noms des champs) */
+    label {{
+        color: {text_primary} !important;
+        font-weight: bold !important;
+    }}
     </style>
 """, unsafe_allow_html=True)
 # ======================================================================================
