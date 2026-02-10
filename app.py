@@ -413,21 +413,20 @@ with st.container():
 with col3:
             st.markdown("### 📁 ARCHIVES")
             try:
-                # 1. Lecture des données fraîches
+                # 1. Lecture des données
                 df_f_history = cloud_conn.read(worksheet="Factures").fillna("")
                 
-                # 2. Filtre sur les factures PAYÉES pour l'utilisateur sélectionné
+                # 2. Filtre sur les factures PAYÉES
                 historique = df_f_history[
                     (df_f_history["Cible"] == target) & 
                     (df_f_history["Statut"] == "PAYÉ")
                 ]
 
                 if not historique.empty:
-                    # Conteneur flexible (sans height fixe pour éviter le blanc)
+                    # SUPPRESSION DU height=400 POUR ÉVITER LE VIDE BLANC
                     with st.container(): 
                         for _, f in historique.iterrows():
-                            
-                            # --- BOUTON DE REMBOURSEMENT (Staff/Admin uniquement) ---
+                            # --- BOUTON DE REMBOURSEMENT ADMIN ---
                             if st.session_state.user_auth in ["Staff", "Admin"]:
                                 if st.button(f"🔄 Rembourser #{f['ID']}", key=f"refund_{f['ID']}", use_container_width=True):
                                     try:
@@ -437,7 +436,6 @@ with col3:
                                         idx_civil = df_b_sync[df_b_sync["Nom Roblox"] == target].index[0]
                                         montant = float(str(f['Montant']).replace('$', '').replace(',', ''))
                                         
-                                        # Remboursement
                                         solde_c = float(str(df_b_sync.at[idx_civil, "Solde"]).replace('$', ''))
                                         df_b_sync.at[idx_civil, "Solde"] = solde_c + montant
                                         
@@ -455,33 +453,19 @@ with col3:
                                         time.sleep(1)
                                         st.rerun()
                                     except Exception as e_inner:
-                                        st.error(f"Erreur : {e_inner}")
+                                        st.error(f"Détail erreur : {e_inner}")
                             
                             # --- TICKET VISUEL ---
-                            # On récupère la plaque si elle existe
-                            plaque_val = f.get('Plaque', '---')
-                            if str(plaque_val).strip() == "": plaque_val = "---"
-
                             st.markdown(f"""
-                            <div style="border: 1px solid #000; padding: 12px; background: #f9f9f9; color: black; font-family: 'Courier New', monospace; margin-bottom: 12px; border-left: 5px solid green; box-shadow: 2px 2px 5px rgba(0,0,0,0.05);">
-                                <div style="display: flex; justify-content: space-between; font-size: 0.8em; margin-bottom: 5px;">
+                            <div style="border: 1px solid #000; padding: 10px; background: #f9f9f9; color: black; font-family: 'Courier New', monospace; margin-bottom: 8px; border-left: 5px solid green;">
+                                <div style="display: flex; justify-content: space-between; font-size: 0.8em;">
                                     <b>REF: #{f['ID']}</b>
                                     <b style="color: green;">ACQUITTÉE ✔</b>
                                 </div>
-                                
-                                <div style="border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 8px 0; margin: 5px 0;">
-                                    <div style="margin-bottom: 6px;"><b>MOTIF :</b> {f['Motif']}</div>
-                                    <div style="display: flex; align-items: center;">
-                                        <b>VÉHICULE :</b> 
-                                        <span style="margin-left: 10px; border: 1px solid #333; padding: 1px 8px; background: #eee; font-weight: bold; border-radius: 3px; font-size: 0.9em;">
-                                            {plaque_val}
-                                        </span>
-                                    </div>
-                                </div>
-
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px;">
-                                    <span style="font-size: 0.75em; color: #666;">TERMINAL NATIONAL RCT</span>
-                                    <strong style="font-size: 1.1em;">TOTAL : {f['Montant']}$</strong>
+                                <hr style="margin: 5px 0; border-top: 1px dashed #000;">
+                                <div style="font-size: 0.9em;">
+                                    <b>MOTIF :</b> {f['Motif']}<br>
+                                    <b>MONTANT :</b> {f['Montant']}$
                                 </div>
                             </div>
                             """, unsafe_allow_html=True)
