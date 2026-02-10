@@ -662,13 +662,13 @@ with tabs[0]:
                     if (datetime.now() - date_arr).days < 30:
                         val_taxe_jeune = 50
                         st.warning(f"🔰 JEUNE CONDUCTEUR détecté (+{val_taxe_jeune}$)")
-                except: pass
+                except:
+                    pass
 
             # --- CALCUL DU TOTAL + OFFRE TRIO RCT ---
             taxe_gouv = 175
             taxe_assu = 130 if "AVERIS" in f_assu else (150 if "RCT" in f_assu else 0)
             
-            # Application de l'Offre Trio (Seulement pour RCT)
             if "RCT" in f_assu and f_owner != "---":
                 nb_vehicules = len(df_i[df_i["Nom d'utilisateur ROBLOX"] == f_owner])
                 if nb_vehicules >= 2:
@@ -683,17 +683,14 @@ with tabs[0]:
                     u_solde = float(str(df_b.at[u_idx, "Solde"]).replace('$', '').replace(',', ''))
                     
                     if u_solde >= total_bill:
-                        # 1. DÉBIT DU COMPTE CIVIL
                         df_b.at[u_idx, "Solde"] = u_solde - total_bill
                         
-                        # 2. REDIRECTION DES FONDS (Si taxe payée)
                         if taxe_assu > 0:
                             target_acc = "Moune2010" if "AVERIS" in f_assu else ACC_RCT
                             a_idx = df_b[df_b["Nom Roblox"] == target_acc].index[0]
                             old_solde = float(str(df_b.at[a_idx, "Solde"]).replace('$', '').replace(',', ''))
                             df_b.at[a_idx, "Solde"] = old_solde + taxe_assu
                         
-                        # 3. ENREGISTREMENT AVEC DATE AUTO
                         new_row = pd.DataFrame([{
                             "Horodateur": datetime.now().strftime("%d/%m/%Y"),
                             "Nom d'utilisateur ROBLOX": f_owner, 
@@ -704,7 +701,10 @@ with tabs[0]:
                         }])
                         
                         cloud_conn.update(worksheet="Banque", data=df_b)
-                        cloud_conn.update(worksheet="Copie de Immatriculations", data=pd.concat([df_i, new_row], ignore_index=True))
+                        cloud_conn.update(
+                            worksheet="Copie de Immatriculations",
+                            data=pd.concat([df_i, new_row], ignore_index=True)
+                        )
                         
                         st.balloons()
                         st.success(f"✅ Véhicule enregistré ! Total payé : {total_bill}$")
@@ -715,18 +715,21 @@ with tabs[0]:
                         st.error("❌ Solde insuffisant.")
                 else:
                     st.warning("⚠️ Veuillez remplir tous les champs.")
-from textwrap import dedent
 
-with col_t:
-    st.write("### 🖼️ APERÇU DU TITRE (LIVE)")
+    # ===================== APERÇU À DROITE =====================
+    from textwrap import dedent
+    import streamlit.components.v1 as components
 
-    date_actuelle = datetime.now().strftime("%d/%m/%Y")
-    nom_user = f_owner if f_owner != "---" else "---"
-    marque_v = f_model if f_model else "---"
-    plaque_v = f_plate if f_plate else "---"
-    nom_assu = f_assu if f_assu != "Aucune" else "NON ASSURÉ"
+    with col_t:
+        st.write("### 🖼️ APERÇU DU TITRE (LIVE)")
 
-    ticket_html = dedent(f"""
+        date_actuelle = datetime.now().strftime("%d/%m/%Y")
+        nom_user = f_owner if f_owner != "---" else "---"
+        marque_v = f_model if f_model else "---"
+        plaque_v = f_plate if f_plate else "---"
+        nom_assu = f_assu if f_assu != "Aucune" else "NON ASSURÉ"
+
+        ticket_html = dedent(f"""
 <div style='border: 2px dashed #555; padding: 20px; background-color: #f9f9f9; color: #333; font-family: monospace; border-radius: 10px;'>
     <div style='text-align:center; margin-bottom: 10px;'>
         <h2 style='margin:0; font-size: 1.4em;'>RECU OFFICIEL</h2>
@@ -758,10 +761,7 @@ with col_t:
 </div>
 """)
 
-import streamlit.components.v1 as components
-
-components.html(ticket_html, height=420)
-
+        components.html(ticket_html, height=420)
 
 # --- ONGLET 2 : SERVICES AGENT (FACTURES / POINTS / CONSULTATION) ---
 if st.session_state.user_auth in ["RCT", "Staff"]:
