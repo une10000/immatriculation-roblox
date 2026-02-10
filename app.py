@@ -582,15 +582,26 @@ if not mes_factures.empty:
                     except Exception as e:
                         st.error(f"Erreur d'affichage profil : {e}")
 # --- SECTION VÉHICULES CORRIGÉE ---
-# --- LOGIQUE DE SÉCURITÉ (CORRIGÉE) ---
+# --- SECTION VÉHICULES UNIFORMISÉE ---
+st.write("### 🚗 VÉHICULES ENREGISTRÉS")
+v_data = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
+
+if not v_data.empty:
+    v_cols = st.columns(3)
+    for i, (_, veh) in enumerate(v_data.iterrows()):
+        with v_cols[i % 3]:
+            # --- LOGIQUE DE SÉCURITÉ (OBLIGATOIRE ICI) ---
             assu = str(veh['Assurance']).upper()
             role = st.session_state.user_auth
             
-            # 1. On définit les conditions de sécurité
             check_rct = "RCT" in assu
             check_averis = "AVERIS" in assu
             
-            # 2. Application des couleurs et textes selon le rôle
+            # 1. Par défaut (Civils)
+            color = "green"
+            status_txt = "✅ VÉHICULE EN RÈGLE"
+            
+            # 2. Ajustement RCT
             if role == "RCT":
                 if not check_rct and not check_averis:
                     color = "#d32f2f" # Rouge danger
@@ -599,18 +610,19 @@ if not mes_factures.empty:
                     color = "green"
                     status_txt = f"✅ ASSURÉ {assu}"
             
+            # 3. Ajustement Staff
             elif role == "Staff":
                 if check_rct or check_averis:
                     color = "green"
                     status_txt = f"✅ VÉHICULE EN ORDRE ({assu})"
                 else:
-                    color = "#000000" # Noir neutre pour le Staff
+                    color = "#000000" # Noir neutre
                     status_txt = "CERTIFIÉ CONFORME"
-            
-            else:
-                # Pour les civils
-                color = "green"
-                status_txt = "✅ VÉHICULE EN RÈGLE"
+
+            # --- COLLE TON BLOC REÇU ICI ---
+            # (Assure-toi qu'il utilise bien {color} et {status_txt})
+
+            # --- LA SUITE DE TON CODE (RADIER, ETC.) ---
                 
             # Design style "Reçu" (Capture 16:14:00)
             st.markdown(f"""
