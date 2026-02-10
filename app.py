@@ -257,14 +257,14 @@ if st.session_state.user_auth is None:
         t_color = "#FFFFFF"
         glow = "0 0 40px rgba(255,255,255,0.9), 0 0 80px rgba(255,255,255,0.4)"
 
-    # --- LE "MACHIN" TOUT-EN-UN (Design + Horloge qui bouge) ---
+    # --- LE "MACHIN" TOUT-EN-UN (Police corrigée) ---
     import streamlit.components.v1 as components
     components.html(f"""
-        <div style="font-family: sans-serif; text-align: center; padding: 60px 20px; border-radius: 20px 20px 0 0; color: {t_color}; {pattern_style} height: 320px;">
-            <h1 style="font-size: 5.5em; margin: 0; font-weight: 900; letter-spacing: -3px; text-shadow: {glow};">
+        <div style="font-family: 'Source Sans Pro', -apple-system, BlinkMacSystemFont, sans-serif; text-align: center; padding: 60px 20px; border-radius: 20px 20px 0 0; color: {t_color}; {pattern_style} height: 320px;">
+            <h1 style="font-size: 5.5em; margin: 0; font-weight: 900; letter-spacing: -4px; text-shadow: {glow}; line-height: 1;">
                 {salut_complet}
             </h1>
-            <p style="font-size: 1.1em; opacity: 0.7; letter-spacing: 5px; font-weight: bold; text-transform: uppercase; margin: 20px 0;">
+            <p style="font-size: 1.1em; opacity: 0.7; letter-spacing: 5px; font-weight: bold; text-transform: uppercase; margin: 25px 0;">
                 Unité Fédérale de Rensselaer
             </p>
             <div id="clock" style="font-family: monospace; font-size: 3em; letter-spacing: 5px; font-weight: bold; border-top: 2px solid {t_color}33; display: inline-block; padding-top: 10px;">
