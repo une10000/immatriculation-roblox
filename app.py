@@ -932,10 +932,8 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                                 col_v, txt_v = "#d32f2f", "🚨 DANGER : NON-ASSURÉ"
                         else:
                             col_v, txt_v = "green", "✅ VÉHICULE EN RÈGLE"
-
-                        # Affichage du mini-titre
-                        st.markdown(f"""
-                        <div style="border: 2px solid black; padding: 10px; background: white; color: black; font-family: 'Courier New', monospace; margin-bottom: 10px; font-size: 0.8em;">
+                            st.markdown(f"""
+                            <div style="border: 2px solid black; padding: 10px; background: white; color: black; font-family: 'Courier New', monospace; margin-bottom: 10px; font-size: 0.8em;">
                             <center><b>TITRE DE CIRCULATION</b></center>
                             <hr style="border-top: 1px solid #ccc; margin: 5px 0;">
                             <b>MODÈLE :</b> {veh['Marque du véhicule']}<br>
