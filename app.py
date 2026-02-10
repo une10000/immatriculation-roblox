@@ -319,7 +319,7 @@ if st.session_state.user_auth is None:
             st.rerun()
     with c2:
         st.markdown("### 👨‍🔧 AGENT RCT")
-        login_rct = st.text_input("Identifiant Agent", placeholder= Code RCT", key="input_civil_align")type="password", key="l_rct_ff")
+        login_rct = st.text_input("Identifiant Agent", placeholder="Code RCT", type="password", key="l_rct_ff")
         if st.button("AUTHENTIFICATION RCT", key="b_rct_f", use_container_width=True):
             if login_rct == KEY_RCT:
                 st.session_state.user_auth = "RCT"
@@ -327,7 +327,7 @@ if st.session_state.user_auth is None:
             else: st.error("Clé invalide.")
     with c3:
         st.markdown("### 🛡️👮‍♂️ STAFF/POLICE")
-        login_staff = st.text_input("Clé Maîtresse", type="password", key="l_st_ff")
+        login_staff = st.text_input("Clé Maîtresse", placeholder="Code POL/STA", type="password", key="l_st_ff")
         if st.button("ACCÈS ADMINISTRATEUR", key="b_st_f", use_container_width=True):
             if login_staff == KEY_STAFF:
                 st.session_state.user_auth = "Staff"
