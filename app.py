@@ -8,8 +8,6 @@ import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 from datetime import datetime, timedelta, timezone
-import time
-import random
 
 # 1. INTERFACE & DESIGN
 st.set_page_config(
@@ -19,95 +17,75 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- CALCUL DE LA LUMINOSITÉ SYSTÈME ---
+# --- DÉTECTION DU THÈME ---
+# On utilise l'heure pour basculer si le système ne répond pas, 
+# mais on force des styles qui s'adaptent au fond.
 h_sys = (datetime.now(timezone.utc) + timedelta(hours=1)).hour
 is_night = not (5 <= h_sys < 18)
 
-# Définition radicale des couleurs pour la lisibilité
+# Couleurs dynamiques
 if is_night:
-    bg_app = "#0e1117"
-    txt_color = "#ffffff"
-    border_ui = "#444444"
-    bg_input = "#262730"
-    bg_card = "#1a1c23"
-    warning_bg = "rgba(255, 255, 150, 0.1)"
+    primary_txt = "#ffffff"
+    app_bg = "#0e1117"
+    widget_bg = "#262730"
+    border_col = "#444444"
 else:
-    bg_app = "#ffffff"   # Blanc pur
-    txt_color = "#000000" # Noir profond
-    border_ui = "#000000" # Bordures noires massives
-    bg_input = "#f9f9f9" # Fond d'input très léger
-    bg_card = "#ffffff"
-    warning_bg = "#fff9c4" # Jaune clair lisible
+    primary_txt = "#000000"
+    app_bg = "#ffffff"
+    widget_bg = "#f0f2f6"
+    border_col = "#000000"
 
 st.markdown(f"""
     <style>
-    /* Forçage du fond d'écran selon le mode */
-    .stApp {{ background-color: {bg_app} !important; }}
-
-    /* Forçage de TOUS les textes (Labels, Markdown, Titres) */
-    html, body, [data-testid="stWidgetLabel"], .stMarkdown, p, span, label, div {{
-        color: {txt_color} !important;
+    /* Force le fond de l'application selon le mode */
+    .stApp {{
+        background-color: {app_bg} !important;
     }}
 
-    /* Champs de saisie : Visibilité maximale */
-    input, textarea, select, div[data-baseweb="select"], .stSelectbox {{
-        border: 2px solid {border_ui} !important;
-        background-color: {bg_input} !important;
-        color: {txt_color} !important;
-        border-radius: 4px !important;
-    }}
+    /* SUPPRESSION DES DOUBLONS : On cache les en-têtes Streamlit par défaut */
+    #MainMenu, footer, header {{ visibility: hidden; }}
 
-    /* L'UNIQUE EN-TÊTE (Suppression du doublon) */
-    .header-box {{
+    /* Style de l'en-tête UNIQUE RCRP */
+    .rcrp-header {{
         background: linear-gradient(90deg, #121212 0%, #2c3e50 100%);
         padding: 40px;
         border-radius: 12px;
         border-left: 20px solid #d32f2f;
-        margin-bottom: 25px;
+        margin-bottom: 30px;
         text-align: center;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.4);
-    }}
-    .header-box h1, .header-box p {{ color: #ffffff !important; margin: 0; }}
-    
-    /* Bannière d'avertissement */
-    .warning-banner {{
-        background-color: {warning_bg};
-        padding: 15px;
-        border-radius: 5px;
-        border-left: 5px solid #fbc02d;
-        margin-bottom: 20px;
-        font-weight: bold;
+        color: white !important;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
     }}
 
-    /* Boutons Style Terminal */
+    /* Adaptation des textes et labels pour le mode Clair/Nuit */
+    .stMarkdown, p, label, span, div, .stHeader {{
+        color: {primary_txt} !important;
+    }}
+
+    /* Correction des champs de saisie (Inputs) */
+    .stTextInput>div>div>input, .stSelectbox>div>div {{
+        background-color: {widget_bg} !important;
+        color: {primary_txt} !important;
+        border: 2px solid {border_col} !important;
+    }}
+
+    /* Boutons */
     .stButton>button {{
-        border: 2px solid {txt_color} !important;
-        background-color: {bg_input} !important;
-        color: {txt_color} !important;
-        font-weight: 900 !important;
-        text-transform: uppercase;
+        background-color: {widget_bg} !important;
+        color: {primary_txt} !important;
+        border: 2px solid {border_col} !important;
+        font-weight: bold !important;
         width: 100%;
         height: 3.5em;
-        transition: 0.2s;
-    }}
-    .stButton>button:hover {{
-        background-color: {txt_color} !important;
-        color: {bg_app} !important;
     }}
     </style>
-""", unsafe_allow_html=True)
 
-# --- AFFICHAGE DE L'EN-TÊTE UNIQUE ---
-st.markdown(f"""
-    <div class="header-box">
-        <h1 style="font-size: 2.5em;">🏛️ RÉPUBLIQUE DE RENSSELAER</h1>
-        <p style="font-size: 1.2em; letter-spacing: 2px; opacity: 0.9;">TERMINAL FÉDÉRAL D'OPÉRATIONS NATIONALES</p>
-        <hr style="border: 0.5px solid rgba(255,255,255,0.2); margin: 15px 0;">
-        <p style="font-size: 0.8em; opacity: 0.7;">VERSION 14.6.0 | SÉCURISÉ PAR PROTOCOLE RCRP-OS</p>
+    <div class="rcrp-header">
+        <h1 style="margin:0; font-size: 2.2em;">🏛️ RÉPUBLIQUE DE RENSSELAER</h1>
+        <p style="margin:0; opacity: 0.8; letter-spacing: 2px;">TERMINAL FÉDÉRAL D'OPÉRATIONS NATIONALES</p>
+        <p style="margin-top:10px; font-size: 0.8em; opacity: 0.5;">VERSION 14.6.0 | PROTOCOLE SÉCURISÉ</p>
     </div>
 """, unsafe_allow_html=True)
-
-st.markdown('<div class="warning-banner">⚠️ AVERTISSEMENT : Toute action effectuée sur ce terminal est enregistrée.</div>', unsafe_allow_html=True)
 
 # ======================================================================================
 # 2. MOTEUR DE DONNÉES (CLOUD SYNC)
@@ -133,13 +111,12 @@ df_b, df_i, df_p = fetch_database()
 # ======================================================================================
 
 if "user_auth" not in st.session_state: st.session_state.user_auth = None
-if "last_action" not in st.session_state: st.session_state.last_action = None
 if "audit_logs" not in st.session_state: st.session_state.audit_logs = []
 
 # Paramètres Banques Centrales
 ACC_RCT = "une10000"
-ACC_AVERIS = "Moune2010"
-SOLDE_DEPART = 15000 
+ACC_AVERIS = "Moune2010" #
+SOLDE_DEPART = 15000 #
 
 # Codes de Service
 KEY_RCT = "RCT-26-RCRPFR"
@@ -148,6 +125,14 @@ KEY_STAFF = "RCRPFR-25-26"
 def record_log(user, action):
     now = datetime.now().strftime("%H:%M:%S")
     st.session_state.audit_logs.append(f"[{now}] {user} : {action}")
+
+# Affichage de l'heure actuelle (Centré et dynamique)
+st.markdown(f"""
+    <div style="text-align: center; margin-bottom: 20px;">
+        <h2 style="font-size: 3em; margin:0;">{datetime.now().strftime('%H:%M:%S')}</h2>
+        <p style="opacity: 0.6;">SÉCURITÉ NATIONALE - ÉTAT CIVIL</p>
+    </div>
+""", unsafe_allow_html=True)
 # ======================================================================================
 # 4. SIDEBAR CONDITIONNELLE (LOGO & INFOS)
 # ======================================================================================
