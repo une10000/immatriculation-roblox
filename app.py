@@ -377,20 +377,10 @@ with st.container():
             if not p_data.empty:
                 pts_val = int(p_data.iloc[0]["PTS"])
                 c_pts, c_vide, c_motif_p = st.columns([3, 0.5, 2])
-                
                 with c_pts:
                     st.metric("POINTS PERMIS", f"{pts_val}/25")
                     status_color = "green" if pts_val > 0 else "red"
                     st.markdown(f"Statut : <b style='color:{status_color};'>{'VALIDE' if pts_val > 0 else 'SUSPENDU'}</b>", unsafe_allow_html=True)
-                
-                with c_motif_p:
-                    st.markdown("""
-                        <div style="text-align: right; line-height: 1; padding-top: 5px;">
-                            <div style="opacity: 0.15; font-size: 40px; margin-bottom: -10px;">🛡️</div>
-                            <div style="opacity: 0.1; font-size: 50px; margin-bottom: -10px;">🚗</div>
-                            <div style="height: 4px; width: 60px; background: linear-gradient(90deg, transparent, #d32f2f); display: inline-block; opacity: 0.2; border-radius: 2px;"></div>
-                        </div>
-                    """, unsafe_allow_html=True)
             else:
                 st.error("Aucun permis trouvé.")
 
@@ -398,54 +388,25 @@ with st.container():
         with col2:
             b_data = df_b[df_b["Nom Roblox"] == target]
             if not b_data.empty:
-                c_info, c_v, c_m = st.columns([3, 0.5, 2])
+                st.metric("SOLDE BANCAIRE", f"{b_data.iloc[0]['Solde']}$")
+                current_jobs_raw = str(b_data.iloc[0]['Emploiement'])
+                st.write(f"🏢 Métier : **{current_jobs_raw}**")
                 
-                with c_info:
-                    # 1. Solde
-                    st.metric("SOLDE BANCAIRE", f"{b_data.iloc[0]['Solde']}$")
-                    
-                    # 2. Métier
-                    current_jobs_raw = str(b_data.iloc[0]['Emploiement'])
-                    st.write(f"🏢 Métier : **{current_jobs_raw}**")
-                    
-                    # 3. Modification Staff
-                    if st.session_state.user_auth == "Staff":
-                        if st.button("✏️ Modifier le métier", key=f"edit_job_{target}", use_container_width=True):
-                            st.session_state[f"show_editor_{target}"] = not st.session_state.get(f"show_editor_{target}", False)
-                        
-                        if st.session_state.get(f"show_editor_{target}", False):
-                            with st.container(border=True):
-                                liste_metiers = ["Sans-Emploi", "Agent RCT", "Averis", "Police", "Staff", "Service Public", "Entreprise Privée"]
-                                current_jobs_list = [j.strip() for j in current_jobs_raw.split("/") if j.strip()]
-                                valid_defaults = [j for j in current_jobs_list if j in liste_metiers]
-                                
-                                new_jobs = st.multiselect("Sélection :", options=liste_metiers, default=valid_defaults)
-                                
-                                cs1, cs2 = st.columns(2)
-                                with cs1:
-                                    if st.button("💾 Sauver", key=f"save_j_{target}", use_container_width=True, type="primary"):
-                                        new_str = " / ".join(new_jobs) if new_jobs else "Sans-Emploi"
-                                        idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
-                                        df_b.at[idx_b, "Emploiement"] = new_str
-                                        cloud_conn.update(worksheet="Banque", data=df_b)
-                                        st.session_state[f"show_editor_{target}"] = False
-                                        st.cache_data.clear()
-                                        st.rerun()
-                                with cs2:
-                                    if st.button("Annuler", key=f"cancel_j_{target}", use_container_width=True):
-                                        st.session_state[f"show_editor_{target}"] = False
-                                        st.rerun()
-
-                    st.caption(f"📅 Arrivée : {b_data.iloc[0]['Date d\'arrivée']}")
-                
-                with c_m:
-                    st.markdown("""
-                        <div style="text-align: right; line-height: 1; padding-top: 5px;">
-                            <div style="opacity: 0.15; font-size: 40px; margin-bottom: -10px;">🏛️</div>
-                            <div style="opacity: 0.1; font-size: 50px; margin-bottom: -10px;">💳</div>
-                            <div style="height: 4px; width: 60px; background: linear-gradient(90deg, transparent, #000); display: inline-block; opacity: 0.2; border-radius: 2px;"></div>
-                        </div>
-                    """, unsafe_allow_html=True)
+                if st.session_state.user_auth == "Staff":
+                    if st.button("✏️ Modifier le métier", key=f"edit_job_{target}", use_container_width=True):
+                        st.session_state[f"show_editor_{target}"] = not st.session_state.get(f"show_editor_{target}", False)
+                    if st.session_state.get(f"show_editor_{target}", False):
+                        with st.container(border=True):
+                            liste_metiers = ["Sans-Emploi", "Agent RCT", "Averis", "Police", "Staff", "Service Public", "Entreprise Privée"]
+                            new_jobs = st.multiselect("Sélection :", options=liste_metiers)
+                            if st.button("💾 Sauver", key=f"save_j_{target}", use_container_width=True):
+                                new_str = " / ".join(new_jobs) if new_jobs else "Sans-Emploi"
+                                idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
+                                df_b.at[idx_b, "Emploiement"] = new_str
+                                cloud_conn.update(worksheet="Banque", data=df_b)
+                                st.cache_data.clear()
+                                st.rerun()
+                st.caption(f"📅 Arrivée : {b_data.iloc[0]['Date d\'arrivée']}")
             else:
                 st.error("Aucun compte trouvé.")
 
@@ -455,14 +416,8 @@ with st.container():
             try:
                 df_f_history = cloud_conn.read(worksheet="Factures").fillna("")
                 historique = df_f_history[(df_f_history["Cible"] == target) & (df_f_history["Statut"] == "PAYÉ")]
-
                 if not historique.empty:
                     for _, f in historique.iterrows():
-                        if st.session_state.user_auth in ["Staff", "Admin"]:
-                            if st.button(f"🔄 Rembourser #{f['ID']}", key=f"refund_{f['ID']}", use_container_width=True):
-                                st.info("Traitement...")
-                                # Ta logique de remboursement ici
-                        
                         st.markdown(f"""
                         <div style="border: 1px solid #000; padding: 10px; background: #f9f9f9; color: black; margin-bottom: 8px; border-left: 5px solid green;">
                             <div style="display: flex; justify-content: space-between; font-size: 0.8em;">
@@ -478,8 +433,61 @@ with st.container():
                         """, unsafe_allow_html=True)
                 else:
                     st.info("Aucun paiement archivé.")
-            except Exception as e:
-                st.error(f"Erreur Archives : {e}")
+            except: pass
+
+        # --- 6.1 INTERFACE AVERIS (COPIE RCT) ---
+        if st.session_state.user_auth == "Averis":
+            st.markdown("---")
+            st.subheader("🏢 ACTIONS AVERIS")
+            t1, t2 = st.tabs(["🚘 IMMATRICULATION", "📑 FACTURATION"])
+            with t1:
+                with st.form("form_immat_averis"):
+                    plaque = st.text_input("Plaque")
+                    marque = st.text_input("Marque")
+                    date_auto = datetime.now().strftime("%d/%m/%Y")
+                    if st.form_submit_button("Enregistrer Véhicule"):
+                        new_v = {"Nom d'utilisateur ROBLOX": target, "Numéro de la plaque": plaque.upper(), "Marque du véhicule": marque, "Horodateur": date_auto, "Assurance": "AVERIS"}
+                        df_i = pd.concat([df_i, pd.DataFrame([new_v])], ignore_index=True)
+                        cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i)
+                        st.success("Enregistré par Averis")
+                        st.rerun()
+            with t2:
+                with st.form("form_fact_averis"):
+                    mt = st.number_input("Montant", min_value=0, value=500)
+                    mo = st.text_input("Motif")
+                    if st.form_submit_button("Émettre Facture"):
+                        new_f = {"ID": len(df_all_f)+1, "Emetteur": "Averis", "Cible": target, "Montant": mt, "Motif": mo, "Statut": "EN ATTENTE"}
+                        df_all_f = pd.concat([df_all_f, pd.DataFrame([new_f])], ignore_index=True)
+                        cloud_conn.update(worksheet="Factures", data=df_all_f)
+                        st.success("Facture Averis envoyée (Paiement vers Moune2010)")
+                        st.rerun()
+
+        # --- 6.2 INTERFACE RCT ---
+        if st.session_state.user_auth == "RCT":
+            st.markdown("---")
+            st.subheader("👨‍🔧 ACTIONS RCT")
+            t1, t2 = st.tabs(["🚘 IMMATRICULATION", "📑 FACTURATION"])
+            with t1:
+                with st.form("form_immat_rct"):
+                    plaque = st.text_input("Plaque")
+                    marque = st.text_input("Marque")
+                    date_auto = datetime.now().strftime("%d/%m/%Y")
+                    if st.form_submit_button("Enregistrer Véhicule"):
+                        new_v = {"Nom d'utilisateur ROBLOX": target, "Numéro de la plaque": plaque.upper(), "Marque du véhicule": marque, "Horodateur": date_auto, "Assurance": "RCT"}
+                        df_i = pd.concat([df_i, pd.DataFrame([new_v])], ignore_index=True)
+                        cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i)
+                        st.success("Enregistré par RCT")
+                        st.rerun()
+            with t2:
+                with st.form("form_fact_rct"):
+                    mt = st.number_input("Montant", min_value=0, value=500)
+                    mo = st.text_input("Motif")
+                    if st.form_submit_button("Émettre Facture"):
+                        new_f = {"ID": len(df_all_f)+1, "Emetteur": "RCT", "Cible": target, "Montant": mt, "Motif": mo, "Statut": "EN ATTENTE"}
+                        df_all_f = pd.concat([df_all_f, pd.DataFrame([new_f])], ignore_index=True)
+                        cloud_conn.update(worksheet="Factures", data=df_all_f)
+                        st.success("Facture RCT envoyée (Paiement vers une10000)")
+                        st.rerun()
 # ======================================================================================
 # 7. LOGIQUE DES ONGLETS (CORRIGÉE)
 # ======================================================================================
@@ -535,34 +543,45 @@ if not mes_factures.empty:
             </div>
             """, unsafe_allow_html=True)
 
-            # --- BOUTON DE PAIEMENT (Aligné avec le ticket) ---
+# --- BOUTON DE PAIEMENT (AVEC REDIRECT AVERIS/RCT) ---
             if st.button(f"💳 RÉGLER LA FACTURE #{fac['ID']}", key=f"pay_{fac['ID']}", use_container_width=True):
                 try:
+                    # 1. Nettoyage et récupération du solde client
                     idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
-                    solde_raw = str(df_b.at[idx_b, "Solde"]).replace('$', '').replace(',', '')
-                    solde_actuel = float(solde_raw)
+                    solde_actuel = float(str(df_b.at[idx_b, "Solde"]).replace('$', '').replace(',', '').strip())
                     montant_facture = float(fac['Montant'])
                     
                     if solde_actuel >= montant_facture:
+                        # 2. Détermination du compte de destination
+                        # Si l'émetteur est Averis -> Moune2010, sinon -> une10000 (RCT/Staff)
+                        destinataire = "Moune2010" if fac['Emetteur'] == "Averis" else "une10000"
+                        
+                        # 3. Prélèvement client
                         df_b.at[idx_b, "Solde"] = solde_actuel - montant_facture
-                        rct_idx = df_b[df_b["Nom Roblox"] == ACC_RCT].index[0]
-                        solde_dest = float(str(df_b.at[rct_idx, "Solde"]).replace('$', '').replace(',', ''))
-                        df_b.at[rct_idx, "Solde"] = solde_dest + montant_facture
+                        
+                        # 4. Versement au destinataire
+                        idx_dest = df_b[df_b["Nom Roblox"] == destinataire].index[0]
+                        solde_dest_raw = float(str(df_b.at[idx_dest, "Solde"]).replace('$', '').replace(',', '').strip())
+                        df_b.at[idx_dest, "Solde"] = solde_dest_raw + montant_facture
+                        
+                        # 5. Mise à jour du statut de la facture
                         df_all_f.loc[df_all_f["ID"] == fac["ID"], "Statut"] = "PAYÉ"
                         
+                        # 6. Sauvegarde Cloud
                         cloud_conn.update(worksheet="Banque", data=df_b)
                         cloud_conn.update(worksheet="Factures", data=df_all_f)
                         
-                        record_log(target, f"Paiement facture {fac['Emetteur']} #{fac['ID']}")
-                        st.success("✅ Paiement effectué !")
+                        record_log(target, f"Paiement facture #{fac['ID']} vers {destinataire}")
+                        st.success(f"✅ Paiement effectué ! L'argent a été versé à {destinataire}.")
+                        
                         st.cache_data.clear()
+                        import time
                         time.sleep(1)
                         st.rerun()
                     else:
-                        st.error("❌ Solde insuffisant.")
+                        st.error("❌ Solde insuffisant pour régler cette facture.")
                 except Exception as e:
-                    st.error(f"Erreur lors du paiement : {e}")
-
+                    st.error(f"Erreur lors du transfert : {e}")
             # --- BOUTON ANNULER (Aligné aussi) ---
             if st.session_state.user_auth in ["Staff", "Admin"]:
                 if st.button(f"🗑️ ANNULER LA FACTURE #{fac['ID']}", key=f"admin_del_{fac['ID']}", use_container_width=True):
