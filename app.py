@@ -715,21 +715,48 @@ with tabs[0]:
                         st.error("❌ Solde insuffisant.")
                 else:
                     st.warning("⚠️ Veuillez remplir tous les champs.")
+                    
+with col_t:
+        st.markdown("### 🖼️ APERÇU DU TITRE (LIVE)")
+        
+        # Calcul du statut de l'assurance pour l'affichage
+        statut_assu = f_assu
+        if "RCT" in f_assu and f_owner != "---":
+            if len(df_i[df_i["Nom d'utilisateur ROBLOX"] == f_owner]) >= 2:
+                statut_assu = "RCT (OFFRE TRIO 🎁)"
 
-    with col_t:
-        st.markdown("### 🖼️ APERÇU DU TITRE")
+        # Interface identique aux autres tickets
         ticket_html = f"""
-        <div style="border: 4px double black; padding: 15px; background: white; color: black; font-family: monospace;">
-            <div style="text-align:center; font-weight:900; font-size:1.2em;">TITRE DE CIRCULATION</div>
-            <center><small>RÉPUBLIQUE DE RENSSELAER</small></center>
-            <hr>
-            <p><b>DATE :</b> {datetime.now().strftime("%d/%m/%Y")}</p>
-            <p><b>NOM :</b> {f_owner}</p>
-            <p><b>PLAQUE :</b> {f_plate if f_plate else "..."}</p>
-            <p><b>ASSURANCE :</b> {f_assu} {"(OFFERTE)" if (taxe_assu == 0 and "RCT" in f_assu) else ""}</p>
-            <p><b>TAXE JEUNE :</b> {val_taxe_jeune}$</p>
-            <hr>
-            <div style="text-align:right; font-weight:bold; font-size:1.2em;">TOTAL : {total_bill}$</div>
+        <div style="border: 2px dashed #555; padding: 20px; background-color: #f9f9f9; color: #333; font-family: 'Courier New', Courier, monospace; border-radius: 10px;">
+            <div style="text-align:center; margin-bottom: 10px;">
+                <h2 style="margin:0; font-size: 1.4em;">RECU OFFICIEL</h2>
+                <small>GOUVERNEMENT DE RENSSELAER</small>
+            </div>
+            
+            <div style="border-top: 1px solid #ccc; border-bottom: 1px solid #ccc; padding: 10px 0; margin: 10px 0;">
+                <p style="margin: 5px 0;"><strong>DATE :</strong> {datetime.now().strftime("%d/%m/%Y %H:%M")}</p>
+                <p style="margin: 5px 0;"><strong>PROPRIÉTAIRE :</strong> {f_owner if f_owner != "---" else "---"}</p>
+                <p style="margin: 5px 0;"><strong>VÉHICULE :</strong> {f_model if f_model else "---"}</p>
+                <p style="margin: 5px 0;"><strong>PLAQUE :</strong> <span style="background:#333; color:white; padding:2px 6px; border-radius:3px;">{f_plate if f_plate else "---"}</span></p>
+            </div>
+            
+            <div style="margin-bottom: 10px;">
+                <p style="margin: 2px 0; display: flex; justify-content: space-between;">
+                    <span>Taxe d'immatriculation :</span> <span>175$</span>
+                </p>
+                <p style="margin: 2px 0; display: flex; justify-content: space-between;">
+                    <span>Assurance ({f_assu}) :</span> <span>{taxe_assu}$</span>
+                </p>
+                {"<p style='margin: 2px 0; display: flex; justify-content: space-between; color: red;'><span>Taxe Jeune Conducteur :</span> <span>+50$</span></p>" if val_taxe_jeune > 0 else ""}
+            </div>
+            
+            <div style="border-top: 2px solid #333; padding-top: 10px; text-align: right;">
+                <span style="font-size: 1.3em; font-weight: bold;">TOTAL PAYÉ : {total_bill}$</span>
+            </div>
+            
+            <div style="margin-top: 20px; text-align: center; font-size: 0.8em; color: #777;">
+                <p><i>Ce document fait office de preuve de paiement.<br>Enregistré dans le Terminal National.</i></p>
+            </div>
         </div>
         """
         st.markdown(ticket_html, unsafe_allow_html=True)
