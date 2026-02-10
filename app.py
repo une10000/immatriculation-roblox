@@ -423,11 +423,11 @@ with col3:
                 ]
 
                 if not historique.empty:
-                    # On utilise un container sans 'height' pour qu'il soit flexible
+                    # Conteneur flexible (sans height fixe pour éviter le blanc)
                     with st.container(): 
                         for _, f in historique.iterrows():
                             
-                            # --- BOUTON DE REMBOURSEMENT (Réservé Staff/Admin) ---
+                            # --- BOUTON DE REMBOURSEMENT (Staff/Admin uniquement) ---
                             if st.session_state.user_auth in ["Staff", "Admin"]:
                                 if st.button(f"🔄 Rembourser #{f['ID']}", key=f"refund_{f['ID']}", use_container_width=True):
                                     try:
@@ -437,19 +437,16 @@ with col3:
                                         idx_civil = df_b_sync[df_b_sync["Nom Roblox"] == target].index[0]
                                         montant = float(str(f['Montant']).replace('$', '').replace(',', ''))
                                         
-                                        # Recréditer le civil
+                                        # Remboursement
                                         solde_c = float(str(df_b_sync.at[idx_civil, "Solde"]).replace('$', ''))
                                         df_b_sync.at[idx_civil, "Solde"] = solde_c + montant
                                         
-                                        # Débiter le compte RCT
                                         idx_rct = df_b_sync[df_b_sync["Nom Roblox"] == ACC_RCT].index[0]
                                         solde_rct = float(str(df_b_sync.at[idx_rct, "Solde"]).replace('$', ''))
                                         df_b_sync.at[idx_rct, "Solde"] = solde_rct - montant
                                         
-                                        # Changer le statut de la facture
                                         df_f_sync.loc[df_f_sync["ID"] == f["ID"], "Statut"] = "REMBOURSÉ"
                                         
-                                        # Mise à jour sur Google Sheets
                                         cloud_conn.update(worksheet="Banque", data=df_b_sync)
                                         cloud_conn.update(worksheet="Factures", data=df_f_sync)
                                         
@@ -458,11 +455,12 @@ with col3:
                                         time.sleep(1)
                                         st.rerun()
                                     except Exception as e_inner:
-                                        st.error(f"Erreur lors du remboursement : {e_inner}")
+                                        st.error(f"Erreur : {e_inner}")
                             
-                            # --- TICKET VISUEL (Style Officiel) ---
-                            # On récupère la plaque si la colonne existe, sinon '---'
-                            plaque_val = f.get('Plaque', '---') if f.get('Plaque') != "" else "---"
+                            # --- TICKET VISUEL ---
+                            # On récupère la plaque si elle existe
+                            plaque_val = f.get('Plaque', '---')
+                            if str(plaque_val).strip() == "": plaque_val = "---"
 
                             st.markdown(f"""
                             <div style="border: 1px solid #000; padding: 12px; background: #f9f9f9; color: black; font-family: 'Courier New', monospace; margin-bottom: 12px; border-left: 5px solid green; box-shadow: 2px 2px 5px rgba(0,0,0,0.05);">
@@ -488,7 +486,7 @@ with col3:
                             </div>
                             """, unsafe_allow_html=True)
                 else:
-                    st.info("Aucun paiement archivé pour ce citoyen.")
+                    st.info("Aucun paiement archivé.")
             except Exception as e_outer:
                 st.error(f"Erreur d'accès aux archives : {e_outer}")
 # ======================================================================================
