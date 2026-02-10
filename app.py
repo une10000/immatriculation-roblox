@@ -22,17 +22,14 @@ initial_sidebar_state="expanded"
 st.markdown("""
     <style>
     /* Global Styles */
-    /* Global Styles */
     .main { background-color: #f8f9fa; }
     
-    /* Inputs avec bordures noires massives pour captures d'écran */
+    /* Inputs avec bordures noires massives - Sans forcer le blanc/noir ici */
     .stTextInput>div>div>input, .stNumberInput>div>div>input, 
     .stSelectbox>div>div>div, .stTextArea>div>div>textarea {
         border: 2px solid #000000 !important;
         border-radius: 4px !important;
         font-weight: bold !important;
-        color: #000000 !important;
-        background-color: #ffffff !important;
     }
 
     /* En-tête RCRP FR */
@@ -46,7 +43,7 @@ st.markdown("""
         box-shadow: 0 4px 15px rgba(0,0,0,0.4);
     }
 
-    /* Info Cards pour instructions */
+    /* Info Cards */
     .info-card {
         background-color: #ffffff;
         padding: 20px;
@@ -55,7 +52,7 @@ st.markdown("""
         margin-bottom: 20px;
     }
 
-    /* Reçu Fédéral (Look Officiel) */
+    /* Reçu Fédéral */
     .receipt-container {
         background-color: #ffffff;
         padding: 30px;
@@ -65,13 +62,6 @@ st.markdown("""
         box-shadow: 10px 10px 0px #000000;
     }
     
-    .receipt-title { 
-        text-align: center; 
-        font-weight: 900; 
-        font-size: 1.4em; 
-        text-decoration: underline;
-    }
-
     /* Boutons RCRP */
     .stButton>button {
         border: 2px solid #000 !important;
@@ -88,7 +78,6 @@ st.markdown("""
     }
     </style>
 """, unsafe_allow_html=True)
-
 # ======================================================================================
 # 2. MOTEUR DE DONNÉES (CLOUD SYNC)
 # ======================================================================================
