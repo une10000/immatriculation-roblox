@@ -730,22 +730,31 @@ with col_t:
     nom_assu = f_assu if f_assu != "Aucune" else "NON ASSURÉ"
 
     ticket_html = dedent(f"""
-<div style='border: 2px dashed #555; padding: 20px; background-color: #f9f9f9; color: #333; font-family: monospace; border-radius: 10px;'>
+<div style='border: 2px dashed #555; padding: 20px; background-color: #f9f9f9; color: #333; font-family: "Courier New", Courier, monospace;'>
+    
+    <!-- EN-TÊTE OFFICIEL -->
     <div style='text-align:center; margin-bottom: 10px;'>
-        <h2 style='margin:0; font-size: 1.4em;'>RECU OFFICIEL</h2>
-        <small>GOUVERNEMENT DE RENSSELAER</small>
+        <h2 style='margin:0; font-size:1.4em;'>TITRE DE CIRCULATION</h2>
+        <small>RÉPUBLIQUE DE RENSSERLAER</small>
     </div>
 
+    <!-- RECU OFFICIEL -->
+    <div style='text-align:center; margin-bottom: 10px;'>
+        <h3 style='margin:0; font-size:1.2em;'>RECU OFFICIEL</h3>
+    </div>
+
+    <!-- INFORMATIONS VEHICULE -->
     <div style='border-top: 1px dashed #ccc; border-bottom: 1px dashed #ccc; padding: 10px 0; margin: 10px 0;'>
         <p><strong>DATE :</strong> {date_actuelle}</p>
         <p><strong>UTILISATEUR :</strong> {nom_user}</p>
         <p><strong>MARQUE :</strong> {marque_v}</p>
         <p><strong>NUMÉRO DE PLAQUE :</strong>
-            <span style='border:1px solid #333; padding:2px 6px; border-radius:3px; background:#eee;'>{plaque_v}</span>
+            <span style='border:1px solid #333; padding:2px 6px; background:#eee;'>{plaque_v}</span>
         </p>
         <p><strong>ASSURANCE :</strong> {nom_assu}</p>
     </div>
 
+    <!-- FRAIS -->
     <div>
         <p style='display:flex; justify-content:space-between; margin:2px 0;'>
             <span>Frais d'immatriculation :</span><span>175$</span>
@@ -758,13 +767,20 @@ with col_t:
         </p>
     </div>
 
+    <!-- TOTAL -->
     <div style='border-top:2px solid #333; padding-top:10px; text-align:right;'>
         <strong style='font-size:1.3em;'>TOTAL PAYÉ : {total_bill}$</strong>
     </div>
+
+    <!-- PIED DE PAGE OFFICIEL -->
+    <div style='text-align:center; margin-top:15px;'>
+        <small>CERTIFIÉ CONFORME<br>Par le Terminal National.</small>
+    </div>
+    
 </div>
 """)
 
-    components.html(ticket_html, height=450)
+    components.html(ticket_html, height=500)
 
 
 # --- ONGLET 2 : SERVICES AGENT (FACTURES / POINTS / CONSULTATION) ---
