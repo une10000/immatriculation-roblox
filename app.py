@@ -21,28 +21,17 @@ st.set_page_config(
 h_sys = (datetime.now(timezone.utc) + timedelta(hours=1)).hour
 is_night = not (5 <= h_sys < 18)
 
+# Variables de couleurs pour le mode Clair/Nuit
 if is_night:
     app_bg, txt_col, widget_bg, border_col = "#0e1117", "#ffffff", "#262730", "#444444"
 else:
     app_bg, txt_col, widget_bg, border_col = "#ffffff", "#000000", "#f9f9f9", "#000000"
 
+# Application des styles globaux (sans affichage de texte)
 st.markdown(f"""
     <style>
-    /* Nettoyage radical des éléments Streamlit */
     #MainMenu, footer, header {{ visibility: hidden; }}
     .stApp {{ background-color: {app_bg} !important; }}
-
-    /* Style de l'en-tête UNIQUE RCRP */
-    .rcrp-header {{
-        background: linear-gradient(90deg, #121212 0%, #2c3e50 100%);
-        padding: 40px;
-        border-radius: 12px;
-        border-left: 20px solid #d32f2f;
-        margin-bottom: 25px;
-        text-align: center;
-        color: white !important;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-    }}
 
     /* Adaptation des textes pour le mode CLAIR / NUIT */
     html, body, [data-testid="stWidgetLabel"], .stMarkdown, p, label, span, div {{ 
@@ -68,22 +57,6 @@ st.markdown(f"""
         height: 3.5em;
     }}
     </style>
-
-    <div class="rcrp-header">
-        <h1 style="margin:0; font-size: 2.2em; color: white !important;">🏛️ RÉPUBLIQUE DE RENSSELAER</h1>
-        <p style="margin:0; opacity: 0.8; letter-spacing: 2px; color: white !important;">TERMINAL FÉDÉRAL D'OPÉRATIONS NATIONALES</p>
-        <p style="margin-top:10px; font-size: 0.8em; opacity: 0.5; color: white !important;">VERSION 14.6.0 | PROTOCOLE SÉCURISÉ</p>
-    </div>
-""", unsafe_allow_html=True)
-
-# L'UNIQUE affichage de l'heure
-st.markdown(f"""
-    <div style="text-align: center; margin-bottom: 40px;">
-        <h2 style="font-size: 4em; margin:0; font-family: monospace; color: {txt_col} !important;">
-            {datetime.now().strftime('%H:%M:%S')}
-        </h2>
-        <p style="letter-spacing: 5px; opacity: 0.6; color: {txt_col} !important;">SÉCURITÉ NATIONALE - ÉTAT CIVIL</p>
-    </div>
 """, unsafe_allow_html=True)
 
 # ======================================================================================
