@@ -227,20 +227,25 @@ if st.session_state.user_auth is None:
     h_lock = t_now_lock.hour
     heure_formattee = t_now_lock.strftime("%H:%M")
 # --- LOGIQUE JOUR / NUIT ---
+# --- LOGIQUE JOUR / NUIT ---
     if 5 <= h_lock < 18:
         salut_complet = "Bonjour☀️"
-        # Ajout de Sun Rays avec un conic-gradient discret
+        # Sun Rays renforcés (opacité augmentée et couleurs dorées)
         pattern_style = (
             "background-color: #87CEEB; "
             "background-image: "
-            "conic-gradient(from 170deg at 50% 0%, rgba(255,255,255,0.1) 0deg, transparent 10deg, rgba(255,255,255,0.1) 20deg, transparent 30deg, rgba(255,255,255,0.05) 40deg, transparent 60%), " # Sun Rays
-            "radial-gradient(circle at 50% 25%, rgba(255,255,255,0.7) 0%, transparent 50%), " # Nuage centre-haut
-            "radial-gradient(circle at 50% 75%, rgba(255,255,255,0.6) 0%, transparent 55%); " # Nuage centre-bas
+            "conic-gradient(from 150deg at 50% 0%, "
+            "transparent 0deg, rgba(255,255,255,0.3) 10deg, transparent 20deg, "
+            "rgba(255,223,137,0.4) 35deg, transparent 50deg, "
+            "rgba(255,255,255,0.3) 65deg, transparent 80deg), "
+            "radial-gradient(circle at 50% 25%, rgba(255,255,255,0.8) 0%, transparent 60%), "
+            "radial-gradient(circle at 50% 75%, rgba(255,255,255,0.6) 0%, transparent 65%); "
             "background-repeat: no-repeat; "
             "background-size: cover;"
         )
         t_color = "#1E1E1E"
-        glow = "0 0 20px rgba(255, 255, 255, 0.8), 0 0 40px rgba(255, 165, 0, 0.4)" # Glow un peu boosté pour le soleil
+        # Glow très intense pour simuler l'éblouissement
+        glow = "0 0 30px rgba(255, 255, 255, 1), 0 0 60px rgba(255, 200, 0, 0.6)"
     else:
         salut_complet = "Bonsoir🌕"
         pattern_style = (
