@@ -758,7 +758,10 @@ with col_t:
 </div>
 """)
 
-    st.markdown(ticket_html, unsafe_allow_html=True)
+import streamlit.components.v1 as components
+
+components.html(ticket_html, height=420)
+
 
 # --- ONGLET 2 : SERVICES AGENT (FACTURES / POINTS / CONSULTATION) ---
 if st.session_state.user_auth in ["RCT", "Staff"]:
