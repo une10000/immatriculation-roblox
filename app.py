@@ -410,17 +410,17 @@ with st.container():
                         """, unsafe_allow_html=True)
             else: 
                 st.error("Aucun compte trouvé.") 
+with col3:
+            st.markdown("### 📁 ARCHIVES")
+            try:
+                # 1. Lecture des données
+                df_f_history = cloud_conn.read(worksheet="Factures").fillna("")
                 
-                with col3:
-                    st.markdown("### 📁 ARCHIVES")
-                    try:
-                        # 1. Lecture des données
-                        df_f_history = cloud_conn.read(worksheet="Factures").fillna("")
-                        # 2. Filtre sur les factures PAYÉES
-                    historique = df_f_history[
+                # 2. Filtre sur les factures PAYÉES
+                historique = df_f_history[
                     (df_f_history["Cible"] == target) & 
                     (df_f_history["Statut"] == "PAYÉ")
-                    ]
+                ]
 
                 if not historique.empty:
                     # SUPPRESSION DU height=400 POUR ÉVITER LE VIDE BLANC
