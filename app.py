@@ -719,13 +719,11 @@ with tabs[0]:
 with col_t:
         st.markdown("### 🖼️ APERÇU DU TITRE (LIVE)")
         
-        # Calcul du statut de l'assurance pour l'affichage
-        statut_assu = f_assu
-        if "RCT" in f_assu and f_owner != "---":
-            if len(df_i[df_i["Nom d'utilisateur ROBLOX"] == f_owner]) >= 2:
-                statut_assu = "RCT (OFFRE TRIO 🎁)"
+        # Détermination de l'affichage de la taxe jeune
+        color_taxe = "#333" if val_taxe_jeune == 0 else "#d9534f" # Noir si 0, Rouge si 50
+        label_taxe = "Taxe Jeune Conducteur" if val_taxe_jeune == 0 else "⚠️ Taxe Jeune Conducteur"
 
-        # Interface identique aux autres tickets
+        # Interface du ticket
         ticket_html = f"""
         <div style="border: 2px dashed #555; padding: 20px; background-color: #f9f9f9; color: #333; font-family: 'Courier New', Courier, monospace; border-radius: 10px;">
             <div style="text-align:center; margin-bottom: 10px;">
@@ -733,21 +731,24 @@ with col_t:
                 <small>GOUVERNEMENT DE RENSSELAER</small>
             </div>
             
-            <div style="border-top: 1px solid #ccc; border-bottom: 1px solid #ccc; padding: 10px 0; margin: 10px 0;">
-                <p style="margin: 5px 0;"><strong>DATE :</strong> {datetime.now().strftime("%d/%m/%Y %H:%M")}</p>
-                <p style="margin: 5px 0;"><strong>PROPRIÉTAIRE :</strong> {f_owner if f_owner != "---" else "---"}</p>
-                <p style="margin: 5px 0;"><strong>VÉHICULE :</strong> {f_model if f_model else "---"}</p>
-                <p style="margin: 5px 0;"><strong>PLAQUE :</strong> <span style="background:#333; color:white; padding:2px 6px; border-radius:3px;">{f_plate if f_plate else "---"}</span></p>
+            <div style="border-top: 1px dashed #ccc; border-bottom: 1px dashed #ccc; padding: 10px 0; margin: 10px 0;">
+                <p style="margin: 5px 0;"><strong>DATE :</strong> {datetime.now().strftime("%d/%m/%Y")}</p>
+                <p style="margin: 5px 0;"><strong>UTILISATEUR :</strong> {f_owner if f_owner != "---" else "---"}</p>
+                <p style="margin: 5px 0;"><strong>MARQUE :</strong> {f_model if f_model else "---"}</p>
+                <p style="margin: 5px 0;"><strong>NUMÉRO DE PLAQUE :</strong> <span style="background:#333; color:white; padding:2px 6px; border-radius:3px;">{f_plate if f_plate else "---"}</span></p>
+                <p style="margin: 5px 0;"><strong>ASSURANCE :</strong> {f_assu if f_assu != "Aucune" else "NON ASSURÉ"}</p>
             </div>
             
             <div style="margin-bottom: 10px;">
                 <p style="margin: 2px 0; display: flex; justify-content: space-between;">
-                    <span>Taxe d'immatriculation :</span> <span>175$</span>
+                    <span>Frais d'immatriculation :</span> <span>175$</span>
                 </p>
                 <p style="margin: 2px 0; display: flex; justify-content: space-between;">
-                    <span>Assurance ({f_assu}) :</span> <span>{taxe_assu}$</span>
+                    <span>Frais d'assurance :</span> <span>{taxe_assu}$</span>
                 </p>
-                {"<p style='margin: 2px 0; display: flex; justify-content: space-between; color: red;'><span>Taxe Jeune Conducteur :</span> <span>+50$</span></p>" if val_taxe_jeune > 0 else ""}
+                <p style="margin: 2px 0; display: flex; justify-content: space-between; color: {color_taxe}; font-weight: {'bold' if val_taxe_jeune > 0 else 'normal'};">
+                    <span>{label_taxe} :</span> <span>{val_taxe_jeune}$</span>
+                </p>
             </div>
             
             <div style="border-top: 2px solid #333; padding-top: 10px; text-align: right;">
@@ -755,10 +756,12 @@ with col_t:
             </div>
             
             <div style="margin-top: 20px; text-align: center; font-size: 0.8em; color: #777;">
-                <p><i>Ce document fait office de preuve de paiement.<br>Enregistré dans le Terminal National.</i></p>
+                <p><i>Ce document certifie l'enregistrement du véhicule.<br>Système National RCRP.</i></p>
             </div>
         </div>
         """
+        
+        # IMPORTANT : On utilise unsafe_allow_html pour que ça s'affiche comme sur ta capture
         st.markdown(ticket_html, unsafe_allow_html=True)
 # --- ONGLET 2 : SERVICES AGENT (FACTURES / POINTS / CONSULTATION) ---
 if st.session_state.user_auth in ["RCT", "Staff"]:
