@@ -199,9 +199,16 @@ if st.session_state.user_auth is not None:
             record_log(st.session_state.user_auth, "Synchro Cloud Manuelle")
             st.rerun()
             
-        if st.button("🚪 DÉCONNEXION"):
+        if st.button("🚪 DÉCONNEXION", use_container_width=True):
+            # 1. On enregistre le log avant de tout supprimer
             record_log(st.session_state.user_auth, "Déconnexion")
-            st.session_state.user_auth = None
+            
+            # 2. Nettoyage complet du cache et de la session (Adieu les fantômes !)
+            st.cache_data.clear()
+            for key in list(st.session_state.keys()):
+                del st.session_state[key]
+            
+            # 3. Relance immédiate
             st.rerun()
             
         st.divider()
