@@ -240,8 +240,12 @@ if st.session_state.user_auth is None:
             [data-testid="stStatusWidget"] { display: none; }
             .block-container { padding-top: 2rem !important; }
             
-            /* On supprime les bordures de l'iframe Streamlit */
-            iframe { border: none !important; }
+            /* ON SUPPRIME L'ENCADRÉ GRIS ET L'OMBRE DE L'IFRAME */
+            iframe { 
+                border: none !important; 
+                box-shadow: none !important; 
+                background: transparent !important;
+            }
         </style>
     """, unsafe_allow_html=True)
 
@@ -261,29 +265,29 @@ if st.session_state.user_auth is None:
         t_color = "#FFFFFF"
         glow = "0 0 40px rgba(255,255,255,0.9), 0 0 80px rgba(255,255,255,0.4)"
 
-    # --- LE BLOC MONOLITHIQUE (Haut + Bas soudés en HTML) ---
+    # --- LE BLOC MONOLITHIQUE (Haut + Bas soudés) ---
     import streamlit.components.v1 as components
     components.html(f"""
-        <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; width: 100%; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.3);">
+        <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; width: 100%; border-radius: 25px; overflow: hidden; border: none;">
             
-            <div style="text-align: center; padding: 50px 20px; color: {t_color}; {pattern_style} height: 280px; box-sizing: border-box;">
-                <h1 style="font-size: 5em; margin: 0; font-weight: 900; letter-spacing: -3px; text-shadow: {glow}; line-height: 1.1;">
+            <div style="text-align: center; padding: 70px 20px; color: {t_color}; {pattern_style} height: 350px; box-sizing: border-box;">
+                <h1 style="font-size: 5.5em; margin: 0; font-weight: 900; letter-spacing: -3px; text-shadow: {glow}; line-height: 1.1;">
                     {salut_complet}
                 </h1>
-                <p style="font-size: 1em; opacity: 0.8; letter-spacing: 5px; font-weight: bold; text-transform: uppercase; margin: 20px 0;">
+                <p style="font-size: 1.1em; opacity: 0.8; letter-spacing: 5px; font-weight: bold; text-transform: uppercase; margin: 25px 0;">
                     Unité Fédérale de Rensselaer
                 </p>
-                <div id="clock" style="font-size: 3.5em; letter-spacing: 3px; font-weight: bold; border-top: 2px solid {t_color}33; display: inline-block; padding-top: 10px;">
+                <div id="clock" style="font-size: 3.8em; letter-spacing: 3px; font-weight: bold; border-top: 2px solid {t_color}33; display: inline-block; padding-top: 10px;">
                     00:00:00
                 </div>
             </div>
 
-            <div style="background-color: #1a1c23; border-left: 8px solid #ff4b4b; padding: 40px 20px; text-align: center; color: white;">
-                <div style="font-size: 40px; margin-bottom: 15px;">👤</div>
-                <h2 style="margin: 0; font-size: 1.8em; letter-spacing: 2px;">🏛️ RÉPUBLIQUE DE RENSSELAER</h2>
-                <p style="margin: 5px 0 20px 0; font-size: 0.9em; opacity: 0.7; text-transform: uppercase; letter-spacing: 1px;">Terminal Fédéral d'Opérations Nationales</p>
-                <div style="width: 80%; height: 1px; background: rgba(255,255,255,0.1); margin: 0 auto 15px auto;"></div>
-                <small style="opacity: 0.5; font-size: 0.75em;">VERSION 14.6.0 | SÉCURISÉ PAR PROTOCOLE RCRP-OS</small>
+            <div style="background-color: #1a1c23; border-left: 10px solid #ff4b4b; padding: 45px 20px; text-align: center; color: white;">
+                <div style="font-size: 45px; margin-bottom: 15px;">👤</div>
+                <h2 style="margin: 0; font-size: 2em; letter-spacing: 2px;">🏛️ RÉPUBLIQUE DE RENSSELAER</h2>
+                <p style="margin: 5px 0 25px 0; font-size: 1em; opacity: 0.7; text-transform: uppercase; letter-spacing: 1px;">Terminal Fédéral d'Opérations Nationales</p>
+                <div style="width: 70%; height: 1px; background: rgba(255,255,255,0.1); margin: 0 auto 20px auto;"></div>
+                <small style="opacity: 0.5; font-size: 0.8em;">VERSION 14.6.0 | SÉCURISÉ PAR PROTOCOLE RCRP-OS</small>
             </div>
 
         </div>
@@ -299,30 +303,31 @@ if st.session_state.user_auth is None:
             setInterval(update, 1000);
             update();
         </script>
-    """, height=550)
+    """, height=650) # Hauteur totale ajustée
     
+    st.write("")
     st.warning("⚠️ **AVERTISSEMENT :** Toute action effectuée sur ce terminal est enregistrée.")
     st.write("---")
 
-    # 3. COLONNES D'ACCÈS
+    # 3. COLONNES D'ACCÈS (Inchangé)
     c1, c2, c3 = st.columns(3)
     with c1:
         st.markdown("### 👥 CIVIL")
-        if st.button("ACCÉDER AU TERMINAL", key="l_civ", use_container_width=True):
+        if st.button("ACCÉDER AU TERMINAL", key="l_civ_f", use_container_width=True):
             st.session_state.user_auth = "Civil"
             st.rerun()
     with c2:
         st.markdown("### 👨‍🔧 AGENT RCT")
-        login_rct = st.text_input("Identifiant Agent", type="password", key="l_rct_ll")
-        if st.button("AUTHENTIFICATION RCT", key="b_rct", use_container_width=True):
+        login_rct = st.text_input("Identifiant Agent", type="password", key="l_rct_ff")
+        if st.button("AUTHENTIFICATION RCT", key="b_rct_f", use_container_width=True):
             if login_rct == KEY_RCT:
                 st.session_state.user_auth = "RCT"
                 st.rerun()
             else: st.error("Clé invalide.")
     with c3:
         st.markdown("### 🛡️ STAFF/POLICE")
-        login_staff = st.text_input("Clé Maîtresse", type="password", key="l_st_ll")
-        if st.button("ACCÈS ADMINISTRATEUR", key="b_st", use_container_width=True):
+        login_staff = st.text_input("Clé Maîtresse", type="password", key="l_st_ff")
+        if st.button("ACCÈS ADMINISTRATEUR", key="b_st_f", use_container_width=True):
             if login_staff == KEY_STAFF:
                 st.session_state.user_auth = "Staff"
                 st.rerun()
