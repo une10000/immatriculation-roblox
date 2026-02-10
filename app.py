@@ -586,10 +586,32 @@ if not v_data.empty:
     v_cols = st.columns(3)
     for i, (_, veh) in enumerate(v_data.iterrows()):
         with v_cols[i % 3]:
-            # Logique de sécurité
+            # --- LOGIQUE DE SÉCURITÉ MISE À JOUR ---
             assu = str(veh['Assurance']).upper()
-            is_rct = "RCT" in assu
-            is_staff_ok = any(x in assu for x in ["RCT", "AVERIS"])
+            role = st.session_state.user_auth
+            
+            # 1. Par défaut : Tout est beau, tout est vert
+            color = "green"
+            status_txt = "✅ VÉHICULE EN RÈGLE"
+            
+            # 2. Cas spécial RCT : Si l'agent RCT regarde et que ce n'est PAS du RCT/AVERIS
+            if role == "RCT":
+                if "RCT" not in assu and "AVERIS" not in assu:
+                    color = "#d32f2f" # Rouge
+                    status_txt = "⚠️ DANGER : NON-ASSURÉ RCT"
+                else:
+                    status_txt = f"✅ ASSURÉ {assu}"
+
+            # 3. Cas spécial Staff : Ils voient tout en vert sauf si c'est vraiment vide
+            elif role == "Staff":
+                if any(x in assu for x in ["RCT", "AVERIS"]):
+                    color = "green"
+                    status_txt = f"✅ VÉHICULE EN ORDRE ({assu})"
+                else:
+                    color = "#000000" # Noir pour le Staff si assurance inconnue
+                    status_txt = "CERTIFIÉ CONFORME"
+            
+            # Pour les civils, cela restera sur le "VÉHICULE EN RÈGLE" par défaut (Vert)
             
             color = "#000000" # Noir par défaut
             status_txt = "CERTIFIÉ CONFORME"
