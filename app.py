@@ -710,9 +710,11 @@ with tabs[0]:
                             old_solde = float(str(df_b.at[a_idx, "Solde"]).replace('$', '').replace(',', ''))
                             df_b.at[a_idx, "Solde"] = old_solde + taxe_assu
                             horaire_complet = datetime.now().strftime("%d/%m/%Y %H:%M")
+                            from datetime import datetime, timedelta
+                            horaire_utc_plus_1 = (datetime.now() + timedelta(hours=1)).strftime("%d/%m/%Y %H:%M")
                             
                             new_row = pd.DataFrame([{
-                                "Horodateur": horaire_complet,
+                                "Horodateur": horaire_utc_plus_1,
                                 "Nom d'utilisateur ROBLOX": f_owner, 
                                 "Marque du véhicule": f_model, 
                                 "Numéro de la plaque": f_plate, 
