@@ -889,7 +889,7 @@ if st.session_state.user_auth == "Staff":
     with tabs[2]:
         st.markdown('<div class="header-box"><h2>🛠️ PANNEAU D\'ADMINISTRATION High-Sec</h2></div>', unsafe_allow_html=True)
         
-        # --- SECTION 1 : CRÉATION DE PROFIL ---
+# --- SECTION 1 : CRÉATION DE PROFIL (MULTI-JOB) ---
         st.markdown("### 👤 Création de Dossier Citoyen")
         with st.container(border=True):
             c1, c2 = st.columns(2)
@@ -897,7 +897,9 @@ if st.session_state.user_auth == "Staff":
                 new_name = st.text_input("Nom d'utilisateur ROBLOX", placeholder="Pseudo exact", key="admin_new_name")
                 new_discord = st.text_input("Utilisateur Discord", placeholder="pseudo#0000", key="admin_new_discord")
             with c2:
-                new_job = st.selectbox("Emploiement initial", ["Sans-Emploi", "Agent RCT", "Entreprise Privée", "Service Public"], key="admin_new_job")
+                # Utilisation de multiselect pour permettre plusieurs métiers sur un seul profil
+                job_list = ["Sans-Emploi", "Agent RCT", "Averis", "Police", "Staff", "Entreprise Privée", "Service Public"]
+                new_jobs = st.multiselect("Emploiement(s)", job_list, default=["Sans-Emploi"], key="admin_new_jobs")
                 new_pts = st.slider("Points Permis (Départ)", 0, 25, 25, key="admin_new_pts")
 
             if st.button("🆕 GÉNÉRER LE DOSSIER (15k + Date Auto)", use_container_width=True):
@@ -905,12 +907,15 @@ if st.session_state.user_auth == "Staff":
                     with st.spinner("Initialisation du citoyen..."):
                         today_str = datetime.now().strftime("%d/%m/%Y")
                         
+                        # On transforme la liste des métiers en une seule chaîne de texte : "Agent RCT / Staff"
+                        jobs_string = " / ".join(new_jobs) if new_jobs else "Sans-Emploi"
+                        
                         # Banque (Solde 15000 auto)
                         new_bank_row = pd.DataFrame([{
                             "Nom Roblox": new_name,
                             "Nom Discord": new_discord,
                             "Solde": 15000, 
-                            "Emploiement": new_job,
+                            "Emploiement": jobs_string, # Ici on stocke le multi-job
                             "Date d'arrivée": today_str
                         }])
                         df_b_new = pd.concat([df_b, new_bank_row], ignore_index=True)
@@ -925,66 +930,58 @@ if st.session_state.user_auth == "Staff":
                         df_p_new = pd.concat([df_p, new_pts_row], ignore_index=True)
                         cloud_conn.update(worksheet="Points Permis", data=df_p_new)
 
-                        record_log(st.session_state.user_auth, f"Création profil : {new_name} (Solde: 15k)")
-                        st.success(f"✅ Dossier créé pour {new_name} !")
+                        record_log(st.session_state.user_auth, f"Création profil multi-job : {new_name} ({jobs_string})")
+                        st.success(f"✅ Dossier créé pour {new_name} avec les métiers : {jobs_string}")
                         st.cache_data.clear()
                         import time
                         time.sleep(1.5)
                         st.rerun()
                 else:
                     st.error("⚠️ Nom invalide ou déjà existant.")
-
-        st.divider()
-
         # --- SECTION 2 : SYSTÈME DE PAIE & RESET NATIONAL ---
-        st.markdown("### 🧧 Gestion des Salaires & Reset National")
-        with st.container(border=True):
-            col_p1, col_p2 = st.columns(2)
-            
-            with col_p1:
-                citoyen_a_payer = st.selectbox("Sélectionner le citoyen :", sorted(df_b["Nom Roblox"].unique().tolist()), key="admin_paie_target")
-                fonctions_select = st.multiselect("Ajouter Surplus :", list(SURPLUS_CONFIG.keys()), key="admin_paie_jobs")
-            
-            # Calcul dynamique
-            bonus_total = sum(SURPLUS_CONFIG[f]["bonus"] for f in fonctions_select)
-            total_virement = BASE_CIVILE + bonus_total
-            
-            with col_p2:
-                st.metric("TOTAL À VERSER", f"{total_virement}$")
-                st.caption(f"Base: {BASE_CIVILE}$ | Surplus: {bonus_total}$")
-                st.warning("⚠️ ACTION : VERSEMENT + RESET COMPLET DES IMMATRICULATIONS")
+# --- SECTION 2 : SYSTÈME DE PAIE & RESET ---
+with st.container(border=True):
+    col_p1, col_p2 = st.columns(2)
+    
+    with col_p1:
+        citoyen_a_payer = st.selectbox("Citoyen :", sorted(df_b["Nom Roblox"].unique().tolist()))
+        # On choisit quel job on paie cette fois-ci
+        job_paye = st.selectbox("Payer en tant que :", list(SALAIRES_FIXES.keys()))
+    
+    montant_final = SALAIRES_FIXES[job_paye]
+    
+    with col_p2:
+        st.metric("MONTANT À VERSER", f"{montant_final}$")
+        st.warning("Action : Versement + Reset Immatriculations")
 
-            if st.button("🧧 VALIDER LA PAIE ET TOUT EFFACER", use_container_width=True):
-                try:
-                    # 1. Mise à jour Banque (Crédit bénéficiaire)
-                    idx_ben = df_b[df_b["Nom Roblox"] == citoyen_a_payer].index[0]
-                    solde_ben = float(str(df_b.at[idx_ben, "Solde"]).replace('$', '').replace(',', ''))
-                    df_b.at[idx_ben, "Solde"] = solde_ben + total_virement
-                    
-                    # 2. Débit des sources pour Surplus
-                    for f in fonctions_select:
-                        source_acc = SURPLUS_CONFIG[f]["source"]
-                        if source_acc and source_acc in df_b["Nom Roblox"].values:
-                            idx_src = df_b[df_b["Nom Roblox"] == source_acc].index[0]
-                            solde_src = float(str(df_b.at[idx_src, "Solde"]).replace('$', '').replace(',', ''))
-                            df_b.at[idx_src, "Solde"] = solde_src - SURPLUS_CONFIG[f]["bonus"]
-                    
-                    # 3. Préparation du Reset Immat (On garde les colonnes, on vide les lignes)
-                    df_immat_reset = pd.DataFrame(columns=df_i.columns)
-                    
-                    # 4. Envoi au Cloud
-                    cloud_conn.update(worksheet="Banque", data=df_b)
-                    cloud_conn.update(worksheet="Copie de Immatriculations", data=df_immat_reset)
-                    
-                    # 5. Logs et Finalisation
-                    record_log(st.session_state.user_auth, f"PAIE & RESET : {citoyen_a_payer} (+{total_virement}$)")
-                    st.success("✅ Salaire versé et immatriculations réinitialisées !")
-                    st.cache_data.clear()
-                    import time
-                    time.sleep(1.5)
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Erreur technique : {e}")
+    if st.button("🧧 VALIDER LA PAIE ET RESET NATIONAL", use_container_width=True):
+        try:
+            # 1. Calcul du débit pour les comptes spécifiques
+            # Si on paie un RCT, on retire 2k à une10000 (salaire 17k - base 15k)
+            if job_paye == "RCT":
+                idx_src = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
+                df_b.at[idx_src, "Solde"] = float(str(df_b.at[idx_src, "Solde"]).replace('$', '')) - 2000
+            elif job_paye == "Averis":
+                idx_src = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
+                df_b.at[idx_src, "Solde"] = float(str(df_b.at[idx_src, "Solde"]).replace('$', '')) - 2000
+
+            # 2. Crédit du citoyen
+            idx_ben = df_b[df_b["Nom Roblox"] == citoyen_a_payer].index[0]
+            solde_actuel = float(str(df_b.at[idx_ben, "Solde"]).replace('$', '').replace(',', ''))
+            df_b.at[idx_ben, "Solde"] = solde_actuel + montant_final
+            
+            # 3. Reset des Immatriculations
+            df_immat_reset = pd.DataFrame(columns=df_i.columns)
+            
+            # 4. Sync Cloud
+            cloud_conn.update(worksheet="Banque", data=df_b)
+            cloud_conn.update(worksheet="Copie de Immatriculations", data=df_immat_reset)
+            
+            st.success(f"✅ Payé {montant_final}$ et base immat vidée !")
+            st.cache_data.clear()
+            st.rerun()
+        except Exception as e:
+            st.error(f"Erreur : {e}")
         # --- SECTION 2 : LOGS ET STATISTIQUES ---
         col_admin_left, col_admin_right = st.columns(2)
         
