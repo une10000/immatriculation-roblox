@@ -362,7 +362,27 @@ with st.container():
                 
                 with c_info:
                     st.metric("SOLDE BANCAIRE", f"{b_data.iloc[0]['Solde']}$")
-                    st.write(f"🏢 Métier : **{b_data.iloc[0]['Emploiement']}**")
+                    
+                    # --- LOGIQUE DE MODIFICATION DU JOB ---
+                    current_job = b_data.iloc[0]['Emploiement']
+                    
+                    if st.session_state.user_auth == "Staff":
+                        # Si Staff : on affiche un champ modifiable
+                        new_job = st.text_input("🏢 Métier :", value=current_job, key=f"edit_job_{target}")
+                        
+                        # Si le texte a été changé, on propose de sauvegarder
+                        if new_job != current_job:
+                            if st.button("💾 Sauvegarder Job", use_container_width=True):
+                                idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
+                                df_b.at[idx_b, "Emploiement"] = new_job
+                                cloud_conn.update(worksheet="Banque", data=df_b)
+                                st.success("Mis à jour !")
+                                st.cache_data.clear()
+                                st.rerun()
+                    else:
+                        # Si Civil/RCT : on affiche juste le texte comme avant
+                        st.write(f"🏢 Métier : **{current_job}**")
+                    
                     st.caption(f"📅 Arrivée : {b_data.iloc[0]['Date d\'arrivée']}")
                 
                 with c_motif:
@@ -375,8 +395,7 @@ with st.container():
                         </div>
                     """, unsafe_allow_html=True)
             else: 
-                st.error("Aucun compte trouvé.") 
-
+                st.error("Aucun compte trouvé.")
         # --- COLONNE 3 : ARCHIVES (Correction de l'erreur) ---
         with col3:
             st.markdown("### 📁 ARCHIVES")
