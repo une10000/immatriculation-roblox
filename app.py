@@ -233,19 +233,16 @@ if st.session_state.user_auth is not None:
 # 5. LOCKSCREEN (CONNEXION) - UNITÉ FÉDÉRALE DE RENSSELAER
 # ======================================================================================
 if st.session_state.user_auth is None:
-    # --- CONFIGURATION INTERFACE (Correction Géométrie & Arrondis) ---
+    # --- CONFIGURATION INTERFACE (Alignement Total & Ligne Rouge) ---
     st.markdown("""
         <style>
             [data-testid="stSidebar"], [data-testid="stSidebarNav"] { display: none; }
             [data-testid="stStatusWidget"] { display: none; }
             
-            /* On redescend un peu le tout pour ne pas coller au bord du navigateur */
-            .block-container { 
-                padding-top: 3rem !important; 
-                padding-bottom: 0rem !important; 
-            }
+            /* On redescend le bloc pour voir les arrondis du haut */
+            .block-container { padding-top: 3rem !important; }
             
-            /* Force l'iframe à être souple mais bien cadrée */
+            /* Force l'iframe (Bonjour) à prendre toute la largeur sans marges */
             iframe { 
                 display: block; 
                 width: 100% !important; 
@@ -254,16 +251,17 @@ if st.session_state.user_auth is None:
                 border-radius: 20px 20px 0 0 !important;
             }
 
-            /* Le bloc République qui doit s'aligner pile poil */
-            .republique-box {
-                background-color: #0e1117;
-                margin-top: -36px; /* Pour souder au bloc jaune */
+            /* Le bloc République soudé avec sa ligne rouge à gauche */
+            .republique-box-fix {
+                background-color: #1a1c23; /* Couleur sombre raccord avec tes screens */
+                margin-top: -36px; /* Soudure parfaite */
                 border-radius: 0 0 20px 20px; 
-                border: 1px solid rgba(255,255,255,0.05);
+                border-left: 6px solid #ff4b4b; /* TA LIGNE ROUGE ICI */
                 padding: 30px 20px;
                 text-align: center;
                 width: 100%;
                 box-sizing: border-box;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.3);
             }
         </style>
     """, unsafe_allow_html=True)
@@ -275,12 +273,12 @@ if st.session_state.user_auth is None:
 
     if 5 <= h_lock < 18:
         salut_complet = "Bonjour☀️"
-        pattern_style = "background-color: #87CEEB; background-image: conic-gradient(from 200deg at 85% 10%, transparent 0deg, rgba(255,255,255,0.4) 15deg, transparent 30deg, rgba(255,223,137,0.5) 45deg, transparent 60deg, rgba(255,255,255,0.4) 75deg, transparent 90deg), radial-gradient(circle at 85% 10%, #FFF9E3 0%, #FFD700 15%, rgba(255,215,0,0.4) 30%, transparent 60%), radial-gradient(circle at 50% 25%, rgba(255,255,255,0.8) 0%, transparent 60%), radial-gradient(circle at 50% 75%, rgba(255,255,255,0.6) 0%, transparent 65%);"
+        pattern_style = "background-color: #87CEEB; background-image: conic-gradient(from 200deg at 85% 10%, transparent 0deg, rgba(255,255,255,0.4) 15deg, transparent 30deg, rgba(255,223,137,0.5) 45deg, transparent 60deg, rgba(255,255,255,0.4) 75deg, transparent 90deg), radial-gradient(circle at 85% 10%, #FFF9E3 0%, #FFD700 15%, rgba(255,215,0,0.4) 30%, transparent 60%);"
         t_color = "#1E1E1E"
         glow = "0 0 30px rgba(255, 255, 255, 1), 0 0 60px rgba(255, 200, 0, 0.6)"
     else:
         salut_complet = "Bonsoir🌕"
-        pattern_style = "background-color: #05070a; background-image: radial-gradient(1px 1px at 25% 35%, white, transparent), radial-gradient(1px 1px at 50% 10%, white, transparent), radial-gradient(2px 2px at 10% 80%, white, transparent), radial-gradient(1px 1px at 90% 20%, white, transparent), radial-gradient(1.5px 1.5px at 70% 60%, white, transparent); background-size: 150px 150px, 200px 200px, 250px 250px, 180px 180px, 220px 220px;"
+        pattern_style = "background-color: #05070a; background-image: radial-gradient(1px 1px at 25% 35%, white, transparent), radial-gradient(1px 1px at 50% 10%, white, transparent); background-size: 150px 150px, 200px 200px;"
         t_color = "#FFFFFF"
         glow = "0 0 40px rgba(255,255,255,0.9), 0 0 80px rgba(255,255,255,0.4)"
 
@@ -288,7 +286,7 @@ if st.session_state.user_auth is None:
     import streamlit.components.v1 as components
     components.html(f"""
         <body style="margin: 0; padding: 0; overflow: hidden;">
-            <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; text-align: center; padding: 60px 20px; border-radius: 20px 20px 0 0; color: {t_color}; {pattern_style} height: 320px; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.1); border-bottom: none;">
+            <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; text-align: center; padding: 60px 20px; border-radius: 20px 20px 0 0; color: {t_color}; {pattern_style} height: 320px; box-sizing: border-box; border-left: 6px solid transparent;">
                 <h1 style="font-size: 5.2em; margin: 0; font-weight: 900; letter-spacing: -3px; text-shadow: {glow}; line-height: 1.1;">
                     {salut_complet}
                 </h1>
@@ -313,9 +311,9 @@ if st.session_state.user_auth is None:
         </body>
     """, height=380)
 
-    # --- LE BLOC BAS (République) ---
+    # --- LE BLOC BAS (République avec ligne rouge) ---
     st.markdown(f"""
-    <div class="republique-box">
+    <div class="republique-box-fix">
         <span style="font-size: 40px; filter: drop-shadow(0 0 10px rgba(255,255,255,0.2));">👤</span> 
         <h2 style="margin-bottom:0; margin-top:10px; font-family: Helvetica, sans-serif; color: white; letter-spacing: 2px;">🏛️ RÉPUBLIQUE DE RENSSELAER</h2>
         <p style="font-size: 0.9em; opacity: 0.7; font-family: Helvetica, sans-serif; color: white; text-transform: uppercase; letter-spacing: 1px;">Terminal Fédéral d'Opérations Nationales</p>
@@ -326,27 +324,26 @@ if st.session_state.user_auth is None:
     
     st.write("") 
     st.warning("⚠️ **AVERTISSEMENT :** Toute action effectuée sur ce terminal est enregistrée.")
-    st.write("---")
 
     # 3. COLONNES D'ACCÈS
     c1, c2, c3 = st.columns(3)
     with c1:
         st.markdown("### 👥 CIVIL")
-        if st.button("ACCÉDER AU TERMINAL", key="btn_civ", use_container_width=True):
+        if st.button("ACCÉDER AU TERMINAL", key="btn_lock_civ", use_container_width=True):
             st.session_state.user_auth = "Civil"
             st.rerun()
     with c2:
         st.markdown("### 👨‍🔧 AGENT RCT")
-        login_rct = st.text_input("Identifiant Agent", type="password", key="l_rct_lock")
-        if st.button("AUTHENTIFICATION RCT", key="btn_rct_lock", use_container_width=True):
+        login_rct = st.text_input("Identifiant Agent", type="password", key="l_rct_l")
+        if st.button("AUTHENTIFICATION RCT", key="btn_rct_l", use_container_width=True):
             if login_rct == KEY_RCT:
                 st.session_state.user_auth = "RCT"
                 st.rerun()
             else: st.error("Clé invalide.")
     with c3:
         st.markdown("### 🛡️ STAFF/POLICE")
-        login_staff = st.text_input("Clé Maîtresse", type="password", key="l_st_lock")
-        if st.button("ACCÈS ADMINISTRATEUR", key="btn_st_lock", use_container_width=True):
+        login_staff = st.text_input("Clé Maîtresse", type="password", key="l_st_l")
+        if st.button("ACCÈS ADMINISTRATEUR", key="btn_st_l", use_container_width=True):
             if login_staff == KEY_STAFF:
                 st.session_state.user_auth = "Staff"
                 st.rerun()
