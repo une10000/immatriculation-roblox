@@ -410,15 +410,13 @@ with st.container():
                         """, unsafe_allow_html=True)
             else: 
                 st.error("Aucun compte trouvé.") 
-
-# --- FIN DE LA COLONNE 2 (Vérifie bien que ton code précédent finit ici) ---
-        
-        with col3:
-            st.markdown("### 📁 ARCHIVES")
-            try:
-                # 1. Lecture des données
-                df_f_history = cloud_conn.read(worksheet="Factures").fillna("")
                 
+                with col3:
+                    st.markdown("### 📁 ARCHIVES")
+                    try:
+                        # 1. Lecture des données
+                        df_f_history = cloud_conn.read(worksheet="Factures").fillna("")
+                        
                 # 2. Filtre sur les factures PAYÉES
                 historique = df_f_history[
                     (df_f_history["Cible"] == target) & 
@@ -426,20 +424,19 @@ with st.container():
                 ]
 
                 if not historique.empty:
-                    with st.container(height=400):
+                    # SUPPRESSION DU height=400 POUR ÉVITER LE VIDE BLANC
+                    with st.container(): 
                         for _, f in historique.iterrows():
                             # --- BOUTON DE REMBOURSEMENT ADMIN ---
                             if st.session_state.user_auth in ["Staff", "Admin"]:
                                 if st.button(f"🔄 Rembourser #{f['ID']}", key=f"refund_{f['ID']}", use_container_width=True):
                                     try:
-                                        # On récupère les données fraîches
                                         df_b_sync = cloud_conn.read(worksheet="Banque")
                                         df_f_sync = cloud_conn.read(worksheet="Factures")
                                         
                                         idx_civil = df_b_sync[df_b_sync["Nom Roblox"] == target].index[0]
                                         montant = float(str(f['Montant']).replace('$', '').replace(',', ''))
                                         
-                                        # Remboursement
                                         solde_c = float(str(df_b_sync.at[idx_civil, "Solde"]).replace('$', ''))
                                         df_b_sync.at[idx_civil, "Solde"] = solde_c + montant
                                         
@@ -447,10 +444,8 @@ with st.container():
                                         solde_rct = float(str(df_b_sync.at[idx_rct, "Solde"]).replace('$', ''))
                                         df_b_sync.at[idx_rct, "Solde"] = solde_rct - montant
                                         
-                                        # Mise à jour statut
                                         df_f_sync.loc[df_f_sync["ID"] == f["ID"], "Statut"] = "REMBOURSÉ"
                                         
-                                        # Envoi groupé
                                         cloud_conn.update(worksheet="Banque", data=df_b_sync)
                                         cloud_conn.update(worksheet="Factures", data=df_f_sync)
                                         
