@@ -413,20 +413,21 @@ with st.container():
 with col3:
             st.markdown("### 📁 ARCHIVES")
             try:
-                # 1. Lecture des données
+                # 1. Lecture des données fraîches
                 df_f_history = cloud_conn.read(worksheet="Factures").fillna("")
                 
-                # 2. Filtre sur les factures PAYÉES
+                # 2. Filtre sur les factures PAYÉES pour l'utilisateur sélectionné
                 historique = df_f_history[
                     (df_f_history["Cible"] == target) & 
                     (df_f_history["Statut"] == "PAYÉ")
                 ]
 
                 if not historique.empty:
-                    # SUPPRESSION DU height=400 POUR ÉVITER LE VIDE BLANC
+                    # On utilise un container sans 'height' pour qu'il soit flexible
                     with st.container(): 
                         for _, f in historique.iterrows():
-                            # --- BOUTON DE REMBOURSEMENT ADMIN ---
+                            
+                            # --- BOUTON DE REMBOURSEMENT (Réservé Staff/Admin) ---
                             if st.session_state.user_auth in ["Staff", "Admin"]:
                                 if st.button(f"🔄 Rembourser #{f['ID']}", key=f"refund_{f['ID']}", use_container_width=True):
                                     try:
@@ -436,15 +437,19 @@ with col3:
                                         idx_civil = df_b_sync[df_b_sync["Nom Roblox"] == target].index[0]
                                         montant = float(str(f['Montant']).replace('$', '').replace(',', ''))
                                         
+                                        # Recréditer le civil
                                         solde_c = float(str(df_b_sync.at[idx_civil, "Solde"]).replace('$', ''))
                                         df_b_sync.at[idx_civil, "Solde"] = solde_c + montant
                                         
+                                        # Débiter le compte RCT
                                         idx_rct = df_b_sync[df_b_sync["Nom Roblox"] == ACC_RCT].index[0]
                                         solde_rct = float(str(df_b_sync.at[idx_rct, "Solde"]).replace('$', ''))
                                         df_b_sync.at[idx_rct, "Solde"] = solde_rct - montant
                                         
+                                        # Changer le statut de la facture
                                         df_f_sync.loc[df_f_sync["ID"] == f["ID"], "Statut"] = "REMBOURSÉ"
                                         
+                                        # Mise à jour sur Google Sheets
                                         cloud_conn.update(worksheet="Banque", data=df_b_sync)
                                         cloud_conn.update(worksheet="Factures", data=df_f_sync)
                                         
@@ -453,24 +458,37 @@ with col3:
                                         time.sleep(1)
                                         st.rerun()
                                     except Exception as e_inner:
-                                        st.error(f"Détail erreur : {e_inner}")
+                                        st.error(f"Erreur lors du remboursement : {e_inner}")
                             
-                            # --- TICKET VISUEL ---
+                            # --- TICKET VISUEL (Style Officiel) ---
+                            # On récupère la plaque si la colonne existe, sinon '---'
+                            plaque_val = f.get('Plaque', '---') if f.get('Plaque') != "" else "---"
+
                             st.markdown(f"""
-                            <div style="border: 1px solid #000; padding: 10px; background: #f9f9f9; color: black; font-family: 'Courier New', monospace; margin-bottom: 8px; border-left: 5px solid green;">
-                                <div style="display: flex; justify-content: space-between; font-size: 0.8em;">
+                            <div style="border: 1px solid #000; padding: 12px; background: #f9f9f9; color: black; font-family: 'Courier New', monospace; margin-bottom: 12px; border-left: 5px solid green; box-shadow: 2px 2px 5px rgba(0,0,0,0.05);">
+                                <div style="display: flex; justify-content: space-between; font-size: 0.8em; margin-bottom: 5px;">
                                     <b>REF: #{f['ID']}</b>
                                     <b style="color: green;">ACQUITTÉE ✔</b>
                                 </div>
-                                <hr style="margin: 5px 0; border-top: 1px dashed #000;">
-                                <div style="font-size: 0.9em;">
-                                    <b>MOTIF :</b> {f['Motif']}<br>
-                                    <b>MONTANT :</b> {f['Montant']}$
+                                
+                                <div style="border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 8px 0; margin: 5px 0;">
+                                    <div style="margin-bottom: 6px;"><b>MOTIF :</b> {f['Motif']}</div>
+                                    <div style="display: flex; align-items: center;">
+                                        <b>VÉHICULE :</b> 
+                                        <span style="margin-left: 10px; border: 1px solid #333; padding: 1px 8px; background: #eee; font-weight: bold; border-radius: 3px; font-size: 0.9em;">
+                                            {plaque_val}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px;">
+                                    <span style="font-size: 0.75em; color: #666;">TERMINAL NATIONAL RCT</span>
+                                    <strong style="font-size: 1.1em;">TOTAL : {f['Montant']}$</strong>
                                 </div>
                             </div>
                             """, unsafe_allow_html=True)
                 else:
-                    st.info("Aucun paiement archivé.")
+                    st.info("Aucun paiement archivé pour ce citoyen.")
             except Exception as e_outer:
                 st.error(f"Erreur d'accès aux archives : {e_outer}")
 # ======================================================================================
