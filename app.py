@@ -639,7 +639,7 @@ if st.session_state.user_auth == "Staff": tab_labels.append("🛠️ ADMINISTRAT
 
 tabs = st.tabs(tab_labels)
 
-# --- ONGLET 1 : IMMATRICULATION & RADIATION ---
+# --- ONGLET 1 : IMMATRICULATION & RADIATION (AVEC OFFRE TRIO) ---
 with tabs[0]:
     st.markdown("### 📝 Gestion des Titres de Circulation")
     
@@ -653,84 +653,83 @@ with tabs[0]:
             f_assu = st.selectbox("Type d'Assurance", ["Aucune", "AVERIS (130$)", "RCT (150$)"], key="k_assu_v7")
             f_code = st.text_input("Définir un Code de Radiation (Secret)", type="password", key="k_code_v7")
             
-            # --- CALCULS TAXE JEUNE (Fixe à 0 ou 50) ---
+            # --- CALCULS TAXE JEUNE ---
             val_taxe_jeune = 0
-            est_jeune = False
-            
             if f_owner != "---":
                 try:
                     date_brute = df_b[df_b["Nom Roblox"] == f_owner]["Date d'arrivée"].values[0]
                     date_arr = datetime.strptime(str(date_brute), "%d/%m/%Y")
                     if (datetime.now() - date_arr).days < 30:
-                        est_jeune = True
                         val_taxe_jeune = 50
                         st.warning(f"🔰 JEUNE CONDUCTEUR détecté (+{val_taxe_jeune}$)")
                 except: pass
 
+            # --- CALCUL DU TOTAL + OFFRE TRIO RCT ---
             taxe_gouv = 175
             taxe_assu = 130 if "AVERIS" in f_assu else (150 if "RCT" in f_assu else 0)
             
-            # Offre Trio RCT
+            # Application de l'Offre Trio (Seulement pour RCT)
             if "RCT" in f_assu and f_owner != "---":
-                if len(df_i[df_i["Nom d'utilisateur ROBLOX"] == f_owner]) >= 2:
+                nb_vehicules = len(df_i[df_i["Nom d'utilisateur ROBLOX"] == f_owner])
+                if nb_vehicules >= 2:
                     taxe_assu = 0
-                    st.success("🎁 OFFRE TRIO : Assurance offerte sur le 3ème véhicule !")
+                    st.success(f"🎁 OFFRE TRIO : {f_owner} possède déjà {nb_vehicules} véhicules. Assurance RCT offerte !")
 
             total_bill = taxe_gouv + taxe_assu + val_taxe_jeune
             
             if st.button(f"S'ACQUITTER DE {total_bill}$ ET ENREGISTRER", use_container_width=True, key="btn_pay_final"):
                 if f_owner != "---" and f_plate and f_code:
                     u_idx = df_b[df_b["Nom Roblox"] == f_owner].index[0]
-                    u_solde = float(str(df_b.at[u_idx, "Solde"]).replace('$', ''))
+                    u_solde = float(str(df_b.at[u_idx, "Solde"]).replace('$', '').replace(',', ''))
                     
                     if u_solde >= total_bill:
-                        # --- TRAITEMENT DU PAIEMENT ---
+                        # 1. DÉBIT DU COMPTE CIVIL
                         df_b.at[u_idx, "Solde"] = u_solde - total_bill
                         
-                        # Redirection des fonds (Averis vers Moune2010, RCT vers compte RCT)
+                        # 2. REDIRECTION DES FONDS (Si taxe payée)
                         if taxe_assu > 0:
                             target_acc = "Moune2010" if "AVERIS" in f_assu else ACC_RCT
                             a_idx = df_b[df_b["Nom Roblox"] == target_acc].index[0]
-                            df_b.at[a_idx, "Solde"] = float(str(df_b.at[a_idx, "Solde"]).replace('$', '')) + taxe_assu
+                            old_solde = float(str(df_b.at[a_idx, "Solde"]).replace('$', '').replace(',', ''))
+                            df_b.at[a_idx, "Solde"] = old_solde + taxe_assu
                         
-                        # --- ENREGISTREMENT ---
-                        new_row = pd.DataFrame([{"Horodateur": datetime.now().strftime("%d/%m/%Y"), "Nom d'utilisateur ROBLOX": f_owner, "Marque du véhicule": f_model, "Numéro de la plaque": f_plate, "Assurance": f_assu, "CODE": f_code}])
+                        # 3. ENREGISTREMENT AVEC DATE AUTO
+                        new_row = pd.DataFrame([{
+                            "Horodateur": datetime.now().strftime("%d/%m/%Y"),
+                            "Nom d'utilisateur ROBLOX": f_owner, 
+                            "Marque du véhicule": f_model, 
+                            "Numéro de la plaque": f_plate, 
+                            "Assurance": f_assu, 
+                            "CODE": f_code
+                        }])
+                        
                         cloud_conn.update(worksheet="Banque", data=df_b)
-                        cloud_conn.update(worksheet="Copie de Immatriculations", data=pd.concat([df_i, new_row]))
+                        cloud_conn.update(worksheet="Copie de Immatriculations", data=pd.concat([df_i, new_row], ignore_index=True))
                         
-                        # --- MESSAGE DE CONFIRMATION (NOUVEAU) ---
-                        st.balloons() # Optionnel : petites confettis pour le côté "cool"
-                        st.success(f"✅ Paiement de {total_bill}$ validé ! Votre plaque {f_plate} est désormais enregistrée.")
-                        
+                        st.balloons()
+                        st.success(f"✅ Véhicule enregistré ! Total payé : {total_bill}$")
                         st.cache_data.clear()
-                        time.sleep(2) # On attend 2 secondes pour que l'utilisateur voit le message
+                        time.sleep(2)
                         st.rerun()
                     else: 
-                        st.error("❌ Solde insuffisant sur votre compte bancaire.")
+                        st.error("❌ Solde insuffisant.")
                 else:
-                    st.warning("⚠️ Veuillez remplir tous les champs (Propriétaire, Plaque et Code).")
+                    st.warning("⚠️ Veuillez remplir tous les champs.")
 
     with col_t:
-        st.markdown("### 🖼️ APERÇU DU TITRE (LIVE)")
-        
-        # Le ticket avec la colonne Taxe Jeune FIXE
+        st.markdown("### 🖼️ APERÇU DU TITRE")
         ticket_html = f"""
         <div style="border: 4px double black; padding: 15px; background: white; color: black; font-family: monospace;">
             <div style="text-align:center; font-weight:900; font-size:1.2em;">TITRE DE CIRCULATION</div>
             <center><small>RÉPUBLIQUE DE RENSSELAER</small></center>
             <hr>
-            <div style="font-size: 0.9em;">
-                <p style="margin:2px 0;"><b>DATE :</b> {datetime.now().strftime("%d/%m/%Y")}</p>
-                <p style="margin:2px 0;"><b>NOM :</b> {f_owner}</p>
-                <p style="margin:2px 0;"><b>MODÈLE :</b> {f_model if f_model else "..."}</p>
-                <p style="margin:2px 0;"><b>PLAQUE :</b> <span style="background:#eee; border:1px solid #000; padding:0 3px;">{f_plate if f_plate else "..."}</span></p>
-                <p style="margin:2px 0;"><b>ASSURANCE :</b> {f_assu}</p>
-                <p style="margin:2px 0;"><b>TAXE JEUNE :</b> {val_taxe_jeune}$</p>
-            </div>
+            <p><b>DATE :</b> {datetime.now().strftime("%d/%m/%Y")}</p>
+            <p><b>NOM :</b> {f_owner}</p>
+            <p><b>PLAQUE :</b> {f_plate if f_plate else "..."}</p>
+            <p><b>ASSURANCE :</b> {f_assu} {"(OFFERTE)" if (taxe_assu == 0 and "RCT" in f_assu) else ""}</p>
+            <p><b>TAXE JEUNE :</b> {val_taxe_jeune}$</p>
             <hr>
             <div style="text-align:right; font-weight:bold; font-size:1.2em;">TOTAL : {total_bill}$</div>
-            <br>
-            <center><small>Certifié conforme par le Terminal National</small></center>
         </div>
         """
         st.markdown(ticket_html, unsafe_allow_html=True)
