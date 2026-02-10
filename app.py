@@ -310,14 +310,16 @@ if st.session_state.user_auth is None:
     st.warning("⚠️ **AVERTISSEMENT :** Toute action effectuée sur ce terminal est enregistrée.")
     st.write("---")
 
-    # 3. COLONNES D'ACCÈS (Inchangé)
-    c1, c2, c3 = st.columns(3)
+    # 3. COLONNES D'ACCÈS (MISE À JOUR 4 COLONNES)
+    c1, c2, c3, c4 = st.columns(4) # Passage à 4 colonnes
+    
     with c1:
         st.markdown("### 👥 CIVIL")
-        nom_civil = st.text_input("Ecrivez quelque chose (Optionnel)", placeholder="Ex: Liberté, Egalité, Renault Coupé.", key="input_civil_align")
+        nom_civil = st.text_input("Note (Optionnel)", placeholder="Ex: Renault Coupé.", key="input_civil_align")
         if st.button("ACCÉDER AU TERMINAL", key="l_civ_f", use_container_width=True):
             st.session_state.user_auth = "Civil"
             st.rerun()
+            
     with c2:
         st.markdown("### 👨‍🔧 AGENT RCT")
         login_rct = st.text_input("Identifiant Agent", placeholder="Code RCT", type="password", key="l_rct_ff")
@@ -326,10 +328,21 @@ if st.session_state.user_auth is None:
                 st.session_state.user_auth = "RCT"
                 st.rerun()
             else: st.error("Clé invalide.")
+
     with c3:
-        st.markdown("### 🛡️👮‍♂️ Portail POLSTA")
+        st.markdown("### 🏢 AVERIS")
+        login_averis = st.text_input("Accès Averis", placeholder="Code Averis", type="password", key="l_av_ff")
+        if st.button("CONNEXION AVERIS", key="b_av_f", use_container_width=True):
+            # Défini ta variable KEY_AVERIS en haut de ton code (ex: "26_RCRPFR_AVERIS")
+            if login_averis == "26_RCRPFR_AVERIS": 
+                st.session_state.user_auth = "Averis"
+                st.rerun()
+            else: st.error("Accès refusé.")
+
+    with c4:
+        st.markdown("### 🛡️ STAFF")
         login_staff = st.text_input("Clé Maîtresse", placeholder="Code POLSTA", type="password", key="l_st_ff")
-        if st.button("ACCÈS ADMINISTRATEUR", key="b_st_f", use_container_width=True):
+        if st.button("ACCÈS ADMIN", key="b_st_f", use_container_width=True):
             if login_staff == KEY_STAFF:
                 st.session_state.user_auth = "Staff"
                 st.rerun()
