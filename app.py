@@ -715,7 +715,7 @@ with tabs[0]:
                         st.error("❌ Solde insuffisant.")
                 else:
                     st.warning("⚠️ Veuillez remplir tous les champs.")
-                    with col_t:
+with col_t:
         st.write("### 🖼️ APERÇU DU TITRE (LIVE)")
         
         # Logique pour la couleur de la taxe jeune
