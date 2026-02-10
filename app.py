@@ -233,13 +233,11 @@ if st.session_state.user_auth is None:
         pattern_style = (
             "background-color: #87CEEB; "
             "background-image: "
-            "radial-gradient(circle at 15% 35%, white 10%, transparent 20%), "
-            "radial-gradient(circle at 22% 42%, white 12%, transparent 22%), "
-            "radial-gradient(circle at 35% 30%, white 9%, transparent 18%), "
-            "radial-gradient(circle at 70% 55%, white 12%, transparent 25%), "
-            "radial-gradient(circle at 80% 50%, white 15%, transparent 30%), "
-            "radial-gradient(circle at 88% 60%, white 10%, transparent 20%); "
-            "background-size: 400px 400px;"
+            "radial-gradient(circle at 15% 35%, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.2) 25%, transparent 50%), "
+            "radial-gradient(circle at 25% 40%, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.1) 30%, transparent 55%), "
+            "radial-gradient(circle at 75% 55%, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.2) 25%, transparent 50%), "
+            "radial-gradient(circle at 85% 45%, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.1) 35%, transparent 60%); "
+            "background-size: 500px 500px;"
         )
         t_color = "#1E1E1E"
         glow = "0 0 15px rgba(255, 165, 0, 0.3)"
@@ -271,7 +269,7 @@ if st.session_state.user_auth is None:
         </div>
     """, unsafe_allow_html=True)
 
-    # 2. EN-TÊTE RÉPUBLIQUE (Avec ajout du logo révisé)
+    # 2. EN-TÊTE RÉPUBLIQUE
     st.markdown("""
     <div class="header-box" style="margin-top: 0px; border-radius: 0 0 20px 20px; border-top: 1px solid rgba(255,255,255,0.05); padding: 20px;">
     <center>
