@@ -586,7 +586,7 @@ if not mes_factures.empty:
                 else:
                     st.error("❌ Fonds insuffisants.")
 except Exception as e:
-    st.error(f"Erreur technique : {e}")
+st.error(f"Erreur technique : {e}")
 
 # --- SECTION VÉHICULES CORRIGÉE ---
 # --- SECTION VÉHICULES UNIFORMISÉE ---
