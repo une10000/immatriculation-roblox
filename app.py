@@ -200,8 +200,11 @@ if st.session_state.user_auth is not None:
             st.rerun()
             
         if st.button("🚪 DÉCONNEXION", use_container_width=True):
-            # 1. Enregistrement du log
-            record_log(st.session_state.user_auth, "Déconnexion")
+            # 1. Enregistrement du log (optionnel selon ton système)
+            try:
+                record_log(st.session_state.user_auth, "Déconnexion")
+            except:
+                pass
             
             # 2. Injection JS pour remonter tout en haut de la page immédiatement
             components.html("""
@@ -210,12 +213,12 @@ if st.session_state.user_auth is not None:
                 </script>
             """, height=0)
             
-            # 3. Nettoyage radical (Cache + Session)
+            # 3. Nettoyage radical (Cache Streamlit + Variables de session)
             st.cache_data.clear()
             for key in list(st.session_state.keys()):
                 del st.session_state[key]
             
-            # 4. Relance l'application (elle redémarrera en haut de page)
+            # 4. Relance l'application à zéro
             st.rerun()
             
         st.divider()
@@ -786,90 +789,98 @@ with col_t:
 
 # --- ONGLET 2 : SERVICES AGENT (FACTURES / POINTS / CONSULTATION) ---
 if st.session_state.user_auth in ["RCT", "Staff"]:
-    with tabs[1]:# --- PANEL D'ALERTE : FACTURES IMPAYÉES (S'affiche uniquement pour Staff/RCT) ---
+    with tabs[1]:
+        # 1. PANEL D'ALERTE : FACTURES IMPAYÉES
         st.markdown("### 🚨 ALERTES PRIORITAIRES")
 
-# 1. Charger toutes les factures
-df_all_f = cloud_conn.read(worksheet="Factures").fillna("")
+        # Charger toutes les factures
+        df_all_f = cloud_conn.read(worksheet="Factures").fillna("")
 
-# 2. Filtrer les factures périmées (Statut EN ATTENTE + Date dépassée)
-alertes = []
-maintenant = datetime.now()
+        # Filtrer les factures périmées
+        alertes = []
+        maintenant = datetime.now()
 
-for idx, f in df_all_f.iterrows():
-    if f["Statut"] == "EN ATTENTE":
-        try:
-            limite = datetime.strptime(str(f['Date_Limite']), "%d/%m/%Y %H:%M:%S")
-            if maintenant > limite:
-                alertes.append(f)
-        except:
-            pass # Ignore les factures sans date valide
+        for idx, f in df_all_f.iterrows():
+            if f["Statut"] == "EN ATTENTE":
+                try:
+                    limite = datetime.strptime(str(f['Date_Limite']), "%d/%m/%Y %H:%M:%S")
+                    if maintenant > limite:
+                        alertes.append(f)
+                except:
+                    pass 
 
-# 3. Affichage du Panel
-if alertes:
-    df_alertes = pd.DataFrame(alertes)
-    st.error(f"⚠️ {len(alertes)} FACTURE(S) SONT EN SOUFFRANCE (DÉLAI DÉPASSÉ)")
-    
-    with st.expander("🔍 VOIR LA LISTE DES REQUÊTES PRIORITAIRES"):
-        for _, row in df_alertes.iterrows():
-            c1, c2, c3 = st.columns([1, 2, 1])
-            with c1:
-                st.write(f"🆔 **#{row['ID']}**")
-            with c2:
-                st.write(f"👤 **{row['Cible']}** ({row['Montant']}$)")
-            with c3:
-                if st.button("VOIR PROFIL", key=f"alert_view_{row['ID']}"):
-                    # Ici tu peux ajouter une logique pour changer le 'target' 
-                    # mais le plus simple est de prévenir l'agent
-                    st.info("Utilisez la recherche en haut")
-            st.divider()
-else:
-    st.success("✅ Aucune facture en retard. Tous les citoyens sont à jour.")
-    if target == "---":
-        st.warning("⚠️ Sélectionnez un citoyen en haut de la page.")
-    else:
+        # Affichage du Panel (si des alertes existent)
+        if alertes:
+            df_alertes = pd.DataFrame(alertes)
+            st.error(f"⚠️ {len(alertes)} FACTURE(S) EN SOUFFRANCE (DÉLAI DÉPASSÉ)")
+            
+            with st.expander("🔍 VOIR LA LISTE DES REQUÊTES PRIORITAIRES"):
+                for _, row in df_alertes.iterrows():
+                    c1, c2, c3 = st.columns([1, 2, 1])
+                    with c1:
+                        st.write(f"🆔 **#{row['ID']}**")
+                    with c2:
+                        st.write(f"👤 **{row['Cible']}** ({row['Montant']}$)")
+                    with c3:
+                        st.info("Rechercher en haut 👆")
+                    st.divider()
+        
+        st.divider() # Séparateur visuel entre alertes et saisie
+
+        # 2. SYSTÈME DE SAISIE ET CONSULTATION
+        if target == "---":
+            st.warning("⚠️ Sélectionnez un citoyen en haut de la page pour agir.")
+        else:
             # 3 colonnes : Saisie | Facture (Milieu) | Véhicules (Droite)
-        col_saisie, col_facture, col_vehicules = st.columns([1, 1.2, 0.8])
-        with col_saisie:
-            with st.container(border=True):
-                st.markdown("#### 📝 Saisie")
-                f_val = st.number_input("Montant ($)", min_value=0, step=50, key="v_val_final")
-                is_rct = (st.session_state.user_auth == "RCT")
-                f_pts = st.number_input(
-                    "Points à retirer", 
-                    min_value=0, max_value=12, step=1, 
-                    key="v_pts_final", 
-                    disabled=is_rct
-                )
-                f_motif = st.text_input("Motif", key="v_mot_final")
-                # Récupération des données véhicules pour la cible
-                target_veh = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
-                v_list = ["AUCUN / PIÉTON"] + target_veh["Numéro de la plaque"].tolist()
-                f_plate = st.selectbox("Véhicule concerné", v_list, key="v_plate_final")
-                st.write("---")
-                label = "🚨 ENVOYER & DÉBITER" if not is_rct else "🚨 ENVOYER FACTURE"
-                if st.button(label, use_container_width=True, type="primary"):
-                    if not f_motif:
-                        st.error("Motif obligatoire.")
-                    else:
-                        # Logique d'envoi (Points + Facture)
-                        if f_pts > 0 and not is_rct:
-                            idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
-                            df_p.at[idx_p, "PTS"] = max(0, int(df_p.at[idx_p, "PTS"]) - f_pts)
-                            cloud_conn.update(worksheet="Points Permis", data=df_p)
-                            df_f = cloud_conn.read(worksheet="Factures")
+            col_saisie, col_facture, col_vehicules = st.columns([1, 1.2, 0.8])
+
+            with col_saisie:
+                with st.container(border=True):
+                    st.markdown("#### 📝 Saisie")
+                    f_val = st.number_input("Montant ($)", min_value=0, step=50, key="v_val_final")
+                    
+                    is_rct = (st.session_state.user_auth == "RCT")
+                    f_pts = st.number_input(
+                        "Points à retirer", 
+                        min_value=0, max_value=12, step=1, 
+                        key="v_pts_final", 
+                        disabled=is_rct
+                    )
+                    
+                    f_motif = st.text_input("Motif", key="v_mot_final")
+                    
+                    # Récupération des données véhicules
+                    target_veh = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
+                    v_list = ["AUCUN / PIÉTON"] + target_veh["Numéro de la plaque"].tolist()
+                    f_plate = st.selectbox("Véhicule concerné", v_list, key="v_plate_final")
+                    
+                    st.write("---")
+                    label = "🚨 ENVOYER & DÉBITER" if not is_rct else "🚨 ENVOYER FACTURE"
+                    
+                    if st.button(label, use_container_width=True, type="primary"):
+                        if not f_motif:
+                            st.error("Motif obligatoire.")
+                        else:
+                            # Logique d'envoi Points
+                            if f_pts > 0 and not is_rct:
+                                idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
+                                df_p.at[idx_p, "PTS"] = max(0, int(df_p.at[idx_p, "PTS"]) - f_pts)
+                                cloud_conn.update(worksheet="Points Permis", data=df_p)
+                            
+                            # Logique d'envoi Facture
                             new_row = {
                                 "ID": random.randint(1000, 9999),
                                 "Cible": target,
                                 "Emetteur": st.session_state.user_auth,
                                 "Montant": f_val,
                                 "Motif": f"{f_motif} [{f_plate}]",
-                                "Statut": "EN ATTENTE",  # <-- Ajout d'une virgule ici
-                                "Date_Limite": (datetime.now() + timedelta(hours=24)).strftime("%d/%m/%Y %H:%M:%S") # <-- Corrigé .strftime (au lieu de .sftrtime)
+                                "Statut": "EN ATTENTE",
+                                "Date_Limite": (datetime.now() + timedelta(hours=24)).strftime("%d/%m/%Y %H:%M:%S")
                             }
-                            df_f = pd.concat([df_f, pd.DataFrame([new_row])], ignore_index=True)
-                            cloud_conn.update(worksheet="Factures", data=df_f)
-                            st.success("✅ Envoyé !")
+                            df_f_updated = pd.concat([df_all_f, pd.DataFrame([new_row])], ignore_index=True)
+                            cloud_conn.update(worksheet="Factures", data=df_f_updated)
+                            
+                            st.success("✅ Opération réussie !")
                             st.cache_data.clear()
                             st.rerun()
 
@@ -896,32 +907,26 @@ else:
                 st.markdown("#### 🚗 Véhicules")
                 if not target_veh.empty:
                     for _, veh in target_veh.iterrows():
-                        # Logique des couleurs d'assurance
                         assurance = str(veh['Assurance'])
-                        if assurance == "Averis":
-                            color, status_txt, icon = "green", "VÉHICULE EN ORDRE", "✅"
-                        elif assurance == "RCT":
-                            color, status_txt, icon = "green", "ASSURÉ RCT", "🛡️"
+                        if assurance in ["Averis", "RCT"]:
+                            color, status_txt, icon = "green", f"ASSURÉ {assurance.upper()}", "✅"
                         else:
-                            color, status_txt, icon = "#d32f2f", "🚨 NON-ASSURÉ RCT", "⚠️"
+                            color, status_txt, icon = "#d32f2f", "🚨 NON-ASSURÉ", "⚠️"
 
                         st.markdown(f"""
-                        <div style="border: 2px solid black; padding: 10px; background: white; color: black; font-family: 'Courier New', monospace; line-height: 1.1; margin-bottom: 10px; font-size: 0.8em;">
+                        <div style="border: 2px solid black; padding: 10px; background: white; color: black; font-family: 'Courier New', monospace; margin-bottom: 10px; font-size: 0.8em;">
                             <center><b>TITRE DE CIRCULATION</b></center>
                             <hr style="border-top: 1px solid #ccc; margin: 5px 0;">
-                            <b>NOM :</b> {target}<br>
                             <b>MODÈLE :</b> {veh['Marque du véhicule']}<br>
-                            <b>PLAQUE :</b> <span style="border: 1px solid black; padding: 0 2px;">{veh['Numéro de la plaque']}</span><br>
-                            <b>ASSUR. :</b> {assurance}
+                            <b>PLAQUE :</b> {veh['Numéro de la plaque']}<br>
                             <hr style="border-top: 1px solid #ccc; margin: 5px 0;">
                             <div style="text-align: center; color: {color}; font-weight: bold;">
-                                {icon} {status_txt}<br>
-                                <small style="color: gray; font-size: 0.7em;">Terminal National</small>
+                                {icon} {status_txt}
                             </div>
                         </div>
                         """, unsafe_allow_html=True)
                 else:
-                    st.info("Aucun véhicule.")
+                    st.info("Aucun véhicule enregistré.")
 # --- ONGLET 3 : ADMINISTRATION (STAFF ONLY) ---
 if st.session_state.user_auth == "Staff":
     with tabs[2]:
