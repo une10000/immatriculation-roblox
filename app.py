@@ -257,17 +257,17 @@ if st.session_state.user_auth is None:
         t_color = "#FFFFFF"
         glow = "0 0 40px rgba(255,255,255,0.9), 0 0 80px rgba(255,255,255,0.4)"
 
-    # --- LE "MACHIN" TOUT-EN-UN (Police corrigée) ---
+    # --- LE "MACHIN" TOUT-EN-UN (Police Helvetica) ---
     import streamlit.components.v1 as components
     components.html(f"""
-        <div style="font-family: 'Source Sans Pro', -apple-system, BlinkMacSystemFont, sans-serif; text-align: center; padding: 60px 20px; border-radius: 20px 20px 0 0; color: {t_color}; {pattern_style} height: 320px;">
-            <h1 style="font-size: 5.5em; margin: 0; font-weight: 900; letter-spacing: -4px; text-shadow: {glow}; line-height: 1;">
+        <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; text-align: center; padding: 60px 20px; border-radius: 20px 20px 0 0; color: {t_color}; {pattern_style} height: 320px;">
+            <h1 style="font-size: 5.5em; margin: 0; font-weight: 900; letter-spacing: -3px; text-shadow: {glow}; line-height: 1.1;">
                 {salut_complet}
             </h1>
-            <p style="font-size: 1.1em; opacity: 0.7; letter-spacing: 5px; font-weight: bold; text-transform: uppercase; margin: 25px 0;">
+            <p style="font-size: 1.1em; opacity: 0.8; letter-spacing: 5px; font-weight: bold; text-transform: uppercase; margin: 25px 0;">
                 Unité Fédérale de Rensselaer
             </p>
-            <div id="clock" style="font-family: monospace; font-size: 3em; letter-spacing: 5px; font-weight: bold; border-top: 2px solid {t_color}33; display: inline-block; padding-top: 10px;">
+            <div id="clock" style="font-size: 3em; letter-spacing: 5px; font-weight: bold; border-top: 2px solid {t_color}33; display: inline-block; padding-top: 10px;">
                 00:00:00
             </div>
         </div>
@@ -288,10 +288,10 @@ if st.session_state.user_auth is None:
     st.markdown("""
     <div class="header-box" style="margin-top: -10px; border-radius: 0 0 20px 20px; border-top: 1px solid rgba(255,255,255,0.05); padding: 20px;">
     <center>
-        <span style="font-size: 40px;">👤</span> <h2 style="margin-bottom:0; margin-top:10px;">🏛️ RÉPUBLIQUE DE RENSSELAER</h2>
-        <p style="font-size: 1em; opacity: 0.8;">TERMINAL FÉDÉRAL D'OPÉRATIONS NATIONALES</p>
+        <span style="font-size: 40px;">👤</span> <h2 style="margin-bottom:0; margin-top:10px; font-family: Helvetica, Arial, sans-serif;">🏛️ RÉPUBLIQUE DE RENSSELAER</h2>
+        <p style="font-size: 1em; opacity: 0.8; font-family: Helvetica, Arial, sans-serif;">TERMINAL FÉDÉRAL D'OPÉRATIONS NATIONALES</p>
         <hr style="border-color: rgba(255,255,255,0.1); margin: 10px 0;">
-        <small style="opacity: 0.6;">VERSION 14.6.0 | SÉCURISÉ PAR PROTOCOLE RCRP-OS</small>
+        <small style="opacity: 0.6; font-family: Helvetica, Arial, sans-serif;">VERSION 14.6.0 | SÉCURISÉ PAR PROTOCOLE RCRP-OS</small>
     </center>
     </div>
     """, unsafe_allow_html=True)
