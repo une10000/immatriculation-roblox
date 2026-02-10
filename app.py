@@ -200,15 +200,22 @@ if st.session_state.user_auth is not None:
             st.rerun()
             
         if st.button("🚪 DÉCONNEXION", use_container_width=True):
-            # 1. On enregistre le log avant de tout supprimer
+            # 1. Enregistrement du log
             record_log(st.session_state.user_auth, "Déconnexion")
             
-            # 2. Nettoyage complet du cache et de la session (Adieu les fantômes !)
+            # 2. Injection JS pour remonter tout en haut de la page immédiatement
+            components.html("""
+                <script>
+                    window.parent.window.scrollTo(0,0);
+                </script>
+            """, height=0)
+            
+            # 3. Nettoyage radical (Cache + Session)
             st.cache_data.clear()
             for key in list(st.session_state.keys()):
                 del st.session_state[key]
             
-            # 3. Relance immédiate
+            # 4. Relance l'application (elle redémarrera en haut de page)
             st.rerun()
             
         st.divider()
