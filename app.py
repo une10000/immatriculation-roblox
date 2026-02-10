@@ -667,7 +667,7 @@ with tabs[0]:
     with col_f:
         with st.container(border=True):
             f_owner = st.selectbox("Propriétaire du véhicule", ["---"] + df_b["Nom Roblox"].tolist(), key="k_owner_v7")
-            f_model = st.text_input("Marque & Modèle précis", key="k_model_v7")
+            f_model = st.text_input("Marque", key="k_model_v7")
             f_plate = st.text_input("Numéro de Plaque souhaité", key="k_plate_v7").upper()
             f_assu = st.selectbox("Type d'Assurance", ["Aucune", "AVERIS (130$)", "RCT (150$)"], key="k_assu_v7")
             f_code = st.text_input("Définir un Code de Radiation (Secret)", type="password", key="k_code_v7")
