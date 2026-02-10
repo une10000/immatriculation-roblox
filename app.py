@@ -17,35 +17,23 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- DÉTECTION DU THÈME ---
-# On utilise l'heure pour basculer si le système ne répond pas, 
-# mais on force des styles qui s'adaptent au fond.
+# --- CONFIGURATION DU THÈME DYNAMIQUE ---
+# Détection de l'heure pour le basculement automatique
 h_sys = (datetime.now(timezone.utc) + timedelta(hours=1)).hour
 is_night = not (5 <= h_sys < 18)
 
-# Couleurs dynamiques
 if is_night:
-    primary_txt = "#ffffff"
-    app_bg = "#0e1117"
-    widget_bg = "#262730"
-    border_col = "#444444"
+    app_bg, txt_col, widget_bg, border_col = "#0e1117", "#ffffff", "#262730", "#444444"
 else:
-    primary_txt = "#000000"
-    app_bg = "#ffffff"
-    widget_bg = "#f0f2f6"
-    border_col = "#000000"
+    app_bg, txt_col, widget_bg, border_col = "#ffffff", "#000000", "#f0f2f6", "#000000"
 
 st.markdown(f"""
     <style>
-    /* Force le fond de l'application selon le mode */
-    .stApp {{
-        background-color: {app_bg} !important;
-    }}
-
-    /* SUPPRESSION DES DOUBLONS : On cache les en-têtes Streamlit par défaut */
+    /* Nettoyage des doublons et des éléments par défaut de Streamlit */
     #MainMenu, footer, header {{ visibility: hidden; }}
+    .stApp {{ background-color: {app_bg} !important; }}
 
-    /* Style de l'en-tête UNIQUE RCRP */
+    /* Style de l'en-tête UNIQUE (Celui que tu vois en haut de ta capture) */
     .rcrp-header {{
         background: linear-gradient(90deg, #121212 0%, #2c3e50 100%);
         padding: 40px;
@@ -53,26 +41,24 @@ st.markdown(f"""
         border-left: 20px solid #d32f2f;
         margin-bottom: 30px;
         text-align: center;
-        color: white !important;
+        color: white !important; /* L'en-tête reste sombre pour le style */
         box-shadow: 0 4px 15px rgba(0,0,0,0.3);
     }}
 
-    /* Adaptation des textes et labels pour le mode Clair/Nuit */
-    .stMarkdown, p, label, span, div, .stHeader {{
-        color: {primary_txt} !important;
-    }}
+    /* Adaptation des textes pour le mode CLAIR / NUIT */
+    .stMarkdown, p, label, span, div, .stHeader {{ color: {txt_col} !important; }}
 
-    /* Correction des champs de saisie (Inputs) */
-    .stTextInput>div>div>input, .stSelectbox>div>div {{
+    /* Correction des cases de saisie pour qu'elles soient lisibles en blanc */
+    input, .stSelectbox>div>div {{
         background-color: {widget_bg} !important;
-        color: {primary_txt} !important;
+        color: {txt_col} !important;
         border: 2px solid {border_col} !important;
     }}
 
     /* Boutons */
     .stButton>button {{
         background-color: {widget_bg} !important;
-        color: {primary_txt} !important;
+        color: {txt_col} !important;
         border: 2px solid {border_col} !important;
         font-weight: bold !important;
         width: 100%;
@@ -87,10 +73,17 @@ st.markdown(f"""
     </div>
 """, unsafe_allow_html=True)
 
-# ======================================================================================
-# 2. MOTEUR DE DONNÉES (CLOUD SYNC)
-# ======================================================================================
+# Affichage de l'horloge UNIQUE (Formatée pour être propre)
+st.markdown(f"""
+    <div style="text-align: center; margin-bottom: 40px;">
+        <h2 style="font-size: 4em; margin:0; font-family: monospace;">{datetime.now().strftime('%H:%M:%S')}</h2>
+        <p style="letter-spacing: 5px; opacity: 0.6;">SÉCURITÉ NATIONALE - ÉTAT CIVIL</p>
+    </div>
+""", unsafe_allow_html=True)
 
+# ======================================================================================
+# 2. MOTEUR DE DONNÉES (SYNC)
+# ======================================================================================
 cloud_conn = st.connection("gsheets", type=GSheetsConnection)
 
 @st.cache_data(ttl=300)
@@ -101,22 +94,20 @@ def fetch_database():
         df_pts = cloud_conn.read(worksheet="Points Permis").dropna(how='all').fillna("")
         return df_bank, df_immat, df_pts
     except Exception as e:
-        st.error(f"⚠️ ERREUR DE LIAISON BDD : {e}")
+        st.error(f"Erreur de liaison : {e}")
         return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
 df_b, df_i, df_p = fetch_database()
 
 # ======================================================================================
-# 3. ÉTAT DE LA SESSION & SÉCURITÉ
+# 3. ÉTAT DE LA SESSION & PARAMÈTRES
 # ======================================================================================
-
 if "user_auth" not in st.session_state: st.session_state.user_auth = None
-if "audit_logs" not in st.session_state: st.session_state.audit_logs = []
 
-# Paramètres Banques Centrales
+# Constantes du projet
+SOLDE_DEPART = 15000 #
 ACC_RCT = "une10000"
 ACC_AVERIS = "Moune2010" #
-SOLDE_DEPART = 15000 #
 
 # Codes de Service
 KEY_RCT = "RCT-26-RCRPFR"
