@@ -194,34 +194,41 @@ if st.session_state.user_auth is not None:
 
         st.write(f"🔐 Accréditation : **{st.session_state.user_auth}**")
 
-        if st.button("🔄 FORCER SYNCHRO"):
+# --- BOUTON SYNCHRO ---
+        if st.button("🔄 FORCER SYNCHRO", use_container_width=True):
             st.cache_data.clear()
             record_log(st.session_state.user_auth, "Synchro Cloud Manuelle")
             st.rerun()
-            if st.button("🚪 DÉCONNEXION", use_container_width=True):
-    # 1. On crée un conteneur vide et on l'écrase pour tout effacer visuellement
-    placeholder = st.empty()
-    placeholder.write("🔄 Déconnexion en cours...")
 
-    # 2. Logique de nettoyage (ton code actuel est parfait)
-    try:
-        record_log(st.session_state.user_auth, "Déconnexion")
-    except:
-        pass
-        
-    components.html("<script>window.parent.window.scrollTo(0,0);</script>", height=0)
-    
-    st.cache_data.clear()
-    for key in list(st.session_state.keys()):
-        del st.session_state[key]
-    
-    # 3. On force le rerun
-    st.rerun()
+        # --- BOUTON DÉCONNEXION (Bien aligné au même niveau) ---
+        if st.button("🚪 DÉCONNEXION", use_container_width=True):
+            # 1. Nettoyage visuel immédiat
+            placeholder = st.empty()
+            placeholder.write("🔄 Déconnexion en cours...")
+
+            # 2. Logique de nettoyage
+            try:
+                record_log(st.session_state.user_auth, "Déconnexion")
+            except:
+                pass
+                
+            # Remonter en haut de page
+            components.html("<script>window.parent.window.scrollTo(0,0);</script>", height=0)
+            
+            # Vider la session et le cache
+            st.cache_data.clear()
+            for key in list(st.session_state.keys()):
+                del st.session_state[key]
+            
+            # Relancer
+            st.rerun()
             
         st.divider()
         st.caption("📜 JOURNAUX D'AUDIT (SESSION)")
-        for log in reversed(st.session_state.audit_logs[-8:]):
-            st.caption(log)
+        # On vérifie si audit_logs existe pour éviter une erreur après le del
+        if "audit_logs" in st.session_state:
+            for log in reversed(st.session_state.audit_logs[-8:]):
+                st.caption(log)
 # ======================================================================================
 # 5. LOCKSCREEN (CONNEXION) - UNITÉ FÉDÉRALE DE RENSSELAER
 # ======================================================================================
