@@ -334,7 +334,6 @@ with st.container():
             p_data = df_p[df_p["Nom Roblox"] == target]
             if not p_data.empty:
                 pts_val = int(p_data.iloc[0]["PTS"])
-                
                 c_pts, c_vide, c_motif_p = st.columns([3, 0.5, 2])
                 
                 with c_pts:
@@ -348,79 +347,67 @@ with st.container():
                             <div style="opacity: 0.15; font-size: 40px; margin-bottom: -10px;">🛡️</div>
                             <div style="opacity: 0.1; font-size: 50px; margin-bottom: -10px;">🚗</div>
                             <div style="height: 4px; width: 60px; background: linear-gradient(90deg, transparent, #d32f2f); display: inline-block; opacity: 0.2; border-radius: 2px;"></div>
-                            <p style="font-size: 8px; opacity: 0.3; font-family: monospace; margin: 0;">DRIVER LICENSE<br>SECURITY CHECK<br>BY RCRP</p>
                         </div>
                     """, unsafe_allow_html=True)
             else:
                 st.error("Aucun permis trouvé.")
-# --- COLONNE 2 : BANQUE ---
-with col2:
-    b_data = df_b[df_b["Nom Roblox"] == target]
-    if not b_data.empty:
-        c_info, c_vide, c_motif = st.columns([3, 0.5, 2])
-        
-        with c_info:
-            # 1. Affichage du Solde
-            st.metric("SOLDE BANCAIRE", f"{b_data.iloc[0]['Solde']}$")
-            
-            # 2. Affichage du Métier
-            current_jobs_raw = str(b_data.iloc[0]['Emploiement'])
-            st.write(f"🏢 Métier : **{current_jobs_raw}**")
-            
-            # 3. Système de modification (uniquement pour le Staff)
-            if st.session_state.user_auth == "Staff":
-                # Bouton avec emoji crayon
-                if st.button("✏️ Modifier le métier", key=f"edit_job_btn_{target}", use_container_width=True):
-                    st.session_state[f"show_editor_{target}"] = not st.session_state.get(f"show_editor_{target}", False)
-                
-                # Zone d'édition (Dropdown)
-                if st.session_state.get(f"show_editor_{target}", False):
-                    with st.container(border=True):
-                        liste_metiers = ["Sans-Emploi", "Agent RCT", "Averis", "Police", "Staff", "Service Public", "Entreprise Privée"]
-                        
-                        # Sécurité : on nettoie les métiers actuels pour qu'ils correspondent à la liste
-                        current_jobs_list = [j.strip() for j in current_jobs_raw.split("/") if j.strip()]
-                        valid_defaults = [j for j in current_jobs_list if j in liste_metiers]
-                        
-                        # Multiselect
-                        new_jobs_list = st.multiselect("Sélectionner métier(s) :", options=liste_metiers, default=valid_defaults)
-                        
-                        col_save, col_cancel = st.columns(2)
-                        with col_save:
-                            if st.button("💾 Sauver", use_container_width=True, type="primary", key=f"save_{target}"):
-                                new_jobs_str = " / ".join(new_jobs_list) if new_jobs_list else "Sans-Emploi"
-                                
-                                # Update Base
-                                idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
-                                df_b.at[idx_b, "Emploiement"] = new_jobs_str
-                                cloud_conn.update(worksheet="Banque", data=df_b)
-                                
-                                # Reset
-                                st.session_state[f"show_editor_{target}"] = False
-                                st.cache_data.clear()
-                                st.rerun()
-                                
-                        with col_cancel:
-                            if st.button("Annuler", use_container_width=True, key=f"cancel_{target}"):
-                                st.session_state[f"show_editor_{target}"] = False
-                                st.rerun()
 
-            # 4. Date d'arrivée
-            st.caption(f"📅 Arrivée : {b_data.iloc[0]['Date d\'arrivée']}")
-        
-        with c_motif:
-            # Design graphique HTML
-            st.markdown("""
-                <div style="text-align: right; line-height: 1; padding-top: 5px;">
-                    <div style="opacity: 0.15; font-size: 40px; margin-bottom: -10px;">🏛️</div>
-                    <div style="opacity: 0.1; font-size: 50px; margin-bottom: -10px;">💳</div>
-                    <div style="height: 4px; width: 60px; background: linear-gradient(90deg, transparent, #000); display: inline-block; opacity: 0.2; border-radius: 2px;"></div>
-                    <p style="font-size: 8px; opacity: 0.3; font-family: monospace; margin: 0;">OFFICIAL BANK DATA<br>VERIFIED BY RCRP</p>
-                </div>
-            """, unsafe_allow_html=True)
-    else: 
-        st.error("Aucun compte trouvé.")
-        # --- COLONNE 3 : ARCHIVES (Correction de l'erreur) ---
+        # --- COLONNE 2 : BANQUE ---
+        with col2:
+            b_data = df_b[df_b["Nom Roblox"] == target]
+            if not b_data.empty:
+                c_info, c_v, c_m = st.columns([3, 0.5, 2])
+                
+                with c_info:
+                    # 1. Solde
+                    st.metric("SOLDE BANCAIRE", f"{b_data.iloc[0]['Solde']}$")
+                    
+                    # 2. Métier
+                    current_jobs_raw = str(b_data.iloc[0]['Emploiement'])
+                    st.write(f"🏢 Métier : **{current_jobs_raw}**")
+                    
+                    # 3. Modification Staff
+                    if st.session_state.user_auth == "Staff":
+                        if st.button("✏️ Modifier le métier", key=f"edit_job_{target}", use_container_width=True):
+                            st.session_state[f"show_editor_{target}"] = not st.session_state.get(f"show_editor_{target}", False)
+                        
+                        if st.session_state.get(f"show_editor_{target}", False):
+                            with st.container(border=True):
+                                liste_metiers = ["Sans-Emploi", "Agent RCT", "Averis", "Police", "Staff", "Service Public", "Entreprise Privée"]
+                                current_jobs_list = [j.strip() for j in current_jobs_raw.split("/") if j.strip()]
+                                valid_defaults = [j for j in current_jobs_list if j in liste_metiers]
+                                
+                                new_jobs = st.multiselect("Sélection :", options=liste_metiers, default=valid_defaults)
+                                
+                                cs1, cs2 = st.columns(2)
+                                with cs1:
+                                    if st.button("💾 Sauver", key=f"save_j_{target}", use_container_width=True, type="primary"):
+                                        new_str = " / ".join(new_jobs) if new_jobs else "Sans-Emploi"
+                                        idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
+                                        df_b.at[idx_b, "Emploiement"] = new_str
+                                        cloud_conn.update(worksheet="Banque", data=df_b)
+                                        st.session_state[f"show_editor_{target}"] = False
+                                        st.cache_data.clear()
+                                        st.rerun()
+                                with cs2:
+                                    if st.button("Annuler", key=f"cancel_j_{target}", use_container_width=True):
+                                        st.session_state[f"show_editor_{target}"] = False
+                                        st.rerun()
+
+                    st.caption(f"📅 Arrivée : {b_data.iloc[0]['Date d\'arrivée']}")
+                
+                with c_m:
+                    st.markdown("""
+                        <div style="text-align: right; line-height: 1; padding-top: 5px;">
+                            <div style="opacity: 0.15; font-size: 40px; margin-bottom: -10px;">🏛️</div>
+                            <div style="opacity: 0.1; font-size: 50px; margin-bottom: -10px;">💳</div>
+                            <div style="height: 4px; width: 60px; background: linear-gradient(90deg, transparent, #000); display: inline-block; opacity: 0.2; border-radius: 2px;"></div>
+                        </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.error("Aucun compte trouvé.")
+
+        # --- COLONNE 3 : ARCHIVES ---
         with col3:
             st.markdown("### 📁 ARCHIVES")
             try:
@@ -429,16 +416,13 @@ with col2:
 
                 if not historique.empty:
                     for _, f in historique.iterrows():
-                        # Bouton Admin
                         if st.session_state.user_auth in ["Staff", "Admin"]:
                             if st.button(f"🔄 Rembourser #{f['ID']}", key=f"refund_{f['ID']}", use_container_width=True):
-                                # Logique de remboursement (identique à ton code)
-                                st.info("Traitement du remboursement...")
-                                # ... (ton code de calcul solde ici) ...
+                                st.info("Traitement...")
+                                # Ta logique de remboursement ici
                         
-                        # Ticket Visuel
                         st.markdown(f"""
-                        <div style="border: 1px solid #000; padding: 10px; background: #f9f9f9; color: black; font-family: Helvetica, Arial, sans-serif; margin-bottom: 8px; border-left: 5px solid green;">
+                        <div style="border: 1px solid #000; padding: 10px; background: #f9f9f9; color: black; margin-bottom: 8px; border-left: 5px solid green;">
                             <div style="display: flex; justify-content: space-between; font-size: 0.8em;">
                                 <b>REF: #{f['ID']}</b>
                                 <b style="color: green;">ACQUITTÉE ✔</b>
