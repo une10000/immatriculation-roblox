@@ -353,7 +353,7 @@ if st.session_state.user_auth is None:
 # LE RESTE DU CODE (S'affiche uniquement après connexion)
 # ======================================================================================
 # ======================================================================================
-# 6. MODULE : DOSSIER CITOYEN UNIFIÉ (VISIBILITÉ TOTALE)
+# 6. MODULE : DOSSIER CITOYEN UNIFIÉ (VERSION CORRIGÉE)
 # ======================================================================================
 
 st.markdown('<div class="header-box"><h2>📂 REGISTRE NATIONAL DES CITOYENS</h2></div>', unsafe_allow_html=True)
@@ -385,31 +385,37 @@ with st.container():
             if not b_data.empty:
                 st.metric("SOLDE BANCAIRE", f"{b_data.iloc[0]['Solde']}$")
                 st.write(f"🏢 Métier : **{b_data.iloc[0]['Emploiement']}**")
-                st.caption(f"📅 Arrivée : {b_data.iloc[0]['Date d\'arrivée']}")
+                st.caption(f"📅 Arrivée : {b_data.iloc[0].get('Date d\'arrivée', '01/01/2026')}")
 
         with col3:
             st.markdown("### 📁 ARCHIVES PAYÉES")
-            df_f_history = df_all_f[(df_all_f["Cible"] == target) & (df_all_f["Statut"] == "PAYÉ")].tail(3)
-            if not df_f_history.empty:
-                for _, f in df_f_history.iterrows():
-                    st.caption(f"✅ #{f['ID']} - {f['Motif']} ({f['Montant']}$)")
-            else:
-                st.info("Aucun historique.")
+            try:
+                # CORRECTION ICI : On recharge proprement les factures pour éviter le NameError
+                df_factures_temp = cloud_conn.read(worksheet="Factures").fillna("")
+                df_f_history = df_factures_temp[(df_factures_temp["Cible"] == target) & (df_factures_temp["Statut"] == "PAYÉ")].tail(3)
+                
+                if not df_f_history.empty:
+                    for _, f in df_f_history.iterrows():
+                        st.caption(f"✅ #{f['ID']} - {f['Motif']} ({f['Montant']}$)")
+                else:
+                    st.info("Aucun historique.")
+            except Exception as e:
+                st.error("Erreur d'accès aux archives.")
 
         # ======================================================================================
-        # 6.1 LE PANNEAU D'ACTION (TON ANCIENNE DISPOSITION)
+        # 6.1 LE PANNEAU D'ACTION (DISPOSITION 3 COLONNES)
         # ======================================================================================
         if st.session_state.user_auth in ["Averis", "RCT"]:
             st.markdown("---")
             st.subheader(f"🛠️ GESTION DU DOSSIER : {target}")
             
-            # TES 3 COLONNES SONT ICI :
             c_left, c_mid, c_right = st.columns([1.2, 1, 1])
 
             # 1. À GAUCHE : LE FORMULAIRE
             with c_left:
                 st.markdown("#### 📝 FORMULAIRE")
-                with st.form("form_action_unifie"):
+                # On utilise un prefix unique pour éviter les conflits Streamlit
+                with st.form(key=f"form_action_{target}"):
                     type_action = st.radio("Action :", ["Facturation", "Immatriculation"], horizontal=True)
                     
                     if type_action == "Facturation":
@@ -420,22 +426,24 @@ with st.container():
                         marque = st.text_input("Marque du véhicule")
 
                     if st.form_submit_button("VALIDER L'ACTION"):
+                        df_f_up = cloud_conn.read(worksheet="Factures") # On refresh avant d'écrire
                         if type_action == "Facturation":
-                            new_f = {"ID": len(df_all_f)+1, "Emetteur": st.session_state.user_auth, "Cible": target, "Montant": mt, "Motif": mo, "Statut": "EN ATTENTE"}
-                            df_all_f = pd.concat([df_all_f, pd.DataFrame([new_f])], ignore_index=True)
-                            cloud_conn.update(worksheet="Factures", data=df_all_f)
+                            new_f = {"ID": len(df_f_up)+1, "Emetteur": st.session_state.user_auth, "Cible": target, "Montant": mt, "Motif": mo, "Statut": "EN ATTENTE"}
+                            df_f_up = pd.concat([df_f_up, pd.DataFrame([new_f])], ignore_index=True)
+                            cloud_conn.update(worksheet="Factures", data=df_f_up)
                             st.success("Facture émise !")
                         else:
+                            df_v_up = cloud_conn.read(worksheet="Copie de Immatriculations")
                             new_v = {"Nom d'utilisateur ROBLOX": target, "Numéro de la plaque": plaque.upper(), "Marque du véhicule": marque, "Horodateur": datetime.now().strftime("%d/%m/%Y"), "Assurance": st.session_state.user_auth}
-                            df_i = pd.concat([df_i, pd.DataFrame([new_v])], ignore_index=True)
-                            cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i)
+                            df_v_up = pd.concat([df_v_up, pd.DataFrame([new_v])], ignore_index=True)
+                            cloud_conn.update(worksheet="Copie de Immatriculations", data=df_v_up)
                             st.success("Véhicule immatriculé !")
+                        st.cache_data.clear()
                         st.rerun()
 
             # 2. AU MILIEU : LE TICKET REÇU
             with c_mid:
                 st.markdown("#### 🎫 APERÇU TICKET")
-                # Si c'est une facture, on dessine le ticket en temps réel
                 if type_action == "Facturation":
                     st.markdown(f"""
                     <div style="border: 2px dashed #000; padding: 15px; background: white; color: black; font-family: monospace;">
@@ -445,20 +453,22 @@ with st.container():
                         <b>MOTIF :</b> {mo if mo else "..."}<br>
                         <b>TOTAL :</b> {mt}$<br>
                         <hr>
-                        <center><small>Document officiel RCRP</small></center>
+                        <center><small>Document officiel RCRP<br>{datetime.now().strftime("%d/%m/%Y")}</small></center>
                     </div>
                     """, unsafe_allow_html=True)
                 else:
-                    st.info("Mode Immatriculation : Pas de ticket généré.")
+                    st.info("Mode Immatriculation : Enregistrement base de données.")
 
             # 3. À DROITE : LES VÉHICULES DU CITOYEN
             with c_right:
                 st.markdown("#### 🚘 VÉHICULES")
-                v_list = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
-                if not v_list.empty:
-                    for _, v in v_list.iterrows():
+                # On recharge les immatriculations pour être à jour
+                v_list = cloud_conn.read(worksheet="Copie de Immatriculations")
+                v_target = v_list[v_list["Nom d'utilisateur ROBLOX"] == target]
+                if not v_target.empty:
+                    for _, v in v_target.iterrows():
                         st.markdown(f"""
-                        <div style="background:#f0f2f6; padding:8px; border-radius:5px; margin-bottom:5px; border-left:4px solid #000;">
+                        <div style="background:#f0f2f6; padding:8px; border-radius:5px; margin-bottom:5px; border-left:4px solid #333; color:black;">
                             <b>{v['Numéro de la plaque']}</b><br><small>{v['Marque du véhicule']}</small>
                         </div>
                         """, unsafe_allow_html=True)
