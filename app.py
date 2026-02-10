@@ -199,18 +199,25 @@ if st.session_state.user_auth is not None:
             record_log(st.session_state.user_auth, "Synchro Cloud Manuelle")
             st.rerun()
             
-        if st.button("🚪 DÉCONNEXION", use_container_width=True):
-            placeholder = st.empty()
-            placeholder.write("🔄 Déconnexion en cours...")
-            try:
-                record_log(st.session_state.user_auth, "Déconnexion")
-                except:
-                    pass
-                    components.html("<script>window.parent.window.scrollTo(0,0);</script>", height=0)
-                    st.cache_data.clear()
-                    for key in list(st.session_state.keys()):
-                        del st.session_state[key]
-                        st.rerun()
+       if st.button("🚪 DÉCONNEXION", use_container_width=True):
+    # 1. On crée un conteneur vide et on l'écrase pour tout effacer visuellement
+    placeholder = st.empty()
+    placeholder.write("🔄 Déconnexion en cours...")
+
+    # 2. Logique de nettoyage (ton code actuel est parfait)
+    try:
+        record_log(st.session_state.user_auth, "Déconnexion")
+    except:
+        pass
+        
+    components.html("<script>window.parent.window.scrollTo(0,0);</script>", height=0)
+    
+    st.cache_data.clear()
+    for key in list(st.session_state.keys()):
+        del st.session_state[key]
+    
+    # 3. On force le rerun
+    st.rerun()
             
         st.divider()
         st.caption("📜 JOURNAUX D'AUDIT (SESSION)")
