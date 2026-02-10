@@ -246,10 +246,9 @@ if st.session_state.user_auth is None:
     t_now_lock = datetime.now(timezone.utc) + timedelta(hours=1)
     h_lock = t_now_lock.hour
 
-    # --- LOGIQUE JOUR / NUIT ---
     if 5 <= h_lock < 18:
         salut_complet = "Bonjour☀️"
-        pattern_style = "background-color: #87CEEB; background-image: conic-gradient(from 200deg at 85% 10%, transparent 0deg, rgba(255,255,255,0.4) 15deg, transparent 30deg, rgba(255,223,137,0.5) 45deg, transparent 60deg, rgba(255,255,255,0.4) 75deg, transparent 90deg), radial-gradient(circle at 85% 10%, #FFF9E3 0%, #FFD700 15%, rgba(255,215,0,0.4) 30%, transparent 60%), radial-gradient(circle at 50% 25%, rgba(255,255,255,0.8) 0%, transparent 60%), radial-gradient(circle at 50% 75%, rgba(255,255,255,0.6) 0%, transparent 65%); background-repeat: no-repeat; background-size: cover;"
+        pattern_style = "background-color: #87CEEB; background-image: conic-gradient(from 200deg at 85% 10%, transparent 0deg, rgba(255,255,255,0.4) 15deg, transparent 30deg, rgba(255,223,137,0.5) 45deg, transparent 60deg, rgba(255,255,255,0.4) 75deg, transparent 90deg), radial-gradient(circle at 85% 10%, #FFF9E3 0%, #FFD700 15%, rgba(255,215,0,0.4) 30%, transparent 60%), radial-gradient(circle at 50% 25%, rgba(255,255,255,0.8) 0%, transparent 60%), radial-gradient(circle at 50% 75%, rgba(255,255,255,0.6) 0%, transparent 65%);"
         t_color = "#1E1E1E"
         glow = "0 0 30px rgba(255, 255, 255, 1), 0 0 60px rgba(255, 200, 0, 0.6)"
     else:
@@ -258,37 +257,36 @@ if st.session_state.user_auth is None:
         t_color = "#FFFFFF"
         glow = "0 0 40px rgba(255,255,255,0.9), 0 0 80px rgba(255,255,255,0.4)"
 
-    # --- AFFICHAGE UNITAIRE AVEC HORLOGE INTÉGRÉE ---
+    # --- LE "MACHIN" TOUT-EN-UN (Design + Horloge qui bouge) ---
     import streamlit.components.v1 as components
-    
-    # On crée le bloc visuel avec un emplacement vide (ID: live-clock) pour l'heure
-    st.markdown(f"""
-        <div style="text-align: center; margin-top: -30px; padding: 70px 20px 45px 20px; border-radius: 20px 20px 0 0; color: {t_color}; {pattern_style}">
+    components.html(f"""
+        <div style="font-family: sans-serif; text-align: center; padding: 60px 20px; border-radius: 20px 20px 0 0; color: {t_color}; {pattern_style} height: 320px;">
             <h1 style="font-size: 5.5em; margin: 0; font-weight: 900; letter-spacing: -3px; text-shadow: {glow};">
                 {salut_complet}
             </h1>
-            <p style="font-size: 1.1em; opacity: 0.7; letter-spacing: 5px; font-weight: bold; text-transform: uppercase; margin-top: 20px;">Unité Fédérale de Rensselaer</p>
-            <div id="live-clock" style="font-family: monospace; font-size: 2.2em; letter-spacing: 5px; opacity: 0.8; font-weight: bold; border-top: 1px solid {t_color}33; display: inline-block; padding-top: 10px; margin-top: 5px;">
-                --:--:--
+            <p style="font-size: 1.1em; opacity: 0.7; letter-spacing: 5px; font-weight: bold; text-transform: uppercase; margin: 20px 0;">
+                Unité Fédérale de Rensselaer
+            </p>
+            <div id="clock" style="font-family: monospace; font-size: 3em; letter-spacing: 5px; font-weight: bold; border-top: 2px solid {t_color}33; display: inline-block; padding-top: 10px;">
+                00:00:00
             </div>
         </div>
-        
         <script>
-            function updateClock() {{
+            function update() {{
                 const now = new Date();
-                const options = {{ timeZone: 'Europe/Paris', hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }};
-                const timeString = now.toLocaleTimeString('fr-FR', options);
-                // On va chercher l'élément dans le document parent (Streamlit)
-                window.parent.document.getElementById('live-clock').textContent = timeString;
+                const h = String(now.getHours()).padStart(2, '0');
+                const m = String(now.getMinutes()).padStart(2, '0');
+                const s = String(now.getSeconds()).padStart(2, '0');
+                document.getElementById('clock').textContent = h + ":" + m + ":" + s;
             }}
-            setInterval(updateClock, 1000);
-            updateClock();
+            setInterval(update, 1000);
+            update();
         </script>
-    """, unsafe_allow_html=True)
+    """, height=380)
 
     # 2. EN-TÊTE RÉPUBLIQUE
     st.markdown("""
-    <div class="header-box" style="margin-top: 0px; border-radius: 0 0 20px 20px; border-top: 1px solid rgba(255,255,255,0.05); padding: 20px;">
+    <div class="header-box" style="margin-top: -10px; border-radius: 0 0 20px 20px; border-top: 1px solid rgba(255,255,255,0.05); padding: 20px;">
     <center>
         <span style="font-size: 40px;">👤</span> <h2 style="margin-bottom:0; margin-top:10px;">🏛️ RÉPUBLIQUE DE RENSSELAER</h2>
         <p style="font-size: 1em; opacity: 0.8;">TERMINAL FÉDÉRAL D'OPÉRATIONS NATIONALES</p>
