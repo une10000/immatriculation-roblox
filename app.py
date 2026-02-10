@@ -940,48 +940,56 @@ if st.session_state.user_auth == "Staff":
                     st.error("⚠️ Nom invalide ou déjà existant.")
         # --- SECTION 2 : SYSTÈME DE PAIE & RESET NATIONAL ---
 # --- SECTION 2 : SYSTÈME DE PAIE & RESET ---
+# --- SECTION 2 : PAIE AUTOMATISÉE & RESET ---
+st.markdown("### 🧧 Terminal de Paie Nationale")
 with st.container(border=True):
-    col_p1, col_p2 = st.columns(2)
+    # 1. Sélection du citoyen
+    target_paie = st.selectbox("Sélectionner le bénéficiaire :", sorted(df_b["Nom Roblox"].unique().tolist()), key="paie_auto_target")
     
-    with col_p1:
-        citoyen_a_payer = st.selectbox("Citoyen :", sorted(df_b["Nom Roblox"].unique().tolist()))
-        # On choisit quel job on paie cette fois-ci
-        job_paye = st.selectbox("Payer en tant que :", list(SALAIRES_FIXES.keys()))
-    
-    montant_final = SALAIRES_FIXES[job_paye]
-    
-    with col_p2:
-        st.metric("MONTANT À VERSER", f"{montant_final}$")
-        st.warning("Action : Versement + Reset Immatriculations")
+    if target_paie:
+        # 2. On récupère ses jobs dans la base de données
+        user_jobs_raw = df_b[df_b["Nom Roblox"] == target_paie]["Emploiement"].values[0]
+        # On transforme le texte "RCT / Police" en liste ["Agent RCT", "Police"]
+        user_jobs_list = [j.strip() for j in str(user_jobs_raw).split("/")]
+        
+        # 3. CALCUL AUTOMATIQUE
+        # Base de 15k + Somme des primes de ses jobs
+        calcul_primes = sum(PRIME_JOB.get(j, 0) for j in user_jobs_list)
+        total_final = 15000 + calcul_primes
+        
+        # 4. AFFICHAGE POUR LE STAFF
+        st.info(f"📋 **Jobs détectés :** {', '.join(user_jobs_list)}")
+        st.metric("MONTANT CALCULÉ", f"{total_final}$", f"+{calcul_primes}$ de primes")
 
-    if st.button("🧧 VALIDER LA PAIE ET RESET NATIONAL", use_container_width=True):
-        try:
-            # 1. Calcul du débit pour les comptes spécifiques
-            # Si on paie un RCT, on retire 2k à une10000 (salaire 17k - base 15k)
-            if job_paye == "RCT":
-                idx_src = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
-                df_b.at[idx_src, "Solde"] = float(str(df_b.at[idx_src, "Solde"]).replace('$', '')) - 2000
-            elif job_paye == "Averis":
-                idx_src = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
-                df_b.at[idx_src, "Solde"] = float(str(df_b.at[idx_src, "Solde"]).replace('$', '')) - 2000
+        if st.button(f"🧧 VERSER {total_final}$ & RESET NATIONAL", use_container_width=True):
+            try:
+                # --- LOGIQUE DE DÉBIT AUTO ---
+                if "Agent RCT" in user_jobs_list:
+                    idx_rct = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
+                    df_b.at[idx_rct, "Solde"] = float(str(df_b.at[idx_rct, "Solde"]).replace('$', '')) - 2000
+                
+                if "Averis" in user_jobs_list:
+                    idx_av = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
+                    df_b.at[idx_av, "Solde"] = float(str(df_b.at[idx_av, "Solde"]).replace('$', '')) - 2000
 
-            # 2. Crédit du citoyen
-            idx_ben = df_b[df_b["Nom Roblox"] == citoyen_a_payer].index[0]
-            solde_actuel = float(str(df_b.at[idx_ben, "Solde"]).replace('$', '').replace(',', ''))
-            df_b.at[idx_ben, "Solde"] = solde_actuel + montant_final
-            
-            # 3. Reset des Immatriculations
-            df_immat_reset = pd.DataFrame(columns=df_i.columns)
-            
-            # 4. Sync Cloud
-            cloud_conn.update(worksheet="Banque", data=df_b)
-            cloud_conn.update(worksheet="Copie de Immatriculations", data=df_immat_reset)
-            
-            st.success(f"✅ Payé {montant_final}$ et base immat vidée !")
-            st.cache_data.clear()
-            st.rerun()
-        except Exception as e:
-            st.error(f"Erreur : {e}")
+                # --- VERSEMENT ---
+                idx_ben = df_b[df_b["Nom Roblox"] == target_paie].index[0]
+                solde_actuel = float(str(df_b.at[idx_ben, "Solde"]).replace('$', '').replace(',', ''))
+                df_b.at[idx_ben, "Solde"] = solde_actuel + total_final
+                
+                # --- RESET IMMAT ---
+                df_immat_reset = pd.DataFrame(columns=df_i.columns)
+                
+                # --- SYNC ---
+                cloud_conn.update(worksheet="Banque", data=df_b)
+                cloud_conn.update(worksheet="Copie de Immatriculations", data=df_immat_reset)
+                
+                record_log(st.session_state.user_auth, f"PAIE AUTO : {target_paie} a reçu {total_final}$")
+                st.success("Paie effectuée et plaques réinitialisées !")
+                st.cache_data.clear()
+                st.rerun()
+            except Exception as e:
+                st.error(f"Erreur : {e}")
         # --- SECTION 2 : LOGS ET STATISTIQUES ---
         col_admin_left, col_admin_right = st.columns(2)
         
