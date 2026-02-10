@@ -227,24 +227,26 @@ if st.session_state.user_auth is None:
     h_lock = t_now_lock.hour
     heure_formattee = t_now_lock.strftime("%H:%M")
 # --- LOGIQUE JOUR / NUIT ---
-# --- LOGIQUE JOUR / NUIT ---
     if 5 <= h_lock < 18:
         salut_complet = "Bonjour☀️"
-        # Sun Rays renforcés (opacité augmentée et couleurs dorées)
+        # Ajout d'un soleil physique en haut à droite + rayons synchronisés
         pattern_style = (
             "background-color: #87CEEB; "
             "background-image: "
-            "conic-gradient(from 150deg at 50% 0%, "
-            "transparent 0deg, rgba(255,255,255,0.3) 10deg, transparent 20deg, "
-            "rgba(255,223,137,0.4) 35deg, transparent 50deg, "
-            "rgba(255,255,255,0.3) 65deg, transparent 80deg), "
+            # 1. Les rayons qui partent du coin haut-droite (85% 10%)
+            "conic-gradient(from 200deg at 85% 10%, "
+            "transparent 0deg, rgba(255,255,255,0.4) 15deg, transparent 30deg, "
+            "rgba(255,223,137,0.5) 45deg, transparent 60deg, "
+            "rgba(255,255,255,0.4) 75deg, transparent 90deg), "
+            # 2. Le petit soleil brillant dans l'angle
+            "radial-gradient(circle at 85% 10%, #FFF9E3 0%, #FFD700 15%, rgba(255,215,0,0.4) 30%, transparent 60%), "
+            # 3. Les nuages vaporeux habituels
             "radial-gradient(circle at 50% 25%, rgba(255,255,255,0.8) 0%, transparent 60%), "
             "radial-gradient(circle at 50% 75%, rgba(255,255,255,0.6) 0%, transparent 65%); "
             "background-repeat: no-repeat; "
             "background-size: cover;"
         )
         t_color = "#1E1E1E"
-        # Glow très intense pour simuler l'éblouissement
         glow = "0 0 30px rgba(255, 255, 255, 1), 0 0 60px rgba(255, 200, 0, 0.6)"
     else:
         salut_complet = "Bonsoir🌕"
