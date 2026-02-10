@@ -981,7 +981,7 @@ if st.session_state.user_auth == "Staff":
                         # Banque (Solde 15000 auto)
                         new_bank_row = pd.DataFrame([{
                             "Nom Roblox": new_name,
-                            "Utilisateur Discord": new_discord,
+                            "Nom Discord": new_discord,
                             "Solde": 15000, 
                             "Emploiement": new_job,
                             "Date d'arrivée": today_str
