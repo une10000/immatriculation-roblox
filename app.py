@@ -241,7 +241,7 @@ if st.session_state.user_auth is None:
         </style>
     """, unsafe_allow_html=True)
 
-    # 1. CALCUL DU MOMENT (UTC+1) POUR LE SALUT
+    # 1. CALCUL DU MOMENT (UTC+1)
     from datetime import datetime, timedelta, timezone
     t_now_lock = datetime.now(timezone.utc) + timedelta(hours=1)
     h_lock = t_now_lock.hour
@@ -258,42 +258,33 @@ if st.session_state.user_auth is None:
         t_color = "#FFFFFF"
         glow = "0 0 40px rgba(255,255,255,0.9), 0 0 80px rgba(255,255,255,0.4)"
 
-    # --- AFFICHAGE DU SALUT ---
+    # --- AFFICHAGE UNITAIRE AVEC HORLOGE INTÉGRÉE ---
+    import streamlit.components.v1 as components
+    
+    # On crée le bloc visuel avec un emplacement vide (ID: live-clock) pour l'heure
     st.markdown(f"""
-        <div style="text-align: center; margin-top: -30px; padding: 70px 20px 20px 20px; border-radius: 20px 20px 0 0; color: {t_color}; {pattern_style}">
+        <div style="text-align: center; margin-top: -30px; padding: 70px 20px 45px 20px; border-radius: 20px 20px 0 0; color: {t_color}; {pattern_style}">
             <h1 style="font-size: 5.5em; margin: 0; font-weight: 900; letter-spacing: -3px; text-shadow: {glow};">
                 {salut_complet}
             </h1>
             <p style="font-size: 1.1em; opacity: 0.7; letter-spacing: 5px; font-weight: bold; text-transform: uppercase; margin-top: 20px;">Unité Fédérale de Rensselaer</p>
+            <div id="live-clock" style="font-family: monospace; font-size: 2.2em; letter-spacing: 5px; opacity: 0.8; font-weight: bold; border-top: 1px solid {t_color}33; display: inline-block; padding-top: 10px; margin-top: 5px;">
+                --:--:--
+            </div>
         </div>
-    """, unsafe_allow_html=True)
-
-    # --- L'HORLOGE DYNAMIQUE (Comme dans ta Sidebar) ---
-    import streamlit.components.v1 as components
-    components.html(f"""
-        <div id="lock-clock" style="
-            font-family: monospace; 
-            font-size: 40px; 
-            letter-spacing: 5px; 
-            font-weight: bold; 
-            text-align: center; 
-            color: {t_color}; 
-            opacity: 0.8;
-            border-top: 1px solid {t_color}33;
-            padding-top: 10px;
-            width: 300px;
-            margin: 0 auto;
-        "></div>
+        
         <script>
-            function updateLockClock() {{
+            function updateClock() {{
                 const now = new Date();
                 const options = {{ timeZone: 'Europe/Paris', hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }};
-                document.getElementById('lock-clock').textContent = now.toLocaleTimeString('fr-FR', options);
+                const timeString = now.toLocaleTimeString('fr-FR', options);
+                // On va chercher l'élément dans le document parent (Streamlit)
+                window.parent.document.getElementById('live-clock').textContent = timeString;
             }}
-            setInterval(updateLockClock, 1000);
-            updateLockClock();
+            setInterval(updateClock, 1000);
+            updateClock();
         </script>
-    """, height=80)
+    """, unsafe_allow_html=True)
 
     # 2. EN-TÊTE RÉPUBLIQUE
     st.markdown("""
@@ -310,7 +301,7 @@ if st.session_state.user_auth is None:
     st.warning("⚠️ **AVERTISSEMENT :** Toute action effectuée sur ce terminal est enregistrée.")
     st.write("---")
 
-    # 3. COLONNES D'ACCÈS (Boutons de connexion)
+    # 3. COLONNES D'ACCÈS
     c1, c2, c3 = st.columns(3)
     with c1:
         st.markdown("### 👥 CIVIL")
