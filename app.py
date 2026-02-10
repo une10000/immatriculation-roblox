@@ -354,59 +354,64 @@ with st.container():
             else:
                 st.error("Aucun permis trouvé.")
 
-      ## --- COLONNE 2 : BANQUE ---
+      # --- COLONNE 2 : BANQUE ---
         with col2:
             b_data = df_b[df_b["Nom Roblox"] == target]
             if not b_data.empty:
                 c_info, c_vide, c_motif = st.columns([3, 0.5, 2])
                 
                 with c_info:
+                    # 1. Affichage du Solde
                     st.metric("SOLDE BANCAIRE", f"{b_data.iloc[0]['Solde']}$")
                     
-                    # Ligne Métier avec bouton rectangulaire
+                    # 2. Affichage du Métier
                     current_jobs_raw = str(b_data.iloc[0]['Emploiement'])
+                    st.write(f"🏢 Métier : **{current_jobs_raw}**")
                     
-                    # On crée deux sous-colonnes pour aligner le texte et le bouton
-                    col_txt_job, col_btn_edit = st.columns([0.7, 0.3])
-                    
-                    with col_txt_job:
-                        st.write(f"🏢 Métiers : **{current_jobs_raw}**")
-                    
+                    # 3. Système de modification (uniquement pour le Staff)
                     if st.session_state.user_auth == "Staff":
-                        with col_btn_edit:
-                            # Un petit bouton rectangulaire au lieu de l'emoji
-                            edit_clicked = st.button("MODIFIER", key=f"btn_edit_{target}", use_container_width=True)
-                        
-                        # Gestion de l'affichage du menu de modification
-                        if edit_clicked:
+                        # Le bouton avec l'emoji crayon juste en dessous
+                        if st.button("✏️ Modifier le métier", key=f"edit_job_btn_{target}", use_container_width=True):
                             st.session_state[f"show_editor_{target}"] = not st.session_state.get(f"show_editor_{target}", False)
-
+                        
+                        # Zone d'édition qui s'affiche au clic
                         if st.session_state.get(f"show_editor_{target}", False):
                             with st.container(border=True):
+                                # Liste des métiers possibles
                                 liste_metiers = ["Sans-Emploi", "Agent RCT", "Averis", "Police", "Staff", "Service Public", "Entreprise Privée"]
+                                
+                                # On pré-remplit avec les métiers actuels
                                 current_jobs_list = [j.strip() for j in current_jobs_raw.split("/") if j.strip()]
                                 
-                                new_jobs_list = st.multiselect("Nouveaux métiers :", options=liste_metiers, default=current_jobs_list)
+                                # Dropdown multi-choix
+                                new_jobs_list = st.multiselect("Sélectionner métier(s) :", options=liste_metiers, default=current_jobs_list)
                                 
-                                ce1, ce2 = st.columns(2)
-                                with ce1:
-                                    if st.button("💾 SAUVEGARDER", use_container_width=True, type="primary"):
+                                col_save, col_cancel = st.columns(2)
+                                with col_save:
+                                    if st.button("💾 Sauver", use_container_width=True, type="primary"):
+                                        # On transforme la liste en texte avec des " / "
                                         new_jobs_str = " / ".join(new_jobs_list) if new_jobs_list else "Sans-Emploi"
+                                        
+                                        # Mise à jour de la base de données
                                         idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
                                         df_b.at[idx_b, "Emploiement"] = new_jobs_str
                                         cloud_conn.update(worksheet="Banque", data=df_b)
+                                        
+                                        # Fermeture et refresh
                                         st.session_state[f"show_editor_{target}"] = False
                                         st.cache_data.clear()
                                         st.rerun()
-                                with ce2:
-                                    if st.button("ANNULER", use_container_width=True):
+                                        
+                                with col_cancel:
+                                    if st.button("Annuler", use_container_width=True):
                                         st.session_state[f"show_editor_{target}"] = False
                                         st.rerun()
-                    
+
+                    # 4. Date d'arrivée (automatique à la création comme demandé)
                     st.caption(f"📅 Arrivée : {b_data.iloc[0]['Date d\'arrivée']}")
                 
                 with c_motif:
-                    # Ton code HTML pour les logos 🏛️ et 💳 (Inchangé)
+                    # Design graphique (Ton code HTML)
                     st.markdown("""
                         <div style="text-align: right; line-height: 1; padding-top: 5px;">
                             <div style="opacity: 0.15; font-size: 40px; margin-bottom: -10px;">🏛️</div>
@@ -415,6 +420,8 @@ with st.container():
                             <p style="font-size: 8px; opacity: 0.3; font-family: monospace; margin: 0;">OFFICIAL BANK DATA<br>VERIFIED BY RCRP</p>
                         </div>
                     """, unsafe_allow_html=True)
+            else: 
+                st.error("Aucun compte trouvé.")
         # --- COLONNE 3 : ARCHIVES (Correction de l'erreur) ---
         with col3:
             st.markdown("### 📁 ARCHIVES")
