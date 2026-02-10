@@ -998,88 +998,97 @@ if st.session_state.user_auth == "Staff":
                     st.error("⚠️ Nom invalide ou déjà existant.")
         # --- SECTION 2 : SYSTÈME DE PAIE & RESET NATIONAL ---
 # --- SECTION 2 : SYSTÈME DE PAIE & RESET ---
-# --- SECTION 2 : PAIE AUTOMATISÉE & RESET ---
-st.markdown("### 🧧 Terminal de Paie Nationale")
-with st.container(border=True):
-    # 1. Sélection du citoyen
-    target_paie = st.selectbox("Sélectionner le bénéficiaire :", sorted(df_b["Nom Roblox"].unique().tolist()), key="paie_auto_target")
+# ======================================================================================
+# SECTION 2 : PAIE AUTOMATISÉE & RESET (SÉCURISÉE STAFF)
+# ======================================================================================
+
+if st.session_state.user_auth == "Staff":
+    st.markdown("### 🧧 Terminal de Paie Nationale")
     
-    if target_paie:
-        # 2. On récupère ses jobs
-        user_jobs_raw = df_b[df_b["Nom Roblox"] == target_paie]["Emploiement"].values[0]
-        user_jobs_list = [j.strip() for j in str(user_jobs_raw).split("/")]
+    with st.container(border=True):
+        # 1. Sélection du bénéficiaire
+        target_paie = st.selectbox("Sélectionner le bénéficiaire :", sorted(df_b["Nom Roblox"].unique().tolist()), key="paie_auto_target")
         
-        # 3. CALCUL AUTOMATIQUE (Utilise PRIME_JOB défini plus haut)
-        calcul_primes = sum(PRIME_JOB.get(j, 0) for j in user_jobs_list)
-        total_final = 15000 + calcul_primes # Base de 15k
-        
-        # 4. AFFICHAGE
-        st.info(f"📋 **Jobs détectés :** {', '.join(user_jobs_list)}")
-        st.metric("MONTANT CALCULÉ", f"{total_final}$", f"+{calcul_primes}$ de primes")
-
-        if st.button(f"🧧 VERSER {total_final}$ & RESET NATIONAL", use_container_width=True):
-            try:
-                # --- LOGIQUE DE DÉBIT AUTO ---
-                if "Agent RCT" in user_jobs_list:
-                    idx_rct = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
-                    solde_rct = float(str(df_b.at[idx_rct, "Solde"]).replace('$', '').replace(',', ''))
-                    df_b.at[idx_rct, "Solde"] = solde_rct - 2000
-                
-                if "Averis" in user_jobs_list:
-                    idx_av = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
-                    solde_av = float(str(df_b.at[idx_av, "Solde"]).replace('$', '').replace(',', ''))
-                    df_b.at[idx_av, "Solde"] = solde_av - 2000
-
-                # --- VERSEMENT ---
-                idx_ben = df_b[df_b["Nom Roblox"] == target_paie].index[0]
-                solde_actuel = float(str(df_b.at[idx_ben, "Solde"]).replace('$', '').replace(',', ''))
-                df_b.at[idx_ben, "Solde"] = solde_actuel + total_final
-                
-                # --- RESET IMMAT (Nettoyage de la feuille) ---
-                df_immat_reset = pd.DataFrame(columns=df_i.columns)
-                
-                # --- SYNC CLOUD ---
-                cloud_conn.update(worksheet="Banque", data=df_b)
-                cloud_conn.update(worksheet="Copie de Immatriculations", data=df_immat_reset)
-                
-                record_log(st.session_state.user_auth, f"PAIE AUTO : {target_paie} (+{total_final}$)")
-                st.success(f"✅ Payé {total_final}$ et immatriculations effacées !")
-                st.cache_data.clear()
-                st.rerun()
-            except Exception as e:
-                st.error(f"Erreur technique : {e}")
-        # --- SECTION 2 : LOGS ET STATISTIQUES ---
-        col_admin_left, col_admin_right = st.columns(2)
-        
-        with col_admin_left:
-            st.markdown("### 📜 Journaux d'Audit")
-            with st.container(border=True):
-                if st.session_state.audit_logs:
-                    # Look style terminal pour les logs
-                    log_text = "\n".join(list(reversed(st.session_state.audit_logs)))
-                    st.code(log_text, language="bash")
-                else:
-                    st.info("Aucune activité enregistrée.")
+        if target_paie:
+            # 2. Récupération des jobs
+            user_jobs_raw = df_b[df_b["Nom Roblox"] == target_paie]["Emploiement"].values[0]
+            user_jobs_list = [j.strip() for j in str(user_jobs_raw).split("/")]
             
-            if st.button("🗑️ EFFACER LES LOGS"):
-                st.session_state.audit_logs = []
-                st.rerun()
+            # 3. CALCUL (Base 15k + Primes selon PRIME_JOB)
+            calcul_primes = sum(PRIME_JOB.get(j, 0) for j in user_jobs_list)
+            total_final = 15000 + calcul_primes
+            
+            # 4. AFFICHAGE
+            st.info(f"📋 **Jobs détectés :** {', '.join(user_jobs_list)}")
+            st.metric("MONTANT CALCULÉ", f"{total_final}$", f"+{calcul_primes}$ de primes")
 
-        with col_admin_right:
-            st.markdown("### 📊 État du Système")
-            with st.container(border=True):
-                # ICI TES COMPTEURS DE DONNÉES
-                st.success(f"👥 **Citoyens enregistrés :** {len(df_b)}")
-                st.info(f"🚗 **Véhicules immatriculés :** {len(df_i)}")
-                st.warning(f"🪪 **Dossiers permis :** {len(df_p)}")
-                
-                st.divider()
-                st.write("**Maintenance :**")
-                if st.button("♻️ FORCER LA SYNCHRO CLOUD", use_container_width=True):
+            if st.button(f"🧧 VERSER {total_final}$ & RESET NATIONAL", use_container_width=True):
+                try:
+                    # --- LOGIQUE DE DÉBIT AUTO ---
+                    if "Agent RCT" in user_jobs_list:
+                        idx_rct = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
+                        df_b.at[idx_rct, "Solde"] -= 2000 # Prélèvement RCT
+                    
+                    if "Averis" in user_jobs_list:
+                        idx_av = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
+                        df_b.at[idx_av, "Solde"] -= 2000 # Prélèvement Averis
+
+                    # --- VERSEMENT ---
+                    idx_ben = df_b[df_b["Nom Roblox"] == target_paie].index[0]
+                    solde_actuel = float(str(df_b.at[idx_ben, "Solde"]).replace('$', '').replace(',', ''))
+                    df_b.at[idx_ben, "Solde"] = solde_actuel + total_final
+                    
+                    # --- RESET REGISTRE VÉHICULES ---
+                    df_immat_reset = pd.DataFrame(columns=df_i.columns)
+                    
+                    # --- SYNC CLOUD ---
+                    cloud_conn.update(worksheet="Banque", data=df_b)
+                    cloud_conn.update(worksheet="Copie de Immatriculations", data=df_immat_reset)
+                    
+                    record_log(st.session_state.user_auth, f"PAIE AUTO : {target_paie} (+{total_final}$)")
+                    st.success(f"✅ Payé {total_final}$ et immatriculations effacées !")
                     st.cache_data.clear()
-                    st.success("Données synchronisées !")
-                    time.sleep(1)
                     st.rerun()
+                except Exception as e:
+                    st.error(f"Erreur technique : {e}")
+else:
+    # Message pour les civils / RCT sur le Terminal
+    st.info("🔒 Le terminal de paie est réservé à l'administration.")
+
+# ======================================================================================
+# SECTION 3 : LOGS ET STATISTIQUES (SÉCURISÉE STAFF)
+# ======================================================================================
+
+if st.session_state.user_auth == "Staff":
+    st.divider()
+    col_admin_left, col_admin_right = st.columns(2)
+    
+    with col_admin_left:
+        st.markdown("### 📜 Journaux d'Audit")
+        with st.container(border=True):
+            if st.session_state.audit_logs:
+                # Style terminal inversé (plus récent en haut)
+                log_text = "\n".join(list(reversed(st.session_state.audit_logs)))
+                st.code(log_text, language="bash")
+                
+                if st.button("🗑️ EFFACER LES LOGS", use_container_width=True):
+                    st.session_state.audit_logs = []
+                    st.rerun()
+            else:
+                st.info("Aucune activité enregistrée.")
+
+    with col_admin_right:
+        st.markdown("### 📊 État du Système")
+        with st.container(border=True):
+            st.success(f"👥 **Citoyens :** {len(df_b)}")
+            st.info(f"🚗 **Véhicules :** {len(df_i)}")
+            st.warning(f"🪪 **Permis :** {len(df_p)}")
+            
+            st.divider()
+            if st.button("♻️ FORCER LA SYNCHRO CLOUD", use_container_width=True):
+                st.cache_data.clear()
+                st.success("Données synchronisées !")
+                st.rerun()
 # --- SÉCURITÉ : NETTOYAGE DES VARIABLES FANTÔMES ---
 # Supprime ou commente absolument ces lignes si elles traînent encore en bas de ton fichier :
 # with col_vehicule_view: <--- C'EST ÇA QUI FAIT PLANTER L'AFFICHAGE !
