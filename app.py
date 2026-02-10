@@ -313,6 +313,7 @@ if st.session_state.user_auth is None:
     c1, c2, c3 = st.columns(3)
     with c1:
         st.markdown("### 👥 CIVIL")
+        nom_civil = st.text_input("Nom du Citoyen (Optionnel)", placeholder="Ex: Jean Dupont", key="input_civil_align")
         if st.button("ACCÉDER AU TERMINAL", key="l_civ_f", use_container_width=True):
             st.session_state.user_auth = "Civil"
             st.rerun()
