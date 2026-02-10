@@ -590,33 +590,30 @@ if not v_data.empty:
     v_cols = st.columns(3)
     for i, (_, veh) in enumerate(v_data.iterrows()):
         with v_cols[i % 3]:
-            # --- LOGIQUE DE SÉCURITÉ (OBLIGATOIRE ICI) ---
+            # --- LOGIQUE DE SÉCURITÉ RCT PRÉCISE ---
             assu = str(veh['Assurance']).upper()
             role = st.session_state.user_auth
             
-            check_rct = "RCT" in assu
-            check_averis = "AVERIS" in assu
-            
-            # 1. Par défaut (Civils)
+            # Initialisation par défaut (Civils / Staff)
             color = "green"
             status_txt = "✅ VÉHICULE EN RÈGLE"
             
-            # 2. Ajustement RCT
             if role == "RCT":
-                if not check_rct and not check_averis:
-                    color = "#d32f2f" # Rouge danger
-                    status_txt = "⚠️ DANGER : NON-ASSURÉ RCT"
-                else:
+                if "RCT" in assu:
                     color = "green"
-                    status_txt = f"✅ ASSURÉ {assu}"
+                    status_txt = "✅ ASSURÉ RCT"
+                elif "AVERIS" in assu:
+                    color = "#E67E22" # Orange (C'est bon, mais c'est la concurrence)
+                    status_txt = "✅ ASSURÉ AVERIS"
+                else:
+                    color = "#d32f2f" # Rouge (DANGER)
+                    status_txt = "🚨 DANGER : NON-ASSURÉ"
             
-            # 3. Ajustement Staff
             elif role == "Staff":
-                if check_rct or check_averis:
-                    color = "green"
-                    status_txt = f"✅ VÉHICULE EN ORDRE ({assu})"
+                if "RCT" in assu or "AVERIS" in assu:
+                    status_txt = f"✅ EN ORDRE ({assu})"
                 else:
-                    color = "#000000" # Noir neutre
+                    color = "#000000"
                     status_txt = "CERTIFIÉ CONFORME"
 
             # --- COLLE TON BLOC REÇU ICI ---
