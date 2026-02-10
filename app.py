@@ -718,45 +718,37 @@ with tabs[0]:
 with col_t:
         st.write("### 🖼️ APERÇU DU TITRE (LIVE)")
         
-        # Logique pour la couleur de la taxe jeune
-        color_taxe = "#333" if val_taxe_jeune == 0 else "#d9534f"
-        label_taxe = "Taxe Jeune Conducteur" if val_taxe_jeune == 0 else "⚠️ Taxe Jeune Conducteur"
-
-        # On prépare le contenu du ticket
+        # Construction du ticket sans la taxe conducteur
         ticket_html = f"""
-        <div style="border: 2px dashed #555; padding: 20px; background-color: #f9f9f9; color: #333; font-family: 'Courier New', Courier, monospace; border-radius: 10px;">
-            <div style="text-align:center; margin-bottom: 10px;">
-                <h2 style="margin:0; font-size: 1.4em;">RECU OFFICIEL</h2>
-                <small>GOUVERNEMENT DE RENSSELAER</small>
-            </div>
-            
-            <div style="border-top: 1px dashed #ccc; border-bottom: 1px dashed #ccc; padding: 10px 0; margin: 10px 0;">
-                <p style="margin: 5px 0;"><strong>DATE :</strong> {datetime.now().strftime("%d/%m/%Y")}</p>
-                <p style="margin: 5px 0;"><strong>UTILISATEUR :</strong> {f_owner if f_owner != "---" else "---"}</p>
-                <p style="margin: 5px 0;"><strong>MARQUE :</strong> {f_model if f_model else "---"}</p>
-                <p style="margin: 5px 0;"><strong>NUMÉRO DE PLAQUE :</strong> <span style="background:#333; color:white; padding:2px 6px; border-radius:3px;">{f_plate if f_plate else "---"}</span></p>
-                <p style="margin: 5px 0;"><strong>ASSURANCE :</strong> {f_assu if f_assu != "Aucune" else "NON ASSURÉ"}</p>
-            </div>
-            
-            <div style="margin-bottom: 10px;">
-                <p style="margin: 2px 0; display: flex; justify-content: space-between;">
-                    <span>Frais d'immatriculation :</span> <span>175$</span>
-                </p>
-                <p style="margin: 2px 0; display: flex; justify-content: space-between;">
-                    <span>Frais d'assurance :</span> <span>{taxe_assu}$</span>
-                </p>
-                <p style="margin: 2px 0; display: flex; justify-content: space-between; color: {color_taxe}; font-weight: bold;">
-                    <span>{label_taxe} :</span> <span>{val_taxe_jeune}$</span>
-                </p>
-            </div>
-            
-            <div style="border-top: 2px solid #333; padding-top: 10px; text-align: right;">
-                <span style="font-size: 1.3em; font-weight: bold;">TOTAL PAYÉ : {total_bill}$</span>
-            </div>
-        </div>
-        """
-        
-        # --- LA CORRECTION EST ICI ---
+<div style="border: 2px dashed #555; padding: 20px; background-color: #f9f9f9; color: #333; font-family: 'Courier New', Courier, monospace; border-radius: 10px;">
+    <div style="text-align:center; margin-bottom: 10px;">
+        <h2 style="margin:0; font-size: 1.4em;">RECU OFFICIEL</h2>
+        <small>GOUVERNEMENT DE RENSSELAER</small>
+    </div>
+    
+    <div style="border-top: 1px dashed #ccc; border-bottom: 1px dashed #ccc; padding: 10px 0; margin: 10px 0;">
+        <p style="margin: 5px 0;"><strong>DATE :</strong> {datetime.now().strftime("%d/%m/%Y")}</p>
+        <p style="margin: 5px 0;"><strong>UTILISATEUR :</strong> {f_owner if f_owner != "---" else "---"}</p>
+        <p style="margin: 5px 0;"><strong>MARQUE :</strong> {f_model if f_model else "---"}</p>
+        <p style="margin: 5px 0;"><strong>NUMÉRO DE PLAQUE :</strong> <span style="background:#333; color:white; padding:2px 6px; border-radius:3px;">{f_plate if f_plate else "---"}</span></p>
+        <p style="margin: 5px 0;"><strong>ASSURANCE :</strong> {f_assu if f_assu != "Aucune" else "NON ASSURÉ"}</p>
+    </div>
+    
+    <div style="margin-bottom: 10px;">
+        <p style="margin: 2px 0; display: flex; justify-content: space-between;">
+            <span>Frais d'immatriculation :</span> <span>175$</span>
+        </p>
+        <p style="margin: 2px 0; display: flex; justify-content: space-between;">
+            <span>Frais d'assurance :</span> <span>{taxe_assu}$</span>
+        </p>
+    </div>
+    
+    <div style="border-top: 2px solid #333; padding-top: 10px; text-align: right;">
+        <span style="font-size: 1.3em; font-weight: bold;">TOTAL PAYÉ : {total_bill}$</span>
+    </div>
+</div>
+"""
+        # On force l'affichage HTML
         st.markdown(ticket_html, unsafe_allow_html=True)
 # --- ONGLET 2 : SERVICES AGENT (FACTURES / POINTS / CONSULTATION) ---
 if st.session_state.user_auth in ["RCT", "Staff"]:
