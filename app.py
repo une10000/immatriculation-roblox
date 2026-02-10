@@ -773,7 +773,7 @@ with col_t:
 # --- ONGLET 2 : SERVICES AGENT (FACTURES / POINTS / CONSULTATION) ---
 if st.session_state.user_auth in ["RCT", "Staff"]:
     with tabs[1]:# --- PANEL D'ALERTE : FACTURES IMPAYÉES (S'affiche uniquement pour Staff/RCT) ---
-st.markdown("### 🚨 ALERTES PRIORITAIRES")
+        st.markdown("### 🚨 ALERTES PRIORITAIRES")
 
 # 1. Charger toutes les factures
 df_all_f = cloud_conn.read(worksheet="Factures").fillna("")
