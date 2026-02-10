@@ -590,11 +590,11 @@ if not v_data.empty:
     v_cols = st.columns(3)
     for i, (_, veh) in enumerate(v_data.iterrows()):
         with v_cols[i % 3]:
-            # --- LOGIQUE DE SÉCURITÉ RCT PRÉCISE ---
+            # --- LOGIQUE DE SÉCURITÉ RCT ---
             assu = str(veh['Assurance']).upper()
             role = st.session_state.user_auth
             
-            # Initialisation par défaut (Civils / Staff)
+            # Par défaut (Civils / Staff)
             color = "green"
             status_txt = "✅ VÉHICULE EN RÈGLE"
             
@@ -603,18 +603,11 @@ if not v_data.empty:
                     color = "green"
                     status_txt = "✅ ASSURÉ RCT"
                 elif "AVERIS" in assu:
-                    color = "#E67E22" # Orange (C'est bon, mais c'est la concurrence)
-                    status_txt = "✅ ASSURÉ AVERIS"
+                    color = "#E67E22" # Orange
+                    status_txt = "⚠️ ATTENTION : ASSURÉ AVERIS" # Pas un checkmark, mais une alerte
                 else:
-                    color = "#d32f2f" # Rouge (DANGER)
+                    color = "#d32f2f" # Rouge
                     status_txt = "🚨 DANGER : NON-ASSURÉ"
-            
-            elif role == "Staff":
-                if "RCT" in assu or "AVERIS" in assu:
-                    status_txt = f"✅ EN ORDRE ({assu})"
-                else:
-                    color = "#000000"
-                    status_txt = "CERTIFIÉ CONFORME"
 
             # --- COLLE TON BLOC REÇU ICI ---
             # (Assure-toi qu'il utilise bien {color} et {status_txt})
@@ -927,25 +920,18 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                 st.markdown("#### 🚗 Véhicules")
                 if not target_veh.empty:
                     for _, veh in target_veh.iterrows():
-                        # --- LOGIQUE DE SÉCURITÉ UNIFIÉE ---
                         assu_v = str(veh['Assurance']).upper()
-                        role_v = st.session_state.user_auth
                         
-                        check_rct = "RCT" in assu_v
-                        check_averis = "AVERIS" in assu_v
-                        
-                        # Par défaut
-                        color_v = "green"
-                        status_v = "✅ VÉHICULE EN RÈGLE"
-                        
-                        if role_v == "RCT":
-                            if check_rct:
-                                status_v = "✅ ASSURÉ RCT"
-                            elif check_averis:
-                                status_v = "✅ ASSURÉ AVERIS" # <-- C'est cette ligne qui manquait !
+                        # Logique miroir pour la colonne de droite
+                        if st.session_state.user_auth == "RCT":
+                            if "RCT" in assu_v:
+                                col_v, txt_v = "green", "✅ ASSURÉ RCT"
+                            elif "AVERIS" in assu_v:
+                                col_v, txt_v = "#E67E22", "⚠️ ASSURÉ AVERIS" # Orange + Warning
                             else:
-                                color_v = "#d32f2f"
-                                status_v = "⚠️ NON-ASSURÉ"
+                                col_v, txt_v = "#d32f2f", "🚨 DANGER : NON-ASSURÉ"
+                        else:
+                            col_v, txt_v = "green", "✅ VÉHICULE EN RÈGLE"
 
                         # Affichage du mini-titre
                         st.markdown(f"""
