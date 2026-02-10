@@ -709,18 +709,16 @@ with tabs[0]:
                             a_idx = df_b[df_b["Nom Roblox"] == target_acc].index[0]
                             old_solde = float(str(df_b.at[a_idx, "Solde"]).replace('$', '').replace(',', ''))
                             df_b.at[a_idx, "Solde"] = old_solde + taxe_assu
-                        
-                        # --- AJOUT DE %H:%M POUR L'HEURE ---
-horaire_complet = datetime.now().strftime("%d/%m/%Y %H:%M")
-
-new_row = pd.DataFrame([{
-    "Horodateur": horaire_complet,
-    "Nom d'utilisateur ROBLOX": f_owner, 
-    "Marque du véhicule": f_model, 
-    "Numéro de la plaque": f_plate, 
-    "Assurance": f_assu, 
-    "CODE": f_code
-}])
+                            horaire_complet = datetime.now().strftime("%d/%m/%Y %H:%M")
+                            
+                            new_row = pd.DataFrame([{
+                                "Horodateur": horaire_complet,
+                                "Nom d'utilisateur ROBLOX": f_owner, 
+                                "Marque du véhicule": f_model, 
+                                "Numéro de la plaque": f_plate, 
+                                "Assurance": f_assu, 
+                                "CODE": f_code
+                            }])
                         
                         cloud_conn.update(worksheet="Banque", data=df_b)
                         cloud_conn.update(
