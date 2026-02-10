@@ -582,51 +582,36 @@ if not mes_factures.empty:
                     except Exception as e:
                         st.error(f"Erreur d'affichage profil : {e}")
 # --- SECTION VÉHICULES CORRIGÉE ---
-# --- SECTION VÉHICULES UNIFORMISÉE ---
-st.write("### 🚗 VÉHICULES ENREGISTRÉS")
-v_data = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
-
-if not v_data.empty:
-    v_cols = st.columns(3)
-    for i, (_, veh) in enumerate(v_data.iterrows()):
-        with v_cols[i % 3]:
-            # --- LOGIQUE DE SÉCURITÉ MISE À JOUR ---
+# --- LOGIQUE DE SÉCURITÉ (CORRIGÉE) ---
             assu = str(veh['Assurance']).upper()
             role = st.session_state.user_auth
             
-            # 1. Par défaut : Tout est beau, tout est vert
-            color = "green"
-            status_txt = "✅ VÉHICULE EN RÈGLE"
+            # 1. On définit les conditions de sécurité
+            check_rct = "RCT" in assu
+            check_averis = "AVERIS" in assu
             
-            # 2. Cas spécial RCT : Si l'agent RCT regarde et que ce n'est PAS du RCT/AVERIS
+            # 2. Application des couleurs et textes selon le rôle
             if role == "RCT":
-                if "RCT" not in assu and "AVERIS" not in assu:
-                    color = "#d32f2f" # Rouge
+                if not check_rct and not check_averis:
+                    color = "#d32f2f" # Rouge danger
                     status_txt = "⚠️ DANGER : NON-ASSURÉ RCT"
                 else:
+                    color = "green"
                     status_txt = f"✅ ASSURÉ {assu}"
-
-            # 3. Cas spécial Staff : Ils voient tout en vert sauf si c'est vraiment vide
+            
             elif role == "Staff":
-                if any(x in assu for x in ["RCT", "AVERIS"]):
+                if check_rct or check_averis:
                     color = "green"
                     status_txt = f"✅ VÉHICULE EN ORDRE ({assu})"
                 else:
-                    color = "#000000" # Noir pour le Staff si assurance inconnue
+                    color = "#000000" # Noir neutre pour le Staff
                     status_txt = "CERTIFIÉ CONFORME"
             
-            # Pour les civils, cela restera sur le "VÉHICULE EN RÈGLE" par défaut (Vert)
-            
-            color = "#000000" # Noir par défaut
-            status_txt = "CERTIFIÉ CONFORME"
-            
-            if st.session_state.user_auth == "RCT" and not is_rct:
-                color = "#d32f2f"
-                status_txt = "⚠️ DANGER : NON-ASSURÉ RCT"
-            elif st.session_state.user_auth == "Staff" and not is_staff_ok:
-                color = "#d32f2f"
-                status_txt = "⚠️ NON-ASSURÉ"
-
+            else:
+                # Pour les civils
+                color = "green"
+                status_txt = "✅ VÉHICULE EN RÈGLE"
+                
             # Design style "Reçu" (Capture 16:14:00)
             st.markdown(f"""
             <div style="border: 2px solid black; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; line-height: 1.2;">
