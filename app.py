@@ -772,7 +772,45 @@ with col_t:
 
 # --- ONGLET 2 : SERVICES AGENT (FACTURES / POINTS / CONSULTATION) ---
 if st.session_state.user_auth in ["RCT", "Staff"]:
-    with tabs[1]:
+    with tabs[1]:# --- PANEL D'ALERTE : FACTURES IMPAYÉES (S'affiche uniquement pour Staff/RCT) ---
+st.markdown("### 🚨 ALERTES PRIORITAIRES")
+
+# 1. Charger toutes les factures
+df_all_f = cloud_conn.read(worksheet="Factures").fillna("")
+
+# 2. Filtrer les factures périmées (Statut EN ATTENTE + Date dépassée)
+alertes = []
+maintenant = datetime.now()
+
+for idx, f in df_all_f.iterrows():
+    if f["Statut"] == "EN ATTENTE":
+        try:
+            limite = datetime.strptime(str(f['Date_Limite']), "%d/%m/%Y %H:%M:%S")
+            if maintenant > limite:
+                alertes.append(f)
+        except:
+            pass # Ignore les factures sans date valide
+
+# 3. Affichage du Panel
+if alertes:
+    df_alertes = pd.DataFrame(alertes)
+    st.error(f"⚠️ {len(alertes)} FACTURE(S) SONT EN SOUFFRANCE (DÉLAI DÉPASSÉ)")
+    
+    with st.expander("🔍 VOIR LA LISTE DES REQUÊTES PRIORITAIRES"):
+        for _, row in df_alertes.iterrows():
+            c1, c2, c3 = st.columns([1, 2, 1])
+            with c1:
+                st.write(f"🆔 **#{row['ID']}**")
+            with c2:
+                st.write(f"👤 **{row['Cible']}** ({row['Montant']}$)")
+            with c3:
+                if st.button("VOIR PROFIL", key=f"alert_view_{row['ID']}"):
+                    # Ici tu peux ajouter une logique pour changer le 'target' 
+                    # mais le plus simple est de prévenir l'agent
+                    st.info("Utilisez la recherche en haut")
+            st.divider()
+else:
+    st.success("✅ Aucune facture en retard. Tous les citoyens sont à jour.")
         if target == "---":
             st.warning("⚠️ Sélectionnez un citoyen en haut de la page.")
         else:
