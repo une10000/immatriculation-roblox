@@ -232,15 +232,8 @@ if st.session_state.user_auth is not None:
 # ======================================================================================
 # 5. LOCKSCREEN (CONNEXION) - UNITÉ FÉDÉRALE DE RENSSELAER
 # ======================================================================================
-# ======================================================================================
-# 5. LOCKSCREEN (CONNEXION) - UNITÉ FÉDÉRALE DE RENSSELAER
-# ======================================================================================
 if st.session_state.user_auth is None:
-    # --- AUTO-REFRESH (L'HORLOGE SE RECHARGE TOUTES LES 60s) ---
-    from streamlit_autorefresh import st_autorefresh
-    st_autorefresh(interval=60000, key="lockscreen_refresh")
-
-    # --- CONFIGURATION INTERFACE & CORRECTIFS ---
+    # --- CONFIGURATION INTERFACE ---
     st.markdown("""
         <style>
             [data-testid="stSidebar"], [data-testid="stSidebarNav"] { display: none; }
@@ -248,54 +241,59 @@ if st.session_state.user_auth is None:
         </style>
     """, unsafe_allow_html=True)
 
-    # 1. CALCUL DU MOMENT ET DE L'HEURE (UTC+1)
+    # 1. CALCUL DU MOMENT (UTC+1) POUR LE SALUT
     from datetime import datetime, timedelta, timezone
-    
     t_now_lock = datetime.now(timezone.utc) + timedelta(hours=1)
     h_lock = t_now_lock.hour
-    heure_formattee = t_now_lock.strftime("%H:%M")
 
     # --- LOGIQUE JOUR / NUIT ---
     if 5 <= h_lock < 18:
         salut_complet = "Bonjour☀️"
-        pattern_style = (
-            "background-color: #87CEEB; "
-            "background-image: "
-            "conic-gradient(from 200deg at 85% 10%, transparent 0deg, rgba(255,255,255,0.4) 15deg, transparent 30deg, rgba(255,223,137,0.5) 45deg, transparent 60deg, rgba(255,255,255,0.4) 75deg, transparent 90deg), "
-            "radial-gradient(circle at 85% 10%, #FFF9E3 0%, #FFD700 15%, rgba(255,215,0,0.4) 30%, transparent 60%), "
-            "radial-gradient(circle at 50% 25%, rgba(255,255,255,0.8) 0%, transparent 60%), "
-            "radial-gradient(circle at 50% 75%, rgba(255,255,255,0.6) 0%, transparent 65%); "
-            "background-repeat: no-repeat; background-size: cover;"
-        )
+        pattern_style = "background-color: #87CEEB; background-image: conic-gradient(from 200deg at 85% 10%, transparent 0deg, rgba(255,255,255,0.4) 15deg, transparent 30deg, rgba(255,223,137,0.5) 45deg, transparent 60deg, rgba(255,255,255,0.4) 75deg, transparent 90deg), radial-gradient(circle at 85% 10%, #FFF9E3 0%, #FFD700 15%, rgba(255,215,0,0.4) 30%, transparent 60%), radial-gradient(circle at 50% 25%, rgba(255,255,255,0.8) 0%, transparent 60%), radial-gradient(circle at 50% 75%, rgba(255,255,255,0.6) 0%, transparent 65%); background-repeat: no-repeat; background-size: cover;"
         t_color = "#1E1E1E"
         glow = "0 0 30px rgba(255, 255, 255, 1), 0 0 60px rgba(255, 200, 0, 0.6)"
     else:
         salut_complet = "Bonsoir🌕"
-        pattern_style = (
-            "background-color: #05070a; "
-            "background-image: "
-            "radial-gradient(1px 1px at 25% 35%, white, transparent), "
-            "radial-gradient(1px 1px at 50% 10%, white, transparent), "
-            "radial-gradient(2px 2px at 10% 80%, white, transparent), "
-            "radial-gradient(1px 1px at 90% 20%, white, transparent), "
-            "radial-gradient(1.5px 1.5px at 70% 60%, white, transparent); "
-            "background-size: 150px 150px, 200px 200px, 250px 250px, 180px 180px, 220px 220px;"
-        )
+        pattern_style = "background-color: #05070a; background-image: radial-gradient(1px 1px at 25% 35%, white, transparent), radial-gradient(1px 1px at 50% 10%, white, transparent), radial-gradient(2px 2px at 10% 80%, white, transparent), radial-gradient(1px 1px at 90% 20%, white, transparent), radial-gradient(1.5px 1.5px at 70% 60%, white, transparent); background-size: 150px 150px, 200px 200px, 250px 250px, 180px 180px, 220px 220px;"
         t_color = "#FFFFFF"
         glow = "0 0 40px rgba(255,255,255,0.9), 0 0 80px rgba(255,255,255,0.4)"
 
-    # --- AFFICHAGE UNITAIRE ---
+    # --- AFFICHAGE DU SALUT ---
     st.markdown(f"""
-        <div style="text-align: center; margin-top: -30px; padding: 70px 20px 45px 20px; border-radius: 20px 20px 0 0; color: {t_color}; {pattern_style}">
+        <div style="text-align: center; margin-top: -30px; padding: 70px 20px 20px 20px; border-radius: 20px 20px 0 0; color: {t_color}; {pattern_style}">
             <h1 style="font-size: 5.5em; margin: 0; font-weight: 900; letter-spacing: -3px; text-shadow: {glow};">
                 {salut_complet}
             </h1>
             <p style="font-size: 1.1em; opacity: 0.7; letter-spacing: 5px; font-weight: bold; text-transform: uppercase; margin-top: 20px;">Unité Fédérale de Rensselaer</p>
-            <div style="font-family: monospace; font-size: 2.2em; letter-spacing: 5px; opacity: 0.8; font-weight: bold; border-top: 1px solid {t_color}33; display: inline-block; padding-top: 10px; margin-top: 5px;">
-                {heure_formattee}
-            </div>
         </div>
     """, unsafe_allow_html=True)
+
+    # --- L'HORLOGE DYNAMIQUE (Comme dans ta Sidebar) ---
+    import streamlit.components.v1 as components
+    components.html(f"""
+        <div id="lock-clock" style="
+            font-family: monospace; 
+            font-size: 40px; 
+            letter-spacing: 5px; 
+            font-weight: bold; 
+            text-align: center; 
+            color: {t_color}; 
+            opacity: 0.8;
+            border-top: 1px solid {t_color}33;
+            padding-top: 10px;
+            width: 300px;
+            margin: 0 auto;
+        "></div>
+        <script>
+            function updateLockClock() {{
+                const now = new Date();
+                const options = {{ timeZone: 'Europe/Paris', hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }};
+                document.getElementById('lock-clock').textContent = now.toLocaleTimeString('fr-FR', options);
+            }}
+            setInterval(updateLockClock, 1000);
+            updateLockClock();
+        </script>
+    """, height=80)
 
     # 2. EN-TÊTE RÉPUBLIQUE
     st.markdown("""
@@ -312,7 +310,7 @@ if st.session_state.user_auth is None:
     st.warning("⚠️ **AVERTISSEMENT :** Toute action effectuée sur ce terminal est enregistrée.")
     st.write("---")
 
-    # 3. COLONNES D'ACCÈS
+    # 3. COLONNES D'ACCÈS (Boutons de connexion)
     c1, c2, c3 = st.columns(3)
     with c1:
         st.markdown("### 👥 CIVIL")
@@ -336,7 +334,6 @@ if st.session_state.user_auth is None:
                 st.rerun()
             else: st.error("Accès refusé.")
 
-    # ON ARRÊTE LE SCRIPT ICI POUR NE PAS AFFICHER LE RESTE SOUS LE LOCKSCREEN
     st.stop()
 # ======================================================================================
 # LE RESTE DU CODE (S'affiche uniquement après connexion)
