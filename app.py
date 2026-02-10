@@ -720,16 +720,16 @@ with tabs[0]:
     from textwrap import dedent
     import streamlit.components.v1 as components
 
-    with col_t:
-        st.write("### 🖼️ APERÇU DU TITRE (LIVE)")
+with col_t:
+    st.write("### 🖼️ APERÇU DU TITRE (LIVE)")
 
-        date_actuelle = datetime.now().strftime("%d/%m/%Y")
-        nom_user = f_owner if f_owner != "---" else "---"
-        marque_v = f_model if f_model else "---"
-        plaque_v = f_plate if f_plate else "---"
-        nom_assu = f_assu if f_assu != "Aucune" else "NON ASSURÉ"
+    date_actuelle = datetime.now().strftime("%d/%m/%Y")
+    nom_user = f_owner if f_owner != "---" else "---"
+    marque_v = f_model if f_model else "---"
+    plaque_v = f_plate if f_plate else "---"
+    nom_assu = f_assu if f_assu != "Aucune" else "NON ASSURÉ"
 
-        ticket_html = dedent(f"""
+    ticket_html = dedent(f"""
 <div style='border: 2px dashed #555; padding: 20px; background-color: #f9f9f9; color: #333; font-family: monospace; border-radius: 10px;'>
     <div style='text-align:center; margin-bottom: 10px;'>
         <h2 style='margin:0; font-size: 1.4em;'>RECU OFFICIEL</h2>
@@ -741,17 +741,20 @@ with tabs[0]:
         <p><strong>UTILISATEUR :</strong> {nom_user}</p>
         <p><strong>MARQUE :</strong> {marque_v}</p>
         <p><strong>NUMÉRO DE PLAQUE :</strong>
-            <span style='background:#333; color:white; padding:2px 6px; border-radius:3px;'>{plaque_v}</span>
+            <span style='border:1px solid #333; padding:2px 6px; border-radius:3px; background:#eee;'>{plaque_v}</span>
         </p>
         <p><strong>ASSURANCE :</strong> {nom_assu}</p>
     </div>
 
     <div>
-        <p style='display:flex; justify-content:space-between;'>
+        <p style='display:flex; justify-content:space-between; margin:2px 0;'>
             <span>Frais d'immatriculation :</span><span>175$</span>
         </p>
-        <p style='display:flex; justify-content:space-between;'>
+        <p style='display:flex; justify-content:space-between; margin:2px 0;'>
             <span>Frais d'assurance :</span><span>{taxe_assu}$</span>
+        </p>
+        <p style='display:flex; justify-content:space-between; margin:2px 0;'>
+            <span>Supplément jeune conducteur :</span><span>{val_taxe_jeune}$</span>
         </p>
     </div>
 
@@ -761,7 +764,8 @@ with tabs[0]:
 </div>
 """)
 
-        components.html(ticket_html, height=420)
+    components.html(ticket_html, height=450)
+
 
 # --- ONGLET 2 : SERVICES AGENT (FACTURES / POINTS / CONSULTATION) ---
 if st.session_state.user_auth in ["RCT", "Staff"]:
