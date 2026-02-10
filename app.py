@@ -730,21 +730,24 @@ with col_t:
     nom_assu = f_assu if f_assu != "Aucune" else "NON ASSURÉ"
 
     ticket_html = dedent(f"""
-<div style='border: 2px dashed #555; padding: 20px; background-color: #f9f9f9; color: #333; font-family: "Courier New", Courier, monospace;'>
+<div style='border:2px solid #333; padding:0; background-color:#f9f9f9; color:#333; font-family:"Courier New", Courier, monospace; width:100%; max-width:400px;'>
 
-    <!-- EN-TÊTE OFFICIEL -->
-    <div style='text-align:center; margin-bottom: 10px;'>
-        <h2 style='margin:0; font-size:1.4em;'>TITRE DE CIRCULATION</h2>
+    <!-- HAUT STYLE REÇU ARRAHÉ -->
+    <div style='height:15px; background: repeating-linear-gradient(135deg, #f9f9f9, #f9f9f9 5px, #ccc 5px, #ccc 10px);'></div>
+
+    <!-- RECU OFFICIEL -->
+    <div style='text-align:center; margin:10px 0 5px 0;'>
+        <h2 style='margin:0; font-size:1.4em;'>RECU OFFICIEL</h2>
+    </div>
+
+    <!-- TITRE -->
+    <div style='text-align:center; margin-bottom:10px;'>
+        <h3 style='margin:0; font-size:1.2em;'>TITRE DE CIRCULATION</h3>
         <small>RÉPUBLIQUE DE RENSSERLAER</small>
     </div>
 
-    <!-- RECU OFFICIEL -->
-    <div style='text-align:center; margin-bottom: 10px;'>
-        <h3 style='margin:0; font-size:1.2em;'>RECU OFFICIEL</h3>
-    </div>
-
     <!-- INFORMATIONS VEHICULE -->
-    <div style='border-top: 1px dashed #ccc; border-bottom: 1px dashed #ccc; padding: 10px 0; margin: 10px 0;'>
+    <div style='border-top:1px solid #333; border-bottom:1px solid #333; padding:10px; margin:0;'>
         <p><strong>DATE :</strong> {date_actuelle}</p>
         <p><strong>UTILISATEUR :</strong> {nom_user}</p>
         <p><strong>MARQUE :</strong> {marque_v}</p>
@@ -755,7 +758,7 @@ with col_t:
     </div>
 
     <!-- FRAIS -->
-    <div>
+    <div style='padding:10px;'>
         <p style='display:flex; justify-content:space-between; margin:2px 0;'>
             <span>Frais d'immatriculation :</span><span>175$</span>
         </p>
@@ -768,19 +771,20 @@ with col_t:
     </div>
 
     <!-- TOTAL -->
-    <div style='border-top:2px solid #333; padding-top:10px; text-align:right;'>
+    <div style='border-top:2px solid #333; padding:10px; text-align:right;'>
         <strong style='font-size:1.3em;'>TOTAL PAYÉ : {total_bill}$</strong>
     </div>
 
-    <!-- PIED DE PAGE OFFICIEL -->
-    <div style='text-align:center; margin-top:15px;'>
+    <!-- PIED DE PAGE -->
+    <div style='text-align:center; margin:15px 0 0 0;'>
         <small>CERTIFIÉ CONFORME<br>Par le Terminal National.</small>
     </div>
-    
+
 </div>
 """)
 
-    components.html(ticket_html, height=500)
+    components.html(ticket_html, height=520)
+
 
 # --- ONGLET 2 : SERVICES AGENT (FACTURES / POINTS / CONSULTATION) ---
 if st.session_state.user_auth in ["RCT", "Staff"]:
