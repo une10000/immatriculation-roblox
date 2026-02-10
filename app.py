@@ -210,7 +210,6 @@ if st.session_state.user_auth is not None:
 # ======================================================================================
 # 5. LOCKSCREEN (CONNEXION) - UNITÉ FÉDÉRALE DE RENSSELAER
 # ======================================================================================
-
 if st.session_state.user_auth is None:
     # --- CONFIGURATION INTERFACE & CORRECTIFS ---
     st.markdown("""
@@ -227,17 +226,18 @@ if st.session_state.user_auth is None:
     t_now_lock = datetime.now(timezone.utc) + timedelta(hours=1)
     h_lock = t_now_lock.hour
     heure_formattee = t_now_lock.strftime("%H:%M")
-# --- LOGIQUE JOUR / NUIT ---
+
+    # --- LOGIQUE JOUR / NUIT ---
     if 5 <= h_lock < 18:
         salut_complet = "Bonjour☀️"
+        # Fond bleu uni avec nuages vaporeux centrés (évite les bords coupés)
         pattern_style = (
             "background-color: #87CEEB; "
             "background-image: "
-            "radial-gradient(circle at 15% 35%, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.2) 25%, transparent 50%), "
-            "radial-gradient(circle at 25% 40%, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.1) 30%, transparent 55%), "
-            "radial-gradient(circle at 75% 55%, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.2) 25%, transparent 50%), "
-            "radial-gradient(circle at 85% 45%, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.1) 35%, transparent 60%); "
-            "background-size: 500px 500px;"
+            "radial-gradient(circle at 50% 25%, rgba(255,255,255,0.7) 0%, transparent 50%), "
+            "radial-gradient(circle at 50% 75%, rgba(255,255,255,0.6) 0%, transparent 55%); "
+            "background-repeat: no-repeat; "
+            "background-size: cover;"
         )
         t_color = "#1E1E1E"
         glow = "0 0 15px rgba(255, 165, 0, 0.3)"
