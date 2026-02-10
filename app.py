@@ -83,15 +83,13 @@ df_b, df_i, df_p = fetch_database()
 if "user_auth" not in st.session_state: st.session_state.user_auth = None
 if "audit_logs" not in st.session_state: st.session_state.audit_logs = []
 
-# --- LOGIQUE DES SALAIRES & SURPLUS ---
-BASE_CIVILE = 15000
-
-# Bonus et leurs sources de débit
-SURPLUS_CONFIG = {
-    "RCT": {"bonus": 2000, "source": "une10000"},
-    "Averis": {"bonus": 2000, "source": "Moune2010"},
-    "Police": {"bonus": 3000, "source": None}, # Pas de compte débit spécifié
-    "Staff": {"bonus": 4000, "source": None}   # Pas de compte débit spécifié
+# --- CONFIGURATION DES SALAIRES ---
+SALAIRES_FIXES = {
+    "Civil": 15000,
+    "RCT": 17000,    # (15k + 2k) -> Débit 2k à une10000
+    "Averis": 17000, # (15k + 2k) -> Débit 2k à Moune2010
+    "Police": 18000, # (15k + 3k)
+    "Staff": 19000   # (15k + 4k)
 }
 
 # Codes de Service
