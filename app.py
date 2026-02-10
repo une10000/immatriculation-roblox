@@ -922,25 +922,27 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                     for _, veh in target_veh.iterrows():
                         assu_v = str(veh['Assurance']).upper()
                         
-                        # Logique miroir pour la colonne de droite
+                        # 1. LOGIQUE DES COULEURS (Miroir)
                         if st.session_state.user_auth == "RCT":
                             if "RCT" in assu_v:
                                 col_v, txt_v = "green", "✅ ASSURÉ RCT"
                             elif "AVERIS" in assu_v:
-                                col_v, txt_v = "#E67E22", "⚠️ ASSURÉ AVERIS" # Orange + Warning
+                                col_v, txt_v = "#E67E22", "⚠️ ASSURÉ AVERIS"
                             else:
                                 col_v, txt_v = "#d32f2f", "🚨 DANGER : NON-ASSURÉ"
                         else:
                             col_v, txt_v = "green", "✅ VÉHICULE EN RÈGLE"
-                            st.markdown(f"""
-                            <div style="border: 2px solid black; padding: 10px; background: white; color: black; font-family: 'Courier New', monospace; margin-bottom: 10px; font-size: 0.8em;">
+
+                        # 2. AFFICHAGE (Sorti du 'else' pour être visible par tout le monde)
+                        st.markdown(f"""
+                        <div style="border: 2px solid black; padding: 10px; background: white; color: black; font-family: 'Courier New', monospace; margin-bottom: 10px; font-size: 0.8em;">
                             <center><b>TITRE DE CIRCULATION</b></center>
                             <hr style="border-top: 1px solid #ccc; margin: 5px 0;">
                             <b>MODÈLE :</b> {veh['Marque du véhicule']}<br>
                             <b>PLAQUE :</b> <span style="border: 1px solid black; padding: 0 2px;">{veh['Numéro de la plaque']}</span><br>
                             <hr style="border-top: 1px solid #ccc; margin: 5px 0;">
-                            <div style="text-align: center; color: {color_v}; font-weight: bold;">
-                                {status_v}
+                            <div style="text-align: center; color: {col_v}; font-weight: bold;">
+                                {txt_v}
                             </div>
                         </div>
                         """, unsafe_allow_html=True)
