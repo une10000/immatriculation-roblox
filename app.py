@@ -1,14 +1,3 @@
-# ======================================================================================
-# PROJECT       : RCRP FR OS - ULTIMATE EDITION
-# VERSION       : 14.6.0
-# BUILD DATE    : 10/02/2026
-# ======================================================================================
-
-import streamlit as st
-from streamlit_gsheets import GSheetsConnection
-import pandas as pd
-from datetime import datetime, timedelta, timezone
-
 # 1. INTERFACE & DESIGN
 st.set_page_config(
     page_title="RCRP FR OS - SYSTÈME NATIONAL",
@@ -17,48 +6,57 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- CONFIGURATION DU THÈME DYNAMIQUE ---
-h_sys = (datetime.now(timezone.utc) + timedelta(hours=1)).hour
-is_night = not (5 <= h_sys < 18)
-
-# Variables de couleurs pour le mode Clair/Nuit
-if is_night:
-    app_bg, txt_col, widget_bg, border_col = "#0e1117", "#ffffff", "#262730", "#444444"
-else:
-    app_bg, txt_col, widget_bg, border_col = "#ffffff", "#000000", "#f9f9f9", "#000000"
-
-# Application des styles globaux (sans affichage de texte)
-st.markdown(f"""
+# --- CSS DYNAMIQUE (DÉTECTION SYSTÈME) ---
+st.markdown("""
     <style>
-    #MainMenu, footer, header {{ visibility: hidden; }}
-    .stApp {{ background-color: {app_bg} !important; }}
+    /* Nettoyage des éléments Streamlit */
+    #MainMenu, footer, header { visibility: hidden; }
 
-    /* Adaptation des textes pour le mode CLAIR / NUIT */
-    html, body, [data-testid="stWidgetLabel"], .stMarkdown, p, label, span, div {{ 
-        color: {txt_col} !important; 
-    }}
+    /* PAR DÉFAUT : MODE SOMBRE */
+    :root {
+        --bg-color: #0e1117;
+        --text-color: #ffffff;
+        --input-bg: #262730;
+        --border-color: #444444;
+    }
 
-    /* Cases de saisie : Forçage du contraste */
-    input, .stSelectbox>div>div, textarea {{
-        background-color: {widget_bg} !important;
-        color: {txt_col} !important;
-        border: 2px solid {border_col} !important;
+    /* SI L'APPAREIL EST EN MODE CLAIR */
+    @media (prefers-color-scheme: light) {
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #000000;
+            --input-bg: #f0f2f6;
+            --border-color: #d3d3d3;
+        }
+    }
+
+    /* Application des variables */
+    .stApp { background-color: var(--bg-color) !important; }
+
+    html, body, [data-testid="stWidgetLabel"], .stMarkdown, p, label, span, div { 
+        color: var(--text-color) !important; 
+    }
+
+    /* Style des champs de saisie */
+    input, .stSelectbox>div>div, textarea {
+        background-color: var(--input-bg) !important;
+        color: var(--text-color) !important;
+        border: 2px solid var(--border-color) !important;
         border-radius: 4px !important;
-    }}
+    }
 
-    /* Boutons */
-    .stButton>button {{
-        background-color: {widget_bg} !important;
-        color: {txt_col} !important;
-        border: 2px solid {border_col} !important;
+    /* Style des boutons */
+    .stButton>button {
+        background-color: var(--input-bg) !important;
+        color: var(--text-color) !important;
+        border: 2px solid var(--border-color) !important;
         font-weight: 900 !important;
         text-transform: uppercase;
         width: 100%;
         height: 3.5em;
-    }}
+    }
     </style>
 """, unsafe_allow_html=True)
-
 # ======================================================================================
 # 2. MOTEUR DE DONNÉES (SYNC)
 # ======================================================================================
