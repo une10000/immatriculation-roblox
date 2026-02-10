@@ -24,32 +24,40 @@ st.set_page_config(
 h_sys = (datetime.now(timezone.utc) + timedelta(hours=1)).hour
 is_night = not (5 <= h_sys < 18)
 
-# Couleurs dynamiques pour la lisibilité (le fond suit le système automatiquement)
-text_primary = "#ffffff" if is_night else "#000000"
-border_ui = "#444444" if is_night else "#000000"
-bg_input = "#262730" if is_night else "#ffffff"
-bg_card = "#1a1c23" if is_night else "#f8f9fa"
+# Définition radicale des couleurs
+if is_night:
+    bg_app = "#0e1117"
+    txt_color = "#ffffff"
+    border_ui = "#444444"
+    bg_input = "#262730"
+    bg_card = "#1a1c23"
+else:
+    bg_app = "#ffffff"   # Blanc pur
+    txt_color = "#000000" # Noir profond
+    border_ui = "#000000" # Bordures noires
+    bg_input = "#f9f9f9" # Fond d'input très léger
+    bg_card = "#ffffff"
 
 st.markdown(f"""
     <style>
-    /* On ne force plus le fond .stApp pour laisser le mode système (Clair/Sombre) agir */
-    
-    /* Forcer la couleur du texte et des labels pour la lisibilité */
-    .stMarkdown, p, label, span, div {{ 
-        color: {text_primary} !important; 
+    /* Forçage du fond d'écran */
+    .stApp {{ background-color: {bg_app} !important; }}
+
+    /* Forçage de TOUS les textes (Labels, Markdown, Paragraphes) */
+    html, body, [data-testid="stWidgetLabel"], .stMarkdown, p, span, label, div {{
+        color: {txt_color} !important;
+        font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     }}
 
-    /* Inputs avec bordures massives - S'adapte au mode clair pour être bien visible */
-    .stTextInput>div>div>input, .stNumberInput>div>div>input, 
-    .stSelectbox>div>div>div, .stTextArea>div>div>textarea {{
+    /* Champs de saisie : Bordures noires massives en mode clair */
+    input, textarea, select, div[data-baseweb="select"], .stSelectbox {{
         border: 2px solid {border_ui} !important;
-        border-radius: 4px !important;
-        font-weight: bold !important;
-        color: {text_primary} !important;
         background-color: {bg_input} !important;
+        color: {txt_color} !important;
+        border-radius: 4px !important;
     }}
 
-    /* En-tête RCRP FR (Reste sombre/pro pour le look institutionnel) */
+    /* En-tête RCRP FR (On garde le look sombre même le jour pour le style) */
     .header-box {{
         background: linear-gradient(90deg, #121212 0%, #2c3e50 100%);
         padding: 35px;
@@ -58,17 +66,14 @@ st.markdown(f"""
         margin-bottom: 25px;
         box-shadow: 0 4px 15px rgba(0,0,0,0.4);
     }}
-    .header-box h1, .header-box p {{ 
-        color: white !important; 
-        margin: 0; 
-    }}
+    .header-box h1, .header-box p {{ color: #ffffff !important; margin: 0; }}
 
     /* Info Cards (Le Guide de recherche, etc.) */
     .info-card {{
         background-color: {bg_card};
         padding: 20px;
-        border: 1px solid {border_ui};
-        border-left: 5px solid #d32f2f;
+        border: 2px solid {border_ui};
+        border-left: 8px solid #d32f2f;
         margin-bottom: 20px;
     }}
 
@@ -76,28 +81,29 @@ st.markdown(f"""
     .receipt-container {{
         background-color: {bg_card};
         padding: 30px;
-        border: 4px double {text_primary};
+        border: 4px double {txt_color};
         font-family: 'Courier New', Courier, monospace;
         box-shadow: 10px 10px 0px {border_ui};
     }}
     
-    /* Boutons RCRP */
+    /* Boutons : Style Terminal */
     .stButton>button {{
-        border: 2px solid {text_primary} !important;
+        border: 2px solid {txt_color} !important;
         background-color: {bg_input} !important;
-        color: {text_primary} !important;
+        color: {txt_color} !important;
         font-weight: 900 !important;
         text-transform: uppercase;
-        height: 3.8em;
+        width: 100%;
+        height: 3.5em;
     }}
     .stButton>button:hover {{
-        background-color: {text_primary} !important;
-        color: {bg_input} !important;
+        background-color: {txt_color} !important;
+        color: {bg_app} !important;
     }}
     </style>
 """, unsafe_allow_html=True)
 
-# --- EN-TÊTE ---
+# Affichage de l'en-tête
 st.markdown("""
     <div class="header-box">
         <h1>🏛️ RÉPUBLIQUE DE RENSSELAER</h1>
@@ -113,6 +119,7 @@ cloud_conn = st.connection("gsheets", type=GSheetsConnection)
 
 @st.cache_data(ttl=300)
 def fetch_database():
+    """Récupération synchronisée de toutes les tables"""
     try:
         df_bank = cloud_conn.read(worksheet="Banque").dropna(how='all').fillna("")
         df_immat = cloud_conn.read(worksheet="Copie de Immatriculations").dropna(how='all').fillna("")
@@ -135,6 +142,7 @@ if "audit_logs" not in st.session_state: st.session_state.audit_logs = []
 # Paramètres Banques Centrales
 ACC_RCT = "une10000"
 ACC_AVERIS = "Moune2010"
+SOLDE_DEPART = 15000  # Ton solde de départ de 15k
 
 # Codes de Service
 KEY_RCT = "RCT-26-RCRPFR"
