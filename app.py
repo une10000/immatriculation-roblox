@@ -18,41 +18,43 @@ st.set_page_config(
 )
 
 # --- CONFIGURATION DU THÈME DYNAMIQUE ---
-# Détection de l'heure pour le basculement automatique
 h_sys = (datetime.now(timezone.utc) + timedelta(hours=1)).hour
 is_night = not (5 <= h_sys < 18)
 
 if is_night:
     app_bg, txt_col, widget_bg, border_col = "#0e1117", "#ffffff", "#262730", "#444444"
 else:
-    app_bg, txt_col, widget_bg, border_col = "#ffffff", "#000000", "#f0f2f6", "#000000"
+    app_bg, txt_col, widget_bg, border_col = "#ffffff", "#000000", "#f9f9f9", "#000000"
 
 st.markdown(f"""
     <style>
-    /* Nettoyage des doublons et des éléments par défaut de Streamlit */
+    /* Nettoyage radical des éléments Streamlit */
     #MainMenu, footer, header {{ visibility: hidden; }}
     .stApp {{ background-color: {app_bg} !important; }}
 
-    /* Style de l'en-tête UNIQUE (Celui que tu vois en haut de ta capture) */
+    /* Style de l'en-tête UNIQUE RCRP */
     .rcrp-header {{
         background: linear-gradient(90deg, #121212 0%, #2c3e50 100%);
         padding: 40px;
         border-radius: 12px;
         border-left: 20px solid #d32f2f;
-        margin-bottom: 30px;
+        margin-bottom: 25px;
         text-align: center;
-        color: white !important; /* L'en-tête reste sombre pour le style */
+        color: white !important;
         box-shadow: 0 4px 15px rgba(0,0,0,0.3);
     }}
 
     /* Adaptation des textes pour le mode CLAIR / NUIT */
-    .stMarkdown, p, label, span, div, .stHeader {{ color: {txt_col} !important; }}
+    html, body, [data-testid="stWidgetLabel"], .stMarkdown, p, label, span, div {{ 
+        color: {txt_col} !important; 
+    }}
 
-    /* Correction des cases de saisie pour qu'elles soient lisibles en blanc */
-    input, .stSelectbox>div>div {{
+    /* Cases de saisie : Forçage du contraste */
+    input, .stSelectbox>div>div, textarea {{
         background-color: {widget_bg} !important;
         color: {txt_col} !important;
         border: 2px solid {border_col} !important;
+        border-radius: 4px !important;
     }}
 
     /* Boutons */
@@ -60,24 +62,27 @@ st.markdown(f"""
         background-color: {widget_bg} !important;
         color: {txt_col} !important;
         border: 2px solid {border_col} !important;
-        font-weight: bold !important;
+        font-weight: 900 !important;
+        text-transform: uppercase;
         width: 100%;
         height: 3.5em;
     }}
     </style>
 
     <div class="rcrp-header">
-        <h1 style="margin:0; font-size: 2.2em;">🏛️ RÉPUBLIQUE DE RENSSELAER</h1>
-        <p style="margin:0; opacity: 0.8; letter-spacing: 2px;">TERMINAL FÉDÉRAL D'OPÉRATIONS NATIONALES</p>
-        <p style="margin-top:10px; font-size: 0.8em; opacity: 0.5;">VERSION 14.6.0 | PROTOCOLE SÉCURISÉ</p>
+        <h1 style="margin:0; font-size: 2.2em; color: white !important;">🏛️ RÉPUBLIQUE DE RENSSELAER</h1>
+        <p style="margin:0; opacity: 0.8; letter-spacing: 2px; color: white !important;">TERMINAL FÉDÉRAL D'OPÉRATIONS NATIONALES</p>
+        <p style="margin-top:10px; font-size: 0.8em; opacity: 0.5; color: white !important;">VERSION 14.6.0 | PROTOCOLE SÉCURISÉ</p>
     </div>
 """, unsafe_allow_html=True)
 
-# Affichage de l'horloge UNIQUE (Formatée pour être propre)
+# L'UNIQUE affichage de l'heure
 st.markdown(f"""
     <div style="text-align: center; margin-bottom: 40px;">
-        <h2 style="font-size: 4em; margin:0; font-family: monospace;">{datetime.now().strftime('%H:%M:%S')}</h2>
-        <p style="letter-spacing: 5px; opacity: 0.6;">SÉCURITÉ NATIONALE - ÉTAT CIVIL</p>
+        <h2 style="font-size: 4em; margin:0; font-family: monospace; color: {txt_col} !important;">
+            {datetime.now().strftime('%H:%M:%S')}
+        </h2>
+        <p style="letter-spacing: 5px; opacity: 0.6; color: {txt_col} !important;">SÉCURITÉ NATIONALE - ÉTAT CIVIL</p>
     </div>
 """, unsafe_allow_html=True)
 
@@ -103,11 +108,12 @@ df_b, df_i, df_p = fetch_database()
 # 3. ÉTAT DE LA SESSION & PARAMÈTRES
 # ======================================================================================
 if "user_auth" not in st.session_state: st.session_state.user_auth = None
+if "audit_logs" not in st.session_state: st.session_state.audit_logs = []
 
 # Constantes du projet
-SOLDE_DEPART = 15000 #
+SOLDE_DEPART = 15000 
 ACC_RCT = "une10000"
-ACC_AVERIS = "Moune2010" #
+ACC_AVERIS = "Moune2010" 
 
 # Codes de Service
 KEY_RCT = "RCT-26-RCRPFR"
@@ -116,14 +122,6 @@ KEY_STAFF = "RCRPFR-25-26"
 def record_log(user, action):
     now = datetime.now().strftime("%H:%M:%S")
     st.session_state.audit_logs.append(f"[{now}] {user} : {action}")
-
-# Affichage de l'heure actuelle (Centré et dynamique)
-st.markdown(f"""
-    <div style="text-align: center; margin-bottom: 20px;">
-        <h2 style="font-size: 3em; margin:0;">{datetime.now().strftime('%H:%M:%S')}</h2>
-        <p style="opacity: 0.6;">SÉCURITÉ NATIONALE - ÉTAT CIVIL</p>
-    </div>
-""", unsafe_allow_html=True)
 # ======================================================================================
 # 4. SIDEBAR CONDITIONNELLE (LOGO & INFOS)
 # ======================================================================================
