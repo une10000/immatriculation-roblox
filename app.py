@@ -731,7 +731,7 @@ with col_t:
 
     ticket_html = dedent(f"""
 <div style='border: 2px dashed #555; padding: 20px; background-color: #f9f9f9; color: #333; font-family: "Courier New", Courier, monospace;'>
-    
+
     <!-- EN-TÊTE OFFICIEL -->
     <div style='text-align:center; margin-bottom: 10px;'>
         <h2 style='margin:0; font-size:1.4em;'>TITRE DE CIRCULATION</h2>
@@ -781,7 +781,6 @@ with col_t:
 """)
 
     components.html(ticket_html, height=500)
-
 
 # --- ONGLET 2 : SERVICES AGENT (FACTURES / POINTS / CONSULTATION) ---
 if st.session_state.user_auth in ["RCT", "Staff"]:
