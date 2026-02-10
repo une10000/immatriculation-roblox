@@ -471,9 +471,8 @@ if not mes_factures.empty:
         st.error(f"⚠️ {len(mes_factures)} FACTURE(S) EN ATTENTE DE PAIEMENT")
         for _, fac in mes_factures.iterrows():
             
-            # --- CALCUL DU TIMER (NOUVEAU) ---
+            # --- CALCUL DU TIMER ---
             try:
-                # On transforme le texte de la BDD en vraie date Python
                 date_limite = datetime.strptime(str(fac['Date_Limite']), "%d/%m/%Y %H:%M:%S")
                 temps_restant = date_limite - datetime.now()
                 
@@ -481,15 +480,15 @@ if not mes_factures.empty:
                     h, rem = divmod(int(temps_restant.total_seconds()), 3600)
                     m, _ = divmod(rem, 60)
                     timer_info = f"⌛ EXPIRE DANS : {h}h {m}min"
-                    t_color = "#f39c12"  # Orange si c'est encore bon
+                    t_color = "#f39c12" 
                 else:
                     timer_info = "⚠️ DÉLAI DÉPASSÉ (IMPAYÉ)"
-                    t_color = "#d32f2f"  # Rouge si c'est trop tard
+                    t_color = "#d32f2f"
             except:
                 timer_info = "⌛ Délai : 24 heures"
                 t_color = "#555"
 
-            # --- LE TICKET FACTURE STYLE NOSTALGIQUE ---
+            # --- LE TICKET ---
             prefix_name = "POLICE NATIONALE" if fac['Emetteur'] == "Staff" else "RÉSEAU RCT"
             st.markdown(f"""
             <div style="border: 2px solid #000; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; margin-bottom: 5px; box-shadow: 6px 6px 0px #000;">
@@ -508,60 +507,52 @@ if not mes_factures.empty:
                 </div>
                 <center><small style="font-size: 0.6em; opacity: 0.5; margin-top:10px; display:block;">RCRP SYSTEM - DOCUMENT OFFICIEL</small></center>
             </div>
-            <div style="margin-bottom: 15px;"></div>
             """, unsafe_allow_html=True)
-# --- BOUTON DE PAIEMENT ---
-        if st.button(f"💳 RÉGLER LA FACTURE #{fac['ID']}", key=f"pay_{fac['ID']}", use_container_width=True):
-            try:
-                idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
-                solde_raw = str(df_b.at[idx_b, "Solde"]).replace('$', '').replace(',', '')
-                solde_actuel = float(solde_raw)
-                montant_facture = float(fac['Montant'])
-                
-                if solde_actuel >= montant_facture:
-                    # 1. Débit du civil
-                    df_b.at[idx_b, "Solde"] = solde_actuel - montant_facture
-                    
-                    # 2. Crédit RCT (Argent vers Moune2010 pour Averis)
-                    rct_idx = df_b[df_b["Nom Roblox"] == ACC_RCT].index[0]
-                    solde_dest = float(str(df_b.at[rct_idx, "Solde"]).replace('$', '').replace(',', ''))
-                    df_b.at[rct_idx, "Solde"] = solde_dest + montant_facture
-                    
-                    # 3. Changement de statut
-                    df_all_f.loc[df_all_f["ID"] == fac["ID"], "Statut"] = "PAYÉ"
-                    
-                    # 4. Envoi Google Sheets
-                    cloud_conn.update(worksheet="Banque", data=df_b)
-                    cloud_conn.update(worksheet="Factures", data=df_all_f)
-                    
-                    record_log(target, f"Paiement facture {fac['Emetteur']} #{fac['ID']}")
-                    st.success("✅ Paiement effectué !")
-                    st.cache_data.clear()
-                    time.sleep(1)
-                    st.rerun()
-                else:
-                    st.error("❌ Solde insuffisant.")
-            except Exception as e:
-                st.error(f"Erreur lors du paiement : {e}")
 
-        # --- BOUTON ANNULER (POUR LES ADMINS) ---
-        if st.session_state.user_auth in ["Staff", "Admin"]:
-            if st.button(f"🗑️ ANNULER LA FACTURE #{fac['ID']}", key=f"admin_del_{fac['ID']}", use_container_width=True):
+            # --- BOUTON DE PAIEMENT (Aligné avec le ticket) ---
+            if st.button(f"💳 RÉGLER LA FACTURE #{fac['ID']}", key=f"pay_{fac['ID']}", use_container_width=True):
                 try:
-                    df_f_sync = cloud_conn.read(worksheet="Factures")
-                    row_up = df_f_sync[df_f_sync["ID"] == fac["ID"]].index[0] + 2
-                    cloud_conn.update(worksheet="Factures", range=f"E{row_up}", data=[["ANNULÉ"]])
+                    idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
+                    solde_raw = str(df_b.at[idx_b, "Solde"]).replace('$', '').replace(',', '')
+                    solde_actuel = float(solde_raw)
+                    montant_facture = float(fac['Montant'])
                     
-                    record_log(st.session_state.user_auth, f"Annulation facture #{fac['ID']}")
-                    st.warning("Facture annulée.")
-                    st.cache_data.clear()
-                    time.sleep(1)
-                    st.rerun()
+                    if solde_actuel >= montant_facture:
+                        df_b.at[idx_b, "Solde"] = solde_actuel - montant_facture
+                        rct_idx = df_b[df_b["Nom Roblox"] == ACC_RCT].index[0]
+                        solde_dest = float(str(df_b.at[rct_idx, "Solde"]).replace('$', '').replace(',', ''))
+                        df_b.at[rct_idx, "Solde"] = solde_dest + montant_facture
+                        df_all_f.loc[df_all_f["ID"] == fac["ID"], "Statut"] = "PAYÉ"
+                        
+                        cloud_conn.update(worksheet="Banque", data=df_b)
+                        cloud_conn.update(worksheet="Factures", data=df_all_f)
+                        
+                        record_log(target, f"Paiement facture {fac['Emetteur']} #{fac['ID']}")
+                        st.success("✅ Paiement effectué !")
+                        st.cache_data.clear()
+                        time.sleep(1)
+                        st.rerun()
+                    else:
+                        st.error("❌ Solde insuffisant.")
                 except Exception as e:
-                    st.error(f"Erreur d'annulation : {e}")
+                    st.error(f"Erreur lors du paiement : {e}")
 
-# --- ATTENTION : C'EST ICI QUE ÇA SE JOUE ---
-# Ce bloc "except" doit être aligné avec le TOUT PREMIER "try" de ta page profil
+            # --- BOUTON ANNULER (Aligné aussi) ---
+            if st.session_state.user_auth in ["Staff", "Admin"]:
+                if st.button(f"🗑️ ANNULER LA FACTURE #{fac['ID']}", key=f"admin_del_{fac['ID']}", use_container_width=True):
+                    try:
+                        df_f_sync = cloud_conn.read(worksheet="Factures")
+                        row_up = df_f_sync[df_f_sync["ID"] == fac["ID"]].index[0] + 2
+                        cloud_conn.update(worksheet="Factures", range=f"E{row_up}", data=[["ANNULÉ"]])
+                        record_log(st.session_state.user_auth, f"Annulation #{fac['ID']}")
+                        st.warning("Facture annulée.")
+                        st.cache_data.clear()
+                        time.sleep(1)
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Erreur d'annulation : {e}")
+
+# --- FIN DU TRY PROFIL ---
 except Exception as e:
     st.error(f"Erreur d'affichage profil : {e}")
 # --- SECTION VÉHICULES CORRIGÉE ---
