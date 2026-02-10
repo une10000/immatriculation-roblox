@@ -198,8 +198,7 @@ if st.session_state.user_auth is not None:
             st.cache_data.clear()
             record_log(st.session_state.user_auth, "Synchro Cloud Manuelle")
             st.rerun()
-            
-       if st.button("🚪 DÉCONNEXION", use_container_width=True):
+            if st.button("🚪 DÉCONNEXION", use_container_width=True):
     # 1. On crée un conteneur vide et on l'écrase pour tout effacer visuellement
     placeholder = st.empty()
     placeholder.write("🔄 Déconnexion en cours...")
