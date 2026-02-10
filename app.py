@@ -326,8 +326,8 @@ if st.session_state.user_auth is None:
                 st.rerun()
             else: st.error("Clé invalide.")
     with c3:
-        st.markdown("### 🛡️👮‍♂️ STAFF/POLICE")
-        login_staff = st.text_input("Clé Maîtresse", placeholder="Code POL/STA", type="password", key="l_st_ff")
+        st.markdown("### 🛡️👮‍♂️ POLSTA")
+        login_staff = st.text_input("Clé Maîtresse", placeholder="Code POLSTA", type="password", key="l_st_ff")
         if st.button("ACCÈS ADMINISTRATEUR", key="b_st_f", use_container_width=True):
             if login_staff == KEY_STAFF:
                 st.session_state.user_auth = "Staff"
