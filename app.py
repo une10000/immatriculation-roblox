@@ -930,26 +930,41 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                 st.markdown("#### 🚗 Véhicules")
                 if not target_veh.empty:
                     for _, veh in target_veh.iterrows():
-                        assurance = str(veh['Assurance'])
-                        if assurance in ["Averis", "RCT"]:
-                            color, status_txt, icon = "green", f"ASSURÉ {assurance.upper()}", "✅"
-                        else:
-                            color, status_txt, icon = "#d32f2f", "🚨 NON-ASSURÉ", "⚠️"
+                        # --- LOGIQUE DE SÉCURITÉ UNIFIÉE ---
+                        assu_v = str(veh['Assurance']).upper()
+                        role_v = st.session_state.user_auth
+                        
+                        check_rct = "RCT" in assu_v
+                        check_averis = "AVERIS" in assu_v
+                        
+                        # Par défaut
+                        color_v = "green"
+                        status_v = "✅ VÉHICULE EN RÈGLE"
+                        
+                        if role_v == "RCT":
+                            if check_rct:
+                                status_v = "✅ ASSURÉ RCT"
+                            elif check_averis:
+                                status_v = "✅ ASSURÉ AVERIS" # <-- C'est cette ligne qui manquait !
+                            else:
+                                color_v = "#d32f2f"
+                                status_v = "⚠️ NON-ASSURÉ"
 
+                        # Affichage du mini-titre
                         st.markdown(f"""
                         <div style="border: 2px solid black; padding: 10px; background: white; color: black; font-family: 'Courier New', monospace; margin-bottom: 10px; font-size: 0.8em;">
                             <center><b>TITRE DE CIRCULATION</b></center>
                             <hr style="border-top: 1px solid #ccc; margin: 5px 0;">
                             <b>MODÈLE :</b> {veh['Marque du véhicule']}<br>
-                            <b>PLAQUE :</b> {veh['Numéro de la plaque']}<br>
+                            <b>PLAQUE :</b> <span style="border: 1px solid black; padding: 0 2px;">{veh['Numéro de la plaque']}</span><br>
                             <hr style="border-top: 1px solid #ccc; margin: 5px 0;">
-                            <div style="text-align: center; color: {color}; font-weight: bold;">
-                                {icon} {status_txt}
+                            <div style="text-align: center; color: {color_v}; font-weight: bold;">
+                                {status_v}
                             </div>
                         </div>
                         """, unsafe_allow_html=True)
                 else:
-                    st.info("Aucun véhicule enregistré.")
+                    st.info("Aucun véhicule.")
 # --- ONGLET 3 : ADMINISTRATION (STAFF ONLY) ---
 if st.session_state.user_auth == "Staff":
     with tabs[2]:
