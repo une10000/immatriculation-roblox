@@ -83,16 +83,45 @@ df_b, df_i, df_p = fetch_database()
 if "user_auth" not in st.session_state: st.session_state.user_auth = None
 if "audit_logs" not in st.session_state: st.session_state.audit_logs = []
 
-# --- CONFIGURATION DES SALAIRES (À mettre au début du script) ---
+# ======================================================================================
+# CONFIGURATION ET FONCTIONS TECHNIQUES (À METTRE EN HAUT)
+# ======================================================================================
+
 PRIME_JOB = {
+    "Sans-Emploi": 0,
     "Agent RCT": 2000,
     "Averis": 2000,
     "Police": 3000,
     "Staff": 4000,
-    "Entreprise Privée": 0,
-    "Service Public": 500,
-    "Sans-Emploi": 0
+    "Service Public": 1000,
+    "Entreprise Privée": 500
 }
+
+def traiter_paiement_prime(target_name, metier, montant, df_b, cloud_conn):
+    """Gère le prélèvement sur l'employeur et l'ajout sur l'employé"""
+    source_compte = None
+    if "Averis" in metier:
+        source_compte = "Moune2010"
+    elif "Agent RCT" in metier:
+        source_compte = "une10000"
+    
+    if source_compte:
+        try:
+            # --- PRÉLÈVEMENT SUR L'EMPLOYEUR ---
+            idx_source = df_b[df_b["Nom Roblox"] == source_compte].index[0]
+            df_b.at[idx_source, "Solde"] -= montant
+            
+            # --- AJOUT SUR L'EMPLOYÉ ---
+            idx_target = df_b[df_b["Nom Roblox"] == target_name].index[0]
+            df_b.at[idx_target, "Solde"] += montant
+            
+            # Sauvegarde globale
+            cloud_conn.update(worksheet="Banque", data=df_b)
+            return True, f"✅ Prime de {montant}$ versée (Payé par {source_compte})"
+        except Exception as e:
+            return False, f"❌ Erreur lors du virement : {e}"
+    else:
+        return False, "⚠️ Aucun employeur configuré pour prélever cette prime (Averis ou RCT uniquement)."
 
 # Codes de Service
 KEY_RCT = "RCT-26-RCRPFR"
