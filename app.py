@@ -24,22 +24,22 @@ st.set_page_config(
 h_sys = (datetime.now(timezone.utc) + timedelta(hours=1)).hour
 is_night = not (5 <= h_sys < 18)
 
-# Couleurs dynamiques selon le mode (Forçage pour la lisibilité)
-bg_page = "#0e1117" if is_night else "#ffffff"
-bg_card = "#1a1c23" if is_night else "#f1f3f5"
-bg_input = "#262730" if is_night else "#ffffff"
+# Couleurs dynamiques pour la lisibilité (le fond suit le système automatiquement)
 text_primary = "#ffffff" if is_night else "#000000"
 border_ui = "#444444" if is_night else "#000000"
+bg_input = "#262730" if is_night else "#ffffff"
+bg_card = "#1a1c23" if is_night else "#f8f9fa"
 
 st.markdown(f"""
     <style>
-    /* Global Styles - Forçage du fond d'application */
-    .stApp {{ background-color: {bg_page} !important; }}
+    /* On ne force plus le fond .stApp pour laisser le mode système (Clair/Sombre) agir */
     
-    /* Forcer la couleur du texte (Evite le gris sur blanc en mode clair) */
-    .stMarkdown, p, label, span, div, .stHeader {{ color: {text_primary} !important; }}
+    /* Forcer la couleur du texte et des labels pour la lisibilité */
+    .stMarkdown, p, label, span, div {{ 
+        color: {text_primary} !important; 
+    }}
 
-    /* Inputs avec bordures massives - Correction visuelle Jour/Nuit */
+    /* Inputs avec bordures massives - S'adapte au mode clair pour être bien visible */
     .stTextInput>div>div>input, .stNumberInput>div>div>input, 
     .stSelectbox>div>div>div, .stTextArea>div>div>textarea {{
         border: 2px solid {border_ui} !important;
@@ -49,17 +49,19 @@ st.markdown(f"""
         background-color: {bg_input} !important;
     }}
 
-    /* En-tête RCRP FR */
+    /* En-tête RCRP FR (Reste sombre/pro pour le look institutionnel) */
     .header-box {{
         background: linear-gradient(90deg, #121212 0%, #2c3e50 100%);
-        color: #ffffff !important;
         padding: 35px;
         border-radius: 12px;
         border-left: 20px solid #d32f2f;
         margin-bottom: 25px;
         box-shadow: 0 4px 15px rgba(0,0,0,0.4);
     }}
-    .header-box h1, .header-box p {{ color: white !important; margin: 0; }}
+    .header-box h1, .header-box p {{ 
+        color: white !important; 
+        margin: 0; 
+    }}
 
     /* Info Cards (Le Guide de recherche, etc.) */
     .info-card {{
@@ -68,7 +70,6 @@ st.markdown(f"""
         border: 1px solid {border_ui};
         border-left: 5px solid #d32f2f;
         margin-bottom: 20px;
-        color: {text_primary};
     }}
 
     /* Reçu Fédéral */
@@ -77,7 +78,6 @@ st.markdown(f"""
         padding: 30px;
         border: 4px double {text_primary};
         font-family: 'Courier New', Courier, monospace;
-        color: {text_primary};
         box-shadow: 10px 10px 0px {border_ui};
     }}
     
@@ -89,15 +89,11 @@ st.markdown(f"""
         font-weight: 900 !important;
         text-transform: uppercase;
         height: 3.8em;
-        transition: all 0.2s;
     }}
     .stButton>button:hover {{
         background-color: {text_primary} !important;
         color: {bg_input} !important;
     }}
-    
-    /* Correction Labels */
-    label {{ color: {text_primary} !important; font-weight: bold !important; }}
     </style>
 """, unsafe_allow_html=True)
 
