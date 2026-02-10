@@ -416,12 +416,11 @@ with st.container():
                     try:
                         # 1. Lecture des données
                         df_f_history = cloud_conn.read(worksheet="Factures").fillna("")
-                        
-                # 2. Filtre sur les factures PAYÉES
-                historique = df_f_history[
+                        # 2. Filtre sur les factures PAYÉES
+                    historique = df_f_history[
                     (df_f_history["Cible"] == target) & 
                     (df_f_history["Statut"] == "PAYÉ")
-                ]
+                    ]
 
                 if not historique.empty:
                     # SUPPRESSION DU height=400 POUR ÉVITER LE VIDE BLANC
