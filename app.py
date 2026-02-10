@@ -310,16 +310,14 @@ if st.session_state.user_auth is None:
     st.warning("⚠️ **AVERTISSEMENT :** Toute action effectuée sur ce terminal est enregistrée.")
     st.write("---")
 
-    # 3. COLONNES D'ACCÈS (MISE À JOUR 4 COLONNES)
-    c1, c2, c3, c4 = st.columns(4) # Passage à 4 colonnes
-    
+    # 3. COLONNES D'ACCÈS (Inchangé)
+    c1, c2, c3 = st.columns(3)
     with c1:
         st.markdown("### 👥 CIVIL")
-        nom_civil = st.text_input("Note (Optionnel)", placeholder="Ex: Renault Coupé.", key="input_civil_align")
+        nom_civil = st.text_input("Ecrivez quelque chose (Optionnel)", placeholder="Ex: Liberté, Egalité, Renault Coupé.", key="input_civil_align")
         if st.button("ACCÉDER AU TERMINAL", key="l_civ_f", use_container_width=True):
             st.session_state.user_auth = "Civil"
             st.rerun()
-            
     with c2:
         st.markdown("### 👨‍🔧 AGENT RCT")
         login_rct = st.text_input("Identifiant Agent", placeholder="Code RCT", type="password", key="l_rct_ff")
@@ -328,21 +326,10 @@ if st.session_state.user_auth is None:
                 st.session_state.user_auth = "RCT"
                 st.rerun()
             else: st.error("Clé invalide.")
-
     with c3:
-        st.markdown("### 🏢 AVERIS")
-        login_averis = st.text_input("Accès Averis", placeholder="Code Averis", type="password", key="l_av_ff")
-        if st.button("CONNEXION AVERIS", key="b_av_f", use_container_width=True):
-            # Défini ta variable KEY_AVERIS en haut de ton code (ex: "26_RCRPFR_AVERIS")
-            if login_averis == "26_RCRPFR_AVERIS": 
-                st.session_state.user_auth = "Averis"
-                st.rerun()
-            else: st.error("Accès refusé.")
-
-    with c4:
-        st.markdown("### 🛡️ STAFF")
+        st.markdown("### 🛡️👮‍♂️ Portail POLSTA")
         login_staff = st.text_input("Clé Maîtresse", placeholder="Code POLSTA", type="password", key="l_st_ff")
-        if st.button("ACCÈS ADMIN", key="b_st_f", use_container_width=True):
+        if st.button("ACCÈS ADMINISTRATEUR", key="b_st_f", use_container_width=True):
             if login_staff == KEY_STAFF:
                 st.session_state.user_auth = "Staff"
                 st.rerun()
@@ -353,157 +340,133 @@ if st.session_state.user_auth is None:
 # LE RESTE DU CODE (S'affiche uniquement après connexion)
 # ======================================================================================
 # ======================================================================================
-# 6. MODULE : DOSSIER CITOYEN UNIFIÉ (VERSION FINALE CORRIGÉE)
+# 6. MODULE : DOSSIER CITOYEN UNIFIÉ (VISIBILITÉ TOTALE)
 # ======================================================================================
+
 st.markdown('<div class="header-box"><h2>📂 REGISTRE NATIONAL DES CITOYENS</h2></div>', unsafe_allow_html=True)
 
 with st.container():
-    st.markdown('<div class="info-card"><b>GUIDE :</b> Sélectionnez un citoyen pour gérer son dossier.</div>', unsafe_allow_html=True)
+    st.markdown("""
+    <div class="info-card">
+        <b>GUIDE DE RECHERCHE :</b> Sélectionnez un nom dans la liste déroulante pour extraire instantanément le dossier financier...
+    </div>
+    """, unsafe_allow_html=True)
     
     search_list = ["---"] + sorted(df_b["Nom Roblox"].unique().tolist())
     target = st.selectbox("Sélectionner un citoyen :", search_list)
     
     if target != "---":
-        # --- LIGNE 1 : INFOS GÉNÉRALES ---
         col1, col2, col3 = st.columns(3)
         
+        # --- COLONNE 1 : POINTS & PERMIS ---
         with col1:
             p_data = df_p[df_p["Nom Roblox"] == target]
             if not p_data.empty:
                 pts_val = int(p_data.iloc[0]["PTS"])
-                st.metric("POINTS PERMIS", f"{pts_val}/25")
-                status_color = "green" if pts_val > 0 else "red"
-                st.markdown(f"Statut : <b style='color:{status_color};'>{'VALIDE' if pts_val > 0 else 'SUSPENDU'}</b>", unsafe_allow_html=True)
+                c_pts, c_vide, c_motif_p = st.columns([3, 0.5, 2])
+                
+                with c_pts:
+                    st.metric("POINTS PERMIS", f"{pts_val}/25")
+                    status_color = "green" if pts_val > 0 else "red"
+                    st.markdown(f"Statut : <b style='color:{status_color};'>{'VALIDE' if pts_val > 0 else 'SUSPENDU'}</b>", unsafe_allow_html=True)
+                
+                with c_motif_p:
+                    st.markdown("""
+                        <div style="text-align: right; line-height: 1; padding-top: 5px;">
+                            <div style="opacity: 0.15; font-size: 40px; margin-bottom: -10px;">🛡️</div>
+                            <div style="opacity: 0.1; font-size: 50px; margin-bottom: -10px;">🚗</div>
+                            <div style="height: 4px; width: 60px; background: linear-gradient(90deg, transparent, #d32f2f); display: inline-block; opacity: 0.2; border-radius: 2px;"></div>
+                        </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.error("Aucun permis trouvé.")
 
+        # --- COLONNE 2 : BANQUE ---
         with col2:
             b_data = df_b[df_b["Nom Roblox"] == target]
             if not b_data.empty:
-                st.metric("SOLDE BANCAIRE", f"{b_data.iloc[0]['Solde']}$")
-                st.write(f"🏢 Métier : **{b_data.iloc[0]['Emploiement']}**")
-                st.caption(f"📅 Arrivée : {b_data.iloc[0].get('Date d\'arrivée', '01/01/2026')}")
-
-        with col3:
-            st.markdown("### 📁 ARCHIVES PAYÉES")
-            # --- FIX NAMEERROR : On s'assure que df_all_f est bien chargé ici ---
-            df_all_f = cloud_conn.read(worksheet="Factures").fillna("")
-            df_f_history = df_all_f[(df_all_f["Cible"] == target) & (df_all_f["Statut"] == "PAYÉ")].tail(3)
-            
-            if not df_f_history.empty:
-                for _, f in df_f_history.iterrows():
-                    st.caption(f"✅ #{f['ID']} - {f['Motif']} ({f['Montant']}$)")
-            else:
-                st.info("Aucun historique.")
-
-# ======================================================================================
-# 6.1 PANNEAU D'ACTION DYNAMIQUE (VERSION RESTAURÉE)
-# ======================================================================================
-if st.session_state.user_auth in ["Averis", "RCT", "Staff"]:
-    st.markdown("---")
-    
-    # Sélecteur de mode qui change l'interface en bas
-    mode_action = st.tabs(["📄 ÉMETTRE UNE FACTURE", "🚗 IMMATRICULATION", "📂 DOSSIER VÉHICULES"])
-
-    # --- ONGLET 1 : FACTURATION ---
-    with mode_action[0]:
-        c1, c2 = st.columns([1, 1.2])
-        with c1:
-            with st.form(key=f"fact_form_{target}"):
-                st.markdown("### 🖋️ RÉDACTION")
-                mo = st.text_input("Motif de l'infraction")
-                mt = st.number_input("Montant de l'amende ($)", min_value=0, value=500)
+                c_info, c_v, c_m = st.columns([3, 0.5, 2])
                 
-                # Option points uniquement pour le Staff
-                pts_retrait = 0
-                if st.session_state.user_auth == "Staff":
-                    pts_retrait = st.slider("Points à retirer", 0, 25, 0)
+                with c_info:
+                    # 1. Solde
+                    st.metric("SOLDE BANCAIRE", f"{b_data.iloc[0]['Solde']}$")
+                    
+                    # 2. Métier
+                    current_jobs_raw = str(b_data.iloc[0]['Emploiement'])
+                    st.write(f"🏢 Métier : **{current_jobs_raw}**")
+                    
+                    # 3. Modification Staff
+                    if st.session_state.user_auth == "Staff":
+                        if st.button("✏️ Modifier le métier", key=f"edit_job_{target}", use_container_width=True):
+                            st.session_state[f"show_editor_{target}"] = not st.session_state.get(f"show_editor_{target}", False)
+                        
+                        if st.session_state.get(f"show_editor_{target}", False):
+                            with st.container(border=True):
+                                liste_metiers = ["Sans-Emploi", "Agent RCT", "Averis", "Police", "Staff", "Service Public", "Entreprise Privée"]
+                                current_jobs_list = [j.strip() for j in current_jobs_raw.split("/") if j.strip()]
+                                valid_defaults = [j for j in current_jobs_list if j in liste_metiers]
+                                
+                                new_jobs = st.multiselect("Sélection :", options=liste_metiers, default=valid_defaults)
+                                
+                                cs1, cs2 = st.columns(2)
+                                with cs1:
+                                    if st.button("💾 Sauver", key=f"save_j_{target}", use_container_width=True, type="primary"):
+                                        new_str = " / ".join(new_jobs) if new_jobs else "Sans-Emploi"
+                                        idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
+                                        df_b.at[idx_b, "Emploiement"] = new_str
+                                        cloud_conn.update(worksheet="Banque", data=df_b)
+                                        st.session_state[f"show_editor_{target}"] = False
+                                        st.cache_data.clear()
+                                        st.rerun()
+                                with cs2:
+                                    if st.button("Annuler", key=f"cancel_j_{target}", use_container_width=True):
+                                        st.session_state[f"show_editor_{target}"] = False
+                                        st.rerun()
+
+                    st.caption(f"📅 Arrivée : {b_data.iloc[0]['Date d\'arrivée']}")
                 
-                if st.form_submit_button("ÉMETTRE LA FACTURE"):
-                    df_f_up = cloud_conn.read(worksheet="Factures").fillna("")
-                    limite = (datetime.now() + timedelta(hours=24)).strftime("%d/%m/%Y %H:%M:%S")
-                    
-                    new_f = {
-                        "ID": len(df_f_up) + 1, 
-                        "Emetteur": st.session_state.user_auth, 
-                        "Cible": target, 
-                        "Montant": mt, 
-                        "Motif": f"{mo} (-{pts_retrait} pts)" if pts_retrait > 0 else mo, 
-                        "Statut": "EN ATTENTE",
-                        "Date_Limite": limite
-                    }
-                    
-                    # Logique retrait de points si Staff
-                    if pts_retrait > 0:
-                        idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
-                        df_p.at[idx_p, "PTS"] = max(0, int(df_p.at[idx_p, "PTS"]) - pts_retrait)
-                        cloud_conn.update(worksheet="Permis", data=df_p)
-
-                    df_f_up = pd.concat([df_f_up, pd.DataFrame([new_f])], ignore_index=True)
-                    cloud_conn.update(worksheet="Factures", data=df_f_up)
-                    st.success("Facture envoyée !")
-                    st.cache_data.clear()
-                    st.rerun()
-        
-        with c2:
-            # APERÇU LIVE DU TICKET (TON STYLE)
-            agency_name = "SERVICES AVERIS" if st.session_state.user_auth == "Averis" else "RÉSEAU RCT"
-            if st.session_state.user_auth == "Staff": agency_name = "ADMINISTRATION"
-            
-            st.markdown(f"""
-            <div style="border: 2px solid #000; padding: 20px; background: white; color: black; font-family: 'Courier New', monospace; box-shadow: 8px 8px 0px #000;">
-                <center><b>PROVINCIA - PV OFFICIEL</b><br><small>{agency_name}</small></center>
-                <hr style="border-top: 1px dashed #000;">
-                <b>CONTREVENANT :</b> {target}<br>
-                <b>MOTIF :</b> {mo if mo else "..."}<br>
-                <b>MONTANT :</b> {mt}$<br>
-                {f'<b>RETRAIT :</b> {pts_retrait} PTS<br>' if pts_retrait > 0 else ''}
-                <hr style="border-top: 1px dashed #000;">
-                <center><b>TOTAL À RÉGLER : {mt}$</b></center>
-            </div>
-            """, unsafe_allow_html=True)
-
-    # --- ONGLET 2 : IMMATRICULATION ---
-    with mode_action[1]:
-        with st.form(key=f"imm_form_{target}"):
-            st.markdown("### 🚘 ENREGISTREMENT VÉHICULE")
-            col_a, col_b = st.columns(2)
-            plaque = col_a.text_input("Numéro de Plaque")
-            marque = col_b.text_input("Modèle / Marque")
-            
-            if st.form_submit_button("ENREGISTRER LE VÉHICULE"):
-                df_v_up = cloud_conn.read(worksheet="Copie de Immatriculations").fillna("")
-                new_v = {
-                    "Nom d'utilisateur ROBLOX": target, 
-                    "Numéro de la plaque": plaque.upper(), 
-                    "Marque du véhicule": marque, 
-                    "Horodateur": datetime.now().strftime("%d/%m/%Y"),
-                    "Assurance": st.session_state.user_auth
-                }
-                df_v_up = pd.concat([df_v_up, pd.DataFrame([new_v])], ignore_index=True)
-                cloud_conn.update(worksheet="Copie de Immatriculations", data=df_v_up)
-                st.success("Véhicule ajouté au registre !")
-                st.cache_data.clear()
-                st.rerun()
-
-    # --- ONGLET 3 : DOSSIER VÉHICULES (STYLE TICKET) ---
-    with mode_action[2]:
-        st.markdown(f"### 📋 VÉHICULES POSSÉDÉS PAR {target}")
-        v_target = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
-        
-        if not v_target.empty:
-            # Affichage en colonnes pour faire "catalogue de tickets"
-            v_cols = st.columns(2)
-            for i, (_, v) in enumerate(v_target.iterrows()):
-                with v_cols[i % 2]:
-                    st.markdown(f"""
-                    <div style="border: 1px solid #000; padding: 10px; background: #f9f9f9; color: black; font-family: monospace; margin-bottom: 10px; border-left: 5px solid #333;">
-                        <b style="font-size: 1.2em;">🎫 {v['Numéro de la plaque']}</b><br>
-                        <small>MARQUE :</small> {v['Marque du véhicule']}<br>
-                        <small>ASSUREUR :</small> {v.get('Assurance', 'N/A')}<br>
-                        <small>DATE :</small> {v.get('Horodateur', '---')}
-                    </div>
+                with c_m:
+                    st.markdown("""
+                        <div style="text-align: right; line-height: 1; padding-top: 5px;">
+                            <div style="opacity: 0.15; font-size: 40px; margin-bottom: -10px;">🏛️</div>
+                            <div style="opacity: 0.1; font-size: 50px; margin-bottom: -10px;">💳</div>
+                            <div style="height: 4px; width: 60px; background: linear-gradient(90deg, transparent, #000); display: inline-block; opacity: 0.2; border-radius: 2px;"></div>
+                        </div>
                     """, unsafe_allow_html=True)
-        else:
-            st.warning("Aucun véhicule immatriculé pour ce citoyen.")
+            else:
+                st.error("Aucun compte trouvé.")
+
+        # --- COLONNE 3 : ARCHIVES ---
+        with col3:
+            st.markdown("### 📁 ARCHIVES")
+            try:
+                df_f_history = cloud_conn.read(worksheet="Factures").fillna("")
+                historique = df_f_history[(df_f_history["Cible"] == target) & (df_f_history["Statut"] == "PAYÉ")]
+
+                if not historique.empty:
+                    for _, f in historique.iterrows():
+                        if st.session_state.user_auth in ["Staff", "Admin"]:
+                            if st.button(f"🔄 Rembourser #{f['ID']}", key=f"refund_{f['ID']}", use_container_width=True):
+                                st.info("Traitement...")
+                                # Ta logique de remboursement ici
+                        
+                        st.markdown(f"""
+                        <div style="border: 1px solid #000; padding: 10px; background: #f9f9f9; color: black; margin-bottom: 8px; border-left: 5px solid green;">
+                            <div style="display: flex; justify-content: space-between; font-size: 0.8em;">
+                                <b>REF: #{f['ID']}</b>
+                                <b style="color: green;">ACQUITTÉE ✔</b>
+                            </div>
+                            <hr style="margin: 5px 0; border-top: 1px dashed #000;">
+                            <div style="font-size: 0.9em;">
+                                <b>MOTIF :</b> {f['Motif']}<br>
+                                <b>MONTANT :</b> {f['Montant']}$
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                else:
+                    st.info("Aucun paiement archivé.")
+            except Exception as e:
+                st.error(f"Erreur Archives : {e}")
 # ======================================================================================
 # 7. LOGIQUE DES ONGLETS (CORRIGÉE)
 # ======================================================================================
@@ -559,45 +522,34 @@ if not mes_factures.empty:
             </div>
             """, unsafe_allow_html=True)
 
-# --- BOUTON DE PAIEMENT (AVEC REDIRECT AVERIS/RCT) ---
+            # --- BOUTON DE PAIEMENT (Aligné avec le ticket) ---
             if st.button(f"💳 RÉGLER LA FACTURE #{fac['ID']}", key=f"pay_{fac['ID']}", use_container_width=True):
                 try:
-                    # 1. Nettoyage et récupération du solde client
                     idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
-                    solde_actuel = float(str(df_b.at[idx_b, "Solde"]).replace('$', '').replace(',', '').strip())
+                    solde_raw = str(df_b.at[idx_b, "Solde"]).replace('$', '').replace(',', '')
+                    solde_actuel = float(solde_raw)
                     montant_facture = float(fac['Montant'])
                     
                     if solde_actuel >= montant_facture:
-                        # 2. Détermination du compte de destination
-                        # Si l'émetteur est Averis -> Moune2010, sinon -> une10000 (RCT/Staff)
-                        destinataire = "Moune2010" if fac['Emetteur'] == "Averis" else "une10000"
-                        
-                        # 3. Prélèvement client
                         df_b.at[idx_b, "Solde"] = solde_actuel - montant_facture
-                        
-                        # 4. Versement au destinataire
-                        idx_dest = df_b[df_b["Nom Roblox"] == destinataire].index[0]
-                        solde_dest_raw = float(str(df_b.at[idx_dest, "Solde"]).replace('$', '').replace(',', '').strip())
-                        df_b.at[idx_dest, "Solde"] = solde_dest_raw + montant_facture
-                        
-                        # 5. Mise à jour du statut de la facture
+                        rct_idx = df_b[df_b["Nom Roblox"] == ACC_RCT].index[0]
+                        solde_dest = float(str(df_b.at[rct_idx, "Solde"]).replace('$', '').replace(',', ''))
+                        df_b.at[rct_idx, "Solde"] = solde_dest + montant_facture
                         df_all_f.loc[df_all_f["ID"] == fac["ID"], "Statut"] = "PAYÉ"
                         
-                        # 6. Sauvegarde Cloud
                         cloud_conn.update(worksheet="Banque", data=df_b)
                         cloud_conn.update(worksheet="Factures", data=df_all_f)
                         
-                        record_log(target, f"Paiement facture #{fac['ID']} vers {destinataire}")
-                        st.success(f"✅ Paiement effectué ! L'argent a été versé à {destinataire}.")
-                        
+                        record_log(target, f"Paiement facture {fac['Emetteur']} #{fac['ID']}")
+                        st.success("✅ Paiement effectué !")
                         st.cache_data.clear()
-                        import time
                         time.sleep(1)
                         st.rerun()
                     else:
-                        st.error("❌ Solde insuffisant pour régler cette facture.")
+                        st.error("❌ Solde insuffisant.")
                 except Exception as e:
-                    st.error(f"Erreur lors du transfert : {e}")
+                    st.error(f"Erreur lors du paiement : {e}")
+
             # --- BOUTON ANNULER (Aligné aussi) ---
             if st.session_state.user_auth in ["Staff", "Admin"]:
                 if st.button(f"🗑️ ANNULER LA FACTURE #{fac['ID']}", key=f"admin_del_{fac['ID']}", use_container_width=True):
@@ -682,29 +634,24 @@ if not v_data.empty:
                         st.error("Code incorrect")
 else:
     st.info("Aucun véhicule trouvé.")
-import streamlit as st
-import pandas as pd
-from datetime import datetime, timedelta
-import time
-import random
-
-# --- CONFIGURATION DES ONGLETS ---
+# ======================================================================================
+# 7. LOGIQUE DES ONGLETS (CORRIGÉE)
+# ======================================================================================
 tab_labels = ["🚗 IMMATRICULATION"]
-if st.session_state.user_auth in ["RCT", "Staff"]: 
-    tab_labels.append("👮 SERVICES AGENT")
-if st.session_state.user_auth == "Staff": 
-    tab_labels.append("🛠️ ADMINISTRATION")
+if st.session_state.user_auth in ["RCT", "Staff"]: tab_labels.append("👮 SERVICES AGENT")
+if st.session_state.user_auth == "Staff": tab_labels.append("🛠️ ADMINISTRATION")
 
 tabs = st.tabs(tab_labels)
 
-# ======================================================================================
-# --- ONGLET 1 : IMMATRICULATION & RADIATION ---
-# ======================================================================================
+# --- ONGLET 1 : IMMATRICULATION & RADIATION (ALIGNÉ) ---
 with tabs[0]:
+    # On crée les colonnes DIRECTEMENT au début du tab
     col_f, col_t = st.columns([1.3, 1])
     
     with col_f:
+        # On place le titre ICI pour l'aligner avec la droite
         st.markdown("### 📝 Gestion des Titres")
+        
         with st.container(border=True):
             f_owner = st.selectbox("Propriétaire du véhicule", ["---"] + df_b["Nom Roblox"].tolist(), key="k_owner_v7")
             f_model = st.text_input("Marque", key="k_model_v7")
@@ -723,11 +670,10 @@ with tabs[0]:
                         st.warning(f"🔰 JEUNE CONDUCTEUR détecté (+{val_taxe_jeune}$)")
                 except: pass
 
-            # --- CALCUL DU TOTAL ---
+            # --- CALCUL DU TOTAL + OFFRE TRIO RCT ---
             taxe_gouv = 175
             taxe_assu = 130 if "AVERIS" in f_assu else (150 if "RCT" in f_assu else 0)
             
-            # Offre Trio RCT
             if "RCT" in f_assu and f_owner != "---":
                 nb_vehicules = len(df_i[df_i["Nom d'utilisateur ROBLOX"] == f_owner])
                 if nb_vehicules >= 2:
@@ -736,77 +682,261 @@ with tabs[0]:
 
             total_bill = taxe_gouv + taxe_assu + val_taxe_jeune
             
-            if st.button(f"S'ACQUITTER DE {total_bill}$ ET ENREGISTRER", use_container_width=True, type="primary"):
-                # Insère ici ta logique cloud_conn.update...
-                st.success("Immatriculation validée !")
+            # Bouton large et coloré
+            if st.button(f"S'ACQUITTER DE {total_bill}$ ET ENREGISTRER", use_container_width=True, key="btn_pay_final", type="primary"):
+                # ... Ta logique de sauvegarde (inchangée) ...
+                pass
 
     with col_t:
+        # Titre de droite aligné sur le titre de gauche
         st.markdown("### 🖼️ Aperçu du Titre")
-        date_actuelle = (datetime.now() + timedelta(hours=1)).strftime("%d/%m/%Y %H:%M")
         
+        # Préparation des variables de l'aperçu
+        date_actuelle = (datetime.now() + timedelta(hours=1)).strftime("%d/%m/%Y %H:%M")
+        nom_user = f_owner if f_owner != "---" else "---"
+        marque_v = f_model if f_model else "---"
+        plaque_v = f_plate if f_plate else "---"
+        nom_assu = f_assu if f_assu != "Aucune" else "NON ASSURÉ"
+
         ticket_html = f"""
-        <div style='border: 2px dashed #555; padding: 20px; background-color: #f9f9f9; color: #333; font-family: "Courier New", monospace; border-radius:10px;'>
+        <div style='border: 2px dashed #555; padding: 20px; background-color: #f9f9f9; color: #333; font-family: "Courier New", monospace; height: 440px;'>
             <div style='text-align:center;'>
                 <h2 style='margin:0; font-size:1.2em;'>TITRE DE CIRCULATION</h2>
-                <small>RÉPUBLIQUE DE RENSSERLAER</small>
+                <small>RÉPUBLIQUE DE RENSSERLAER</small><br>
+                <h3 style='margin:10px 0; font-size:1em;'>RECU OFFICIEL</h3>
             </div>
             <div style='border-top: 1px dashed #ccc; border-bottom: 1px dashed #ccc; padding: 10px 0; margin: 10px 0; font-size: 0.9em;'>
                 <p><strong>DATE :</strong> {date_actuelle}</p>
-                <p><strong>UTILISATEUR :</strong> {f_owner}</p>
-                <p><strong>PLAQUE :</strong> <span style='border:1px solid #333; padding:2px 6px; background:#eee;'>{f_plate if f_plate else "---"}</span></p>
-                <p><strong>ASSURANCE :</strong> {f_assu}</p>
+                <p><strong>UTILISATEUR :</strong> {nom_user}</p>
+                <p><strong>MARQUE :</strong> {marque_v}</p>
+                <p><strong>PLAQUE :</strong> <span style='border:1px solid #333; padding:2px 6px; background:#eee;'>{plaque_v}</span></p>
+                <p><strong>ASSURANCE :</strong> {nom_assu}</p>
             </div>
-            <div style='text-align:right;'>
+            <div style='font-size: 0.8em;'>
+                <p style='display:flex; justify-content:space-between; margin:2px 0;'><span>Immatriculation :</span><span>175$</span></p>
+                <p style='display:flex; justify-content:space-between; margin:2px 0;'><span>Assurance :</span><span>{taxe_assu}$</span></p>
+                <p style='display:flex; justify-content:space-between; margin:2px 0;'><span>Taxe Jeune :</span><span>{val_taxe_jeune}$</span></p>
+            </div>
+            <div style='border-top:2px solid #333; padding-top:10px; text-align:right;'>
                 <strong style='font-size:1.1em;'>TOTAL PAYÉ : {total_bill}$</strong>
+            </div>
+            <div style='text-align:center; margin-top:20px; font-size: 0.7em; opacity: 0.7;'>
+                CERTIFIÉ CONFORME<br>Par le Terminal National
             </div>
         </div>
         """
-        st.components.v1.html(ticket_html, height=400)
-
-# ======================================================================================
-# --- ONGLET 2 : SERVICES AGENT (RCT/STAFF) ---
-# ======================================================================================
+        st.components.v1.html(ticket_html, height=500)
+# --- ONGLET 2 : SERVICES AGENT (FACTURES / POINTS / CONSULTATION) ---
 if st.session_state.user_auth in ["RCT", "Staff"]:
     with tabs[1]:
-        # Le contenu de cet onglet reste lié au 'target' sélectionné en sidebar/haut de page
-        if 'target' not in locals() or target == "---":
-            st.warning("⚠️ Sélectionnez un citoyen pour accéder aux services de police/agent.")
-        else:
-            col_saisie, col_facture, col_vehicules = st.columns([1.1, 1, 0.9])
-            # ... (Ta logique de saisie de contravention)
+        # 1. PANEL D'ALERTE : FACTURES IMPAYÉES
+        df_all_f = cloud_conn.read(worksheet="Factures").fillna("")
+        alertes = []
+        maintenant = datetime.now()
 
-# ======================================================================================
+        for idx, f in df_all_f.iterrows():
+            if f["Statut"] == "EN ATTENTE":
+                try:
+                    limite = datetime.strptime(str(f['Date_Limite']), "%d/%m/%Y %H:%M:%S")
+                    if maintenant > limite:
+                        alertes.append(f)
+                except: pass 
+
+        if alertes:
+            st.error(f"⚠️ {len(alertes)} FACTURE(S) EN SOUFFRANCE")
+            with st.expander("🔍 VOIR LES REQUÊTES PRIORITAIRES"):
+                for _, row in pd.DataFrame(alertes).iterrows():
+                    st.write(f"🆔 **#{row['ID']}** | 👤 **{row['Cible']}** ({row['Montant']}$)")
+        
+        st.divider()
+
+        # 2. SYSTÈME DE SAISIE ET CONSULTATION
+        if target == "---":
+            st.warning("⚠️ Sélectionnez un citoyen en haut de la page.")
+        else:
+            # ALIGNEMENT : Saisie (Gauche) | Facture (Milieu) | Titres (Droite)
+            col_saisie, col_facture, col_vehicules = st.columns([1.1, 1, 0.9])
+
+            with col_saisie:
+                with st.container(border=True):
+                    st.markdown("#### 📝 Saisie")
+                    f_val = st.number_input("Montant ($)", min_value=0, step=50, key="v_val_final")
+                    is_rct = (st.session_state.user_auth == "RCT")
+                    f_pts = st.number_input("Points à retirer", 0, 12, 0, key="v_pts_final", disabled=is_rct)
+                    f_motif = st.text_input("Motif", key="v_mot_final")
+                    
+                    target_veh = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
+                    v_list = ["AUCUN / PIÉTON"] + target_veh["Numéro de la plaque"].tolist()
+                    f_plate = st.selectbox("Véhicule concerné", v_list, key="v_plate_final")
+                    
+                    st.write("")
+                    label = "🚨 ENVOYER & DÉBITER" if not is_rct else "🚨 ENVOYER FACTURE"
+                    if st.button(label, use_container_width=True, type="primary"):
+                        if not f_motif:
+                            st.error("Motif obligatoire.")
+                        else:
+                            # Logique d'enregistrement (Points + Facture)
+                            if f_pts > 0 and not is_rct:
+                                idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
+                                df_p.at[idx_p, "PTS"] = max(0, int(df_p.at[idx_p, "PTS"]) - f_pts)
+                                cloud_conn.update(worksheet="Points Permis", data=df_p)
+                            
+                            new_row = {
+                                "ID": random.randint(1000, 9999), "Cible": target,
+                                "Emetteur": st.session_state.user_auth, "Montant": f_val,
+                                "Motif": f"{f_motif} [{f_plate}]", "Statut": "EN ATTENTE",
+                                "Date_Limite": (datetime.now() + timedelta(hours=24)).strftime("%d/%m/%Y %H:%M:%S")
+                            }
+                            df_f_updated = pd.concat([df_all_f, pd.DataFrame([new_row])], ignore_index=True)
+                            cloud_conn.update(worksheet="Factures", data=df_f_updated)
+                            st.success("✅ Envoyé !")
+                            st.cache_data.clear()
+                            st.rerun()
+
+            with col_facture:
+                st.markdown("#### 📄 Aperçu")
+                st.markdown(f"""
+                <div style="border: 2px solid black; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; font-size: 0.9em;">
+                    <center><b>FACTURE OFFICIELLE</b></center>
+                    <hr style="border-top: 1px solid #000; margin: 10px 0;">
+                    <b>NOM :</b> {target}<br>
+                    <b>MOTIF :</b> {f_motif.upper() if f_motif else '...'}<br>
+                    <b>PLAQUE:</b> {f_plate}<br>
+                    <b>TOTAL :</b> {f_val}$
+                    <hr style="border-top: 1px dashed #000; margin: 10px 0;">
+                    <center><small>DÉLAI DE PAIEMENT : 24H</small></center>
+                </div>
+                """, unsafe_allow_html=True)
+
+            with col_vehicules:
+                st.markdown("#### 🚗 Titres")
+                if not target_veh.empty:
+                    for _, veh in target_veh.iterrows():
+                        assu = str(veh['Assurance']).upper()
+                        col_v = "green" if "RCT" in assu else ("orange" if "AVERIS" in assu else "red")
+                        st.markdown(f"""
+                        <div style="border: 1px solid #ddd; padding: 8px; background: #f9f9f9; color: black; font-size: 0.75em; margin-bottom: 5px;">
+                            <b>{veh['Marque du véhicule']}</b><br>
+                            Plaque : <span style="border: 1px solid black; padding: 0 2px;">{veh['Numéro de la plaque']}</span><br>
+                            <span style="color: {col_v}; font-weight: bold;">{assu}</span>
+                        </div>
+                        """, unsafe_allow_html=True)
+                else:
+                    st.info("Aucun véhicule.")
 # --- ONGLET 3 : ADMINISTRATION (STAFF ONLY) ---
-# ======================================================================================
 if st.session_state.user_auth == "Staff":
     with tabs[2]:
+        st.markdown('<div class="header-box"><h2>🛠️ PANNEAU D\'ADMINISTRATION High-Sec</h2></div>', unsafe_allow_html=True)
+        
+        # --- SECTION 1 : CRÉATION DE PROFIL ---
         st.markdown("### 👤 Création de Dossier Citoyen")
         with st.container(border=True):
             c1, c2 = st.columns(2)
             with c1:
-                new_name = st.text_input("Nom d'utilisateur ROBLOX", key="admin_new_name")
-                new_discord = st.text_input("Utilisateur Discord", key="admin_new_discord")
+                new_name = st.text_input("Nom d'utilisateur ROBLOX", placeholder="Pseudo exact", key="admin_new_name")
+                new_discord = st.text_input("Utilisateur Discord", placeholder="pseudo#0000", key="admin_new_discord")
             with c2:
-                new_jobs = st.multiselect("Emploiement(s)", ["Sans-Emploi", "Agent RCT", "Averis", "Police", "Staff"], default=["Sans-Emploi"])
-                new_pts = st.slider("Points Permis", 0, 25, 25)
+                job_list = ["Sans-Emploi", "Agent RCT", "Averis", "Police", "Staff", "Entreprise Privée", "Service Public"]
+                new_jobs = st.multiselect("Emploiement(s)", job_list, default=["Sans-Emploi"], key="admin_new_jobs")
+                new_pts = st.slider("Points Permis (Départ)", 0, 25, 25, key="admin_new_pts")
 
             if st.button("🆕 GÉNÉRER LE DOSSIER (15k + Date Auto)", use_container_width=True, type="primary"):
-                if new_name:
-                    # Application automatique du solde de 15k et de la date du jour
-                    today_str = datetime.now().strftime("%d/%m/%Y")
-                    jobs_string = " / ".join(new_jobs) if new_jobs else "Sans-Emploi"
-                    
-                    # Mise à jour Banque
-                    new_bank_row = pd.DataFrame([{"Nom Roblox": new_name, "Nom Discord": new_discord, "Solde": 15000, "Emploiement": jobs_string, "Date d'arrivée": today_str}])
-                    df_b = pd.concat([df_b, new_bank_row], ignore_index=True)
-                    cloud_conn.update(worksheet="Banque", data=df_b)
-                    
-                    st.success(f"✅ Dossier créé pour {new_name} avec 15,000$ !")
-                    st.rerun()
+                if new_name and new_name not in df_b["Nom Roblox"].values:
+                    with st.spinner("Initialisation..."):
+                        today_str = datetime.now().strftime("%d/%m/%Y")
+                        jobs_string = " / ".join(new_jobs) if new_jobs else "Sans-Emploi"
+                        
+                        # Banque (Solde 15k auto)
+                        new_bank_row = pd.DataFrame([{"Nom Roblox": new_name, "Nom Discord": new_discord, "Solde": 15000, "Emploiement": jobs_string, "Date d'arrivée": today_str}])
+                        df_b = pd.concat([df_b, new_bank_row], ignore_index=True)
+                        cloud_conn.update(worksheet="Banque", data=df_b)
 
+                        # Permis
+                        new_pts_row = pd.DataFrame([{"Nom Roblox": new_name, "PTS": new_pts, "Validité": "OUI" if new_pts > 0 else "NON"}])
+                        df_p = pd.concat([df_p, new_pts_row], ignore_index=True)
+                        cloud_conn.update(worksheet="Points Permis", data=df_p)
+
+                        record_log(st.session_state.user_auth, f"Profil créé : {new_name}")
+                        st.success(f"✅ Dossier créé pour {new_name}")
+                        st.cache_data.clear()
+                        time.sleep(1)
+                        st.rerun()
+
+        # --- SECTION 2 : SYSTÈME DE PAIE & RESET ---
         st.divider()
-        st.markdown("### 🧧 Terminal de Paie & Prélèvements")
-        # Logique Averis -> Moune2010 intégrée ici lors du calcul
+        st.markdown("### 🧧 Terminal de Paie Nationale")
+        with st.container(border=True):
+            target_paie = st.selectbox("Sélectionner le bénéficiaire :", sorted(df_b["Nom Roblox"].unique().tolist()), key="paie_auto_target")
+            
+            if target_paie:
+                user_jobs_raw = df_b[df_b["Nom Roblox"] == target_paie]["Emploiement"].values[0]
+                user_jobs_list = [j.strip() for j in str(user_jobs_raw).split("/")]
+                
+                calcul_primes = sum(PRIME_JOB.get(j, 0) for j in user_jobs_list)
+                total_final = 15000 + calcul_primes
+                
+                st.info(f"📋 **Jobs :** {', '.join(user_jobs_list)}")
+                st.metric("MONTANT CALCULÉ", f"{total_final}$", f"+{calcul_primes}$ de primes")
+
+                if st.button(f"🧧 VERSER {total_final}$ & RESET NATIONAL", use_container_width=True):
+                    try:
+                        # Débits auto
+                        if "Agent RCT" in user_jobs_list:
+                            idx_rct = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
+                            df_b.at[idx_rct, "Solde"] -= 2000
+                        
+                        if "Averis" in user_jobs_list:
+                            idx_av = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
+                            df_b.at[idx_av, "Solde"] -= 2000
+
+                        # Versement
+                        idx_ben = df_b[df_b["Nom Roblox"] == target_paie].index[0]
+                        solde_actuel = float(str(df_b.at[idx_ben, "Solde"]).replace('$', '').replace(',', ''))
+                        df_b.at[idx_ben, "Solde"] = solde_actuel + total_final
+                        
+                        # Reset Immatriculations
+                        df_immat_reset = pd.DataFrame(columns=df_i.columns)
+                        
+                        cloud_conn.update(worksheet="Banque", data=df_b)
+                        cloud_conn.update(worksheet="Copie de Immatriculations", data=df_immat_reset)
+                        
+                        record_log(st.session_state.user_auth, f"PAIE : {target_paie} (+{total_final}$)")
+                        st.success("✅ Payé et registre vidé !")
+                        st.cache_data.clear()
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Erreur : {e}")
+
+        # --- SECTION 3 : LOGS ET STATISTIQUES ---
+        st.divider()
+        col_admin_left, col_admin_right = st.columns(2)
+        
+        with col_admin_left:
+            st.markdown("### 📜 Journaux d'Audit")
+            with st.container(border=True):
+                if st.session_state.audit_logs:
+                    log_text = "\n".join(list(reversed(st.session_state.audit_logs)))
+                    st.code(log_text, language="bash")
+                    if st.button("🗑️ EFFACER LES LOGS", use_container_width=True):
+                        st.session_state.audit_logs = []
+                        st.rerun()
+                else:
+                    st.info("Aucune activité.")
+
+        with col_admin_right:
+            st.markdown("### 📊 État du Système")
+            with st.container(border=True):
+                st.success(f"👥 Citoyens : {len(df_b)}")
+                st.info(f"🚗 Véhicules : {len(df_i)}")
+                st.warning(f"🪪 Permis : {len(df_p)}")
+                st.divider()
+                if st.button("♻️ FORCER LA SYNCHRO", use_container_width=True):
+                    st.cache_data.clear()
+                    st.rerun()
+# --- SÉCURITÉ : NETTOYAGE DES VARIABLES FANTÔMES ---
+# Supprime ou commente absolument ces lignes si elles traînent encore en bas de ton fichier :
+# with col_vehicule_view: <--- C'EST ÇA QUI FAIT PLANTER L'AFFICHAGE !
+
 # ======================================================================================
 # 8. PIED DE PAGE
 # ======================================================================================
