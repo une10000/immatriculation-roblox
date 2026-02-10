@@ -394,95 +394,116 @@ with st.container():
             else:
                 st.info("Aucun historique.")
 
-        # ======================================================================================
-        # 6.1 LE PANNEAU D'ACTION (FIX INDENTATION ET DESIGN TICKET)
-        # ======================================================================================
-        if st.session_state.user_auth in ["Averis", "RCT"]:
-            st.markdown("---")
-            st.subheader(f"🛠️ GESTION DU DOSSIER : {target}")
-            
-            c_left, c_mid, c_right = st.columns([1.2, 1, 1])
+# ======================================================================================
+# 6.1 PANNEAU D'ACTION DYNAMIQUE (VERSION RESTAURÉE)
+# ======================================================================================
+if st.session_state.user_auth in ["Averis", "RCT", "Staff"]:
+    st.markdown("---")
+    
+    # Sélecteur de mode qui change l'interface en bas
+    mode_action = st.tabs(["📄 ÉMETTRE UNE FACTURE", "🚗 IMMATRICULATION", "📂 DOSSIER VÉHICULES"])
 
-            # 1. À GAUCHE : LE FORMULAIRE
-            with c_left:
-                st.markdown("#### 📝 FORMULAIRE")
-                with st.form(key=f"form_action_{target}"):
-                    type_action = st.radio("Action :", ["Facturation", "Immatriculation"], horizontal=True)
+    # --- ONGLET 1 : FACTURATION ---
+    with mode_action[0]:
+        c1, c2 = st.columns([1, 1.2])
+        with c1:
+            with st.form(key=f"fact_form_{target}"):
+                st.markdown("### 🖋️ RÉDACTION")
+                mo = st.text_input("Motif de l'infraction")
+                mt = st.number_input("Montant de l'amende ($)", min_value=0, value=500)
+                
+                # Option points uniquement pour le Staff
+                pts_retrait = 0
+                if st.session_state.user_auth == "Staff":
+                    pts_retrait = st.slider("Points à retirer", 0, 25, 0)
+                
+                if st.form_submit_button("ÉMETTRE LA FACTURE"):
+                    df_f_up = cloud_conn.read(worksheet="Factures").fillna("")
+                    limite = (datetime.now() + timedelta(hours=24)).strftime("%d/%m/%Y %H:%M:%S")
                     
-                    if type_action == "Facturation":
-                        mt = st.number_input("Montant ($)", min_value=0, value=500)
-                        mo = st.text_input("Motif")
-                    else:
-                        plaque = st.text_input("Plaque (ex: ABC-123)")
-                        marque = st.text_input("Marque du véhicule")
+                    new_f = {
+                        "ID": len(df_f_up) + 1, 
+                        "Emetteur": st.session_state.user_auth, 
+                        "Cible": target, 
+                        "Montant": mt, 
+                        "Motif": f"{mo} (-{pts_retrait} pts)" if pts_retrait > 0 else mo, 
+                        "Statut": "EN ATTENTE",
+                        "Date_Limite": limite
+                    }
+                    
+                    # Logique retrait de points si Staff
+                    if pts_retrait > 0:
+                        idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
+                        df_p.at[idx_p, "PTS"] = max(0, int(df_p.at[idx_p, "PTS"]) - pts_retrait)
+                        cloud_conn.update(worksheet="Permis", data=df_p)
 
-                    if st.form_submit_button("VALIDER L'ACTION"):
-                        if type_action == "Facturation":
-                            limite = (datetime.now() + timedelta(hours=24)).strftime("%d/%m/%Y %H:%M:%S")
-                            new_f = {
-                                "ID": len(df_all_f) + 1, 
-                                "Emetteur": st.session_state.user_auth, 
-                                "Cible": target, 
-                                "Montant": mt, 
-                                "Motif": mo, 
-                                "Statut": "EN ATTENTE",
-                                "Date_Limite": limite
-                            }
-                            df_updated = pd.concat([df_all_f, pd.DataFrame([new_f])], ignore_index=True)
-                            cloud_conn.update(worksheet="Factures", data=df_updated)
-                        else:
-                            df_v = cloud_conn.read(worksheet="Copie de Immatriculations").fillna("")
-                            new_v = {
-                                "Nom d'utilisateur ROBLOX": target, 
-                                "Numéro de la plaque": plaque.upper(), 
-                                "Marque du véhicule": marque, 
-                                "Horodateur": datetime.now().strftime("%d/%m/%Y"),
-                                "Assurance": st.session_state.user_auth
-                            }
-                            df_v_updated = pd.concat([df_v, pd.DataFrame([new_v])], ignore_index=True)
-                            cloud_conn.update(worksheet="Copie de Immatriculations", data=df_v_updated)
-                        
-                        st.success("Action enregistrée !")
-                        st.cache_data.clear()
-                        time.sleep(1)
-                        st.rerun()
+                    df_f_up = pd.concat([df_f_up, pd.DataFrame([new_f])], ignore_index=True)
+                    cloud_conn.update(worksheet="Factures", data=df_f_up)
+                    st.success("Facture envoyée !")
+                    st.cache_data.clear()
+                    st.rerun()
+        
+        with c2:
+            # APERÇU LIVE DU TICKET (TON STYLE)
+            agency_name = "SERVICES AVERIS" if st.session_state.user_auth == "Averis" else "RÉSEAU RCT"
+            if st.session_state.user_auth == "Staff": agency_name = "ADMINISTRATION"
+            
+            st.markdown(f"""
+            <div style="border: 2px solid #000; padding: 20px; background: white; color: black; font-family: 'Courier New', monospace; box-shadow: 8px 8px 0px #000;">
+                <center><b>PROVINCIA - PV OFFICIEL</b><br><small>{agency_name}</small></center>
+                <hr style="border-top: 1px dashed #000;">
+                <b>CONTREVENANT :</b> {target}<br>
+                <b>MOTIF :</b> {mo if mo else "..."}<br>
+                <b>MONTANT :</b> {mt}$<br>
+                {f'<b>RETRAIT :</b> {pts_retrait} PTS<br>' if pts_retrait > 0 else ''}
+                <hr style="border-top: 1px dashed #000;">
+                <center><b>TOTAL À RÉGLER : {mt}$</b></center>
+            </div>
+            """, unsafe_allow_html=True)
 
-            # 2. AU MILIEU : L'APERÇU TICKET (STYLE PAPIER)
-            with c_mid:
-                st.markdown("#### 🎫 APERÇU TICKET")
-                if type_action == "Facturation":
-                    agency = "SERVICES AVERIS" if st.session_state.user_auth == "Averis" else "RÉSEAU RCT"
+    # --- ONGLET 2 : IMMATRICULATION ---
+    with mode_action[1]:
+        with st.form(key=f"imm_form_{target}"):
+            st.markdown("### 🚘 ENREGISTREMENT VÉHICULE")
+            col_a, col_b = st.columns(2)
+            plaque = col_a.text_input("Numéro de Plaque")
+            marque = col_b.text_input("Modèle / Marque")
+            
+            if st.form_submit_button("ENREGISTRER LE VÉHICULE"):
+                df_v_up = cloud_conn.read(worksheet="Copie de Immatriculations").fillna("")
+                new_v = {
+                    "Nom d'utilisateur ROBLOX": target, 
+                    "Numéro de la plaque": plaque.upper(), 
+                    "Marque du véhicule": marque, 
+                    "Horodateur": datetime.now().strftime("%d/%m/%Y"),
+                    "Assurance": st.session_state.user_auth
+                }
+                df_v_up = pd.concat([df_v_up, pd.DataFrame([new_v])], ignore_index=True)
+                cloud_conn.update(worksheet="Copie de Immatriculations", data=df_v_up)
+                st.success("Véhicule ajouté au registre !")
+                st.cache_data.clear()
+                st.rerun()
+
+    # --- ONGLET 3 : DOSSIER VÉHICULES (STYLE TICKET) ---
+    with mode_action[2]:
+        st.markdown(f"### 📋 VÉHICULES POSSÉDÉS PAR {target}")
+        v_target = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
+        
+        if not v_target.empty:
+            # Affichage en colonnes pour faire "catalogue de tickets"
+            v_cols = st.columns(2)
+            for i, (_, v) in enumerate(v_target.iterrows()):
+                with v_cols[i % 2]:
                     st.markdown(f"""
-                    <div style="border: 2px solid #000; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; box-shadow: 6px 6px 0px #000; margin-top: 10px;">
-                        <center><b style="font-size:1.1em; text-decoration: underline;">SOUCHE OFFICIELLE</b><br>
-                        <small>{agency}</small></center>
-                        <hr style="border-top: 1px dashed #000; margin: 10px 0;">
-                        <div style="font-size: 0.9em;">
-                            <b>CITOYEN :</b> {target}<br>
-                            <b>AGENT   :</b> {st.session_state.user_auth}<br>
-                            <b>MOTIF   :</b> {mo if mo else "..."}
-                        </div>
-                        <hr style="border-top: 1px dashed #000; margin: 10px 0;">
-                        <div style="text-align: center; font-weight: bold; font-size: 1.2em;">TOTAL : {mt}$</div>
-                        <center><small style="font-size: 0.7em; opacity: 0.6; display:block; margin-top:10px;">DATE: {datetime.now().strftime("%d/%m/%Y")}</small></center>
+                    <div style="border: 1px solid #000; padding: 10px; background: #f9f9f9; color: black; font-family: monospace; margin-bottom: 10px; border-left: 5px solid #333;">
+                        <b style="font-size: 1.2em;">🎫 {v['Numéro de la plaque']}</b><br>
+                        <small>MARQUE :</small> {v['Marque du véhicule']}<br>
+                        <small>ASSUREUR :</small> {v.get('Assurance', 'N/A')}<br>
+                        <small>DATE :</small> {v.get('Horodateur', '---')}
                     </div>
                     """, unsafe_allow_html=True)
-                else:
-                    st.info("Mode Immatriculation : Enregistrement base de données.")
-
-            # 3. À DROITE : LES VÉHICULES
-            with c_right:
-                st.markdown("#### 🚘 VÉHICULES")
-                v_target = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
-                if not v_target.empty:
-                    for _, v in v_target.iterrows():
-                        st.markdown(f"""
-                        <div style="background:#f0f2f6; padding:8px; border-radius:5px; margin-bottom:5px; border-left:4px solid #333; color:black;">
-                            <b>{v['Numéro de la plaque']}</b><br><small>{v['Marque du véhicule']}</small>
-                        </div>
-                        """, unsafe_allow_html=True)
-                else:
-                    st.write("Aucun véhicule.")
+        else:
+            st.warning("Aucun véhicule immatriculé pour ce citoyen.")
 # ======================================================================================
 # 7. LOGIQUE DES ONGLETS (CORRIGÉE)
 # ======================================================================================
