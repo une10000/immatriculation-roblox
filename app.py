@@ -435,7 +435,9 @@ with st.container():
                     st.info("Aucun paiement archivé.")
             except: pass
 
-        # --- 6.1 INTERFACE AVERIS (COPIE RCT) ---
+        # ======================================================================================
+        # 6.1 INTERFACE AVERIS (COPIE CONFORME RCT)
+        # ======================================================================================
         if st.session_state.user_auth == "Averis":
             st.markdown("---")
             st.subheader("🏢 ACTIONS AVERIS")
@@ -456,13 +458,16 @@ with st.container():
                     mt = st.number_input("Montant", min_value=0, value=500)
                     mo = st.text_input("Motif")
                     if st.form_submit_button("Émettre Facture"):
+                        # IMPORTANT : L'émetteur est "Averis", donc l'argent ira à Moune2010 lors du paiement
                         new_f = {"ID": len(df_all_f)+1, "Emetteur": "Averis", "Cible": target, "Montant": mt, "Motif": mo, "Statut": "EN ATTENTE"}
                         df_all_f = pd.concat([df_all_f, pd.DataFrame([new_f])], ignore_index=True)
                         cloud_conn.update(worksheet="Factures", data=df_all_f)
                         st.success("Facture Averis envoyée (Paiement vers Moune2010)")
                         st.rerun()
 
-        # --- 6.2 INTERFACE RCT ---
+        # ======================================================================================
+        # 6.2 INTERFACE RCT
+        # ======================================================================================
         if st.session_state.user_auth == "RCT":
             st.markdown("---")
             st.subheader("👨‍🔧 ACTIONS RCT")
@@ -483,6 +488,7 @@ with st.container():
                     mt = st.number_input("Montant", min_value=0, value=500)
                     mo = st.text_input("Motif")
                     if st.form_submit_button("Émettre Facture"):
+                        # L'émetteur est "RCT", donc l'argent ira à une10000
                         new_f = {"ID": len(df_all_f)+1, "Emetteur": "RCT", "Cible": target, "Montant": mt, "Motif": mo, "Statut": "EN ATTENTE"}
                         df_all_f = pd.concat([df_all_f, pd.DataFrame([new_f])], ignore_index=True)
                         cloud_conn.update(worksheet="Factures", data=df_all_f)
