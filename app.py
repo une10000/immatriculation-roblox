@@ -10,7 +10,6 @@ import pandas as pd
 from datetime import datetime, timedelta, timezone
 import time
 import random
-from textwrap import dedent
 
 # 1. INTERFACE & DESIGN
 st.set_page_config(
@@ -24,32 +23,33 @@ st.set_page_config(
 h_sys = (datetime.now(timezone.utc) + timedelta(hours=1)).hour
 is_night = not (5 <= h_sys < 18)
 
-# Définition radicale des couleurs
+# Définition radicale des couleurs pour la lisibilité
 if is_night:
     bg_app = "#0e1117"
     txt_color = "#ffffff"
     border_ui = "#444444"
     bg_input = "#262730"
     bg_card = "#1a1c23"
+    warning_bg = "rgba(255, 255, 150, 0.1)"
 else:
     bg_app = "#ffffff"   # Blanc pur
     txt_color = "#000000" # Noir profond
-    border_ui = "#000000" # Bordures noires
+    border_ui = "#000000" # Bordures noires massives
     bg_input = "#f9f9f9" # Fond d'input très léger
     bg_card = "#ffffff"
+    warning_bg = "#fff9c4" # Jaune clair lisible
 
 st.markdown(f"""
     <style>
-    /* Forçage du fond d'écran */
+    /* Forçage du fond d'écran selon le mode */
     .stApp {{ background-color: {bg_app} !important; }}
 
-    /* Forçage de TOUS les textes (Labels, Markdown, Paragraphes) */
+    /* Forçage de TOUS les textes (Labels, Markdown, Titres) */
     html, body, [data-testid="stWidgetLabel"], .stMarkdown, p, span, label, div {{
         color: {txt_color} !important;
-        font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     }}
 
-    /* Champs de saisie : Bordures noires massives en mode clair */
+    /* Champs de saisie : Visibilité maximale */
     input, textarea, select, div[data-baseweb="select"], .stSelectbox {{
         border: 2px solid {border_ui} !important;
         background-color: {bg_input} !important;
@@ -57,36 +57,29 @@ st.markdown(f"""
         border-radius: 4px !important;
     }}
 
-    /* En-tête RCRP FR (On garde le look sombre même le jour pour le style) */
+    /* L'UNIQUE EN-TÊTE (Suppression du doublon) */
     .header-box {{
         background: linear-gradient(90deg, #121212 0%, #2c3e50 100%);
-        padding: 35px;
+        padding: 40px;
         border-radius: 12px;
         border-left: 20px solid #d32f2f;
         margin-bottom: 25px;
+        text-align: center;
         box-shadow: 0 4px 15px rgba(0,0,0,0.4);
     }}
     .header-box h1, .header-box p {{ color: #ffffff !important; margin: 0; }}
-
-    /* Info Cards (Le Guide de recherche, etc.) */
-    .info-card {{
-        background-color: {bg_card};
-        padding: 20px;
-        border: 2px solid {border_ui};
-        border-left: 8px solid #d32f2f;
-        margin-bottom: 20px;
-    }}
-
-    /* Reçu Fédéral */
-    .receipt-container {{
-        background-color: {bg_card};
-        padding: 30px;
-        border: 4px double {txt_color};
-        font-family: 'Courier New', Courier, monospace;
-        box-shadow: 10px 10px 0px {border_ui};
-    }}
     
-    /* Boutons : Style Terminal */
+    /* Bannière d'avertissement */
+    .warning-banner {{
+        background-color: {warning_bg};
+        padding: 15px;
+        border-radius: 5px;
+        border-left: 5px solid #fbc02d;
+        margin-bottom: 20px;
+        font-weight: bold;
+    }}
+
+    /* Boutons Style Terminal */
     .stButton>button {{
         border: 2px solid {txt_color} !important;
         background-color: {bg_input} !important;
@@ -95,6 +88,7 @@ st.markdown(f"""
         text-transform: uppercase;
         width: 100%;
         height: 3.5em;
+        transition: 0.2s;
     }}
     .stButton>button:hover {{
         background-color: {txt_color} !important;
@@ -103,13 +97,17 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 
-# Affichage de l'en-tête
-st.markdown("""
+# --- AFFICHAGE DE L'EN-TÊTE UNIQUE ---
+st.markdown(f"""
     <div class="header-box">
-        <h1>🏛️ RÉPUBLIQUE DE RENSSELAER</h1>
-        <p>Système National d'Exploitation (OS v14.6.0)</p>
+        <h1 style="font-size: 2.5em;">🏛️ RÉPUBLIQUE DE RENSSELAER</h1>
+        <p style="font-size: 1.2em; letter-spacing: 2px; opacity: 0.9;">TERMINAL FÉDÉRAL D'OPÉRATIONS NATIONALES</p>
+        <hr style="border: 0.5px solid rgba(255,255,255,0.2); margin: 15px 0;">
+        <p style="font-size: 0.8em; opacity: 0.7;">VERSION 14.6.0 | SÉCURISÉ PAR PROTOCOLE RCRP-OS</p>
     </div>
 """, unsafe_allow_html=True)
+
+st.markdown('<div class="warning-banner">⚠️ AVERTISSEMENT : Toute action effectuée sur ce terminal est enregistrée.</div>', unsafe_allow_html=True)
 
 # ======================================================================================
 # 2. MOTEUR DE DONNÉES (CLOUD SYNC)
@@ -119,7 +117,6 @@ cloud_conn = st.connection("gsheets", type=GSheetsConnection)
 
 @st.cache_data(ttl=300)
 def fetch_database():
-    """Récupération synchronisée de toutes les tables"""
     try:
         df_bank = cloud_conn.read(worksheet="Banque").dropna(how='all').fillna("")
         df_immat = cloud_conn.read(worksheet="Copie de Immatriculations").dropna(how='all').fillna("")
@@ -142,7 +139,7 @@ if "audit_logs" not in st.session_state: st.session_state.audit_logs = []
 # Paramètres Banques Centrales
 ACC_RCT = "une10000"
 ACC_AVERIS = "Moune2010"
-SOLDE_DEPART = 15000  # Ton solde de départ de 15k
+SOLDE_DEPART = 15000 
 
 # Codes de Service
 KEY_RCT = "RCT-26-RCRPFR"
