@@ -62,7 +62,6 @@ st.markdown("""
 # ======================================================================================
 # 2. MOTEUR DE DONNÉES (SYNC)
 # ======================================================================================
-# Maintenant GSheetsConnection est bien reconnu grâce à l'import en haut
 cloud_conn = st.connection("gsheets", type=GSheetsConnection)
 
 @st.cache_data(ttl=300)
@@ -77,6 +76,7 @@ def fetch_database():
         return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
 df_b, df_i, df_p = fetch_database()
+
 # ======================================================================================
 # 3. ÉTAT DE LA SESSION & PARAMÈTRES
 # ======================================================================================
@@ -84,7 +84,7 @@ if "user_auth" not in st.session_state: st.session_state.user_auth = None
 if "audit_logs" not in st.session_state: st.session_state.audit_logs = []
 
 # ======================================================================================
-# CONFIGURATION ET FONCTIONS TECHNIQUES (À METTRE EN HAUT)
+# CONFIGURATION ET FONCTIONS TECHNIQUES
 # ======================================================================================
 
 PRIME_JOB = {
@@ -97,13 +97,17 @@ PRIME_JOB = {
     "Entreprise Privée": 500
 }
 
+# --- CONFIGURATION DES COMPTES DESTINATAIRES ---
+ACC_RCT = "une10000"
+ACC_AVERIS = "Moune2010"
+
 def traiter_paiement_prime(target_name, metier, montant, df_b, cloud_conn):
     """Gère le prélèvement sur l'employeur et l'ajout sur l'employé"""
     source_compte = None
     if "Averis" in metier:
-        source_compte = "Moune2010"
+        source_compte = ACC_AVERIS
     elif "Agent RCT" in metier:
-        source_compte = "une10000"
+        source_compte = ACC_RCT
     
     if source_compte:
         try:
@@ -121,10 +125,11 @@ def traiter_paiement_prime(target_name, metier, montant, df_b, cloud_conn):
         except Exception as e:
             return False, f"❌ Erreur lors du virement : {e}"
     else:
-        return False, "⚠️ Aucun employeur configuré pour prélever cette prime (Averis ou RCT uniquement)."
+        return False, "⚠️ Aucun employeur configuré."
 
 # Codes de Service
 KEY_RCT = "RCT-26-RCRPFR"
+KEY_AVERIS = "AVE-26-RCRPFR" # La clé pour ton login Averis
 KEY_STAFF = "RCRPFR-25-26"
 
 def record_log(user, action):
