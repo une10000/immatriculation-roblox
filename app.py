@@ -672,7 +672,8 @@ if "👮 SERVICES AGENT" in tab_labels:
                             
                             # --- FIX ERREUR record_log ---
                             # On concatène l'action et la cible dans le même argument
-                            record_log(st.session_state.user_auth, f"Facture #{f_id} envoyée à {target}")
+                            user_display = st.session_state.get('user_name', st.session_state.user_auth)
+                            record_log(user_display, f"[{st.session_state.user_auth}] Facture #{f_id} envoyée à {target}")
                             
                             st.success(f"✅ Facture #{f_id} envoyée !")
                             time.sleep(1)
