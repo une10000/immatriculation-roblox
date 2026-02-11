@@ -933,6 +933,7 @@ if st.session_state.user_auth == "Staff":
         st.divider()
         st.markdown("### 🧧 Terminal de Paie Nationale")
         with st.container(border=True):
+            # Sécurité si la base est vide
             options_paie = sorted(df_b["Nom Roblox"].unique().tolist()) if not df_b.empty else []
             target_paie = st.selectbox("Sélectionner le bénéficiaire :", options_paie, key="paie_auto_target")
             
@@ -942,53 +943,94 @@ if st.session_state.user_auth == "Staff":
                 user_jobs_raw = user_data["Emploiement"].values[0]
                 user_jobs_list = [j.strip() for j in str(user_jobs_raw).split("/")]
                 
-                # 2. Calcul des Primes et Assurance
+                # 2. Calcul des Primes (15k base + primes métiers)
+                # Assure-toi que PRIME_JOB est défini en haut de ton code, sinon ça met 0
                 calcul_primes = sum(PRIME_JOB.get(j, 0) for j in user_jobs_list) if 'PRIME_JOB' in locals() else 0
                 total_brut = 15000 + calcul_primes
                 
-                # Calcul Assurance (ex: 500$ par véhicule possédé)
-                PRIX_UNITAIRE_ASSURANCE = 500
+                # 3. Calcul précis des Assurances et Taxes
                 mes_vehicules = df_i[df_i["Nom d'utilisateur ROBLOX"] == target_paie]
                 nb_vehicules = len(mes_vehicules)
-                total_assurance = nb_vehicules * PRIX_UNITAIRE_ASSURANCE
                 
-                total_net = total_brut - total_assurance
+                total_assurance = 0
+                taxe_jc_total = nb_vehicules * 50  # Taxe Jeune Conducteur : 50$ / vhc
                 
-                st.info(f"📋 **Emplois :** {', '.join(user_jobs_list)} | 🚗 **Véhicules :** {nb_vehicules}")
-                st.metric("VERSEMENT NET (Après Assurances)", f"{total_net}$", f"-{total_assurance}$ prélevés")
+                # Logique Tarifaire
+                if nb_vehicules > 0:
+                    if "Agent RCT" in user_jobs_list:
+                        # OFFRE TRIO RCT : 150$ l'unité, 3ème gratuite (max 300$ d'assurance)
+                        nb_payants = min(nb_vehicules, 2)
+                        total_assurance = nb_payants * 150
+                        type_assurance = "RCT (Offre Trio)" if nb_vehicules >= 3 else "RCT Standard"
+                    elif "Averis" in user_jobs_list:
+                        # TARIF AVERIS : 130$ par véhicule
+                        total_assurance = nb_vehicules * 130
+                        type_assurance = "Averis"
+                    else:
+                        # Si aucun métier spécial, on applique un tarif de base (ex: 150) ou 0
+                        total_assurance = nb_vehicules * 150
+                        type_assurance = "Standard"
+                else:
+                    type_assurance = "Aucun véhicule"
 
-                if st.button(f"🧧 VERSER {total_net}$ & VALIDER ASSURANCES", use_container_width=True):
+                total_prelevement = total_assurance + taxe_jc_total
+                total_net = total_brut - total_prelevement
+                
+                # --- AFFICHAGE DÉTAILLÉ POUR LE STAFF ---
+                st.markdown(f"#### 📊 Détails pour {target_paie}")
+                col_info1, col_info2 = st.columns(2)
+                with col_info1:
+                    st.write(f"**💰 Salaire Brut :** {total_brut}$")
+                    st.write(f"**🛠️ Métiers :** {', '.join(user_jobs_list)}")
+                with col_info2:
+                    st.write(f"**🚗 Véhicules :** {nb_vehicules}")
+                    st.write(f"**🛡️ Régime :** {type_assurance}")
+
+                st.markdown("---")
+                
+                # Metrics pour la clarté
+                c1, c2, c3 = st.columns(3)
+                c1.metric("Assurances", f"-{total_assurance}$")
+                c2.metric("Taxes JC", f"-{taxe_jc_total}$")
+                c3.metric("NET À VERSER", f"{total_net}$", delta=f"{total_brut}$ Brut", delta_color="normal")
+
+                if nb_vehicules >= 3 and "Agent RCT" in user_jobs_list:
+                    st.success("💡 **Note Staff :** L'offre Trio a été appliquée (3ème assurance gratuite).")
+
+                # Bouton de validation
+                if st.button(f"🧧 CONFIRMER LE VERSEMENT DE {total_net}$", use_container_width=True, type="primary"):
                     try:
-                        # A. Débit des caisses patronales (RCT/Averis)
-                        if "Agent RCT" in user_jobs_list:
-                            idx_rct = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
-                            df_b.at[idx_rct, "Solde"] = float(df_b.at[idx_rct, "Solde"]) - 2000
-                        
-                        if "Averis" in user_jobs_list:
-                            idx_av = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
-                            df_b.at[idx_av, "Solde"] = float(df_b.at[idx_av, "Solde"]) - 2000
+                        with st.spinner("Traitement de la paie nationale..."):
+                            # A. Débit des caisses patronales (2000$ par employé)
+                            if "Agent RCT" in user_jobs_list:
+                                idx_rct = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
+                                df_b.at[idx_rct, "Solde"] = float(df_b.at[idx_rct, "Solde"]) - 2000
+                            
+                            if "Averis" in user_jobs_list:
+                                idx_av = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
+                                df_b.at[idx_av, "Solde"] = float(df_b.at[idx_av, "Solde"]) - 2000
 
-                        # B. Crédit du solde Citoyen (On ajoute le NET)
-                        idx_ben = df_b[df_b["Nom Roblox"] == target_paie].index[0]
-                        solde_actuel = float(str(df_b.at[idx_ben, "Solde"]).replace('$', '').replace(',', ''))
-                        df_b.at[idx_ben, "Solde"] = solde_actuel + total_net
-                        
-                        # C. MISE À JOUR AUTOMATIQUE DES ASSURANCES
-                        # On ne reset plus le tableau, on écrit "PAYÉ (AUTO)" sur ses plaques
-                        df_i.loc[df_i["Nom d'utilisateur ROBLOX"] == target_paie, "Assurance"] = "PAYÉ (AUTO)"
-                        
-                        # D. Envoi au Cloud
-                        cloud_conn.update(worksheet="Banque", data=df_b)
-                        cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i)
-                        
-                        record_log(st.session_state.user_auth, f"PAIE AUTO : {target_paie} (+{total_net}$ net)")
-                        st.success(f"✅ Paie effectuée ! {nb_vehicules} assurance(s) renouvelée(s).")
-                        st.cache_data.clear()
-                        import time
-                        time.sleep(1)
-                        st.rerun()
+                            # B. Crédit du citoyen (Solde actuel + Net calculé)
+                            idx_ben = df_b[df_b["Nom Roblox"] == target_paie].index[0]
+                            solde_vrai = float(str(df_b.at[idx_ben, "Solde"]).replace('$', '').replace(',', ''))
+                            df_b.at[idx_ben, "Solde"] = solde_vrai + total_net
+                            
+                            # C. Mise à jour automatique des assurances sur les véhicules
+                            df_i.loc[df_i["Nom d'utilisateur ROBLOX"] == target_paie, "Assurance"] = "PAYÉ (AUTO+JC)"
+                            
+                            # D. Envoi au Cloud (Sauvegarde)
+                            cloud_conn.update(worksheet="Banque", data=df_b)
+                            cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i)
+                            
+                            # E. Logs et Rerun
+                            record_log(st.session_state.user_auth, f"PAIE NATIONALE : {target_paie} | {total_net}$ versés | {nb_vehicules} vhc assurés.")
+                            st.success(f"✅ Paie et assurances validées pour {target_paie} !")
+                            st.cache_data.clear()
+                            import time
+                            time.sleep(1)
+                            st.rerun()
                     except Exception as e:
-                        st.error(f"Erreur technique : {e}")
+                        st.error(f"⚠️ Erreur lors de la transaction : {e}")
         # --- SECTION 3 : LOGS ET STATISTIQUES ---
         st.divider()
         col_admin_left, col_admin_right = st.columns(2)
