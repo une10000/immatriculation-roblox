@@ -1039,37 +1039,44 @@ with st.container(border=True):
             st.success("💡 **Note Staff :** L'offre Trio a été appliquée (3ème assurance gratuite).")
 
         # Bouton de validation
-        if st.button(f"🧧 CONFIRMER LE VERSEMENT DE {total_net}$", use_container_width=True, type="primary"):
-            try:
-                with st.spinner("Traitement de la paie nationale..."):
-                    # A. Débit des caisses patronales
-                    if "Agent RCT" in user_jobs_list:
-                        idx_rct = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
-                        df_b.at[idx_rct, "Solde"] = float(df_b.at[idx_rct, "Solde"]) - 2000
-                    
-                    if "Averis" in user_jobs_list:
-                        idx_av = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
-                        df_b.at[idx_av, "Solde"] = float(df_b.at[idx_av, "Solde"]) - 2000
+# Bouton de validation
+                if st.button(f"🧧 CONFIRMER LE VERSEMENT DE {total_net}$", use_container_width=True, type="primary"):
+                    try:
+                        with st.spinner("Traitement de la paie nationale..."):
+                            # A. Débit des caisses patronales (2000$ par employé)
+                            if "Agent RCT" in user_jobs_list:
+                                idx_rct = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
+                                df_b.at[idx_rct, "Solde"] = float(df_b.at[idx_rct, "Solde"]) - 2000
+                            
+                            if "Averis" in user_jobs_list:
+                                idx_av = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
+                                df_b.at[idx_av, "Solde"] = float(df_b.at[idx_av, "Solde"]) - 2000
 
-                    # B. Crédit du citoyen
-                    idx_ben = df_b[df_b["Nom Roblox"] == target_paie].index[0]
-                    df_b.at[idx_ben, "Solde"] = solde_final
-                    
-                    # C. Mise à jour automatique des assurances
-                    df_i.loc[df_i["Nom d'utilisateur ROBLOX"] == target_paie, "Assurance"] = "PAYÉ (AUTO+JC)"
-                    
-                    # D. Sauvegarde
-                    cloud_conn.update(worksheet="Banque", data=df_b)
-                    cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i)
-                    
-                    record_log(st.session_state.user_auth, f"PAIE : {target_paie} | {total_net}$ versés (Final: {solde_final}$)")
-                    st.success(f"✅ Paie validée pour {target_paie} !")
-                    st.cache_data.clear()
-                    import time
-                    time.sleep(1)
-                    st.rerun()
-            except Exception as e:
-                st.error(f"⚠️ Erreur lors de la transaction : {e}")
+                            # B. Crédit du citoyen
+                            idx_ben = df_b[df_b["Nom Roblox"] == target_paie].index[0]
+                            df_b.at[idx_ben, "Solde"] = solde_final 
+                            
+                            # C. Mise à jour automatique (Assurances + Remise à 25 points)
+                            # On met à jour l'assurance
+                            df_i.loc[df_i["Nom d'utilisateur ROBLOX"] == target_paie, "Assurance"] = "PAYÉ (AUTO+JC)"
+                            
+                            # On remet les points à 25 (Vérifie bien que le nom de la colonne est exact)
+                            if "Points" in df_i.columns:
+                                df_i.loc[df_i["Nom d'utilisateur ROBLOX"] == target_paie, "Points"] = 25
+                            
+                            # D. Envoi au Cloud
+                            cloud_conn.update(worksheet="Banque", data=df_b)
+                            cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i)
+                            
+                            # E. Logs et Rerun
+                            record_log(st.session_state.user_auth, f"PAIE : {target_paie} | {total_net}$ | Points reset à 25")
+                            st.success(f"✅ Paie validée et points réinitialisés à 25 pour {target_paie} !")
+                            st.cache_data.clear()
+                            import time
+                            time.sleep(1)
+                            st.rerun()
+                    except Exception as e:
+                        st.error(f"⚠️ Erreur lors de la transaction : {e}")
         # --- SECTION 3 : LOGS ET STATISTIQUES ---
         st.divider()
         col_admin_left, col_admin_right = st.columns(2)
