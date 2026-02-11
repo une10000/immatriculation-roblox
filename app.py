@@ -507,36 +507,69 @@ with st.container():
                 else: st.info("Aucun paiement archivé.")
             except Exception as e: st.error(f"Erreur Archives : {e}")
 
-        # --- SECTION VÉHICULES (AJOUTÉE EN BAS DU DOSSIER) ---
-        st.markdown("---")
-        st.markdown("### 🚗 TITRES DE CIRCULATION")
-        v_data = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
         if not v_data.empty:
-            v_cols = st.columns(3)
-            for i, (_, v) in enumerate(v_data.iterrows()):
-                with v_cols[i % 3]:
-                    is_danger = v['Assurance'] == "Aucune"
-                    st.markdown(f"""
-                    <div style="border: 2px solid black; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; min-height: 280px;">
-                        <center><b style="text-decoration: underline;">TITRE DE CIRCULATION</b><br><small>RÉPUBLIQUE DE RENSSERLAER</small></center>
-                        <hr style="border-top: 1px dashed black; margin: 10px 0;">
-                        <div style="font-size: 0.85em; line-height: 1.5;">
-                            <b>DATE    :</b> {str(v.get('Horodateur', 'N/A')).split(' ')[0]}<br>
-                            <b>NOM     :</b> {v["Nom d'utilisateur ROBLOX"]}<br>
-                            <b>MODÈLE  :</b> {v['Marque du véhicule']}<br>
-                            <b>PLAQUE  :</b> <span style="border: 1px solid #999; padding: 0 4px;">{v['Numéro de la plaque']}</span><br>
-                            <b>ASSUR.  :</b> {v['Assurance']}
-                        </div>
-                        <div style="margin-top: 25px; text-align: center; border: 1px solid {'#ff4b4b' if is_danger else '#1a73e8'}; padding: 5px;">
-                            <b style="color: {'#ff4b4b' if is_danger else '#1a73e8'}; font-size: 0.7em;">
-                                ⚠️ {'DANGER : NON-ASSURÉ RCT' if is_danger else 'ASSURANCE : ' + v['Assurance'].upper()}<br>
-                                Par le Terminal National
-                            </b>
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-        else:
-            st.warning("Aucun véhicule trouvé.")
+    v_cols = st.columns(3)
+    for i, (_, veh) in enumerate(v_data.iterrows()):
+        with v_cols[i % 3]:
+            # --- RÉCUPÉRATION TECHNIQUE DE LA DATE ---
+            date_val = veh.get('Horodateur', 'N/A')
+            # On retire le [:10] qui coupait l'heure
+            date_display = str(date_val) if date_val != 'N/A' else "Non spécifiée"
+
+            # --- LOGIQUE DE SÉCURITÉ RCT ---
+            assu = str(veh.get('Assurance', '')).upper()
+            role = st.session_state.user_auth
+            
+            color = "green"
+            status_txt = "✅ VÉHICULE EN RÈGLE"
+            
+            if role == "RCT":
+                if "RCT" in assu:
+                    color = "green"
+                    status_txt = "✅ ASSURÉ RCT"
+                elif "AVERIS" in assu:
+                    color = "#E67E22"
+                    status_txt = "⚠️ ATTENTION : ASSURÉ AVERIS"
+                else:
+                    color = "#d32f2f"
+                    status_txt = "🚨 DANGER : NON-ASSURÉ"
+
+            # --- TON DESIGN D'ORIGINE ---
+            st.markdown(f"""
+            <div style="border: 2px solid black; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; line-height: 1.2;">
+                <center><b>TITRE DE CIRCULATION</b><br><small>RÉPUBLIQUE DE RENSSERLAER</small></center>
+                <hr style="border-top: 1px solid #ccc; margin: 10px 0;">
+                <b>DATE :</b> {date_display}<br>
+                <b>NOM :</b> {target}<br>
+                <b>MODÈLE :</b> {veh.get('Marque du véhicule', '')}<br>
+                <b>PLAQUE :</b> <span style="border: 1px solid black; padding: 0 3px;">{veh.get('Numéro de la plaque', '')}</span><br>
+                <b>ASSURANCE :</b> {veh.get('Assurance', '')}
+                <hr style="border-top: 1px solid #ccc; margin: 10px 0;">
+                <div style="text-align: center; color: {color}; font-weight: bold; font-size: 0.8em;">
+                    {status_txt}<br>
+                    <small>Par le Terminal National</small>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+                                        
+            with st.expander("🗑️ Radier"):
+                r_cod_check = st.text_input("Code Secret", type="password", key=f"rad_input_{veh['Numéro de la plaque']}_{i}")
+                if st.button("CONFIRMER", key=f"btn_confirm_{veh['Numéro de la plaque']}_{i}", use_container_width=True):
+                    if str(r_cod_check) == str(veh.get('CODE', '')) or st.session_state.user_auth == "Staff":
+                        try:
+                            df_all_immat = cloud_conn.read(worksheet="Copie de Immatriculations")
+                            df_updated = df_all_immat[df_all_immat["Numéro de la plaque"] != veh['Numéro de la plaque']]
+                            cloud_conn.update(worksheet="Copie de Immatriculations", data=df_updated)
+                            st.cache_data.clear()
+                            st.success("Radié !")
+                            time.sleep(1)
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Erreur : {e}")
+                    else:
+                        st.error("Code incorrect")
+else:
+    st.info("Aucun véhicule trouvé.")
 # ======================================================================================
 # 7. LOGIQUE DES ONGLETS (CORRIGÉE & OPTIMISÉE)
 # ======================================================================================
