@@ -386,7 +386,7 @@ if st.session_state.user_auth is None:
 # LE RESTE DU CODE (S'affiche uniquement après connexion)
 # ======================================================================================
 # ======================================================================================
-# 6. MODULE : DOSSIER CITOYEN UNIFIÉ (VISIBILITÉ TOTALE)
+# 6. MODULE : DOSSIER CITOYEN UNIFIÉ (INTERFACE ORIGINALE RESTAURÉE)
 # ======================================================================================
 
 st.markdown('<div class="header-box"><h2>📂 REGISTRE NATIONAL DES CITOYENS</h2></div>', unsafe_allow_html=True)
@@ -410,12 +410,10 @@ with st.container():
             if not p_data.empty:
                 pts_val = int(p_data.iloc[0]["PTS"])
                 c_pts, c_vide, c_motif_p = st.columns([3, 0.5, 2])
-                
                 with c_pts:
                     st.metric("POINTS PERMIS", f"{pts_val}/25")
                     status_color = "green" if pts_val > 0 else "red"
                     st.markdown(f"Statut : <b style='color:{status_color};'>{'VALIDE' if pts_val > 0 else 'SUSPENDU'}</b>", unsafe_allow_html=True)
-                
                 with c_motif_p:
                     st.markdown("""
                         <div style="text-align: right; line-height: 1; padding-top: 5px;">
@@ -432,23 +430,19 @@ with st.container():
             b_data = df_b[df_b["Nom Roblox"] == target]
             if not b_data.empty:
                 c_info, c_v, c_m = st.columns([3, 0.5, 2])
-                
                 with c_info:
                     st.metric("SOLDE BANCAIRE", f"{b_data.iloc[0]['Solde']}$")
                     current_jobs_raw = str(b_data.iloc[0]['Emploiement'])
                     st.write(f"🏢 Métier : **{current_jobs_raw}**")
-                    
                     if st.session_state.user_auth == "Staff":
                         if st.button("✏️ Modifier le métier", key=f"edit_job_{target}", use_container_width=True):
                             st.session_state[f"show_editor_{target}"] = not st.session_state.get(f"show_editor_{target}", False)
-                        
                         if st.session_state.get(f"show_editor_{target}", False):
                             with st.container(border=True):
                                 liste_metiers = ["Sans-Emploi", "Agent RCT", "Averis", "Police", "Staff", "Service Public", "Entreprise Privée"]
                                 current_jobs_list = [j.strip() for j in current_jobs_raw.split("/") if j.strip()]
                                 valid_defaults = [j for j in current_jobs_list if j in liste_metiers]
                                 new_jobs = st.multiselect("Sélection :", options=liste_metiers, default=valid_defaults)
-                                
                                 cs1, cs2 = st.columns(2)
                                 with cs1:
                                     if st.button("💾 Sauver", key=f"save_j_{target}", use_container_width=True, type="primary"):
@@ -463,9 +457,7 @@ with st.container():
                                     if st.button("Annuler", key=f"cancel_j_{target}", use_container_width=True):
                                         st.session_state[f"show_editor_{target}"] = False
                                         st.rerun()
-
                     st.caption(f"📅 Arrivée : {b_data.iloc[0].get('Date d\'arrivée', 'Non renseignée')}")
-                
                 with c_m:
                     st.markdown("""
                         <div style="text-align: right; line-height: 1; padding-top: 5px;">
@@ -483,14 +475,8 @@ with st.container():
             try:
                 df_f_history = cloud_conn.read(worksheet="Factures").fillna("")
                 historique = df_f_history[(df_f_history["Cible"] == target) & (df_f_history["Statut"] == "PAYÉ")]
-
                 if not historique.empty:
                     for _, f in historique.iterrows():
-                        if st.session_state.user_auth in ["Staff", "Admin"]:
-                            if st.button(f"🔄 Rembourser #{f['ID']}", key=f"refund_{f['ID']}", use_container_width=True):
-                                # Logique de remboursement
-                                pass # (Gérée par ton système actuel)
-                        
                         st.markdown(f"""
                         <div style="border: 1px solid #000; padding: 10px; background: #f9f9f9; color: black; margin-bottom: 8px; border-left: 5px solid green;">
                             <div style="display: flex; justify-content: space-between; font-size: 0.8em;">
@@ -507,69 +493,59 @@ with st.container():
                 else: st.info("Aucun paiement archivé.")
             except Exception as e: st.error(f"Erreur Archives : {e}")
 
+        # --- SECTION VÉHICULES (3 COLONNES SOUS LES INFOS) ---
+        st.markdown("---")
+        v_data = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
+        
         if not v_data.empty:
-    v_cols = st.columns(3)
-    for i, (_, veh) in enumerate(v_data.iterrows()):
-        with v_cols[i % 3]:
-            # --- RÉCUPÉRATION TECHNIQUE DE LA DATE ---
-            date_val = veh.get('Horodateur', 'N/A')
-            # On retire le [:10] qui coupait l'heure
-            date_display = str(date_val) if date_val != 'N/A' else "Non spécifiée"
+            st.markdown("### 🚗 VÉHICULES ENREGISTRÉS")
+            v_cols = st.columns(3)
+            for i, (_, veh) in enumerate(v_data.iterrows()):
+                with v_cols[i % 3]:
+                    # Logique Date & Assurance
+                    date_display = str(veh.get('Horodateur', 'Non spécifiée'))
+                    assu = str(veh.get('Assurance', '')).upper()
+                    role = st.session_state.user_auth
+                    
+                    color, status_txt = "green", "✅ VÉHICULE EN RÈGLE"
+                    if role == "RCT":
+                        if "RCT" in assu: color, status_txt = "green", "✅ ASSURÉ RCT"
+                        elif "AVERIS" in assu: color, status_txt = "#E67E22", "⚠️ ATTENTION : ASSURÉ AVERIS"
+                        else: color, status_txt = "#d32f2f", "🚨 DANGER : NON-ASSURÉ"
 
-            # --- LOGIQUE DE SÉCURITÉ RCT ---
-            assu = str(veh.get('Assurance', '')).upper()
-            role = st.session_state.user_auth
-            
-            color = "green"
-            status_txt = "✅ VÉHICULE EN RÈGLE"
-            
-            if role == "RCT":
-                if "RCT" in assu:
-                    color = "green"
-                    status_txt = "✅ ASSURÉ RCT"
-                elif "AVERIS" in assu:
-                    color = "#E67E22"
-                    status_txt = "⚠️ ATTENTION : ASSURÉ AVERIS"
-                else:
-                    color = "#d32f2f"
-                    status_txt = "🚨 DANGER : NON-ASSURÉ"
-
-            # --- TON DESIGN D'ORIGINE ---
-            st.markdown(f"""
-            <div style="border: 2px solid black; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; line-height: 1.2;">
-                <center><b>TITRE DE CIRCULATION</b><br><small>RÉPUBLIQUE DE RENSSERLAER</small></center>
-                <hr style="border-top: 1px solid #ccc; margin: 10px 0;">
-                <b>DATE :</b> {date_display}<br>
-                <b>NOM :</b> {target}<br>
-                <b>MODÈLE :</b> {veh.get('Marque du véhicule', '')}<br>
-                <b>PLAQUE :</b> <span style="border: 1px solid black; padding: 0 3px;">{veh.get('Numéro de la plaque', '')}</span><br>
-                <b>ASSURANCE :</b> {veh.get('Assurance', '')}
-                <hr style="border-top: 1px solid #ccc; margin: 10px 0;">
-                <div style="text-align: center; color: {color}; font-weight: bold; font-size: 0.8em;">
-                    {status_txt}<br>
-                    <small>Par le Terminal National</small>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+                    # Design Ticket
+                    st.markdown(f"""
+                    <div style="border: 2px solid black; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; line-height: 1.2;">
+                        <center><b>TITRE DE CIRCULATION</b><br><small>RÉPUBLIQUE DE RENSSERLAER</small></center>
+                        <hr style="border-top: 1px solid #ccc; margin: 10px 0;">
+                        <b>DATE :</b> {date_display}<br>
+                        <b>NOM :</b> {target}<br>
+                        <b>MODÈLE :</b> {veh.get('Marque du véhicule', '')}<br>
+                        <b>PLAQUE :</b> <span style="border: 1px solid black; padding: 0 3px;">{veh.get('Numéro de la plaque', '')}</span><br>
+                        <b>ASSURANCE :</b> {veh.get('Assurance', '')}
+                        <hr style="border-top: 1px solid #ccc; margin: 10px 0;">
+                        <div style="text-align: center; color: {color}; font-weight: bold; font-size: 0.8em;">
+                            {status_txt}<br>
+                            <small>Par le Terminal National</small>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
                                         
-            with st.expander("🗑️ Radier"):
-                r_cod_check = st.text_input("Code Secret", type="password", key=f"rad_input_{veh['Numéro de la plaque']}_{i}")
-                if st.button("CONFIRMER", key=f"btn_confirm_{veh['Numéro de la plaque']}_{i}", use_container_width=True):
-                    if str(r_cod_check) == str(veh.get('CODE', '')) or st.session_state.user_auth == "Staff":
-                        try:
-                            df_all_immat = cloud_conn.read(worksheet="Copie de Immatriculations")
-                            df_updated = df_all_immat[df_all_immat["Numéro de la plaque"] != veh['Numéro de la plaque']]
-                            cloud_conn.update(worksheet="Copie de Immatriculations", data=df_updated)
-                            st.cache_data.clear()
-                            st.success("Radié !")
-                            time.sleep(1)
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"Erreur : {e}")
-                    else:
-                        st.error("Code incorrect")
-else:
-    st.info("Aucun véhicule trouvé.")
+                    with st.expander("🗑️ Radier"):
+                        r_cod_check = st.text_input("Code Secret", type="password", key=f"rad_{veh['Numéro de la plaque']}_{i}")
+                        if st.button("CONFIRMER", key=f"btn_{veh['Numéro de la plaque']}_{i}", use_container_width=True):
+                            if str(r_cod_check) == str(veh.get('CODE', '')) or st.session_state.user_auth == "Staff":
+                                try:
+                                    df_all_immat = cloud_conn.read(worksheet="Copie de Immatriculations")
+                                    df_updated = df_all_immat[df_all_immat["Numéro de la plaque"] != veh['Numéro de la plaque']]
+                                    cloud_conn.update(worksheet="Copie de Immatriculations", data=df_updated)
+                                    st.cache_data.clear()
+                                    st.success("Radié !")
+                                    st.rerun()
+                                except Exception as e: st.error(f"Erreur : {e}")
+                            else: st.error("Code incorrect")
+        else:
+            st.info("Aucun véhicule trouvé.")
 # ======================================================================================
 # 7. LOGIQUE DES ONGLETS (CORRIGÉE & OPTIMISÉE)
 # ======================================================================================
