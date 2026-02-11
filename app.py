@@ -572,7 +572,7 @@ with tabs[0]:
             f_assu = st.selectbox("Type d'Assurance", ["Aucune", "AVERIS (130$)", "RCT (150$)"], key="reg_assu")
             f_code = st.text_input("Définir un Code de Radiation (Secret)", type="password", key="reg_code")
             
-            # Calcul Taxe Jeune Conducteur (-30 jours)
+            # Calcul Taxe Jeune Conducteur
             val_taxe_jeune = 0
             if f_owner != "---":
                 try:
@@ -617,15 +617,51 @@ with tabs[0]:
                         new_df_i = pd.concat([df_i, pd.DataFrame([nouvelle_immat])], ignore_index=True)
                         cloud_conn.update(worksheet="Banque", data=df_b)
                         cloud_conn.update(worksheet="Copie de Immatriculations", data=new_df_i)
-                        record_log(st.session_state.user_auth, f"Immatriculation {f_model} - {total_bill}$", f_owner)
+                        
+                        # Log avec ton nom Alec
+                        qui_est_ce = st.session_state.get('staff_name', st.session_state.user_auth)
+                        record_log(qui_est_ce, f"Immatriculation {f_model} ({f_plate}) - {total_bill}$ pour {f_owner}")
+                        
                         st.balloons()
                         st.success("✅ IMMATRICULATION RÉUSSIE !")
-                        time.sleep(2)
-                        st.cache_data.clear()
+                        time.sleep(1)
                         st.rerun()
                     else:
                         st.error("❌ Solde insuffisant.")
                 except Exception as e: st.error(f"Erreur : {e}")
+
+    with col_t:
+        st.markdown("### 📑 Historique Citoyen")
+        if f_owner != "---":
+            # 1. Affichage des Factures (Ce que tu ne voyais pas)
+            st.markdown("#### 📄 Factures en cours")
+            try:
+                df_f_all = cloud_conn.read(worksheet="Factures")
+                df_f_citoyen = df_f_all[df_f_all["Cible"] == f_owner]
+                
+                if not df_f_citoyen.empty:
+                    for _, fac in df_f_citoyen.iterrows():
+                        color = "orange" if fac['Statut'] == "EN ATTENTE" else "green"
+                        st.markdown(f"""
+                        <div style="border-left: 5px solid {color}; padding: 10px; background: #f0f2f6; margin-bottom: 5px; border-radius: 5px;">
+                            <small>#{fac['ID']} | {fac['Emetteur']}</small><br>
+                            <b>{fac['Montant']}$</b> - {fac['Motif']}<br>
+                            <small>Statut: {fac['Statut']}</small>
+                        </div>
+                        """, unsafe_allow_html=True)
+                else:
+                    st.info("Aucune facture pour ce citoyen.")
+            except:
+                st.error("Erreur de chargement des factures.")
+            
+            # 2. Affichage des Véhicules déjà possédés
+            st.markdown("#### 🚗 Véhicules enregistrés")
+            v_deja = df_i[df_i["Nom d'utilisateur ROBLOX"] == f_owner]
+            if not v_deja.empty:
+                for _, v in v_deja.iterrows():
+                    st.caption(f"📍 {v['Marque du véhicule']} [{v['Numéro de la plaque']}]")
+        else:
+            st.info("Sélectionnez un citoyen pour voir ses données.")
 
 # --- ONGLET 2 : SERVICES AGENT (RCT / POLSTA / STAFF) ---
 if "👮 SERVICES AGENT" in tab_labels:
