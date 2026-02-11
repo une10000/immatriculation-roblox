@@ -325,7 +325,6 @@ if st.session_state.user_auth is None:
 
     with c1:
         st.markdown("### 👥 CIVIL")
-        # Textbox inutile mais nécessaire pour l'alignement visuel
         st.text_input("Identifiant Citoyen", placeholder="Accès Libre", key="civil_align_input")
         if st.button("ACCÉDER AU TERMINAL", key="l_civ_f", use_container_width=True):
             st.session_state.user_auth = "Civil"
@@ -339,7 +338,6 @@ if st.session_state.user_auth is None:
             if login_rct in STAFF_ACCESS:
                 nom = STAFF_ACCESS[login_rct]
                 if "(RCT)" in nom or "(ADMIN)" in nom:
-                    # ICI : On marque spécifiquement RCT
                     st.session_state.user_auth = "RCT" 
                     st.session_state.staff_name = nom
                     record_log(nom, "Connexion via Portail RCT")
@@ -354,13 +352,21 @@ if st.session_state.user_auth is None:
             if login_staff in STAFF_ACCESS:
                 nom = STAFF_ACCESS[login_staff]
                 if "(POLSTA)" in nom or "(ADMIN)" in nom:
-                    # ICI : On marque spécifiquement POLSTA
                     st.session_state.user_auth = "POLSTA"
                     st.session_state.staff_name = nom
                     record_log(nom, "Connexion via Portail POLSTA")
                     st.rerun()
                 else: st.error("Accès refusé : Cette clé n'est pas accréditée POLSTA.")
             else: st.error("Accès refusé.")
+
+    # --- SÉCURITÉ : ARRÊT DU SCRIPT ---
+    # Cette ligne est cruciale : elle empêche le reste du code (registre, etc.) 
+    # de s'afficher en dessous de la lockscreen.
+    st.stop() 
+
+# ======================================================================================
+# LE RESTE DU CODE (S'affiche uniquement après connexion)
+# ======================================================================================
 # ======================================================================================
 # LE RESTE DU CODE (S'affiche uniquement après connexion)
 # ======================================================================================
