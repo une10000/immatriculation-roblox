@@ -603,7 +603,7 @@ if not mes_factures.empty:
                 st.error(f"Erreur paiement : {e}")
 
 # 4. BOUTON ANNULER (Staff/Admin) avec remise des points
-        if st.session_state.user_auth in ["Staff", "Admin"]:
+        if st.session_state.user_auth in ["Staff", "Admin", "POLSTA"]: # J'ai ajouté POLSTA au cas où
             if st.button(f"🗑️ ANNULER LA FACTURE #{fac['ID']}", key=f"admin_del_{fac['ID']}", use_container_width=True):
                 try:
                     with st.spinner("Annulation et restitution des points..."):
@@ -612,20 +612,14 @@ if not mes_factures.empty:
                         df_p_sync = cloud_conn.read(worksheet="Points Permis")
                         
                         # 2. On récupère le nombre de points sur la facture
-                        # On utilise .get() pour éviter que ça plante si la colonne est vide
                         pts_a_rendre = fac.get('Points', 0)
                         
-                        # 3. Logique de restitution des points (seulement si > 0)
+                        # 3. Logique de restitution des points
                         if pts_a_rendre and str(pts_a_rendre).isdigit() and int(pts_a_rendre) > 0:
                             try:
-                                # On cherche le civil dans la base des points
                                 idx_p = df_p_sync[df_p_sync["Nom Roblox"] == fac["Cible"]].index[0]
                                 current_pts = int(df_p_sync.at[idx_p, "PTS"])
-                                
-                                # On rajoute les points (max 12 pour ne pas dépasser le permis)
                                 df_p_sync.at[idx_p, "PTS"] = min(12, current_pts + int(pts_a_rendre))
-                                
-                                # Sauvegarde des points
                                 cloud_conn.update(worksheet="Points Permis", data=df_p_sync)
                                 st.info(f"🔄 {pts_a_rendre} points restitués au civil.")
                             except Exception as e_pts:
@@ -636,13 +630,17 @@ if not mes_factures.empty:
                         
                         # 5. Sauvegarde de la facture
                         cloud_conn.update(worksheet="Factures", data=df_f_sync)
+
+                        # --- LA MODIFICATION DU LOG ICI ---
+                        qui_annule = st.session_state.get('staff_name', 'Agent Staff')
+                        record_log(qui_annule, f"Rembourser la facture #{fac['ID']} de {fac['Cible']}")
                         
                         st.warning(f"Facture #{fac['ID']} annulée.")
                         st.cache_data.clear()
                         st.rerun()
                 except Exception as e:
                     st.error(f"Erreur annulation : {e}")
-        st.write("---") # Bien aligné avec le "if" du ticket principal
+        st.write("---")
 # --- SECTION VÉHICULES UNIFORMISÉE ---
 st.write("### 🚗 VÉHICULES ENREGISTRÉS")
 v_data = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
