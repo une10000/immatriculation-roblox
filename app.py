@@ -1001,12 +1001,20 @@ if st.session_state.user_auth == "Staff":
                         st.write(f"• Assurance {type_assurance} : -{total_assurance}$")
                         st.write(f"• Taxes JC ({nb_vehicules} vhc) : -{taxe_jc_total}$")
                 
-                # Section Solde Avant / Après
+                # Section Solde Avant / Après avec Flèches de couleur
                 st.markdown("---")
                 c_s1, c_s2, c_s3 = st.columns(3)
+                
+                # 1. Solde actuel (statique)
                 c_s1.metric("Solde Actuel", f"{solde_actuel}$")
+                
+                # 2. Versement Net (Delta rouge pour les taxes prélevées)
+                # delta_color="inverse" rend une valeur négative ROUGE
                 c_s2.metric("Versement Net", f"+{total_net}$", delta=f"-{total_prelevement}$ Taxes", delta_color="inverse")
-                c_s3.metric("Solde Final", f"{solde_final}$")
+                
+                # 3. Solde Final (Delta vert pour l'augmentation du compte)
+                # delta_color="normal" rend une valeur positive VERTE
+                c_s3.metric("Solde Final", f"{solde_final}$", delta=f"+{total_net}$", delta_color="normal")
 
                 if nb_vehicules >= 3 and "Agent RCT" in user_jobs_list:
                     st.success("💡 **Note Staff :** L'offre Trio a été appliquée (3ème assurance gratuite).")
