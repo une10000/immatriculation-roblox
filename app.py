@@ -602,27 +602,46 @@ if not mes_factures.empty:
             except Exception as e:
                 st.error(f"Erreur paiement : {e}")
 
-# 4. BOUTON ANNULER (Staff/Admin)
+# 4. BOUTON ANNULER (Staff/Admin) avec remise des points
         if st.session_state.user_auth in ["Staff", "Admin"]:
             if st.button(f"🗑️ ANNULER LA FACTURE #{fac['ID']}", key=f"admin_del_{fac['ID']}", use_container_width=True):
                 try:
-                    with st.spinner("Annulation en cours..."):
-                        # 1. On synchronise les données
+                    with st.spinner("Annulation et restitution des points..."):
+                        # 1. On récupère les données fraîches
                         df_f_sync = cloud_conn.read(worksheet="Factures")
+                        df_p_sync = cloud_conn.read(worksheet="Points Permis")
                         
-                        # 2. On change le statut de la facture spécifique dans le tableau
-                        # On cherche l'ID exact et on change sa colonne 'Statut'
+                        # 2. On récupère le nombre de points sur la facture
+                        # On utilise .get() pour éviter que ça plante si la colonne est vide
+                        pts_a_rendre = fac.get('Points', 0)
+                        
+                        # 3. Logique de restitution des points (seulement si > 0)
+                        if pts_a_rendre and str(pts_a_rendre).isdigit() and int(pts_a_rendre) > 0:
+                            try:
+                                # On cherche le civil dans la base des points
+                                idx_p = df_p_sync[df_p_sync["Nom Roblox"] == fac["Cible"]].index[0]
+                                current_pts = int(df_p_sync.at[idx_p, "PTS"])
+                                
+                                # On rajoute les points (max 12 pour ne pas dépasser le permis)
+                                df_p_sync.at[idx_p, "PTS"] = min(12, current_pts + int(pts_a_rendre))
+                                
+                                # Sauvegarde des points
+                                cloud_conn.update(worksheet="Points Permis", data=df_p_sync)
+                                st.info(f"🔄 {pts_a_rendre} points restitués au civil.")
+                            except Exception as e_pts:
+                                st.error(f"Erreur restitution points : {e_pts}")
+
+                        # 4. On change le statut de la facture en ANNULÉ
                         df_f_sync.loc[df_f_sync["ID"] == fac["ID"], "Statut"] = "ANNULÉ"
                         
-                        # 3. On renvoie tout le tableau mis à jour au Sheets
+                        # 5. Sauvegarde de la facture
                         cloud_conn.update(worksheet="Factures", data=df_f_sync)
                         
-                        st.warning(f"La facture #{fac['ID']} a été annulée.")
+                        st.warning(f"Facture #{fac['ID']} annulée.")
                         st.cache_data.clear()
                         st.rerun()
                 except Exception as e:
                     st.error(f"Erreur annulation : {e}")
-        
         st.write("---") # Bien aligné avec le "if" du ticket principal
 # --- SECTION VÉHICULES UNIFORMISÉE ---
 st.write("### 🚗 VÉHICULES ENREGISTRÉS")
