@@ -762,9 +762,23 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
             with col_saisie:
                 with st.container(border=True):
                     st.markdown("#### 📝 Saisie")
+                    
+                    # --- NOUVEAU : CHOIX DE L'ÉMETTEUR ---
+                    if st.session_state.user_auth == "Staff":
+                        # Le Staff peut choisir entre Polsta (amende) ou Averis (facture pro)
+                        f_emetteur = st.selectbox("Émetteur", ["Polsta", "Averis"], key="v_emetteur_final")
+                    else:
+                        # Si c'est un compte RCT, l'émetteur est forcément RCT
+                        f_emetteur = "RCT"
+                        st.info("Émetteur : RCT")
+
                     f_val = st.number_input("Montant ($)", min_value=0, step=50, key="v_val_final")
-                    is_rct = (st.session_state.user_auth == "RCT")
-                    f_pts = st.number_input("Points à retirer", 0, 12, 0, key="v_pts_final", disabled=is_rct)
+                    
+                    # --- LOGIQUE POINTS ---
+                    # On ne retire des points QUE si c'est Polsta (Staff). Pas pour RCT, pas pour Averis.
+                    can_pull_points = (st.session_state.user_auth == "Staff" and f_emetteur == "Polsta")
+                    f_pts = st.number_input("Points à retirer", 0, 12, 0, key="v_pts_final", disabled=not can_pull_points)
+                    
                     f_motif = st.text_input("Motif", key="v_mot_final")
                     
                     target_veh = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
@@ -772,44 +786,58 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                     f_plate = st.selectbox("Véhicule concerné", v_list, key="v_plate_final")
                     
                     st.write("")
-                    label = "🚨 ENVOYER & DÉBITER" if not is_rct else "🚨 ENVOYER FACTURE"
+                    label = "🚨 ENVOYER FACTURE"
                     if st.button(label, use_container_width=True, type="primary"):
                         if not f_motif:
                             st.error("Motif obligatoire.")
                         else:
-                            # Logique d'enregistrement (Points + Facture)
-                            if f_pts > 0 and not is_rct:
-                                idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
-                                df_p.at[idx_p, "PTS"] = max(0, int(df_p.at[idx_p, "PTS"]) - f_pts)
-                                cloud_conn.update(worksheet="Points Permis", data=df_p)
+                            # 1. Logique d'enregistrement des Points (Seulement si Polsta)
+                            if f_pts > 0 and can_pull_points:
+                                try:
+                                    idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
+                                    df_p.at[idx_p, "PTS"] = max(0, int(df_p.at[idx_p, "PTS"]) - f_pts)
+                                    cloud_conn.update(worksheet="Points Permis", data=df_p)
+                                except:
+                                    st.error("Erreur mise à jour points.")
                             
+                            # 2. Préparation de la facture
+                            import random
                             new_row = {
-                                "ID": random.randint(1000, 9999), "Cible": target,
-                                "Emetteur": st.session_state.user_auth, "Montant": f_val,
-                                "Motif": f"{f_motif} [{f_plate}]", "Statut": "EN ATTENTE",
+                                "ID": random.randint(1000, 9999), 
+                                "Cible": target,
+                                "Emetteur": f_emetteur, # Utilise le choix Polsta/Averis/RCT
+                                "Montant": f_val,
+                                "Motif": f"{f_motif} [{f_plate}]", 
+                                "Statut": "EN ATTENTE",
                                 "Date_Limite": (datetime.now() + timedelta(hours=24)).strftime("%d/%m/%Y %H:%M:%S")
                             }
+                            
+                            # 3. Sauvegarde Cloud
                             df_f_updated = pd.concat([df_all_f, pd.DataFrame([new_row])], ignore_index=True)
                             cloud_conn.update(worksheet="Factures", data=df_f_updated)
-                            st.success("✅ Envoyé !")
+                            
+                            st.success(f"✅ Facture {f_emetteur} envoyée !")
                             st.cache_data.clear()
                             st.rerun()
 
             with col_facture:
                 st.markdown("#### 📄 Aperçu")
+                # Design dynamique selon l'émetteur
+                header_ticket = "FACTURE AVERIS" if f_emetteur == "Averis" else "FACTURE OFFICIELLE"
                 st.markdown(f"""
                 <div style="border: 2px solid black; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; line-height: 1.2;">
-                    <center><b>FACTURE</b><br><small>RÉPUBLIQUE DE RENSSERLAER</small></center>
+                    <center><b>{header_ticket}</b><br><small>RÉPUBLIQUE DE RENSSERLAER</small></center>
                     <hr style="border-top: 1px solid #ccc; margin: 10px 0;">
-                    <b>DATE   :</b> {datetime.now().strftime('%d/%m/%Y')}<br>
-                    <b>NOM    :</b> {target}<br>
-                    <b>MOTIF  :</b> {f_motif.upper() if f_motif else '...'}<br>
-                    <b>PLAQUE :</b> <span style="border: 1px solid black; padding: 0 3px;">{f_plate}</span><br>
-                    <b>MONTANT:</b> {f_val}$
+                    <b>ÉMETTEUR :</b> {f_emetteur.upper()}<br>
+                    <b>DATE    :</b> {datetime.now().strftime('%d/%m/%Y')}<br>
+                    <b>NOM     :</b> {target}<br>
+                    <b>MOTIF   :</b> {f_motif.upper() if f_motif else '...'}<br>
+                    <b>PLAQUE  :</b> <span style="border: 1px solid black; padding: 0 3px;">{f_plate}</span><br>
+                    <b>MONTANT :</b> {f_val}$
                     <hr style="border-top: 1px solid #ccc; margin: 10px 0;">
                     <div style="text-align: center; color: black; font-weight: bold; font-size: 0.8em;">
-                        POINTS À DÉBITER : -{f_pts}<br>
-                        <small>Par le Terminal National</small>
+                        POINTS : -{f_pts if can_pull_points else 0}<br>
+                        <small>Document généré par terminal</small>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
