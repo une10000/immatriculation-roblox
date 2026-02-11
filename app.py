@@ -733,11 +733,26 @@ with tabs[0]:
                                 cloud_conn.update(worksheet="Banque", data=df_b)
                                 cloud_conn.update(worksheet="Copie de Immatriculations", data=new_df_i)
                                 
-                                # 5. Succès
-                                st.balloons()
-                                st.success(f"✅ Véhicule enregistré ! {total_bill}$ débités.")
+                                # 5. Effet de fête et Confirmation
+                                st.balloons() # Les ballons ! 🎈
                                 
-                                # Rafraîchissement
+                                # Message de confirmation stylé
+                                st.success(f"""
+                                ### ✅ IMMATRICULATION RÉUSSIE !
+                                ---
+                                * **Propriétaire :** {f_owner}
+                                * **Véhicule :** {f_model}
+                                * **Plaque :** {f_plate}
+                                * **Montant débité :** {total_bill}$
+                                
+                                *Le titre de circulation a été enregistré dans la base nationale.*
+                                """)
+                                
+                                # Petite pause pour laisser voir les ballons avant le refresh
+                                import time
+                                time.sleep(3)
+                                
+                                # Rafraîchissement pour vider le formulaire
                                 st.cache_data.clear()
                                 st.rerun()
                                 
