@@ -929,158 +929,160 @@ if st.session_state.user_auth == "Staff":
                         time.sleep(1)
                         st.rerun()
 # --- SECTION 2 : SYSTÈME DE PAIE & ASSURANCES AUTOMATIQUES ---
-st.divider()
-st.markdown("### 🧧 Terminal de Paie Nationale")
-with st.container(border=True):
-    options_paie = sorted(df_b["Nom Roblox"].unique().tolist()) if not df_b.empty else []
-    target_paie = st.selectbox("Sélectionner le bénéficiaire :", options_paie, key="paie_auto_target")
+
+# On vérifie l'accès : Seuls les pseudos listés ici peuvent voir cette section
+if st.session_state.get("user_auth") in ["Moune2010", "une10000", "TonPseudoAdmin"]: 
+    st.divider()
+    st.markdown("### 🧧 Terminal de Paie Nationale")
     
-    if target_paie:
-        # 1. Analyse du dossier
-        user_data = df_b[df_b["Nom Roblox"] == target_paie]
-        user_jobs_raw = user_data["Emploiement"].values[0]
-        user_jobs_list = [j.strip() for j in str(user_jobs_raw).split("/")]
+    with st.container(border=True):
+        options_paie = sorted(df_b["Nom Roblox"].unique().tolist()) if not df_b.empty else []
+        target_paie = st.selectbox("Sélectionner le bénéficiaire :", options_paie, key="paie_auto_target")
         
-        # Récupération du solde actuel
-        solde_actuel = float(str(user_data["Solde"].values[0]).replace('$', '').replace(',', ''))
-        
-        # 2. Calcul détaillé des Primes Métier
-        primes_detail_list = []
-        calcul_primes = 0
-        if 'PRIME_JOB' in locals():
-            for job in user_jobs_list:
-                m_prime = PRIME_JOB.get(job, 0)
-                if m_prime > 0:
-                    primes_detail_list.append(f"• **{job}** : +{m_prime}$")
-                    calcul_primes += m_prime
-        
-        total_brut = 15000 + calcul_primes
-        
-        # 3. Calcul précis des Assurances et Taxes (Ancienneté Citoyen > 30 jours)
-        from datetime import datetime
-        import pandas as pd
-        
-        try:
-            date_arrivee_str = str(user_data["Date d'arrivée"].values[0])
-            date_arrivee = pd.to_datetime(date_arrivee_str, dayfirst=True)
-            date_actuelle = datetime.now()
-            anciennete_jours = (date_actuelle - date_arrivee).days
-        except:
-            anciennete_jours = 0
-        
-        mes_vehicules = df_i[df_i["Nom d'utilisateur ROBLOX"] == target_paie]
-        nb_vehicules = len(mes_vehicules)
-        
-        # Récupération des points actuels (on prend la valeur du premier véhicule trouvé)
-        points_actuels = 0
-        if not mes_vehicules.empty and "Points" in df_i.columns:
-            points_actuels = mes_vehicules["Points"].values[0]
-        
-        total_assurance = 0
-        taxe_jc_total = 0
-        
-        # RÈGLE : Taxe JC (50$/vhc) seulement si ancienneté < 30 jours (1 mois)
-        est_jeune_conducteur = anciennete_jours < 30
-        if est_jeune_conducteur:
-            taxe_jc_total = nb_vehicules * 50
-        
-        # Logique Tarifaire Assurance
-        if nb_vehicules > 0:
-            if "Agent RCT" in user_jobs_list:
-                nb_payants = min(nb_vehicules, 2)
-                total_assurance = nb_payants * 150
-                type_assurance = "RCT (Offre Trio)" if nb_vehicules >= 3 else "RCT Standard"
-            elif "Averis" in user_jobs_list:
-                total_assurance = nb_vehicules * 130
-                type_assurance = "Averis"
-            else:
-                total_assurance = nb_vehicules * 150
-                type_assurance = "Standard"
-        else:
-            type_assurance = "Aucun véhicule"
-
-        total_prelevement = total_assurance + taxe_jc_total
-        total_net = total_brut - total_prelevement
-        solde_final = solde_actuel + total_net
-        
-        # --- AFFICHAGE ---
-        st.markdown(f"#### 📊 Fiche de Paie : {target_paie}")
-        col_rev1, col_rev2 = st.columns(2)
-        with col_rev1:
-            with st.container(border=True):
-                st.write("**💰 REVENUS**")
-                st.write(f"• Salaire de Base : 15,000$")
-                if primes_detail_list:
-                    for p in primes_detail_list: st.write(p)
-                else:
-                    st.write("• Aucune prime métier")
-        
-        with col_rev2:
-            with st.container(border=True):
-                st.write("**📉 PRÉLÈVEMENTS**")
-                st.write(f"• Assurance {type_assurance} : -{total_assurance}$")
-                
-                if est_jeune_conducteur:
-                    st.write(f"• Taxes JC (Nouveau : {anciennete_jours}j) : -{taxe_jc_total}$")
-                    st.caption(f"⏳ Exonération dans {30 - anciennete_jours} jours")
-                else:
-                    st.write(f"• Taxes JC : **EXONÉRÉ** ✅")
-                    st.caption(f"✨ Citoyen depuis {anciennete_jours} jours")
-        
-        # Metrics avec flèches "cute"
-        st.markdown("---")
-        c1, c2, c3, c4 = st.columns(4)
-        
-        # 1. Solde actuel
-        c1.metric("Solde Actuel", f"{solde_actuel}$")
-        
-        # 2. Points (avec flèche vers le haut car on reset à 25)
-        diff_points = 25 - points_actuels
-        c2.metric("Points Permis", f"25/25", delta=f"+{diff_points}" if diff_points > 0 else None, delta_color="normal")
-        
-        # 3. Versement Net (avec flèche rouge pour les taxes)
-        c3.metric("Net à Verser", f"+{total_net}$", delta=f"-{total_prelevement}$ Taxes", delta_color="inverse")
-        
-        # 4. Solde Final (avec flèche verte vers le haut)
-        c4.metric("Solde Final", f"{solde_final}$", delta=f"+{total_net}$", delta_color="normal")
-
-        if nb_vehicules >= 3 and "Agent RCT" in user_jobs_list:
-            st.success("💡 **Note Staff :** L'offre Trio a été appliquée (3ème assurance gratuite).")
-
-        # Bouton de validation
-        if st.button(f"🧧 CONFIRMER LE VERSEMENT ET LE RESET DES POINTS", use_container_width=True, type="primary"):
+        if target_paie:
+            # 1. Analyse du dossier
+            user_data = df_b[df_b["Nom Roblox"] == target_paie]
+            user_jobs_raw = user_data["Emploiement"].values[0]
+            user_jobs_list = [j.strip() for j in str(user_jobs_raw).split("/")]
+            
+            # Récupération du solde actuel
+            solde_actuel = float(str(user_data["Solde"].values[0]).replace('$', '').replace(',', ''))
+            
+            # 2. Calcul détaillé des Primes Métier
+            primes_detail_list = []
+            calcul_primes = 0
+            if 'PRIME_JOB' in locals():
+                for job in user_jobs_list:
+                    m_prime = PRIME_JOB.get(job, 0)
+                    if m_prime > 0:
+                        primes_detail_list.append(f"• **{job}** : +{m_prime}$")
+                        calcul_primes += m_prime
+            
+            total_brut = 15000 + calcul_primes
+            
+            # 3. Calcul précis des Assurances et Taxes
+            from datetime import datetime
+            import pandas as pd
+            
             try:
-                with st.spinner("Mise à jour nationale en cours..."):
-                    # A. Débit des caisses patronales
-                    if "Agent RCT" in user_jobs_list:
-                        idx_rct = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
-                        df_b.at[idx_rct, "Solde"] = float(df_b.at[idx_rct, "Solde"]) - 2000
-                    
-                    if "Averis" in user_jobs_list:
-                        idx_av = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
-                        df_b.at[idx_av, "Solde"] = float(df_b.at[idx_av, "Solde"]) - 2000
+                date_arrivee_str = str(user_data["Date d'arrivée"].values[0])
+                date_arrivee = pd.to_datetime(date_arrivee_str, dayfirst=True)
+                date_actuelle = datetime.now()
+                anciennete_jours = (date_actuelle - date_arrivee).days
+            except:
+                anciennete_jours = 0
+            
+            mes_vehicules = df_i[df_i["Nom d'utilisateur ROBLOX"] == target_paie]
+            nb_vehicules = len(mes_vehicules)
+            
+            # Récupération des points actuels pour le delta cute
+            points_actuels = 0
+            if not mes_vehicules.empty and "Points" in df_i.columns:
+                points_actuels = mes_vehicules["Points"].values[0]
+            
+            total_assurance = 0
+            taxe_jc_total = 0
+            
+            # RÈGLE : Taxe JC (50$/vhc) seulement si ancienneté < 30 jours
+            est_jeune_conducteur = anciennete_jours < 30
+            if est_jeune_conducteur:
+                taxe_jc_total = nb_vehicules * 50
+            
+            # Logique Tarifaire Assurance
+            if nb_vehicules > 0:
+                if "Agent RCT" in user_jobs_list:
+                    nb_payants = min(nb_vehicules, 2)
+                    total_assurance = nb_payants * 150
+                    type_assurance = "RCT (Offre Trio)" if nb_vehicules >= 3 else "RCT Standard"
+                elif "Averis" in user_jobs_list:
+                    total_assurance = nb_vehicules * 130
+                    type_assurance = "Averis"
+                else:
+                    total_assurance = nb_vehicules * 150
+                    type_assurance = "Standard"
+            else:
+                type_assurance = "Aucun véhicule"
 
-                    # B. Crédit du citoyen
-                    idx_ben = df_b[df_b["Nom Roblox"] == target_paie].index[0]
-                    df_b.at[idx_ben, "Solde"] = solde_final 
-                    
-                    # C. Mise à jour (Assurances + Points)
-                    df_i.loc[df_i["Nom d'utilisateur ROBLOX"] == target_paie, "Assurance"] = "PAYÉ (AUTO+JC)"
-                    if "Points" in df_i.columns:
-                        df_i.loc[df_i["Nom d'utilisateur ROBLOX"] == target_paie, "Points"] = 25
-                    
-                    # D. Envoi au Cloud
-                    cloud_conn.update(worksheet="Banque", data=df_b)
-                    cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i)
-                    
-                    record_log(st.session_state.user_auth, f"PAIE & RESET : {target_paie} | {total_net}$ | Points à 25")
-                    st.success(f"✅ Opération terminée pour {target_paie} !")
-                    st.cache_data.clear()
-                    import time
-                    time.sleep(1)
-                    st.rerun()
-            except Exception as e:
-                st.error(f"⚠️ Erreur : {e}")
+            total_prelevement = total_assurance + taxe_jc_total
+            total_net = total_brut - total_prelevement
+            solde_final = solde_actuel + total_net
+            
+            # --- AFFICHAGE ---
+            st.markdown(f"#### 📊 Fiche de Paie : {target_paie}")
+            col_rev1, col_rev2 = st.columns(2)
+            with col_rev1:
+                with st.container(border=True):
+                    st.write("**💰 REVENUS**")
+                    st.write(f"• Salaire de Base : 15,000$")
+                    if primes_detail_list:
+                        for p in primes_detail_list: st.write(p)
+                    else:
+                        st.write("• Aucune prime métier")
+            
+            with col_rev2:
+                with st.container(border=True):
+                    st.write("**📉 PRÉLÈVEMENTS**")
+                    st.write(f"• Assurance {type_assurance} : -{total_assurance}$")
+                    if est_jeune_conducteur:
+                        st.write(f"• Taxes JC (Nouveau : {anciennete_jours}j) : -{taxe_jc_total}$")
+                        st.caption(f"⏳ Exonération dans {30 - anciennete_jours} jours")
+                    else:
+                        st.write(f"• Taxes JC : **EXONÉRÉ** ✅")
+                        st.caption(f"✨ Citoyen depuis {anciennete_jours} jours")
+            
+            # Metrics avec flèches "cute"
+            st.markdown("---")
+            c1, c2, c3, c4 = st.columns(4)
+            
+            c1.metric("Solde Actuel", f"{solde_actuel}$")
+            
+            diff_points = 25 - points_actuels
+            c2.metric("Points Permis", "25/25", delta=f"+{diff_points}" if diff_points > 0 else None, delta_color="normal")
+            
+            c3.metric("Net à Verser", f"+{total_net}$", delta=f"-{total_prelevement}$ Taxes", delta_color="inverse")
+            
+            c4.metric("Solde Final", f"{solde_final}$", delta=f"+{total_net}$", delta_color="normal")
+
+            if nb_vehicules >= 3 and "Agent RCT" in user_jobs_list:
+                st.success("💡 **Note Staff :** L'offre Trio a été appliquée (3ème assurance gratuite).")
+
+            # Bouton de validation
+            if st.button(f"🧧 CONFIRMER LE VERSEMENT ET LE RESET DES POINTS", use_container_width=True, type="primary"):
+                try:
+                    with st.spinner("Traitement de la paie nationale..."):
+                        # A. Débit des caisses patronales
+                        if "Agent RCT" in user_jobs_list:
+                            idx_rct = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
+                            df_b.at[idx_rct, "Solde"] = float(df_b.at[idx_rct, "Solde"]) - 2000
+                        
+                        if "Averis" in user_jobs_list:
+                            idx_av = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
+                            df_b.at[idx_av, "Solde"] = float(df_b.at[idx_av, "Solde"]) - 2000
+
+                        # B. Crédit du citoyen
+                        idx_ben = df_b[df_b["Nom Roblox"] == target_paie].index[0]
+                        df_b.at[idx_ben, "Solde"] = solde_final 
+                        
+                        # C. Mise à jour automatique (Assurances + Points)
+                        df_i.loc[df_i["Nom d'utilisateur ROBLOX"] == target_paie, "Assurance"] = "PAYÉ (AUTO+JC)"
+                        if "Points" in df_i.columns:
+                            df_i.loc[df_i["Nom d'utilisateur ROBLOX"] == target_paie, "Points"] = 25
+                        
+                        # D. Envoi au Cloud
+                        cloud_conn.update(worksheet="Banque", data=df_b)
+                        cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i)
+                        
+                        # E. Logs et Rerun
+                        record_log(st.session_state.user_auth, f"PAIE & RESET : {target_paie} | {total_net}$ | Points à 25")
+                        st.success(f"✅ Paie validée et points réinitialisés pour {target_paie} !")
+                        st.cache_data.clear()
+                        import time
+                        time.sleep(1)
+                        st.rerun()
+                except Exception as e:
+                    st.error(f"⚠️ Erreur lors de la transaction : {e}")
+
+# <-- Plus rien ici, le terminal est fini et protégé.
         # --- SECTION 3 : LOGS ET STATISTIQUES ---
         st.divider()
         col_admin_left, col_admin_right = st.columns(2)
