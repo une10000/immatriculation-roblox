@@ -925,6 +925,7 @@ if st.session_state.user_auth == "Staff":
                         record_log(st.session_state.user_auth, f"Profil créé : {new_name}")
                         st.success(f"✅ Dossier créé pour {new_name}")
                         st.cache_data.clear()
+                        import time
                         time.sleep(1)
                         st.rerun()
 
@@ -932,46 +933,56 @@ if st.session_state.user_auth == "Staff":
         st.divider()
         st.markdown("### 🧧 Terminal de Paie Nationale")
         with st.container(border=True):
-            target_paie = st.selectbox("Sélectionner le bénéficiaire :", sorted(df_b["Nom Roblox"].unique().tolist()), key="paie_auto_target")
+            # Sécurité si la base est vide
+            options_paie = sorted(df_b["Nom Roblox"].unique().tolist()) if not df_b.empty else []
+            target_paie = st.selectbox("Sélectionner le bénéficiaire :", options_paie, key="paie_auto_target")
             
             if target_paie:
-                user_jobs_raw = df_b[df_b["Nom Roblox"] == target_paie]["Emploiement"].values[0]
+                # Récupération des infos
+                user_data = df_b[df_b["Nom Roblox"] == target_paie]
+                user_jobs_raw = user_data["Emploiement"].values[0]
                 user_jobs_list = [j.strip() for j in str(user_jobs_raw).split("/")]
                 
-                calcul_primes = sum(PRIME_JOB.get(j, 0) for j in user_jobs_list)
+                # Calcul Primes (utilise ta constante PRIME_JOB)
+                # Note : Assure-toi que PRIME_JOB est définie en haut de ton code
+                calcul_primes = sum(PRIME_JOB.get(j, 0) for j in user_jobs_list) if 'PRIME_JOB' in locals() else 0
                 total_final = 15000 + calcul_primes
                 
-                st.info(f"📋 **Jobs :** {', '.join(user_jobs_list)}")
-                st.metric("MONTANT CALCULÉ", f"{total_final}$", f"+{calcul_primes}$ de primes")
+                st.info(f"📋 **Emplois détectés :** {', '.join(user_jobs_list)}")
+                st.metric("VERSEMENT TOTAL", f"{total_final}$", f"+{calcul_primes}$ de primes")
 
                 if st.button(f"🧧 VERSER {total_final}$ & RESET NATIONAL", use_container_width=True):
                     try:
-                        # Débits auto
+                        # 1. Débits des caisses d'entreprises (Coût de la main d'œuvre)
                         if "Agent RCT" in user_jobs_list:
                             idx_rct = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
-                            df_b.at[idx_rct, "Solde"] -= 2000
+                            df_b.at[idx_rct, "Solde"] = float(df_b.at[idx_rct, "Solde"]) - 2000
                         
                         if "Averis" in user_jobs_list:
                             idx_av = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
-                            df_b.at[idx_av, "Solde"] -= 2000
+                            df_b.at[idx_av, "Solde"] = float(df_b.at[idx_av, "Solde"]) - 2000
 
-                        # Versement
+                        # 2. Crédit du citoyen
                         idx_ben = df_b[df_b["Nom Roblox"] == target_paie].index[0]
                         solde_actuel = float(str(df_b.at[idx_ben, "Solde"]).replace('$', '').replace(',', ''))
                         df_b.at[idx_ben, "Solde"] = solde_actuel + total_final
                         
-                        # Reset Immatriculations
+                        # 3. Reset du registre des immatriculations (Nettoyage de session)
+                        # On crée un DF vide avec les mêmes colonnes
                         df_immat_reset = pd.DataFrame(columns=df_i.columns)
                         
+                        # 4. Envoi au Cloud
                         cloud_conn.update(worksheet="Banque", data=df_b)
                         cloud_conn.update(worksheet="Copie de Immatriculations", data=df_immat_reset)
                         
-                        record_log(st.session_state.user_auth, f"PAIE : {target_paie} (+{total_final}$)")
-                        st.success("✅ Payé et registre vidé !")
+                        record_log(st.session_state.user_auth, f"PAIE & RESET : {target_paie} (+{total_final}$)")
+                        st.success("✅ Transaction effectuée et registre purgé !")
                         st.cache_data.clear()
+                        import time
+                        time.sleep(1)
                         st.rerun()
                     except Exception as e:
-                        st.error(f"Erreur : {e}")
+                        st.error(f"Erreur lors de la paie : {e}")
 
         # --- SECTION 3 : LOGS ET STATISTIQUES ---
         st.divider()
@@ -980,29 +991,27 @@ if st.session_state.user_auth == "Staff":
         with col_admin_left:
             st.markdown("### 📜 Journaux d'Audit")
             with st.container(border=True):
-                if st.session_state.audit_logs:
+                if "audit_logs" in st.session_state and st.session_state.audit_logs:
                     log_text = "\n".join(list(reversed(st.session_state.audit_logs)))
                     st.code(log_text, language="bash")
                     if st.button("🗑️ EFFACER LES LOGS", use_container_width=True):
                         st.session_state.audit_logs = []
                         st.rerun()
                 else:
-                    st.info("Aucune activité.")
+                    st.info("Aucune activité enregistrée.")
 
         with col_admin_right:
             st.markdown("### 📊 État du Système")
             with st.container(border=True):
-                st.success(f"👥 Citoyens : {len(df_b)}")
-                st.info(f"🚗 Véhicules : {len(df_i)}")
-                st.warning(f"🪪 Permis : {len(df_p)}")
+                st.success(f"👥 Citoyens enregistrés : {len(df_b)}")
+                st.info(f"🚗 Véhicules en base : {len(df_i)}")
+                st.warning(f"🪪 Permis actifs : {len(df_p)}")
                 st.divider()
                 if st.button("♻️ FORCER LA SYNCHRO", use_container_width=True):
                     st.cache_data.clear()
                     st.rerun()
-# --- SÉCURITÉ : NETTOYAGE DES VARIABLES FANTÔMES ---
-# Supprime ou commente absolument ces lignes si elles traînent encore en bas de ton fichier :
-# with col_vehicule_view: <--- C'EST ÇA QUI FAIT PLANTER L'AFFICHAGE !
 
+# --- FIN DE L'ONGLET ADMINISTRATION ---
 # ======================================================================================
 # 8. PIED DE PAGE
 # ======================================================================================
