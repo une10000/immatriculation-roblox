@@ -779,31 +779,48 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
 
             # ---------------- APERÇU VÉHICULES ----------------
             with col_vehicules:
-                st.markdown("#### 🚗 Aperçu véhicules")
+    st.markdown("#### 🚗 Aperçu véhicules")
 
-                if target_veh.empty:
-                    st.info("Aucun véhicule.")
-                else:
-                    for _, veh in target_veh.iterrows():
-                        assu = str(veh["Assurance"]).upper()
-                        col_v = "#E67E22" if "AVERIS" in assu else (
-                            "green" if "RCT" in assu else "red"
-                        )
+    if target_veh.empty:
+        st.info("Aucun véhicule.")
+    else:
+        for _, veh in target_veh.iterrows():
+            assu = str(veh["Assurance"]).upper()
+            col_v = "#E67E22" if "AVERIS" in assu else (
+                "green" if "RCT" in assu else "red"
+            )
 
-                        veh_html = f"""
-<div style="border:2px solid black; padding:15px; background:white;
-            font-family:'Courier New', monospace; font-size:0.9em; margin-bottom:10px;">
+            danger_txt = ""
+            if "AVERIS" in assu:
+                danger_txt = """
+                <div style="margin-top:4px; color:#b35400; font-size:0.75em; text-align:center;">
+                    ⚠️ <b>DANGER</b> : VÉHICULE ASSURÉ AVERIS
+                </div>
+                """
+
+            veh_html = f"""
+<div style="
+    border:2px solid black;
+    padding:10px;
+    background:white;
+    font-family:'Courier New', monospace;
+    font-size:0.85em;
+    margin-bottom:4px;
+">
     <center><b>FICHE VÉHICULE</b></center>
-    <hr>
+    <hr style="margin:6px 0;">
+
     <b>MARQUE :</b> {veh['Marque du véhicule']}<br>
     <b>PLAQUE :</b> {veh['Numéro de la plaque']}<br>
     <b>ASSURANCE :</b>
     <span style="color:{col_v}; font-weight:bold;">{assu}</span>
-    <hr style="border-top:1px dashed black;">
+
+    <hr style="border-top:1px dashed black; margin:6px 0;">
     <center><small>DOCUMENT INTERNE</small></center>
+    {danger_txt}
 </div>
 """
-                        components.html(veh_html, height=220)
+            components.html(veh_html, height=160)
 
 # --- ONGLET 3 : ADMINISTRATION (STAFF ONLY) ---
 if st.session_state.user_auth == "Staff":
