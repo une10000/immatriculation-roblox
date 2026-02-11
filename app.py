@@ -633,11 +633,14 @@ if "👮 SERVICES AGENT" in tab_labels:
         if target == "---":
             st.warning("⚠️ Sélectionnez un citoyen en haut de la page.")
         else:
+            # Layout : Saisie | Aperçu Facture | Liste Véhicules
             col_saisie, col_facture, col_vehicules = st.columns([1.1, 1, 0.9])
 
             with col_saisie:
                 with st.container(border=True):
                     st.markdown("#### 📝 Saisie")
+                    
+                    # Logique émetteur
                     if st.session_state.user_auth in ["Staff", "POLSTA"]:
                         f_emetteur = st.selectbox("Émetteur", ["POLSTA", "Averis"], key="agent_emetteur")
                     else:
@@ -645,10 +648,14 @@ if "👮 SERVICES AGENT" in tab_labels:
                         st.info("Émetteur : RCT")
 
                     f_val = st.number_input("Montant ($)", min_value=0, step=50, key="agent_montant")
+                    
+                    # Gestion des points (Seulement POLSTA/Staff)
                     can_pull_points = (st.session_state.user_auth in ["Staff", "POLSTA"] and f_emetteur == "POLSTA")
                     f_pts = st.number_input("Points à retirer", 0, 12, 0, key="agent_pts", disabled=not can_pull_points)
+                    
                     f_motif = st.text_input("Motif", key="agent_motif")
                     
+                    # Sélection du véhicule
                     target_veh = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
                     v_list = ["AUCUN / PIÉTON"] + target_veh["Numéro de la plaque"].tolist()
                     f_plate = st.selectbox("Véhicule concerné", v_list, key="agent_plate")
@@ -659,20 +666,33 @@ if "👮 SERVICES AGENT" in tab_labels:
                         else:
                             f_id = random.randint(1000, 9999)
                             new_row = {
-                                "ID": f_id, "Cible": target, "Emetteur": f_emetteur,
-                                "Montant": f_val, "Points": f_pts, "Motif": f"{f_motif} [{f_plate}]",
+                                "ID": f_id, 
+                                "Cible": target, 
+                                "Emetteur": f_emetteur,
+                                "Montant": f_val, 
+                                "Points": f_pts if can_pull_points else 0, 
+                                "Motif": f"{f_motif} [{f_plate}]",
                                 "Statut": "EN ATTENTE",
                                 "Date_Limite": (datetime.now() + timedelta(hours=24)).strftime("%d/%m/%Y %H:%M:%S")
                             }
-                            df_f_updated = pd.concat([cloud_conn.read(worksheet="Factures"), pd.DataFrame([new_row])], ignore_index=True)
-                            cloud_conn.update(worksheet="Factures", data=df_f_updated)
-                            record_log(st.session_state.user_auth, f"Envoi Facture #{f_id}", target)
-                            st.success(f"✅ Facture #{f_id} envoyée !")
-                            st.rerun()
+                            
+                            try:
+                                # Mise à jour Cloud
+                                df_f_current = cloud_conn.read(worksheet="Factures")
+                                df_f_updated = pd.concat([df_f_current, pd.DataFrame([new_row])], ignore_index=True)
+                                cloud_conn.update(worksheet="Factures", data=df_f_updated)
+                                
+                                # Log de l'action (Correction du bug ligne 669)
+                                record_log(st.session_state.user_auth, f"Envoi Facture #{f_id}", target)
+                                
+                                st.success(f"✅ Facture #{f_id} envoyée !")
+                                time.sleep(1)
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Erreur lors de l'envoi : {e}")
 
             with col_facture:
                 st.markdown("#### 📄 Aperçu")
-                # Design dynamique selon l'émetteur
                 header_ticket = "FACTURE AVERIS" if f_emetteur == "Averis" else "FACTURE OFFICIELLE"
                 st.markdown(f"""
                 <div style="border: 2px solid black; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; line-height: 1.2;">
@@ -698,18 +718,17 @@ if "👮 SERVICES AGENT" in tab_labels:
                     for _, veh in target_veh.iterrows():
                         assu_v = str(veh['Assurance']).upper()
                         
-                        # 1. LOGIQUE DES COULEURS (Miroir)
+                        # Logique des couleurs Miroir
                         if st.session_state.user_auth == "RCT":
                             if "RCT" in assu_v:
                                 col_v, txt_v = "green", "✅ ASSURÉ RCT"
                             elif "AVERIS" in assu_v:
                                 col_v, txt_v = "#E67E22", "⚠️ ASSURÉ AVERIS"
                             else:
-                                col_v, txt_v = "#d32f2f", "🚨 DANGER : NON-ASSURÉ"
+                                col_v, txt_v = "#d32f2f", "🚨 NON-ASSURÉ"
                         else:
                             col_v, txt_v = "green", "✅ VÉHICULE EN RÈGLE"
 
-                        # 2. AFFICHAGE (Sorti du 'else' pour être visible par tout le monde)
                         st.markdown(f"""
                         <div style="border: 2px solid black; padding: 10px; background: white; color: black; font-family: 'Courier New', monospace; margin-bottom: 10px; font-size: 0.8em;">
                             <center><b>TITRE DE CIRCULATION</b></center>
