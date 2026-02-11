@@ -743,11 +743,16 @@ else:
 # 7. LOGIQUE DES ONGLETS (CORRIGÉE)
 # ======================================================================================
 tab_labels = ["🚗 IMMATRICULATION"]
-if st.session_state.user_auth in ["RCT", "Staff"]: tab_labels.append("👮 SERVICES AGENT")
-if st.session_state.user_auth == "Staff": tab_labels.append("🛠️ ADMINISTRATION")
+
+# On ajoute POLSTA ici pour qu'il voie l'onglet Agent
+if st.session_state.user_auth in ["RCT", "Staff", "POLSTA"]: 
+    tab_labels.append("👮 SERVICES AGENT")
+
+# On ajoute POLSTA ici pour qu'il voie l'onglet Administration
+if st.session_state.user_auth in ["Staff", "POLSTA"]: 
+    tab_labels.append("🛠️ ADMINISTRATION")
 
 tabs = st.tabs(tab_labels)
-
 # --- ONGLET 1 : IMMATRICULATION & RADIATION (ALIGNÉ) ---
 with tabs[0]:
     # On crée les colonnes DIRECTEMENT au début du tab
