@@ -808,7 +808,7 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                 </div>
                 """, unsafe_allow_html=True)
 
-            with col_vehicules:
+with col_vehicules:
     st.markdown("#### 🚗 Titres")
     # On filtre les véhicules pour le citoyen sélectionné (target)
     target_veh = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
