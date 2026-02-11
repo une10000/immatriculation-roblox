@@ -1056,14 +1056,26 @@ if st.session_state.get("user_auth") == "Staff":
                         idx_ben = df_b[df_b["Nom Roblox"] == target_paie].index[0]
                         df_b.at[idx_ben, "Solde"] = solde_final 
                         
-                        # C. Reset Immatriculations (MAINTIENT LE TYPE D'ASSURANCE)
-                        mask_user = df_i["Nom d'utilisateur ROBLOX"] == target_paie
-                        df_i.loc[mask_user, "Assurance"] = df_i.loc[mask_user, "Assurance"].apply(
-                            lambda x: f"✅ {x}" if not str(x).startswith("✅") else x
-                        )
-                        
-                        if "Points" in df_i.columns:
-                            df_i.loc[mask_user, "Points"] = 25
+# C. Reset Immatriculations (MAINTIENT LE TYPE D'ASSURANCE)
+mask_user = df_i["Nom d'utilisateur ROBLOX"] == target_paie
+
+def format_assurance(x):
+    # On nettoie d'abord les anciens symboles ou espaces pour éviter "✅ ✅ RCT"
+    propre = str(x).replace("✅", "").strip().upper()
+    
+    if "RCT" in propre:
+        return "✅ RCT"
+    elif "AVERIS" in propre:
+        return "✅ AVERIS"
+    else:
+        return "✅ Standard"
+
+# Mise à jour de la colonne Assurance
+df_i.loc[mask_user, "Assurance"] = df_i.loc[mask_user, "Assurance"].apply(format_assurance)
+
+# Remise à zéro des points
+if "Points" in df_i.columns:
+    df_i.loc[mask_user, "Points"] = 25
                         
                         # Enregistrement Cloud
                         cloud_conn.update(worksheet="Banque", data=df_b)
