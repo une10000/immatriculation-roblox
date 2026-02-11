@@ -778,8 +778,153 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                 components.html(facture_html, height=260)
 
             # ---------------- APERÇU VÉHICULES ----------------
+import streamlit as st
+import streamlit.components.v1 as components
+import pandas as pd
+import random
+from datetime import datetime, timedelta
+
+# ======================================================================================
+# 7. LOGIQUE DES ONGLETS
+# ======================================================================================
+
+tab_labels = ["🚗 IMMATRICULATION"]
+if st.session_state.user_auth in ["RCT", "Staff"]:
+    tab_labels.append("👮 SERVICES AGENT")
+if st.session_state.user_auth == "Staff":
+    tab_labels.append("🛠️ ADMINISTRATION")
+
+tabs = st.tabs(tab_labels)
+
+# ======================================================================================
+# ONGLET 1 : IMMATRICULATION
+# ======================================================================================
+
+with tabs[0]:
+    col_f, col_t = st.columns([1.3, 1])
+
+    # ---------------- FORMULAIRE ----------------
+    with col_f:
+        st.markdown("### 📝 Gestion des Titres")
+
+        with st.container(border=True):
+            f_owner = st.selectbox(
+                "Propriétaire du véhicule",
+                ["---"] + df_b["Nom Roblox"].tolist()
+            )
+            f_model = st.text_input("Marque")
+            f_plate = st.text_input("Numéro de Plaque souhaité").upper()
+            f_assu = st.selectbox(
+                "Type d'Assurance",
+                ["Aucune", "AVERIS (130$)", "RCT (150$)"]
+            )
+            f_code = st.text_input(
+                "Définir un Code de Radiation (Secret)",
+                type="password"
+            )
+
+            # ---- TAXE JEUNE ----
+            val_taxe_jeune = 0
+            if f_owner != "---":
+                try:
+                    date_arr = datetime.strptime(
+                        df_b[df_b["Nom Roblox"] == f_owner]["Date d'arrivée"].values[0],
+                        "%d/%m/%Y"
+                    )
+                    if (datetime.now() - date_arr).days < 30:
+                        val_taxe_jeune = 50
+                        st.warning("🔰 JEUNE CONDUCTEUR (+50$)")
+                except:
+                    pass
+
+            # ---- CALCUL TOTAL ----
+            taxe_gouv = 175
+            taxe_assu = 130 if "AVERIS" in f_assu else (150 if "RCT" in f_assu else 0)
+
+            total_bill = taxe_gouv + taxe_assu + val_taxe_jeune
+
+            if st.button(
+                f"S'ACQUITTER DE {total_bill}$ ET ENREGISTRER",
+                use_container_width=True,
+                type="primary"
+            ):
+                st.success("✅ Enregistré (logique à brancher)")
+
+    # ---------------- APERÇU TITRE ----------------
+    with col_t:
+        st.markdown("### 🖼️ Aperçu du Titre")
+
+        date_actuelle = datetime.now().strftime("%d/%m/%Y %H:%M")
+
+        ticket_html = f"""
+<div style="border:2px dashed #555; padding:20px; background:#f9f9f9;
+            font-family:'Courier New', monospace; color:#333;">
+    <center>
+        <b>TITRE DE CIRCULATION</b><br>
+        <small>RÉPUBLIQUE DE RENSSERLAER</small>
+    </center>
+    <hr style="border-top:1px dashed #aaa;">
+    <b>DATE :</b> {date_actuelle}<br>
+    <b>PROPRIÉTAIRE :</b> {f_owner}<br>
+    <b>MARQUE :</b> {f_model or "---"}<br>
+    <b>PLAQUE :</b> {f_plate or "---"}<br>
+    <b>ASSURANCE :</b> {f_assu}<br>
+    <hr>
+    <b>TOTAL :</b> {total_bill}$
+</div>
+"""
+        components.html(ticket_html, height=300)
+
+# ======================================================================================
+# ONGLET 2 : SERVICES AGENT
+# ======================================================================================
+
+if st.session_state.user_auth in ["RCT", "Staff"]:
+    with tabs[1]:
+
+        if target == "---":
+            st.warning("⚠️ Sélectionnez un citoyen.")
+        else:
+            col_saisie, col_facture, col_vehicules = st.columns([1.1, 1, 0.9])
+
+            # ---------------- SAISIE ----------------
+            with col_saisie:
+                with st.container(border=True):
+                    st.markdown("#### 📝 Saisie")
+
+                    f_val = st.number_input("Montant ($)", 0, step=50)
+                    f_motif = st.text_input("Motif")
+
+                    target_veh = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
+                    plaques = ["AUCUN / PIÉTON"] + target_veh["Numéro de la plaque"].tolist()
+                    f_plate = st.selectbox("Véhicule concerné", plaques)
+
+                    if st.button("🚨 ENVOYER", use_container_width=True, type="primary"):
+                        st.success("✅ Facture envoyée")
+
+            # ---------------- APERÇU FACTURE ----------------
+            with col_facture:
+                st.markdown("#### 📄 Aperçu")
+
+                facture_html = f"""
+<div style="border:2px solid black; padding:15px; background:white;
+            font-family:'Courier New', monospace; font-size:0.9em;">
+    <center><b>FACTURE OFFICIELLE</b></center>
+    <hr>
+    <b>NOM :</b> {target}<br>
+    <b>MOTIF :</b> {f_motif.upper() if f_motif else "..."}<br>
+    <b>PLAQUE :</b> {f_plate}<br>
+    <b>TOTAL :</b> {f_val}$
+    <hr style="border-top:1px dashed black;">
+    <center><small>DÉLAI DE PAIEMENT : 24H</small></center>
+</div>
+"""
+                components.html(facture_html, height=260)
+
+            # ---------------- APERÇU VÉHICULES ----------------
             with col_vehicules:
                 st.markdown("#### 🚗 Aperçu véhicules")
+
                 if target_veh.empty:
                     st.info("Aucun véhicule.")
                 else:
@@ -789,38 +934,21 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                             "green" if "RCT" in assu else "red"
                         )
 
-            danger_html = ""
-            if "AVERIS" in assu:
-                danger_html = """
-                <div style="margin-top:3px; font-size:0.75em; text-align:center; color:#b35400;">
-                    ⚠️ <b>DANGER</b> : VÉHICULE ASSURÉ AVERIS
-                </div>
-                """
-
-            html = f"""
-<div style="
-    border:2px solid black;
-    padding:8px 10px;
-    background:white;
-    color:black;
-    font-family:'Courier New', monospace;
-    font-size:0.85em;
-    margin-bottom:6px;
-">
+                        veh_html = f"""
+<div style="border:2px solid black; padding:15px; background:white;
+            font-family:'Courier New', monospace; font-size:0.9em; margin-bottom:10px;">
     <center><b>FICHE VÉHICULE</b></center>
-    <hr style="margin:5px 0;">
-
+    <hr>
     <b>MARQUE :</b> {veh['Marque du véhicule']}<br>
     <b>PLAQUE :</b> {veh['Numéro de la plaque']}<br>
     <b>ASSURANCE :</b>
     <span style="color:{col_v}; font-weight:bold;">{assu}</span>
-
-    <hr style="border-top:1px dashed black; margin:5px 0;">
+    <hr style="border-top:1px dashed black;">
     <center><small>DOCUMENT INTERNE</small></center>
-    {danger_html}
 </div>
 """
-            st.markdown(html.strip(), unsafe_allow_html=True)
+                        components.html(veh_html, height=220)
+
 
 # --- ONGLET 3 : ADMINISTRATION (STAFF ONLY) ---
 if st.session_state.user_auth == "Staff":
