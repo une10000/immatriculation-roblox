@@ -779,16 +779,15 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
 
             # ---------------- APERÇU VÉHICULES ----------------
             with col_vehicules:
-    st.markdown("#### 🚗 Aperçu véhicules")
-
-    if target_veh.empty:
-        st.info("Aucun véhicule.")
-    else:
-        for _, veh in target_veh.iterrows():
-            assu = str(veh["Assurance"]).upper()
-            col_v = "#E67E22" if "AVERIS" in assu else (
-                "green" if "RCT" in assu else "red"
-            )
+                st.markdown("#### 🚗 Aperçu véhicules")
+                if target_veh.empty:
+                    st.info("Aucun véhicule.")
+                else:
+                    for _, veh in target_veh.iterrows():
+                        assu = str(veh["Assurance"]).upper()
+                        col_v = "#E67E22" if "AVERIS" in assu else (
+                            "green" if "RCT" in assu else "red"
+                        )
 
             danger_txt = ""
             if "AVERIS" in assu:
