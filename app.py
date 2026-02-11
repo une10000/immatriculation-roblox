@@ -886,7 +886,7 @@ with tabs[0]:
         """
         st.components.v1.html(ticket_html, height=500)
 # --- ONGLET 2 : SERVICES AGENT (FACTURES / POINTS / CONSULTATION) ---
-if st.session_state.user_auth in ["RCT", "Staff"]:
+if st.session_state.user_auth in ["RCT", "Staff", "POLSTA"]:
     with tabs[1]:
         # 1. PANEL D'ALERTE : FACTURES IMPAYÉES
         df_all_f = cloud_conn.read(worksheet="Factures").fillna("")
@@ -932,8 +932,7 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                     # Montant : Toujours modifiable pour tout le monde
                     f_val = st.number_input("Montant ($)", min_value=0, step=50, key="v_val_final")
                     
-                    # Points : Uniquement pour POLSTA (Staff). Bloqué pour Averis et RCT.
-                    can_pull_points = (st.session_state.user_auth == "Staff" and f_emetteur == "POLSTA")
+                    can_pull_points = (st.session_state.user_auth in ["Staff", "POLSTA"] and f_emetteur == "POLSTA")
                     f_pts = st.number_input("Points à retirer", 0, 12, 0, key="v_pts_final", disabled=not can_pull_points)
                     
                     # Motif : Toujours modifiable pour tout le monde
@@ -1034,8 +1033,9 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                 else:
                     st.info("Aucun véhicule.")
 
-# --- ONGLET 3 : ADMINISTRATION (STAFF ONLY) ---
-if st.session_state.user_auth == "Staff":
+# --- ONGLET 3 : ADMINISTRATION (STAFF & POLSTA) ---
+# Correction de l'accès : on ajoute "POLSTA"
+if st.session_state.user_auth in ["Staff", "POLSTA"]:
     with tabs[2]:
         st.markdown('<div class="header-box"><h2>🛠️ PANNEAU D\'ADMINISTRATION High-Sec</h2></div>', unsafe_allow_html=True)
         
@@ -1051,31 +1051,53 @@ if st.session_state.user_auth == "Staff":
                 new_jobs = st.multiselect("Emploiement(s)", job_list, default=["Sans-Emploi"], key="admin_new_jobs")
                 new_pts = st.slider("Points Permis (Départ)", 0, 25, 25, key="admin_new_pts")
 
+            # Le bouton déclenche la création avec tes paramètres mémorisés (15k + Date auto)
             if st.button("🆕 GÉNÉRER LE DOSSIER (15k + Date Auto)", use_container_width=True, type="primary"):
-                if new_name and new_name not in df_b["Nom Roblox"].values:
-                    with st.spinner("Initialisation..."):
-                        today_str = datetime.now().strftime("%d/%m/%Y")
-                        jobs_string = " / ".join(new_jobs) if new_jobs else "Sans-Emploi"
-                        
-                        # Banque (Solde 15k auto)
-                        new_bank_row = pd.DataFrame([{"Nom Roblox": new_name, "Nom Discord": new_discord, "Solde": 15000, "Emploiement": jobs_string, "Date d'arrivée": today_str}])
-                        df_b = pd.concat([df_b, new_bank_row], ignore_index=True)
-                        cloud_conn.update(worksheet="Banque", data=df_b)
+                if not new_name:
+                    st.error("⚠️ Le nom d'utilisateur est obligatoire.")
+                elif new_name in df_b["Nom Roblox"].values:
+                    st.error("⚠️ Ce citoyen possède déjà un dossier fédéral.")
+                else:
+                    try:
+                        with st.spinner("Initialisation du dossier..."):
+                            # 1. Préparation de la date automatique (Mémorisé : 2026-02-08)
+                            today_str = datetime.now().strftime("%d/%m/%Y")
+                            jobs_string = " / ".join(new_jobs) if new_jobs else "Sans-Emploi"
+                            
+                            # 2. Création Banque (Mémorisé : Solde 15k)
+                            new_bank_row = pd.DataFrame([{
+                                "Nom Roblox": new_name, 
+                                "Nom Discord": new_discord, 
+                                "Solde": 15000, 
+                                "Emploiement": jobs_string, 
+                                "Date d'arrivée": today_str
+                            }])
+                            df_b = pd.concat([df_b, new_bank_row], ignore_index=True)
+                            cloud_conn.update(worksheet="Banque", data=df_b)
 
-                        # Permis
-                        new_pts_row = pd.DataFrame([{"Nom Roblox": new_name, "PTS": new_pts, "Validité": "OUI" if new_pts > 0 else "NON"}])
-                        df_p = pd.concat([df_p, new_pts_row], ignore_index=True)
-                        cloud_conn.update(worksheet="Points Permis", data=df_p)
+                            # 3. Création Permis
+                            new_pts_row = pd.DataFrame([{
+                                "Nom Roblox": new_name, 
+                                "PTS": new_pts, 
+                                "Validité": "OUI" if new_pts > 0 else "NON"
+                            }])
+                            df_p = pd.concat([df_p, new_pts_row], ignore_index=True)
+                            cloud_conn.update(worksheet="Points Permis", data=df_p)
 
-                        record_log(st.session_state.user_auth, f"Profil créé : {new_name}")
-                        st.success(f"✅ Dossier créé pour {new_name}")
-                        st.cache_data.clear()
-                        import time
-                        time.sleep(1)
-                        st.rerun()
+                            # 4. Logs et Confirmation
+                            record_log(st.session_state.user_auth, f"Profil créé : {new_name} (Solde: 15k)")
+                            st.success(f"✅ Dossier créé avec succès pour {new_name} !")
+                            
+                            st.cache_data.clear()
+                            import time
+                            time.sleep(1)
+                            st.rerun()
+                            
+                    except Exception as e:
+                        st.error(f"⚠️ Erreur lors de la synchronisation : {e}")
 # --- SECTION 2 : SYSTÈME DE PAIE & ASSURANCES AUTOMATIQUES ---
 
-if st.session_state.get("user_auth") == "Staff":
+if st.session_state.get("user_auth") in ["Staff", "POLSTA"]:
     st.divider()
     st.markdown("### 🧧 Terminal de Paie Nationale")
     
