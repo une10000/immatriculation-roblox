@@ -1261,7 +1261,7 @@ if st.session_state.user_auth in ["Staff", "POLSTA"]:
                     except Exception as e:
                         st.error(f"⚠️ Erreur lors de la validation : {e}")
 
-        # --- SECTION 3 : LOGS ET STATISTIQUES (BIEN INDENTÉ AUSSI) ---
+# --- SECTION 3 : LOGS ET STATISTIQUES (BIEN INDENTÉ AUSSI) ---
         st.divider()
         col_admin_left, col_admin_right = st.columns(2)
         
@@ -1269,18 +1269,22 @@ if st.session_state.user_auth in ["Staff", "POLSTA"]:
             st.markdown("### 📜 Journaux d'Audit Permanents")
             with st.container(border=True):
                 try:
-            # On lit la feuille Logs au lieu du session_state
+                    # On lit la feuille Logs au lieu du session_state
                     df_audit = cloud_conn.read(worksheet="Logs")
+                    
                     if not df_audit.empty:
-                # On affiche les 30 derniers logs, du plus récent au plus ancien
+                        # On prépare le texte complet AVANT de l'afficher
                         log_display = ""
+                        # On affiche les 30 derniers logs
                         for _, row in df_audit.iloc[::-1].head(30).iterrows():
                             log_display += f"[{row['Horodateur']}] {row['Utilisateur']} : {row['Action']}\n"
-                            st.code(log_display, language="bash")
+                        
+                        # On affiche le bloc de code UNE SEULE FOIS ici
+                        st.code(log_display, language="bash")
                     else:
                         st.info("Aucun log enregistré dans le Cloud.")
-                        except:
-                            st.error("Erreur de chargement des logs permanents.")
+                except Exception as e:
+                    st.error(f"Erreur de chargement des logs : {e}")
 
         with col_admin_right:
             st.markdown("### 📊 État du Système")
@@ -1288,10 +1292,10 @@ if st.session_state.user_auth in ["Staff", "POLSTA"]:
                 st.success(f"👥 Citoyens enregistrés : {len(df_b)}")
                 st.info(f"🚗 Véhicules en base : {len(df_i)}")
                 st.warning(f"🪪 Permis actifs : {len(df_p)}")
+                
                 if st.button("♻️ FORCER LA SYNCHRO", use_container_width=True):
                     st.cache_data.clear()
                     st.rerun()
-# --- FIN DE L'ONGLET ADMINISTRATION ---
 # ======================================================================================
 # 8. PIED DE PAGE
 # ======================================================================================
