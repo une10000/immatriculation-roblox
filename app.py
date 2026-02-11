@@ -813,14 +813,16 @@ with col_vehicules:
     if not target_veh.empty:
         for _, veh in target_veh.iterrows():
             assu = str(veh['Assurance']).upper()
+            # Couleur orange spécifique pour Averis comme sur ton image
             col_v = "#E67E22" if "AVERIS" in assu else ("green" if "RCT" in assu else "red")
             
             st.markdown(f"""
-            <div style="border: 3px solid black; padding: 15px; background: white; color: black; margin-bottom: 15px;">
-                <b style="font-size: 1.1em;">{veh['Marque du véhicule']}</b><br>
-                <span style="font-size: 1em;">Plaque : </span>
-                <span style="border: 1.5px solid black; padding: 0 4px; font-family: monospace;">{veh['Numéro de la plaque']}</span><br>
-                <b style="color: {col_v}; font-size: 0.9em;">{assu}</b>
+            <div style="border: 5px solid black; padding: 15px; background: white; color: black; margin-bottom: 10px; font-family: Arial, sans-serif;">
+                <b style="font-size: 1.3em;">{veh['Marque du véhicule']}</b><br>
+                <div style="margin: 10px 0; font-size: 1.1em;">
+                    Plaque : <span style="border: 2px solid black; padding: 2px 8px; font-family: 'Courier New', monospace; font-weight: bold;">{veh['Numéro de la plaque']}</span>
+                </div>
+                <b style="color: {col_v}; font-size: 1.1em;">{assu}</b>
             </div>
             """, unsafe_allow_html=True)
     else:
