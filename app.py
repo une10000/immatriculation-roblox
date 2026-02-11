@@ -602,20 +602,28 @@ if not mes_factures.empty:
             except Exception as e:
                 st.error(f"Erreur paiement : {e}")
 
-        # 4. BOUTON ANNULER (Staff/Admin)
+# 4. BOUTON ANNULER (Staff/Admin)
         if st.session_state.user_auth in ["Staff", "Admin"]:
             if st.button(f"🗑️ ANNULER LA FACTURE #{fac['ID']}", key=f"admin_del_{fac['ID']}", use_container_width=True):
                 try:
-                    df_f_sync = cloud_conn.read(worksheet="Factures")
-                    row_up = df_f_sync[df_f_sync["ID"] == fac["ID"]].index[0] + 2
-                    cloud_conn.update(worksheet="Factures", range=f"E{row_up}", data=[["ANNULÉ"]])
-                    st.warning("Facture annulée.")
-                    st.cache_data.clear()
-                    st.rerun()
+                    with st.spinner("Annulation en cours..."):
+                        # 1. On synchronise les données
+                        df_f_sync = cloud_conn.read(worksheet="Factures")
+                        
+                        # 2. On change le statut de la facture spécifique dans le tableau
+                        # On cherche l'ID exact et on change sa colonne 'Statut'
+                        df_f_sync.loc[df_f_sync["ID"] == fac["ID"], "Statut"] = "ANNULÉ"
+                        
+                        # 3. On renvoie tout le tableau mis à jour au Sheets
+                        cloud_conn.update(worksheet="Factures", data=df_f_sync)
+                        
+                        st.warning(f"La facture #{fac['ID']} a été annulée.")
+                        st.cache_data.clear()
+                        st.rerun()
                 except Exception as e:
                     st.error(f"Erreur annulation : {e}")
         
-        st.write("---") # Séparateur extérieur aux blocs conditionnels
+        st.write("---") # Bien aligné avec le "if" du ticket principal
 # --- SECTION VÉHICULES UNIFORMISÉE ---
 st.write("### 🚗 VÉHICULES ENREGISTRÉS")
 v_data = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
