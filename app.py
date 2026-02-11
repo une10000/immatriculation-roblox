@@ -548,12 +548,10 @@ with st.container():
 # ======================================================================================
 # NOUVEAU : SYSTÈME DE PAIEMENT DES FACTURES (STYLE TICKET)
 # ======================================================================================
-# --- RÉCUPÉRATION DES DONNÉES (À ajouter avant le if) ---
+# --- RÉCUPÉRATION DES DONNÉES ---
 df_all_f = cloud_conn.read(worksheet="Factures").fillna("")
-# On filtre pour ne voir que les factures du citoyen sélectionné (target)
 mes_factures = df_all_f[(df_all_f["Cible"] == target) & (df_all_f["Statut"] == "EN ATTENTE")]
 
-# --- NOUVEAU : SYSTÈME DE PAIEMENT DES FACTURES (STYLE TICKET) ---
 # --- SYSTÈME DE PAIEMENT DES FACTURES (STYLE TICKET) ---
 if not mes_factures.empty:
     st.error(f"⚠️ {len(mes_factures)} FACTURE(S) EN ATTENTE DE PAIEMENT")
