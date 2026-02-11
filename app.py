@@ -501,89 +501,89 @@ if not mes_factures.empty:
             timer_info = "⌛ Délai : 24 heures"
             t_color = "#555"
 # 2. AFFICHAGE DU TICKET HTML (MIS À JOUR AVEC POINTS)
-prefix_name = "POLICE NATIONALE" if fac['Emetteur'] == "Staff" else "RÉSEAU RCT"
-if fac['Emetteur'] == "Averis": prefix_name = "SERVICES AVERIS"
+# 2. AFFICHAGE DU TICKET HTML (MIS À JOUR AVEC POINTS)
+        prefix_name = "POLICE NATIONALE" if fac['Emetteur'] == "Staff" else "RÉSEAU RCT"
+        if fac['Emetteur'] == "Averis": prefix_name = "SERVICES AVERIS"
 
-# Sécurité : On récupère les points ou 0 si la colonne est vide
-nb_points_retires = fac.get('Points', 0) 
+        # Sécurité : On récupère les points ou 0 si la colonne est vide
+        nb_points_retires = fac.get('Points', 0) 
 
-st.markdown(f"""
-<div style="border: 2px solid #000; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; margin-bottom: 5px; box-shadow: 6px 6px 0px #000;">
-    <center><b style="font-size:1.1em; text-decoration: underline;">FACTURE OFFICIELLE</b><br>
-    <small>{prefix_name}</small></center>
-    <hr style="border-top: 1px dashed #000; margin: 10px 0;">
-    <div style="font-size: 0.9em; line-height: 1.2;">
-        <b>RÉFÉRENCE :</b> #{fac['ID']}<br>
-        <b>ÉMETTEUR   :</b> {fac['Emetteur']}<br>
-        <b>MOTIF     :</b> {fac['Motif']}<br>
-        <b style="color: {t_color};">{timer_info}</b>
-    </div>
-    <hr style="border-top: 1px dashed #000; margin: 10px 0;">
-    <div style="text-align: center; color: #d32f2f; font-weight: bold; font-size: 1.3em;">
-        MONTANT : {fac['Montant']}$
-    </div>
-    <div style="text-align: center; font-weight: bold; font-size: 1em; margin-top: 5px;">
-        POINTS : -{nb_points_retires}
-    </div>
-    <center><small style="font-size: 0.6em; opacity: 0.5; margin-top:10px; display:block;">RCRP SYSTEM - DOCUMENT OFFICIEL</small></center>
-</div>
-""", unsafe_allow_html=True)
-        # 3. BOUTON DE PAIEMENT (BIEN INDENTÉ)
-        # On ajoute 8 espaces (ou 2 tabulations) devant pour qu'il soit DANS la boucle
+        st.markdown(f"""
+        <div style="border: 2px solid #000; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; margin-bottom: 5px; box-shadow: 6px 6px 0px #000;">
+            <center><b style="font-size:1.1em; text-decoration: underline;">FACTURE OFFICIELLE</b><br>
+            <small>{prefix_name}</small></center>
+            <hr style="border-top: 1px dashed #000; margin: 10px 0;">
+            <div style="font-size: 0.9em; line-height: 1.2;">
+                <b>RÉFÉRENCE :</b> #{fac['ID']}<br>
+                <b>ÉMETTEUR   :</b> {fac['Emetteur']}<br>
+                <b>MOTIF     :</b> {fac['Motif']}<br>
+                <b style="color: {t_color};">{timer_info}</b>
+            </div>
+            <hr style="border-top: 1px dashed #000; margin: 10px 0;">
+            <div style="text-align: center; color: #d32f2f; font-weight: bold; font-size: 1.3em;">
+                MONTANT : {fac['Montant']}$
+            </div>
+            <div style="text-align: center; font-weight: bold; font-size: 1em; margin-top: 5px;">
+                POINTS : -{nb_points_retires}
+            </div>
+            <center><small style="font-size: 0.6em; opacity: 0.5; margin-top:10px; display:block;">RCRP SYSTEM - DOCUMENT OFFICIEL</small></center>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # 3. BOUTON DE PAIEMENT (ALIGNE)
         if st.button(f"💳 RÉGLER LA FACTURE #{fac['ID']}", key=f"pay_{fac['ID']}", use_container_width=True):
             try:
-                # 1. Récupération des données du payeur (le civil)
-                idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
-                solde_raw = str(df_b.at[idx_b, "Solde"]).replace('$', '').replace(',', '')
-                solde_actuel = float(solde_raw)
-                montant_facture = float(fac['Montant'])
-                
-                if solde_actuel >= montant_facture:
-                    # DÉBIT du civil
-                    df_b.at[idx_b, "Solde"] = solde_actuel - montant_facture
+                with st.spinner("Paiement en cours..."):
+                    # 1. Récupération des données du payeur (le civil)
+                    idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
+                    solde_raw = str(df_b.at[idx_b, "Solde"]).replace('$', '').replace(',', '')
+                    solde_actuel = float(solde_raw)
+                    montant_facture = float(fac['Montant'])
                     
-                    # 2. LOGIQUE DE REDIRECTION (CASH-FLOW)
-                    emetteur = str(fac['Emetteur'])
-                    
-                    if emetteur == "RCT":
-                        # Argent vers une10000
-                        rct_idx = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
-                        solde_rct = float(str(df_b.at[rct_idx, "Solde"]).replace('$', '').replace(',', ''))
-                        df_b.at[rct_idx, "Solde"] = solde_rct + montant_facture
+                    if solde_actuel >= montant_facture:
+                        # DÉBIT du civil
+                        df_b.at[idx_b, "Solde"] = solde_actuel - montant_facture
                         
-                    elif emetteur == "Averis":
-                        # Argent vers Moune2010
-                        ave_idx = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
-                        solde_ave = float(str(df_b.at[ave_idx, "Solde"]).replace('$', '').replace(',', ''))
-                        df_b.at[ave_idx, "Solde"] = solde_ave + montant_facture
-                    
-                    # 3. Mise à jour du statut et Sauvegarde
-                    df_all_f.loc[df_all_f["ID"] == fac["ID"], "Statut"] = "PAYÉ"
-                    
-                    cloud_conn.update(worksheet="Banque", data=df_b)
-                    cloud_conn.update(worksheet="Factures", data=df_all_f)
-                    
-                    st.success(f"✅ Payé à {emetteur} !")
-                    st.cache_data.clear()
-                    st.rerun()
-                else:
-                    st.error("❌ Solde insuffisant.")
+                        # 2. LOGIQUE DE REDIRECTION (CASH-FLOW)
+                        emetteur = str(fac['Emetteur'])
+                        
+                        if emetteur == "RCT":
+                            # Argent vers une10000
+                            rct_idx = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
+                            solde_rct = float(str(df_b.at[rct_idx, "Solde"]).replace('$', '').replace(',', ''))
+                            df_b.at[rct_idx, "Solde"] = solde_rct + montant_facture
+                            
+                        elif emetteur == "Averis":
+                            # Argent vers Moune2010 (Demande du 08/02)
+                            ave_idx = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
+                            solde_ave = float(str(df_b.at[ave_idx, "Solde"]).replace('$', '').replace(',', ''))
+                            df_b.at[ave_idx, "Solde"] = solde_ave + montant_facture
+                        
+                        # 3. Mise à jour du statut et Sauvegarde
+                        df_all_f.loc[df_all_f["ID"] == fac["ID"], "Statut"] = "PAYÉ"
+                        
+                        cloud_conn.update(worksheet="Banque", data=df_b)
+                        cloud_conn.update(worksheet="Factures", data=df_all_f)
+                        
+                        st.success(f"✅ Payé à {emetteur} !")
+                        st.cache_data.clear()
+                        st.rerun()
+                    else:
+                        st.error("❌ Solde insuffisant.")
             except Exception as e:
                 st.error(f"Erreur : {e}")
 
-        # BOUTON ANNULER (Seulement pour Staff/Admin)
+        # BOUTON ANNULER (Staff/Admin)
         if st.session_state.user_auth in ["Staff", "Admin"]:
             if st.button(f"🗑️ ANNULER LA FACTURE #{fac['ID']}", key=f"admin_del_{fac['ID']}", use_container_width=True):
                 try:
+                    # On met à jour directement sur le Sheets pour plus de sécurité
                     df_f_sync = cloud_conn.read(worksheet="Factures")
                     row_up = df_f_sync[df_f_sync["ID"] == fac["ID"]].index[0] + 2
                     cloud_conn.update(worksheet="Factures", range=f"E{row_up}", data=[["ANNULÉ"]])
                     st.warning("Facture annulée.")
                     st.cache_data.clear()
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Erreur d'annulation : {e}")
-        
+                    st.rerun
         st.write("---") # Séparateur entre les tickets s'il y en a plusieurs
 # --- SECTION VÉHICULES CORRIGÉE ---
 # --- SECTION VÉHICULES UNIFORMISÉE ---
