@@ -930,9 +930,8 @@ if st.session_state.user_auth == "Staff":
                         st.rerun()
 # --- SECTION 2 : SYSTÈME DE PAIE & ASSURANCES AUTOMATIQUES ---
 
-# On vérifie uniquement le RÔLE détecté par ton Lockscreen
-# (Adapte 'Polsta' ou 'Staff' selon le nom exact utilisé dans ton système de login)
-if st.session_state.get("user_role") in ["Polsta", "Staff"] or st.session_state.get("access_type") == "Polsta":
+# On vérifie si l'utilisateur est connecté avec le rôle "Staff"
+if st.session_state.get("user_auth") == "Staff":
     st.divider()
     st.markdown("### 🧧 Terminal de Paie Nationale")
     
@@ -983,7 +982,7 @@ if st.session_state.get("user_role") in ["Polsta", "Staff"] or st.session_state.
             total_assurance = 0
             taxe_jc_total = 0
             
-            est_jeune_conducteur = anciennete_jours < 30
+            est_jeune_conducteur = (anciennete_jours < 30)
             if est_jeune_conducteur:
                 taxe_jc_total = nb_vehicules * 50
             
@@ -1021,8 +1020,6 @@ if st.session_state.get("user_role") in ["Polsta", "Staff"] or st.session_state.
                     st.write(f"• Assurance {type_assurance} : -{total_assurance}$")
                     if est_jeune_conducteur:
                         st.write(f"• Taxes JC (Nouveau) : -{taxe_jc_total}$")
-                    else:
-                        st.write(f"• Taxes JC : **EXONÉRÉ** ✅")
             
             st.markdown("---")
             c1, c2, c3, c4 = st.columns(4)
@@ -1052,7 +1049,7 @@ if st.session_state.get("user_role") in ["Polsta", "Staff"] or st.session_state.
                         cloud_conn.update(worksheet="Banque", data=df_b)
                         cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i)
                         
-                        record_log(st.session_state.user_auth, f"PAIE : {target_paie} | {total_net}$")
+                        record_log("Staff", f"PAIE : {target_paie} | {total_net}$")
                         st.success(f"✅ Terminé !")
                         st.cache_data.clear()
                         st.rerun()
