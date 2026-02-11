@@ -398,27 +398,33 @@ with st.container():
     if target != "---":
         col1, col2, col3 = st.columns(3)
         
-        # --- COLONNE 1 : PERMIS & VÉHICULES ---
+        # --- COLONNE 1 : PERMIS & VÉHICULES (LOOK TICKET) ---
         with col1:
             st.markdown("### 🛡️ PERMIS & VÉHICULES")
-            # Partie Permis
             p_data = df_p[df_p["Nom Roblox"] == target]
             if not p_data.empty:
                 pts_val = int(p_data.iloc[0]["PTS"])
                 st.metric("POINTS PERMIS", f"{pts_val}/25")
             
-            # Partie Immatriculations (LES VOICI)
             st.markdown("---")
-            st.markdown("##### 🚗 Véhicules enregistrés")
+            st.markdown("##### 🚗 Titres de Circulation")
             v_data = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
+            
             if not v_data.empty:
                 for _, v in v_data.iterrows():
-                    with st.container(border=True):
-                        st.markdown(f"**{v['Marque du véhicule']}**")
-                        st.code(v['Numéro de la plaque'])
-                        st.caption(f"🛡️ {v['Assurance']} | 📍 {v['Points']} pts")
+                    # Affichage style "Ticket de caisse" pour chaque immatriculation
+                    st.markdown(f"""
+                    <div style="border: 2px solid black; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; margin-bottom: 10px; line-height: 1.2;">
+                        <center><b style="font-size: 1.1em;">TITRE DE CIRCULATION</b><br><small>RÉPUBLIQUE DE RENSSERLAER</small></center>
+                        <hr style="border-top: 1px solid black; margin: 8px 0;">
+                        <b>MODÈLE :</b> {v['Marque du véhicule'].upper()}<br>
+                        <b>PLAQUE :</b> <span style="border: 1px solid black; padding: 0 4px;">{v['Numéro de la plaque']}</span><br>
+                        <b>ASSUR. :</b> {v['Assurance'].upper()}<br>
+                        <b>POINTS :</b> {v['Points']} PTS
+                    </div>
+                    """, unsafe_allow_html=True)
             else:
-                st.info("Aucun véhicule.")
+                st.info("Aucun véhicule enregistré.")
 
         # --- COLONNE 2 : BANQUE & EMPLOI ---
         with col2:
@@ -426,49 +432,43 @@ with st.container():
             b_data = df_b[df_b["Nom Roblox"] == target]
             if not b_data.empty:
                 st.metric("SOLDE ACTUEL", f"{b_data.iloc[0]['Solde']}$")
+                st.write(f"🏢 Métier : **{b_data.iloc[0]['Emploiement']}**")
                 
-                # Gestion du métier
-                current_jobs = str(b_data.iloc[0]['Emploiement'])
-                st.write(f"🏢 Métier : **{current_jobs}**")
-                
-                # Bouton Modifier
                 if st.session_state.user_auth in ["POLSTA", "RCT", "Staff", "Admin"]:
                     if st.button("✏️ Modifier Métier", key=f"job_btn_{target}"):
                         st.session_state[f"edit_mode_{target}"] = not st.session_state.get(f"edit_mode_{target}", False)
                     
                     if st.session_state.get(f"edit_mode_{target}", False):
-                        new_j = st.text_input("Nouveau métier :", value=current_jobs)
+                        new_j = st.text_input("Nouveau métier :", value=str(b_data.iloc[0]['Emploiement']))
                         if st.button("Sauvegarder", key=f"save_job_{target}"):
                             idx = df_b[df_b["Nom Roblox"] == target].index[0]
                             df_b.at[idx, "Emploiement"] = new_j
                             cloud_conn.update(worksheet="Banque", data=df_b)
                             st.rerun()
 
-                # Date d'arrivée automatique
                 date_arr = b_data.iloc[0].get("Date d'arrivée", "")
                 if not date_arr or str(date_arr) == "nan":
                     date_arr = datetime.now().strftime("%d/%m/%Y")
                 st.caption(f"📅 Arrivée : {date_arr}")
 
-        # --- COLONNE 3 : ARCHIVES (AVEC REÇU) ---
+        # --- COLONNE 3 : ARCHIVES FACTURES (DÉJÀ EN TICKET) ---
         with col3:
-            st.markdown("### 📁 ARCHIVES FACTURES")
+            st.markdown("### 📁 ARCHIVES")
             df_f_history = cloud_conn.read(worksheet="Factures").fillna("")
             historique = df_f_history[(df_f_history["Cible"] == target) & (df_f_history["Statut"] == "PAYÉ")]
 
             if not historique.empty:
                 for _, f in historique.tail(5).iterrows():
                     with st.expander(f"📄 Reçu #{f['ID']} ({f['Montant']}$)", expanded=False):
-                        # On réintègre le design du ticket reçu ici
                         st.markdown(f"""
-                        <div style="border: 1px solid black; padding: 10px; background: white; color: black; font-family: monospace; font-size: 0.8em;">
-                            <center><b>REÇU DE PAIEMENT</b><br>RÉPUBLIQUE DE RENSSERLAER</center>
-                            <hr style="border-top: 1px dashed black;">
-                            <b>ID :</b> #{f['ID']}<br>
-                            <b>ÉMETTEUR :</b> {f['Emetteur']}<br>
-                            <b>MOTIF :</b> {f['Motif']}<br>
-                            <hr style="border-top: 1px dashed black;">
-                            <center><b>PAYÉ : {f['Montant']}$</b></center>
+                        <div style="border: 2px solid black; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; font-size: 0.9em;">
+                            <center><b>REÇU DE PAIEMENT</b><br><small>RÉPUBLIQUE DE RENSSERLAER</small></center>
+                            <hr style="border-top: 1px dashed black; margin: 10px 0;">
+                            <b>ID      :</b> #{f['ID']}<br>
+                            <b>ÉMETTEUR :</b> {f['Emetteur'].upper()}<br>
+                            <b>MOTIF   :</b> {f['Motif'].upper()}<br>
+                            <hr style="border-top: 1px dashed black; margin: 10px 0;">
+                            <center><b style="font-size: 1.2em;">TOTAL PAYÉ : {f['Montant']}$</b></center>
                         </div>
                         """, unsafe_allow_html=True)
             else:
