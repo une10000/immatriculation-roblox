@@ -809,16 +809,18 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                 """, unsafe_allow_html=True)
 
 with col_vehicules:
-    st.markdown("#### 🚗 Titres")
+    st.markdown("### 🚗 Titres")
     if not target_veh.empty:
         for _, veh in target_veh.iterrows():
             assu = str(veh['Assurance']).upper()
-            col_v = "green" if "RCT" in assu else ("orange" if "AVERIS" in assu else "red")
+            col_v = "#E67E22" if "AVERIS" in assu else ("green" if "RCT" in assu else "red")
+            
             st.markdown(f"""
-            <div style="border: 1px solid #ddd; padding: 8px; background: #f9f9f9; color: black; font-size: 0.75em; margin-bottom: 5px;">
-                <b>{veh['Marque du véhicule']}</b><br>
-                Plaque : <span style="border: 1px solid black; padding: 0 2px;">{veh['Numéro de la plaque']}</span><br>
-                <span style="color: {col_v}; font-weight: bold;">{assu}</span>
+            <div style="border: 3px solid black; padding: 15px; background: white; color: black; margin-bottom: 15px;">
+                <b style="font-size: 1.1em;">{veh['Marque du véhicule']}</b><br>
+                <span style="font-size: 1em;">Plaque : </span>
+                <span style="border: 1.5px solid black; padding: 0 4px; font-family: monospace;">{veh['Numéro de la plaque']}</span><br>
+                <b style="color: {col_v}; font-size: 0.9em;">{assu}</b>
             </div>
             """, unsafe_allow_html=True)
     else:
