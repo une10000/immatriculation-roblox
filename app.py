@@ -522,33 +522,43 @@ if not mes_factures.empty:
             </div>
             """, unsafe_allow_html=True)
 
-            # --- BOUTON DE PAIEMENT (Aligné avec le ticket) ---
-            if st.button(f"💳 RÉGLER LA FACTURE #{fac['ID']}", key=f"pay_{fac['ID']}", use_container_width=True):
-                try:
-                    idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
-                    solde_raw = str(df_b.at[idx_b, "Solde"]).replace('$', '').replace(',', '')
-                    solde_actuel = float(solde_raw)
-                    montant_facture = float(fac['Montant'])
-                    
-                    if solde_actuel >= montant_facture:
-                        df_b.at[idx_b, "Solde"] = solde_actuel - montant_facture
-                        rct_idx = df_b[df_b["Nom Roblox"] == ACC_RCT].index[0]
-                        solde_dest = float(str(df_b.at[rct_idx, "Solde"]).replace('$', '').replace(',', ''))
-                        df_b.at[rct_idx, "Solde"] = solde_dest + montant_facture
-                        df_all_f.loc[df_all_f["ID"] == fac["ID"], "Statut"] = "PAYÉ"
-                        
-                        cloud_conn.update(worksheet="Banque", data=df_b)
-                        cloud_conn.update(worksheet="Factures", data=df_all_f)
-                        
-                        record_log(target, f"Paiement facture {fac['Emetteur']} #{fac['ID']}")
-                        st.success("✅ Paiement effectué !")
-                        st.cache_data.clear()
-                        time.sleep(1)
-                        st.rerun()
-                    else:
-                        st.error("❌ Solde insuffisant.")
-                except Exception as e:
-                    st.error(f"Erreur lors du paiement : {e}")
+           # --- BOUTON DE PAIEMENT (Aligné avec le ticket) ---
+if st.button(f"💳 RÉGLER LA FACTURE #{fac['ID']}", key=f"pay_{fac['ID']}", use_container_width=True):
+    try:
+        idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
+        solde_raw = str(df_b.at[idx_b, "Solde"]).replace('$', '').replace(',', '')
+        solde_actuel = float(solde_raw)
+        montant_facture = float(fac['Montant'])
+        
+        if solde_actuel >= montant_facture:
+            # 1. Le citoyen paie toujours (débité)
+            df_b.at[idx_b, "Solde"] = solde_actuel - montant_facture
+            
+            # 2. Condition de destination des fonds
+            # Si c'est le RCT, l'argent va à une10000
+            if fac['Emetteur'] == "RCT":
+                rct_idx = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
+                solde_dest = float(str(df_b.at[rct_idx, "Solde"]).replace('$', '').replace(',', ''))
+                df_b.at[rct_idx, "Solde"] = solde_dest + montant_facture
+            
+            # Si c'est "Polsta" (ou Staff), on ne fait rien : l'argent est "brûlé" (va nulle part)
+
+            # 3. Mise à jour du statut de la facture
+            df_all_f.loc[df_all_f["ID"] == fac["ID"], "Statut"] = "PAYÉ"
+            
+            # 4. Sauvegarde
+            cloud_conn.update(worksheet="Banque", data=df_b)
+            cloud_conn.update(worksheet="Factures", data=df_all_f)
+            
+            record_log(target, f"Paiement facture {fac['Emetteur']} #{fac['ID']}")
+            st.success("✅ Paiement effectué !")
+            st.cache_data.clear()
+            time.sleep(1)
+            st.rerun()
+        else:
+            st.error("❌ Solde insuffisant.")
+    except Exception as e:
+        st.error(f"Erreur lors du paiement : {e}")
 
             # --- BOUTON ANNULER (Aligné aussi) ---
             if st.session_state.user_auth in ["Staff", "Admin"]:
