@@ -796,15 +796,19 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
             with col_facture:
                 st.markdown("#### 📄 Aperçu")
                 st.markdown(f"""
-                <div style="border: 2px solid black; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; font-size: 0.9em;">
-                    <center><b>FACTURE OFFICIELLE</b></center>
-                    <hr style="border-top: 1px solid #000; margin: 10px 0;">
-                    <b>NOM :</b> {target}<br>
-                    <b>MOTIF :</b> {f_motif.upper() if f_motif else '...'}<br>
-                    <b>PLAQUE:</b> {f_plate}<br>
-                    <b>TOTAL :</b> {f_val}$
-                    <hr style="border-top: 1px dashed #000; margin: 10px 0;">
-                    <center><small>DÉLAI DE PAIEMENT : 24H</small></center>
+                <div style="border: 2px solid black; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; line-height: 1.2;">
+                    <center><b>FACTURE</b><br><small>RÉPUBLIQUE DE RENSSERLAER</small></center>
+                    <hr style="border-top: 1px solid #ccc; margin: 10px 0;">
+                    <b>DATE   :</b> {datetime.now().strftime('%d/%m/%Y')}<br>
+                    <b>NOM    :</b> {target}<br>
+                    <b>MOTIF  :</b> {f_motif.upper() if f_motif else '...'}<br>
+                    <b>PLAQUE :</b> <span style="border: 1px solid black; padding: 0 3px;">{f_plate}</span><br>
+                    <b>MONTANT:</b> {f_val}$
+                    <hr style="border-top: 1px solid #ccc; margin: 10px 0;">
+                    <div style="text-align: center; color: black; font-weight: bold; font-size: 0.8em;">
+                        POINTS À DÉBITER : -{f_pts}<br>
+                        <small>Par le Terminal National</small>
+                    </div>
                 </div>
                 """, unsafe_allow_html=True)
 
