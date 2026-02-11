@@ -966,11 +966,15 @@ with st.container(border=True):
             date_actuelle = datetime.now()
             anciennete_jours = (date_actuelle - date_arrivee).days
         except:
-            # Sécurité : si la date est illisible, on considère comme nouveau (< 30j)
             anciennete_jours = 0
         
         mes_vehicules = df_i[df_i["Nom d'utilisateur ROBLOX"] == target_paie]
         nb_vehicules = len(mes_vehicules)
+        
+        # Récupération des points actuels (on prend la valeur du premier véhicule trouvé)
+        points_actuels = 0
+        if not mes_vehicules.empty and "Points" in df_i.columns:
+            points_actuels = mes_vehicules["Points"].values[0]
         
         total_assurance = 0
         taxe_jc_total = 0
@@ -1023,59 +1027,60 @@ with st.container(border=True):
                     st.write(f"• Taxes JC : **EXONÉRÉ** ✅")
                     st.caption(f"✨ Citoyen depuis {anciennete_jours} jours")
         
-        # Metrics avec flèches de couleur
+        # Metrics avec flèches "cute"
         st.markdown("---")
-        c_s1, c_s2, c_s3 = st.columns(3)
+        c1, c2, c3, c4 = st.columns(4)
         
-        c_s1.metric("Solde Actuel", f"{solde_actuel}$")
+        # 1. Solde actuel
+        c1.metric("Solde Actuel", f"{solde_actuel}$")
         
-        # Flèche rouge vers le bas pour les prélèvements (delta_color="inverse")
-        c_s2.metric("Versement Net", f"+{total_net}$", delta=f"-{total_prelevement}$ Frais", delta_color="inverse")
+        # 2. Points (avec flèche vers le haut car on reset à 25)
+        diff_points = 25 - points_actuels
+        c2.metric("Points Permis", f"25/25", delta=f"+{diff_points}" if diff_points > 0 else None, delta_color="normal")
         
-        # Flèche verte vers le haut pour l'augmentation du solde (delta_color="normal")
-        c_s3.metric("Solde Final", f"{solde_final}$", delta=f"+{total_net}$", delta_color="normal")
+        # 3. Versement Net (avec flèche rouge pour les taxes)
+        c3.metric("Net à Verser", f"+{total_net}$", delta=f"-{total_prelevement}$ Taxes", delta_color="inverse")
+        
+        # 4. Solde Final (avec flèche verte vers le haut)
+        c4.metric("Solde Final", f"{solde_final}$", delta=f"+{total_net}$", delta_color="normal")
 
         if nb_vehicules >= 3 and "Agent RCT" in user_jobs_list:
             st.success("💡 **Note Staff :** L'offre Trio a été appliquée (3ème assurance gratuite).")
 
-# Bouton de validation
-                if st.button(f"🧧 CONFIRMER LE VERSEMENT DE {total_net}$", use_container_width=True, type="primary"):
-                    try:
-                        with st.spinner("Traitement de la paie nationale..."):
-                            # A. Débit des caisses patronales (2000$ par employé)
-                            if "Agent RCT" in user_jobs_list:
-                                idx_rct = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
-                                df_b.at[idx_rct, "Solde"] = float(df_b.at[idx_rct, "Solde"]) - 2000
-                            
-                            if "Averis" in user_jobs_list:
-                                idx_av = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
-                                df_b.at[idx_av, "Solde"] = float(df_b.at[idx_av, "Solde"]) - 2000
+        # Bouton de validation
+        if st.button(f"🧧 CONFIRMER LE VERSEMENT ET LE RESET DES POINTS", use_container_width=True, type="primary"):
+            try:
+                with st.spinner("Mise à jour nationale en cours..."):
+                    # A. Débit des caisses patronales
+                    if "Agent RCT" in user_jobs_list:
+                        idx_rct = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
+                        df_b.at[idx_rct, "Solde"] = float(df_b.at[idx_rct, "Solde"]) - 2000
+                    
+                    if "Averis" in user_jobs_list:
+                        idx_av = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
+                        df_b.at[idx_av, "Solde"] = float(df_b.at[idx_av, "Solde"]) - 2000
 
-                            # B. Crédit du citoyen
-                            idx_ben = df_b[df_b["Nom Roblox"] == target_paie].index[0]
-                            df_b.at[idx_ben, "Solde"] = solde_final 
-                            
-                            # C. Mise à jour automatique (Assurances + Remise à 25 points)
-                            # On met à jour l'assurance
-                            df_i.loc[df_i["Nom d'utilisateur ROBLOX"] == target_paie, "Assurance"] = "PAYÉ (AUTO+JC)"
-                            
-                            # On remet les points à 25 (Vérifie bien que le nom de la colonne est exact)
-                            if "Points" in df_i.columns:
-                                df_i.loc[df_i["Nom d'utilisateur ROBLOX"] == target_paie, "Points"] = 25
-                            
-                            # D. Envoi au Cloud
-                            cloud_conn.update(worksheet="Banque", data=df_b)
-                            cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i)
-                            
-                            # E. Logs et Rerun
-                            record_log(st.session_state.user_auth, f"PAIE : {target_paie} | {total_net}$ | Points reset à 25")
-                            st.success(f"✅ Paie validée et points réinitialisés à 25 pour {target_paie} !")
-                            st.cache_data.clear()
-                            import time
-                            time.sleep(1)
-                            st.rerun()
-                    except Exception as e:
-                        st.error(f"⚠️ Erreur lors de la transaction : {e}")
+                    # B. Crédit du citoyen
+                    idx_ben = df_b[df_b["Nom Roblox"] == target_paie].index[0]
+                    df_b.at[idx_ben, "Solde"] = solde_final 
+                    
+                    # C. Mise à jour (Assurances + Points)
+                    df_i.loc[df_i["Nom d'utilisateur ROBLOX"] == target_paie, "Assurance"] = "PAYÉ (AUTO+JC)"
+                    if "Points" in df_i.columns:
+                        df_i.loc[df_i["Nom d'utilisateur ROBLOX"] == target_paie, "Points"] = 25
+                    
+                    # D. Envoi au Cloud
+                    cloud_conn.update(worksheet="Banque", data=df_b)
+                    cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i)
+                    
+                    record_log(st.session_state.user_auth, f"PAIE & RESET : {target_paie} | {total_net}$ | Points à 25")
+                    st.success(f"✅ Opération terminée pour {target_paie} !")
+                    st.cache_data.clear()
+                    import time
+                    time.sleep(1)
+                    st.rerun()
+            except Exception as e:
+                st.error(f"⚠️ Erreur : {e}")
         # --- SECTION 3 : LOGS ET STATISTIQUES ---
         st.divider()
         col_admin_left, col_admin_right = st.columns(2)
