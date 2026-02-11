@@ -81,11 +81,23 @@ df_b, df_i, df_p = fetch_database()
 # 3. ÉTAT DE LA SESSION & PARAMÈTRES
 # ======================================================================================
 if "user_auth" not in st.session_state: st.session_state.user_auth = None
+if "staff_name" not in st.session_state: st.session_state.staff_name = "Inconnu" # Nouveau : mémorise le nom
 if "audit_logs" not in st.session_state: st.session_state.audit_logs = []
 
 # ======================================================================================
-# CONFIGURATION ET FONCTIONS TECHNIQUES (À METTRE EN HAUT)
+# CONFIGURATION ET FONCTIONS TECHNIQUES
 # ======================================================================================
+
+# --- NOUVEAU SYSTÈME DE CLÉS PERSONNALISÉES ---
+STAFF_ACCESS = {
+    "Alec-RCT-26-RCRPFR": "Alec (FULL-ACCESS)",
+    "Ibrahim-RCRPFR-RCT-26": "Ibrahim (FULL-ACCESS)",
+    "Zonda-STAFF-26": "Zonda",
+    "Luca-STAFF-26": "Luca",
+    "Riri-RCT-26": "Riri (RCT)",
+    "Raclette-RCT-26": "Raclette (RCT)",
+    "Moune-RCT-26": "Moune (RCT)"
+}
 
 PRIME_JOB = {
     "Sans-Emploi": 0,
@@ -107,13 +119,19 @@ def traiter_paiement_prime(target_name, metier, montant, df_b, cloud_conn):
     
     if source_compte:
         try:
+            # Nettoyage des montants pour éviter les erreurs de calcul
+            def clean_money(val):
+                return float(str(val).replace('$', '').replace(',', '').strip())
+
             # --- PRÉLÈVEMENT SUR L'EMPLOYEUR ---
             idx_source = df_b[df_b["Nom Roblox"] == source_compte].index[0]
-            df_b.at[idx_source, "Solde"] -= montant
+            current_solde_src = clean_money(df_b.at[idx_source, "Solde"])
+            df_b.at[idx_source, "Solde"] = current_solde_src - montant
             
             # --- AJOUT SUR L'EMPLOYÉ ---
             idx_target = df_b[df_b["Nom Roblox"] == target_name].index[0]
-            df_b.at[idx_target, "Solde"] += montant
+            current_solde_target = clean_money(df_b.at[idx_target, "Solde"])
+            df_b.at[idx_target, "Solde"] = current_solde_target + montant
             
             # Sauvegarde globale
             cloud_conn.update(worksheet="Banque", data=df_b)
@@ -121,15 +139,14 @@ def traiter_paiement_prime(target_name, metier, montant, df_b, cloud_conn):
         except Exception as e:
             return False, f"❌ Erreur lors du virement : {e}"
     else:
-        return False, "⚠️ Aucun employeur configuré pour prélever cette prime (Averis ou RCT uniquement)."
+        return False, "⚠️ Aucun employeur configuré pour cette prime."
 
-# Codes de Service
-KEY_RCT = "RCT-26-RCRPFR"
-KEY_STAFF = "RCRPFR-25-26"
-
+# Fonction de Log améliorée (pour ton Sheets)
 def record_log(user, action):
-    now = datetime.now().strftime("%H:%M:%S")
-    st.session_state.audit_logs.append(f"[{now}] {user} : {action}")
+    now = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+    # On utilise le nom stocké dans la session s'il existe
+    nom_reel = st.session_state.get("staff_name", user)
+    st.session_state.audit_logs.append(f"[{now}] {nom_reel} : {action}")
 # ======================================================================================
 # 4. SIDEBAR CONDITIONNELLE (LOGO & INFOS)
 # ======================================================================================
