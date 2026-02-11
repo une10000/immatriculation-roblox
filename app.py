@@ -776,59 +776,59 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                 with st.container(border=True):
                     st.markdown("#### 📝 Saisie")
                     
-                    # --- NOUVEAU : CHOIX DE L'ÉMETTEUR ---
+                    # 1. Choix de l'émetteur
                     if st.session_state.user_auth == "Staff":
-                        # Le Staff peut choisir entre Polsta (amende) ou Averis (facture pro)
                         f_emetteur = st.selectbox("Émetteur", ["POLSTA", "Averis"], key="v_emetteur_final")
                     else:
-                        # Si c'est un compte RCT, l'émetteur est forcément RCT
                         f_emetteur = "RCT"
                         st.info("Émetteur : RCT")
 
-                    f_val = st.number_input("Montant ($)", min_value=0, step=50, key="v_val_final")
+                    # --- LOGIQUE DE VERROUILLAGE ---
+                    # Si c'est Averis, on bloque (disabled=True). Si c'est POLSTA ou RCT, on laisse libre.
+                    is_averis = (f_emetteur == "Averis")
                     
-                    # --- LOGIQUE POINTS ---
-                    # On ne retire des points QUE si c'est Polsta (Staff). Pas pour RCT, pas pour Averis.
-                    can_pull_points = (st.session_state.user_auth == "Staff" and f_emetteur == "Polsta")
+                    # Montant : Verrouillé si Averis
+                    f_val = st.number_input("Montant ($)", min_value=0, step=50, key="v_val_final", disabled=is_averis)
+                    
+                    # Points : Toujours verrouillé pour Averis et RCT
+                    can_pull_points = (st.session_state.user_auth == "Staff" and f_emetteur == "POLSTA")
                     f_pts = st.number_input("Points à retirer", 0, 12, 0, key="v_pts_final", disabled=not can_pull_points)
                     
-                    f_motif = st.text_input("Motif", key="v_mot_final")
+                    # Motif : Verrouillé si Averis
+                    f_motif = st.text_input("Motif", key="v_mot_final", disabled=is_averis)
                     
+                    # Véhicule : On laisse le choix du véhicule même pour Averis (pour l'assurance)
                     target_veh = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
                     v_list = ["AUCUN / PIÉTON"] + target_veh["Numéro de la plaque"].tolist()
                     f_plate = st.selectbox("Véhicule concerné", v_list, key="v_plate_final")
                     
                     st.write("")
                     label = "🚨 ENVOYER FACTURE"
+                    
                     if st.button(label, use_container_width=True, type="primary"):
-                        if not f_motif:
+                        if not f_motif and not is_averis:
                             st.error("Motif obligatoire.")
                         else:
-                            # 1. Logique d'enregistrement des Points (Seulement si Polsta)
+                            # Logique d'enregistrement... (le reste du code reste identique)
                             if f_pts > 0 and can_pull_points:
                                 try:
                                     idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
                                     df_p.at[idx_p, "PTS"] = max(0, int(df_p.at[idx_p, "PTS"]) - f_pts)
                                     cloud_conn.update(worksheet="Points Permis", data=df_p)
-                                except:
-                                    st.error("Erreur mise à jour points.")
-                            
-                            # 2. Préparation de la facture
+                                except: pass
+
                             import random
                             new_row = {
                                 "ID": random.randint(1000, 9999), 
                                 "Cible": target,
-                                "Emetteur": f_emetteur, # Utilise le choix Polsta/Averis/RCT
+                                "Emetteur": f_emetteur,
                                 "Montant": f_val,
                                 "Motif": f"{f_motif} [{f_plate}]", 
                                 "Statut": "EN ATTENTE",
                                 "Date_Limite": (datetime.now() + timedelta(hours=24)).strftime("%d/%m/%Y %H:%M:%S")
                             }
-                            
-                            # 3. Sauvegarde Cloud
                             df_f_updated = pd.concat([df_all_f, pd.DataFrame([new_row])], ignore_index=True)
                             cloud_conn.update(worksheet="Factures", data=df_f_updated)
-                            
                             st.success(f"✅ Facture {f_emetteur} envoyée !")
                             st.cache_data.clear()
                             st.rerun()
