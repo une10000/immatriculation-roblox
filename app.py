@@ -697,10 +697,52 @@ with tabs[0]:
 
             total_bill = taxe_gouv + taxe_assu + val_taxe_jeune
             
-            # Bouton large et coloré
+            # --- BOUTON DE VALIDATION (LOGIQUE RÉELLE) ---
             if st.button(f"S'ACQUITTER DE {total_bill}$ ET ENREGISTRER", use_container_width=True, key="btn_pay_final", type="primary"):
-                # ... Ta logique de sauvegarde (inchangée) ...
-                pass
+                # Vérification que le formulaire n'est pas vide
+                if f_owner == "---" or not f_model or not f_plate or not f_code:
+                    st.error("⚠️ Formulaire incomplet ! Remplis tous les champs.")
+                else:
+                    try:
+                        with st.spinner("Paiement et enregistrement en cours..."):
+                            # 1. Calcul du solde
+                            idx_user = df_b[df_b["Nom Roblox"] == f_owner].index[0]
+                            solde_actuel = float(str(df_b.at[idx_user, "Solde"]).replace('$', '').replace(',', ''))
+                            
+                            if solde_actuel < total_bill:
+                                st.error(f"❌ Solde insuffisant ! (Solde: {solde_actuel}$)")
+                            else:
+                                # 2. Retrait de l'argent
+                                df_b.at[idx_user, "Solde"] = solde_actuel - total_bill
+                                
+                                # 3. Création de la ligne (avec TA date auto)
+                                nouvelle_immat = {
+                                    "Nom d'utilisateur ROBLOX": f_owner,
+                                    "Véhicule": f_model,
+                                    "Plaque": f_plate,
+                                    "Assurance": f_assu.split(" (")[0],
+                                    "Code": f_code,
+                                    "Points": 25,
+                                    "Date de création": datetime.now().strftime("%d/%m/%Y")
+                                }
+                                
+                                # Ajout au tableau local
+                                new_df_i = pd.concat([df_i, pd.DataFrame([nouvelle_immat])], ignore_index=True)
+                                
+                                # 4. Envoi au Google Sheets (INDISPENSABLE)
+                                cloud_conn.update(worksheet="Banque", data=df_b)
+                                cloud_conn.update(worksheet="Copie de Immatriculations", data=new_df_i)
+                                
+                                # 5. Succès
+                                st.balloons()
+                                st.success(f"✅ Véhicule enregistré ! {total_bill}$ débités.")
+                                
+                                # Rafraîchissement
+                                st.cache_data.clear()
+                                st.rerun()
+                                
+                    except Exception as e:
+                        st.error(f"⚠️ Erreur de connexion au Sheets : {e}")
 
     with col_t:
         # Titre de droite aligné sur le titre de gauche
