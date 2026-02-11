@@ -332,15 +332,15 @@ if st.session_state.user_auth is None:
             st.session_state.staff_name = "Citoyen"
             st.rerun()
 
-    with c2:
+with c2:
         st.markdown("### 👨‍🔧 AGENT RCT")
         login_rct = st.text_input("Identifiant Agent", placeholder="Code RCT", type="password", key="l_rct_ff")
         if st.button("AUTHENTIFICATION RCT", key="b_rct_f", use_container_width=True):
             if login_rct in STAFF_ACCESS:
                 nom = STAFF_ACCESS[login_rct]
-                # Vérification : Doit être RCT ou ADMIN
                 if "(RCT)" in nom or "(ADMIN)" in nom:
-                    st.session_state.user_auth = "Staff"
+                    # ICI : On marque spécifiquement RCT
+                    st.session_state.user_auth = "RCT" 
                     st.session_state.staff_name = nom
                     record_log(nom, "Connexion via Portail RCT")
                     st.rerun()
@@ -353,16 +353,14 @@ if st.session_state.user_auth is None:
         if st.button("ACCÈS ADMINISTRATEUR", key="b_st_f", use_container_width=True):
             if login_staff in STAFF_ACCESS:
                 nom = STAFF_ACCESS[login_staff]
-                # Vérification : Doit être POLSTA ou ADMIN
                 if "(POLSTA)" in nom or "(ADMIN)" in nom:
-                    st.session_state.user_auth = "Staff"
+                    # ICI : On marque spécifiquement POLSTA
+                    st.session_state.user_auth = "POLSTA"
                     st.session_state.staff_name = nom
                     record_log(nom, "Connexion via Portail POLSTA")
                     st.rerun()
                 else: st.error("Accès refusé : Cette clé n'est pas accréditée POLSTA.")
             else: st.error("Accès refusé.")
-
-    st.stop()
 # ======================================================================================
 # LE RESTE DU CODE (S'affiche uniquement après connexion)
 # ======================================================================================
