@@ -1038,7 +1038,6 @@ with st.container(border=True):
         if nb_vehicules >= 3 and "Agent RCT" in user_jobs_list:
             st.success("💡 **Note Staff :** L'offre Trio a été appliquée (3ème assurance gratuite).")
 
-        # Bouton de validation
 # Bouton de validation
                 if st.button(f"🧧 CONFIRMER LE VERSEMENT DE {total_net}$", use_container_width=True, type="primary"):
                     try:
