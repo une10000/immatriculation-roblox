@@ -816,28 +816,22 @@ with col_vehicules:
             assu = str(veh['Assurance']).upper()
             col_v = "#E67E22" if "AVERIS" in assu else ("green" if "RCT" in assu else "red")
 
-            st.markdown(f"""
-            <div style="
-                border: 2px solid black;
-                padding: 15px;
-                background: white;
-                color: black;
-                font-family: 'Courier New', monospace;
-                font-size: 0.9em;
-                margin-bottom: 12px;
-            ">
-                <center><b>FICHE VÉHICULE</b></center>
-                <hr style="border-top: 1px solid #000; margin: 10px 0;">
+            html = f"""
+<div style="border: 2px solid black; padding: 15px; background: white; color: black;
+            font-family: 'Courier New', monospace; font-size: 0.9em; margin-bottom: 12px;">
+    <center><b>FICHE VÉHICULE</b></center>
+    <hr style="border-top: 1px solid #000; margin: 10px 0;">
 
-                <b>MARQUE :</b> {veh['Marque du véhicule']}<br>
-                <b>PLAQUE :</b> {veh['Numéro de la plaque']}<br>
-                <b>ASSURANCE :</b> 
-                <span style="color:{col_v}; font-weight:bold;">{assu}</span>
+    <b>MARQUE :</b> {veh['Marque du véhicule']}<br>
+    <b>PLAQUE :</b> {veh['Numéro de la plaque']}<br>
+    <b>ASSURANCE :</b>
+    <span style="color:{col_v}; font-weight:bold;">{assu}</span>
 
-                <hr style="border-top: 1px dashed #000; margin: 10px 0;">
-                <center><small>DOCUMENT INTERNE</small></center>
-            </div>
-            """, unsafe_allow_html=True)
+    <hr style="border-top: 1px dashed #000; margin: 10px 0;">
+    <center><small>DOCUMENT INTERNE</small></center>
+</div>
+"""
+            st.markdown(html.strip(), unsafe_allow_html=True)
     else:
         st.info("Aucun véhicule.")
 
