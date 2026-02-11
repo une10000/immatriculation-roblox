@@ -88,15 +88,15 @@ if "audit_logs" not in st.session_state: st.session_state.audit_logs = []
 # CONFIGURATION ET FONCTIONS TECHNIQUES
 # ======================================================================================
 
-# --- NOUVEAU SYSTÈME DE CLÉS PERSONNALISÉES ---
+# --- CONFIGURATION DES ACCÈS (Répartition précise) ---
 STAFF_ACCESS = {
-    "Alec-RCT-26-RCRPFR": "Alec (FULL-ACCESS)",
-    "Ibrahim-RCRPFR-RCT-26": "Ibrahim (FULL-ACCESS)",
-    "Zonda-STAFF-26": "Zonda",
-    "Luca-STAFF-26": "Luca",
-    "Riri-RCT-26": "Riri (RCT)",
-    "Raclette-RCT-26": "Raclette (RCT)",
-    "Moune-RCT-26": "Moune (RCT)"
+    "Alec-RCT-26-RCRPFR": "Alec (ADMIN)",          # Accès RCT + POLSTA
+    "Ibrahim-RCRPFR-RCT-26": "Ibrahim (ADMIN)",    # Accès RCT + POLSTA
+    "Moune-RCT-26": "Moune (POLSTA)",              # Changé en POLSTA
+    "Raclette-RCT-26": "Raclette (POLSTA)",        # Changé en POLSTA
+    "Riri-RCT-26": "Riri (POLSTA)",                # Changé en POLSTA
+    "Zonda-STAFF-26": "Zonda (RCT)",               # Changé en RCT
+    "Luca-STAFF-26": "Luca (RCT)"                  # Changé en RCT
 }
 
 PRIME_JOB = {
@@ -153,9 +153,10 @@ def record_log(user, action):
 
 if st.session_state.user_auth is not None:
     with st.sidebar:
-        # LOGO RCRP
+        # 0. LOGO RCRP
         st.image("https://cdn.discordapp.com/attachments/1441508709024006315/1471115849631793256/Capture_decran_2025-12-01_a_21.03.31.png?ex=698dc2e6&is=698c7166&hm=ddabf40f0fad8139ed693e02221341fe14e01ad84b35317af6a101c62986b79b&", use_container_width=True)
         st.divider()
+        
         from datetime import datetime, timedelta, timezone
         import streamlit.components.v1 as components
 
@@ -172,7 +173,7 @@ if st.session_state.user_auth is not None:
         nom_mois = mois[t_now.strftime('%B')]
         annee = t_now.strftime('%Y')
 
-        # 4. Bloc Date (Forcé à gauche)
+        # 4. Bloc Date
         st.markdown(f"""
             <div style="text-align: left; line-height: 1.1; margin-left: 0; padding-left: 0;">
                 <span style="font-size: 1.5em;">📅</span><br>
@@ -183,10 +184,9 @@ if st.session_state.user_auth is not None:
 
         st.write("") 
 
-        # 5. Bloc Horloge Dynamique (Correction du décalage)
+        # 5. Bloc Horloge Dynamique
         st.markdown("<div style='text-align: left; font-size: 1.5em; margin-bottom: 0; margin-left: 0;'>⏰</div>", unsafe_allow_html=True)
         
-        # Le secret est dans le "margin-left: -8px" pour compenser la marge naturelle de l'iframe Streamlit
         components.html(f"""
             <div id="clock" style="
                 font-family: 'Source Sans Pro', sans-serif; 
@@ -208,45 +208,44 @@ if st.session_state.user_auth is not None:
                 updateClock();
             </script>
         """, height=40)
+        
         st.divider()
 
+        # --- INFOS UTILISATEUR ---
+        user_display = st.session_state.get("staff_name", "Utilisateur")
+        st.write(f"👤 Utilisateur : **{user_display}**")
         st.write(f"🔐 Accréditation : **{st.session_state.user_auth}**")
 
-# --- BOUTON SYNCHRO ---
+        # --- BOUTON SYNCHRO ---
         if st.button("🔄 FORCER SYNCHRO", use_container_width=True):
             st.cache_data.clear()
-            record_log(st.session_state.user_auth, "Synchro Cloud Manuelle")
+            record_log(user_display, "Synchro Cloud Manuelle")
             st.rerun()
 
+        # --- BOUTON DÉCONNEXION ---
         if st.button("🚪 DÉCONNEXION", use_container_width=True):
-            # 1. On enregistre le log avant de tout couper
             try:
-                record_log(st.session_state.user_auth, "Déconnexion")
+                record_log(user_display, "Déconnexion")
             except:
                 pass
             
-            # 2. On vide la session côté serveur
             st.cache_data.clear()
             for key in list(st.session_state.keys()):
                 del st.session_state[key]
             
-            # 3. LE HACK RADICAL : On force le navigateur à recharger la page proprement
-            # Cela va réinitialiser l'URL et vider le cache visuel
             components.html("""
                 <script>
                     window.parent.location.reload();
                 </script>
             """, height=0)
-            
-            # 4. Sécurité pour arrêter le script Streamlit
             st.stop()
             
         st.divider()
         st.caption("📜 JOURNAUX D'AUDIT (SESSION)")
-        # On vérifie si audit_logs existe pour éviter une erreur après le del
         if "audit_logs" in st.session_state:
             for log in reversed(st.session_state.audit_logs[-8:]):
                 st.caption(log)
+# ======================================================================================
 # ======================================================================================
 # 5. LOCKSCREEN (CONNEXION) - UNITÉ FÉDÉRALE DE RENSSELAER
 # ======================================================================================
@@ -257,8 +256,6 @@ if st.session_state.user_auth is None:
             [data-testid="stSidebar"], [data-testid="stSidebarNav"] { display: none; }
             [data-testid="stStatusWidget"] { display: none; }
             .block-container { padding-top: 2rem !important; }
-            
-            /* ON SUPPRIME L'ENCADRÉ GRIS ET L'OMBRE DE L'IFRAME */
             iframe { 
                 border: none !important; 
                 box-shadow: none !important; 
@@ -283,11 +280,10 @@ if st.session_state.user_auth is None:
         t_color = "#FFFFFF"
         glow = "0 0 40px rgba(255,255,255,0.9), 0 0 80px rgba(255,255,255,0.4)"
 
-    # --- LE BLOC MONOLITHIQUE (Haut + Bas soudés) ---
+    # --- LE BLOC MONOLITHIQUE ---
     import streamlit.components.v1 as components
     components.html(f"""
         <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; width: 100%; border-radius: 25px; overflow: hidden; border: none;">
-            
             <div style="text-align: center; padding: 70px 20px; color: {t_color}; {pattern_style} height: 350px; box-sizing: border-box;">
                 <h1 style="font-size: 5.5em; margin: 0; font-weight: 900; letter-spacing: -3px; text-shadow: {glow}; line-height: 1.1;">
                     {salut_complet}
@@ -299,7 +295,6 @@ if st.session_state.user_auth is None:
                     00:00:00
                 </div>
             </div>
-
             <div style="background-color: #1a1c23; border-left: 10px solid #ff4b4b; padding: 45px 20px; text-align: center; color: white;">
                 <div style="font-size: 45px; margin-bottom: 15px;">👤</div>
                 <h2 style="margin: 0; font-size: 2em; letter-spacing: 2px;">🏛️ RÉPUBLIQUE DE RENSSELAER</h2>
@@ -307,9 +302,7 @@ if st.session_state.user_auth is None:
                 <div style="width: 70%; height: 1px; background: rgba(255,255,255,0.1); margin: 0 auto 20px auto;"></div>
                 <small style="opacity: 0.5; font-size: 0.8em;">VERSION 14.6.0 | SÉCURISÉ PAR PROTOCOLE RCRP-OS</small>
             </div>
-
         </div>
-
         <script>
             function update() {{
                 const now = new Date();
@@ -321,36 +314,38 @@ if st.session_state.user_auth is None:
             setInterval(update, 1000);
             update();
         </script>
-    """, height=650) # Hauteur totale ajustée
+    """, height=650)
     
     st.write("")
-    st.warning("⚠️ **AVERTISSEMENT :** Toute action effectuée sur ce terminal est enregistrée.")
+    st.warning("⚠️ **AVERTISSEMENT :** Toute action effectuée sur ce terminal est enregistrée sous votre identifiant unique.")
     st.write("---")
 
-    # 3. COLONNES D'ACCÈS (Inchangé)
-    c1, c2, c3 = st.columns(3)
-    with c1:
+    # --- COLONNES D'ACCÈS ---
+    col_civil, col_staff = st.columns(2)
+
+    with col_civil:
         st.markdown("### 👥 CIVIL")
-        nom_civil = st.text_input("Ecrivez quelque chose (Optionnel)", placeholder="Ex: Liberté, Egalité, Renault Coupé.", key="input_civil_align")
-        if st.button("ACCÉDER AU TERMINAL", key="l_civ_f", use_container_width=True):
+        if st.button("ACCÉDER AU TERMINAL PUBLIC", use_container_width=True):
             st.session_state.user_auth = "Civil"
+            st.session_state.staff_name = "Citoyen"
             st.rerun()
-    with c2:
-        st.markdown("### 👨‍🔧 AGENT RCT")
-        login_rct = st.text_input("Identifiant Agent", placeholder="Code RCT", type="password", key="l_rct_ff")
-        if st.button("AUTHENTIFICATION RCT", key="b_rct_f", use_container_width=True):
-            if login_rct == KEY_RCT:
-                st.session_state.user_auth = "RCT"
-                st.rerun()
-            else: st.error("Clé invalide.")
-    with c3:
-        st.markdown("### 🛡️👮‍♂️ Portail POLSTA(RIS)")
-        login_staff = st.text_input("Clé Maîtresse", placeholder="Code POLSTA(RIS)", type="password", key="l_st_ff")
-        if st.button("ACCÈS ADMINISTRATEUR", key="b_st_f", use_container_width=True):
-            if login_staff == KEY_STAFF:
+
+    with col_staff:
+        st.markdown("### 🔐 ACCÈS SÉCURISÉ")
+        cle_input = st.text_input("Clé d'accréditation", placeholder="Entrez votre clé unique", type="password")
+        
+        if st.button("S'IDENTIFIER", type="primary", use_container_width=True):
+            if cle_input in STAFF_ACCESS:
+                nom_identifie = STAFF_ACCESS[cle_input]
                 st.session_state.user_auth = "Staff"
+                st.session_state.staff_name = nom_identifie
+                
+                # Log de connexion avec le nom précis
+                record_log(nom_identifie, "Authentification réussie")
+                st.success(f"Bienvenue {nom_identifie}")
                 st.rerun()
-            else: st.error("Accès refusé.")
+            else:
+                st.error("❌ Clé invalide ou accès révoqué.")
 
     st.stop()
 # ======================================================================================
