@@ -670,10 +670,12 @@ if "👮 SERVICES AGENT" in tab_labels:
                             df_f_updated = pd.concat([cloud_conn.read(worksheet="Factures"), pd.DataFrame([new_row])], ignore_index=True)
                             cloud_conn.update(worksheet="Factures", data=df_f_updated)
                             
+                            user_name = st.session_state.get('user_name', 'Inconnu') 
+                            record_log(user_name, f"[{f_emetteur}] Facture #{f_id} envoyée à {target}")
+                            
                             # --- FIX ERREUR record_log ---
                             # On concatène l'action et la cible dans le même argument
-                            user_display = st.session_state.get('user_name', st.session_state.user_auth)
-                            record_log(user_display, f"[{st.session_state.user_auth}] Facture #{f_id} envoyée à {target}")
+                            # Utilise ton nom d'affichage au lieu du grade
                             
                             st.success(f"✅ Facture #{f_id} envoyée !")
                             time.sleep(1)
