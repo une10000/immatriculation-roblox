@@ -810,16 +810,10 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
 
 with col_vehicules:
     st.markdown("#### 🚗 Titres")
-    # On filtre les véhicules pour le citoyen sélectionné (target)
-    target_veh = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
-    
     if not target_veh.empty:
         for _, veh in target_veh.iterrows():
-            # Logique de couleur selon l'assurance
             assu = str(veh['Assurance']).upper()
             col_v = "green" if "RCT" in assu else ("orange" if "AVERIS" in assu else "red")
-            
-            # Ton interface compacte demandée
             st.markdown(f"""
             <div style="border: 1px solid #ddd; padding: 8px; background: #f9f9f9; color: black; font-size: 0.75em; margin-bottom: 5px;">
                 <b>{veh['Marque du véhicule']}</b><br>
@@ -827,12 +821,6 @@ with col_vehicules:
                 <span style="color: {col_v}; font-weight: bold;">{assu}</span>
             </div>
             """, unsafe_allow_html=True)
-            
-            # Optionnel : bouton de radiation discret en dessous si besoin
-            with st.expander("⚙️"):
-                if st.button("Radier", key=f"rad_{veh['Numéro de la plaque']}"):
-                    # Ton code de radiation ici
-                    pass
     else:
         st.info("Aucun véhicule.")
 # --- ONGLET 3 : ADMINISTRATION (STAFF ONLY) ---
