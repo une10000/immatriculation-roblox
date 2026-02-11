@@ -1266,16 +1266,21 @@ if st.session_state.user_auth in ["Staff", "POLSTA"]:
         col_admin_left, col_admin_right = st.columns(2)
         
         with col_admin_left:
-            st.markdown("### 📜 Journaux d'Audit")
+            st.markdown("### 📜 Journaux d'Audit Permanents")
             with st.container(border=True):
-                if "audit_logs" in st.session_state and st.session_state.audit_logs:
-                    log_text = "\n".join(list(reversed(st.session_state.audit_logs)))
-                    st.code(log_text, language="bash")
-                    if st.button("🗑️ EFFACER LES LOGS", use_container_width=True):
-                        st.session_state.audit_logs = []
-                        st.rerun()
-                else:
-                    st.info("Aucune activité enregistrée.")
+                try:
+            # On lit la feuille Logs au lieu du session_state
+                    df_audit = cloud_conn.read(worksheet="Logs")
+                    if not df_audit.empty:
+                # On affiche les 30 derniers logs, du plus récent au plus ancien
+                        log_display = ""
+                        for _, row in df_audit.iloc[::-1].head(30).iterrows():
+                            log_display += f"[{row['Horodateur']}] {row['Utilisateur']} : {row['Action']}\n"
+                            st.code(log_display, language="bash")
+                    else:
+                        st.info("Aucun log enregistré dans le Cloud.")
+                        except:
+                            st.error("Erreur de chargement des logs permanents.")
 
         with col_admin_right:
             st.markdown("### 📊 État du Système")
