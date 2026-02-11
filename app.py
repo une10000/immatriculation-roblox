@@ -929,31 +929,37 @@ if st.session_state.user_auth == "Staff":
                         time.sleep(1)
                         st.rerun()
 
-        # --- SECTION 2 : SYSTÈME DE PAIE & RESET ---
+# --- SECTION 2 : SYSTÈME DE PAIE & ASSURANCES AUTOMATIQUES ---
         st.divider()
         st.markdown("### 🧧 Terminal de Paie Nationale")
         with st.container(border=True):
-            # Sécurité si la base est vide
             options_paie = sorted(df_b["Nom Roblox"].unique().tolist()) if not df_b.empty else []
             target_paie = st.selectbox("Sélectionner le bénéficiaire :", options_paie, key="paie_auto_target")
             
             if target_paie:
-                # Récupération des infos
+                # 1. Analyse du dossier
                 user_data = df_b[df_b["Nom Roblox"] == target_paie]
                 user_jobs_raw = user_data["Emploiement"].values[0]
                 user_jobs_list = [j.strip() for j in str(user_jobs_raw).split("/")]
                 
-                # Calcul Primes (utilise ta constante PRIME_JOB)
-                # Note : Assure-toi que PRIME_JOB est définie en haut de ton code
+                # 2. Calcul des Primes et Assurance
                 calcul_primes = sum(PRIME_JOB.get(j, 0) for j in user_jobs_list) if 'PRIME_JOB' in locals() else 0
-                total_final = 15000 + calcul_primes
+                total_brut = 15000 + calcul_primes
                 
-                st.info(f"📋 **Emplois détectés :** {', '.join(user_jobs_list)}")
-                st.metric("VERSEMENT TOTAL", f"{total_final}$", f"+{calcul_primes}$ de primes")
+                # Calcul Assurance (ex: 500$ par véhicule possédé)
+                PRIX_UNITAIRE_ASSURANCE = 500
+                mes_vehicules = df_i[df_i["Nom d'utilisateur ROBLOX"] == target_paie]
+                nb_vehicules = len(mes_vehicules)
+                total_assurance = nb_vehicules * PRIX_UNITAIRE_ASSURANCE
+                
+                total_net = total_brut - total_assurance
+                
+                st.info(f"📋 **Emplois :** {', '.join(user_jobs_list)} | 🚗 **Véhicules :** {nb_vehicules}")
+                st.metric("VERSEMENT NET (Après Assurances)", f"{total_net}$", f"-{total_assurance}$ prélevés")
 
-                if st.button(f"🧧 VERSER {total_final}$ & RESET NATIONAL", use_container_width=True):
+                if st.button(f"🧧 VERSER {total_net}$ & VALIDER ASSURANCES", use_container_width=True):
                     try:
-                        # 1. Débits des caisses d'entreprises (Coût de la main d'œuvre)
+                        # A. Débit des caisses patronales (RCT/Averis)
                         if "Agent RCT" in user_jobs_list:
                             idx_rct = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
                             df_b.at[idx_rct, "Solde"] = float(df_b.at[idx_rct, "Solde"]) - 2000
@@ -962,28 +968,27 @@ if st.session_state.user_auth == "Staff":
                             idx_av = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
                             df_b.at[idx_av, "Solde"] = float(df_b.at[idx_av, "Solde"]) - 2000
 
-                        # 2. Crédit du citoyen
+                        # B. Crédit du solde Citoyen (On ajoute le NET)
                         idx_ben = df_b[df_b["Nom Roblox"] == target_paie].index[0]
                         solde_actuel = float(str(df_b.at[idx_ben, "Solde"]).replace('$', '').replace(',', ''))
-                        df_b.at[idx_ben, "Solde"] = solde_actuel + total_final
+                        df_b.at[idx_ben, "Solde"] = solde_actuel + total_net
                         
-                        # 3. Reset du registre des immatriculations (Nettoyage de session)
-                        # On crée un DF vide avec les mêmes colonnes
-                        df_immat_reset = pd.DataFrame(columns=df_i.columns)
+                        # C. MISE À JOUR AUTOMATIQUE DES ASSURANCES
+                        # On ne reset plus le tableau, on écrit "PAYÉ (AUTO)" sur ses plaques
+                        df_i.loc[df_i["Nom d'utilisateur ROBLOX"] == target_paie, "Assurance"] = "PAYÉ (AUTO)"
                         
-                        # 4. Envoi au Cloud
+                        # D. Envoi au Cloud
                         cloud_conn.update(worksheet="Banque", data=df_b)
-                        cloud_conn.update(worksheet="Copie de Immatriculations", data=df_immat_reset)
+                        cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i)
                         
-                        record_log(st.session_state.user_auth, f"PAIE & RESET : {target_paie} (+{total_final}$)")
-                        st.success("✅ Transaction effectuée et registre purgé !")
+                        record_log(st.session_state.user_auth, f"PAIE AUTO : {target_paie} (+{total_net}$ net)")
+                        st.success(f"✅ Paie effectuée ! {nb_vehicules} assurance(s) renouvelée(s).")
                         st.cache_data.clear()
                         import time
                         time.sleep(1)
                         st.rerun()
                     except Exception as e:
-                        st.error(f"Erreur lors de la paie : {e}")
-
+                        st.error(f"Erreur technique : {e}")
         # --- SECTION 3 : LOGS ET STATISTIQUES ---
         st.divider()
         col_admin_left, col_admin_right = st.columns(2)
