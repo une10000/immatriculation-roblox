@@ -956,23 +956,31 @@ if st.session_state.get("user_auth") == "Staff":
                         calcul_primes += m_prime
             total_brut = 15000 + calcul_primes
             
-            # 3. Calcul précis des Assurances (SCAN PAR VÉHICULE)
+            # 3. Calcul précis des Assurances (SCAN PAR VÉHICULE + OFFRE TRIO)
             mes_vehicules = df_i[df_i["Nom d'utilisateur ROBLOX"] == target_paie]
             nb_vehicules = len(mes_vehicules)
             
-            argent_pour_rct = 0
+            count_rct = 0
             argent_pour_averis = 0
             argent_standard = 0
             
             for index, vhc in mes_vehicules.iterrows():
                 choix = str(vhc["Assurance"]).upper()
                 if "RCT" in choix:
-                    argent_pour_rct += 150
+                    count_rct += 1
                 elif "AVERIS" in choix:
                     argent_pour_averis += 130
                 else:
                     argent_standard += 150
             
+            # Application de l'Offre Trio RCT (Max 2 payants)
+            if count_rct >= 3:
+                argent_pour_rct = 300
+                label_rct_display = "Part RCT (Offre Trio 🎁)"
+            else:
+                argent_pour_rct = count_rct * 150
+                label_rct_display = "Part RCT"
+
             total_assurance = argent_pour_rct + argent_pour_averis + argent_standard
             
             # 4. Taxes Jeune Conducteur
@@ -990,7 +998,7 @@ if st.session_state.get("user_auth") == "Staff":
             total_net = total_brut - total_prelevement
             solde_final = solde_actuel + total_net
             
-            # --- AFFICHAGE (TES COLONNES) ---
+            # --- AFFICHAGE ---
             st.markdown(f"#### 📊 Fiche de Paie : {target_paie}")
             col_rev1, col_rev2 = st.columns(2)
             
@@ -1005,33 +1013,31 @@ if st.session_state.get("user_auth") == "Staff":
             with col_rev2:
                 with st.container(border=True):
                     st.write("**📉 PRÉLÈVEMENTS**")
-                    if argent_pour_rct > 0: st.write(f"• Part RCT : -{argent_pour_rct}$")
+                    if argent_pour_rct > 0: st.write(f"• {label_rct_display} : -{argent_pour_rct}$")
                     if argent_pour_averis > 0: st.write(f"• Part Averis : -{argent_pour_averis}$")
                     if argent_standard > 0: st.write(f"• Part Standard : -{argent_standard}$")
                     
                     if est_jeune_conducteur:
                         st.write(f"• Taxes JC ({anciennete_jours}j) : -{taxe_jc_total}$")
-                        st.caption(f"⏳ Exonération dans {30 - anciennete_jours} jours")
                     else:
                         st.write(f"• Taxes JC : **EXONÉRÉ** ✅")
 
-            # Metrics avec flèches
             st.markdown("---")
             c1, c2, c3, c4 = st.columns(4)
             c1.metric("Solde Actuel", f"{solde_actuel}$")
             
             points_actuels = mes_vehicules["Points"].values[0] if not mes_vehicules.empty and "Points" in df_i.columns else 25
             diff_points = 25 - points_actuels
-            c2.metric("Points Permis", "25/25", delta=f"+{diff_points}" if diff_points > 0 else None, delta_color="normal")
+            c2.metric("Points Permis", "25/25", delta=f"+{diff_points}" if diff_points > 0 else None)
             
             c3.metric("Net à Verser", f"+{total_net}$", delta=f"-{total_prelevement}$ Taxes", delta_color="inverse")
-            c4.metric("Solde Final", f"{solde_final}$", delta=f"+{total_net}$", delta_color="normal")
+            c4.metric("Solde Final", f"{solde_final}$", delta=f"+{total_net}$")
 
-            # Bouton de validation avec transferts
+            # Bouton de validation
             if st.button(f"🧧 CONFIRMER LE VERSEMENT ET LES TRANSFERTS", use_container_width=True, type="primary"):
                 try:
                     with st.spinner("Mise à jour des comptes..."):
-                        # A. Transferts Patrons
+                        # A. Transferts Patrons (Salaire -2000 + Assurances récupérées)
                         if "Agent RCT" in user_jobs_list:
                             idx_rct = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
                             df_b.at[idx_rct, "Solde"] = float(df_b.at[idx_rct, "Solde"]) - 2000 + argent_pour_rct
@@ -1058,8 +1064,8 @@ if st.session_state.get("user_auth") == "Staff":
                         cloud_conn.update(worksheet="Banque", data=df_b)
                         cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i)
                         
-                        record_log("Staff", f"PAIE & TRANSFERTS : {target_paie} | {total_net}$")
-                        st.success(f"✅ Paie validée. Les assurances ont été reversées aux patrons.")
+                        record_log("Staff", f"PAIE : {target_paie} | Net: {total_net}$")
+                        st.success(f"✅ Terminé ! L'offre Trio a été appliquée si éligible.")
                         st.cache_data.clear()
                         st.rerun()
                 except Exception as e:
