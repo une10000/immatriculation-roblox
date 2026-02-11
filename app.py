@@ -1114,109 +1114,112 @@ if st.session_state.get("user_auth") == "Staff":
             total_net = total_brut - total_prelevement
             solde_final = solde_actuel + total_net
             
-# --- AFFICHAGE ---
-st.markdown(f"#### 📊 Fiche de Paie : {target_paie}")
-col_rev1, col_rev2 = st.columns(2)
+# --- DÉBUTE L'AFFICHAGE ICI (BIEN ALIGNÉ) ---
+            st.markdown(f"#### 📊 Fiche de Paie : {target_paie}")
+            col_rev1, col_rev2 = st.columns(2)
 
-with col_rev1:
-    with st.container(border=True):
-        st.write("**💰 REVENUS**")
-        st.write(f"• Salaire de Base : 15,000$")
-        if primes_detail_list:
-            for p in primes_detail_list: st.write(p)
-        else: 
-            st.write("• Aucune prime métier")
+            with col_rev1:
+                with st.container(border=True):
+                    st.write("**💰 REVENUS**")
+                    st.write(f"• Salaire de Base : 15,000$")
+                    if primes_detail_list:
+                        for p in primes_detail_list: st.write(p)
+                    else: 
+                        st.write("• Aucune prime métier")
 
-with col_rev2:
-    with st.container(border=True):
-        st.write("**📉 PRÉLÈVEMENTS**")
-        if argent_pour_rct > 0: st.write(f"• {label_rct_display} : -{argent_pour_rct}$")
-        if argent_pour_averis > 0: st.write(f"• Part Averis : -{argent_pour_averis}$")
-        if argent_standard > 0: st.write(f"• Part Standard : -{argent_standard}$")
-        
-        if est_jeune_conducteur:
-            st.write(f"• Taxes JC ({anciennete_jours}j) : -{taxe_jc_total}$")
-        else:
-            st.write(f"• Taxes JC : **EXONÉRÉ** ✅")
+            with col_rev2:
+                with st.container(border=True):
+                    st.write("**📉 PRÉLÈVEMENTS**")
+                    if argent_pour_rct > 0: st.write(f"• {label_rct_display} : -{argent_pour_rct}$")
+                    if argent_pour_averis > 0: st.write(f"• Part Averis : -{argent_pour_averis}$")
+                    if argent_standard > 0: st.write(f"• Part Standard : -{argent_standard}$")
+                    
+                    if est_jeune_conducteur:
+                        st.write(f"• Taxes JC ({anciennete_jours}j) : -{taxe_jc_total}$")
+                    else:
+                        st.write(f"• Taxes JC : **EXONÉRÉ** ✅")
 
-st.markdown("---")
-c1, c2, c3, c4 = st.columns(4)
+            st.markdown("---")
+            c1, c2, c3, c4 = st.columns(4)
 
-# 1. Solde Actuel
-c1.metric("Solde Actuel", f"{solde_actuel}$")
+            # 1. Solde Actuel
+            c1.metric("Solde Actuel", f"{solde_actuel}$")
 
-# 2. Points Permis (SÉCURISÉ)
-try:
-    # On cherche dans l'onglet Points Permis (df_p) via le Nom Roblox
-    user_points_row = df_p[df_p["Nom Roblox"] == target_paie]
-    if not user_points_row.empty:
-        # On utilise .iloc[0] sur la colonne 'PTS' (vu sur ton screen)
-        val_pts = user_points_row["PTS"].values[0]
-        points_actuels = int(float(str(val_pts).replace(',', '.')))
-    else:
-        points_actuels = 25
-except:
-    points_actuels = 25
+            # 2. Points Permis (SÉCURISÉ)
+            points_actuels = 25
+            try:
+                user_points_row = df_p[df_p["Nom Roblox"] == target_paie]
+                if not user_points_row.empty:
+                    val_pts = user_points_row["PTS"].values[0]
+                    points_actuels = int(float(str(val_pts).replace(',', '.')))
+            except:
+                points_actuels = 25
 
-diff_points = 25 - points_actuels
-c2.metric("Points Permis", "25/25", delta=f"+{diff_points} récupérés" if diff_points > 0 else None)
+            diff_points = 25 - points_actuels
+            c2.metric("Points Permis", "25/25", delta=f"+{diff_points} récupérés" if diff_points > 0 else None)
 
-# 3. Net à Verser
-c3.metric("Net à Verser", f"+{total_net}$", delta=f"-{total_prelevement}$ Taxes", delta_color="inverse")
+            # 3. Net à Verser
+            c3.metric("Net à Verser", f"+{total_net}$", delta=f"-{total_prelevement}$ Taxes", delta_color="inverse")
 
-# 4. Solde Final
-c4.metric("Solde Final", f"{solde_final}$", delta=f"+{total_net}$")
-# --- BOUTON DE VALIDATION (PARFAITEMENT ALIGNÉ) ---
-if st.button(f"🧧 CONFIRMER LE VERSEMENT ET LES TRANSFERTS", use_container_width=True, type="primary"):
-    try:
-        with st.spinner("Mise à jour des comptes..."):
-            # A. Transferts Patrons
-            if "Agent RCT" in user_jobs_list:
-                idx_rct = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
-                df_b.at[idx_rct, "Solde"] = float(df_b.at[idx_rct, "Solde"]) - 2000 + argent_pour_rct
-            elif argent_pour_rct > 0:
-                idx_rct = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
-                df_b.at[idx_rct, "Solde"] = float(df_b.at[idx_rct, "Solde"]) + argent_pour_rct
+            # 4. Solde Final
+            c4.metric("Solde Final", f"{solde_final}$", delta=f"+{total_net}$")
 
-            if "Averis" in user_jobs_list:
-                idx_av = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
-                df_b.at[idx_av, "Solde"] = float(df_b.at[idx_av, "Solde"]) - 2000 + argent_pour_averis
-            elif argent_pour_averis > 0:
-                idx_av = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
-                df_b.at[idx_av, "Solde"] = float(df_b.at[idx_av, "Solde"]) + argent_pour_averis
+            # --- BOUTON DE VALIDATION (DANS LE BLOC) ---
+            if st.button(f"🧧 CONFIRMER LE VERSEMENT ET LES TRANSFERTS", use_container_width=True, type="primary"):
+                try:
+                    with st.spinner("Mise à jour des comptes..."):
+                        # Fonction de nettoyage pour éviter les erreurs de calcul avec les $
+                        def clean_val(val):
+                            return float(str(val).replace('$', '').replace(',', '').strip())
 
-            # B. Crédit Citoyen
-            idx_ben = df_b[df_b["Nom Roblox"] == target_paie].index[0]
-            df_b.at[idx_ben, "Solde"] = solde_final 
-            
-            # C. Reset Immatriculations (MAINTIENT LE TYPE D'ASSURANCE)
-            mask_user = df_i["Nom d'utilisateur ROBLOX"] == target_paie
+                        # A. Transferts Patrons
+                        if "Agent RCT" in user_jobs_list:
+                            idx_rct = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
+                            df_b.at[idx_rct, "Solde"] = clean_val(df_b.at[idx_rct, "Solde"]) - 2000 + argent_pour_rct
+                        elif argent_pour_rct > 0:
+                            idx_rct = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
+                            df_b.at[idx_rct, "Solde"] = clean_val(df_b.at[idx_rct, "Solde"]) + argent_pour_rct
 
-            def format_assurance(x):
-                # On nettoie pour éviter "✅ ✅ RCT"
-                propre = str(x).replace("✅", "").strip().upper()
-                if "RCT" in propre:
-                    return "✅ RCT"
-                elif "AVERIS" in propre:
-                    return "✅ AVERIS"
-                else:
-                    return "✅ Standard"
+                        if "Averis" in user_jobs_list:
+                            idx_av = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
+                            df_b.at[idx_av, "Solde"] = clean_val(df_b.at[idx_av, "Solde"]) - 2000 + argent_pour_averis
+                        elif argent_pour_averis > 0:
+                            idx_av = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
+                            df_b.at[idx_av, "Solde"] = clean_val(df_b.at[idx_av, "Solde"]) + argent_pour_averis
 
-            df_i.loc[mask_user, "Assurance"] = df_i.loc[mask_user, "Assurance"].apply(format_assurance)
+                        # B. Crédit Citoyen
+                        idx_ben = df_b[df_b["Nom Roblox"] == target_paie].index[0]
+                        df_b.at[idx_ben, "Solde"] = solde_final 
+                        
+                        # C. Reset Immatriculations
+                        mask_user = df_i["Nom d'utilisateur ROBLOX"] == target_paie
+                        def format_assurance(x):
+                            propre = str(x).replace("✅", "").strip().upper()
+                            if "RCT" in propre: return "✅ RCT"
+                            elif "AVERIS" in propre: return "✅ AVERIS"
+                            else: return "✅ Standard"
 
-            if "Points" in df_i.columns:
-                df_i.loc[mask_user, "Points"] = 25
-            
-            # Enregistrement Cloud
-            cloud_conn.update(worksheet="Banque", data=df_b)
-            cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i)
-            
-            record_log("Staff", f"PAIE : {target_paie} | Net: {total_net}$")
-            st.success(f"✅ Terminé ! Statuts mis à jour et points réinitialisés.")
-            st.cache_data.clear()
-            st.rerun()
-    except Exception as e:
-        st.error(f"⚠️ Erreur lors de la validation : {e}")
+                        df_i.loc[mask_user, "Assurance"] = df_i.loc[mask_user, "Assurance"].apply(format_assurance)
+                        if "Points" in df_i.columns:
+                            df_i.loc[mask_user, "Points"] = 25
+                        
+                        # D. Reset Points Permis (Onglet séparé)
+                        try:
+                            idx_p = df_p[df_p["Nom Roblox"] == target_paie].index[0]
+                            df_p.at[idx_p, "PTS"] = 25
+                            cloud_conn.update(worksheet="Points Permis", data=df_p)
+                        except: pass
+
+                        # Enregistrement Final
+                        cloud_conn.update(worksheet="Banque", data=df_b)
+                        cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i)
+                        
+                        record_log("Staff", f"PAIE : {target_paie} | Net: {total_net}$")
+                        st.success(f"✅ Paie effectuée pour {target_paie}")
+                        st.cache_data.clear()
+                        st.rerun()
+                except Exception as e:
+                    st.error(f"⚠️ Erreur lors de la validation : {e}")
 # <-- Plus rien ici, le terminal est fini et protégé.
         # --- SECTION 3 : LOGS ET STATISTIQUES ---
         st.divider()
