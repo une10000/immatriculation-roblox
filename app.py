@@ -697,7 +697,7 @@ with tabs[0]:
 
             total_bill = taxe_gouv + taxe_assu + val_taxe_jeune
             
-            # --- BOUTON DE VALIDATION (LOGIQUE RÉELLE) ---
+# --- BOUTON DE VALIDATION (LOGIQUE RÉELLE) ---
             if st.button(f"S'ACQUITTER DE {total_bill}$ ET ENREGISTRER", use_container_width=True, key="btn_pay_final", type="primary"):
                 # Vérification que le formulaire n'est pas vide
                 if f_owner == "---" or not f_model or not f_plate or not f_code:
@@ -715,32 +715,27 @@ with tabs[0]:
                                 # 2. Retrait de l'argent
                                 df_b.at[idx_user, "Solde"] = solde_actuel - total_bill
                                 
-                                # 3. Création de la ligne (CORRIGÉE POUR CORRESPONDRE AU SHEETS)
-nouvelle_immat = {
-    "Horodateur": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
-    "Nom d'utilisateur ROBLOX": f_owner,
-    "Marque du véhicule": f_model,    # Corrigé
-    "Numéro de la plaque": f_plate,  # Corrigé
-    "Assurance": f_assu.split(" (")[0],
-    "CODE": f_code,                  # Mis en majuscules comme sur ton image
-    "Points": 25
-}
-
-# Ajout au tableau local
-new_df_i = pd.concat([df_i, pd.DataFrame([nouvelle_immat])], ignore_index=True)
+                                # 3. Création de la ligne (CORRIGÉE POUR TON SHEETS)
+                                nouvelle_immat = {
+                                    "Horodateur": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+                                    "Nom d'utilisateur ROBLOX": f_owner,
+                                    "Marque du véhicule": f_model,
+                                    "Numéro de la plaque": f_plate,
+                                    "Assurance": f_assu.split(" (")[0],
+                                    "CODE": f_code,
+                                    "Points": 25
                                 }
-                                
+
                                 # Ajout au tableau local
                                 new_df_i = pd.concat([df_i, pd.DataFrame([nouvelle_immat])], ignore_index=True)
                                 
-                                # 4. Envoi au Google Sheets (INDISPENSABLE)
+                                # 4. Envoi au Google Sheets
                                 cloud_conn.update(worksheet="Banque", data=df_b)
                                 cloud_conn.update(worksheet="Copie de Immatriculations", data=new_df_i)
                                 
                                 # 5. Effet de fête et Confirmation
-                                st.balloons() # Les ballons ! 🎈
+                                st.balloons() # 🎈
                                 
-                                # Message de confirmation stylé
                                 st.success(f"""
                                 ### ✅ IMMATRICULATION RÉUSSIE !
                                 ---
@@ -752,17 +747,15 @@ new_df_i = pd.concat([df_i, pd.DataFrame([nouvelle_immat])], ignore_index=True)
                                 *Le titre de circulation a été enregistré dans la base nationale.*
                                 """)
                                 
-                                # Petite pause pour laisser voir les ballons avant le refresh
                                 import time
                                 time.sleep(3)
                                 
-                                # Rafraîchissement pour vider le formulaire
+                                # Rafraîchissement
                                 st.cache_data.clear()
                                 st.rerun()
                                 
                     except Exception as e:
                         st.error(f"⚠️ Erreur de connexion au Sheets : {e}")
-
     with col_t:
         # Titre de droite aligné sur le titre de gauche
         st.markdown("### 🖼️ Aperçu du Titre")
