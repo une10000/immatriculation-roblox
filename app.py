@@ -851,17 +851,24 @@ if st.session_state.user_auth in ["RCT", "Staff", "POLSTA"]:
             with col_saisie:
                 with st.container(border=True):
                     st.markdown("#### 📝 Saisie")
-                    
                     if st.session_state.user_auth == "Staff":
                         f_emetteur = st.selectbox("Émetteur", ["POLSTA", "Averis"], key="v_emetteur_final")
+                    elif st.session_state.user_auth == "POLSTA":
+                        f_emetteur = "POLSTA"
+                        st.info("Émetteur : POLSTA")
+                    elif st.session_state.user_auth == "Averis":
+                        f_emetteur = "Averis"
+                        st.info("Émetteur : Averis")
                     else:
                         f_emetteur = "RCT"
                         st.info("Émetteur : RCT")
+        # ----------------------------------------
 
-                    f_val = st.number_input("Montant ($)", min_value=0, step=50, key="v_val_final")
-                    
-                    can_pull_points = (st.session_state.user_auth in ["Staff", "POLSTA"] and f_emetteur == "POLSTA")
-                    f_pts = st.number_input("Points à retirer", 0, 12, 0, key="v_pts_final", disabled=not can_pull_points)
+        f_val = st.number_input("Montant ($)", min_value=0, step=50, key="v_val_final")
+        
+        # On vérifie si l'utilisateur peut retirer des points (seulement POLSTA ou Staff agissant pour POLSTA)
+        can_pull_points = (st.session_state.user_auth in ["Staff", "POLSTA"] and f_emetteur == "POLSTA")
+        f_pts = st.number_input("Points à retirer", 0, 12, 0, key="v_pts_final", disabled=not can_pull_points)
                     
                     f_motif = st.text_input("Motif", key="v_mot_final")
                     
