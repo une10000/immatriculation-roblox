@@ -140,13 +140,25 @@ def traiter_paiement_prime(target_name, metier, montant, df_b, cloud_conn):
             return False, f"❌ Erreur lors du virement : {e}"
     else:
         return False, "⚠️ Aucun employeur configuré pour cette prime."
-
-# Fonction de Log améliorée (pour ton Sheets)
-def record_log(user, action):
+def record_log(user, action, cloud_conn=None):
+    # 1. On prépare l'heure et la date
     now = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-    # On utilise le nom stocké dans la session s'il existe
-    nom_reel = st.session_state.get("staff_name", user)
-    st.session_state.audit_logs.append(f"[{now}] {nom_reel} : {action}")
+    log_entry = f"[{now}] {user} : {action}"
+    
+    # 2. Ajout dans la liste visuelle (Sidebar)
+    if "audit_logs" not in st.session_state:
+        st.session_state.audit_logs = []
+    st.session_state.audit_logs.append(log_entry)
+    
+    # 3. SAUVEGARDE SUR GOOGLE SHEETS (Si la connexion existe)
+    if cloud_conn:
+        try:
+            # On suppose que tu as une feuille nommée "Logs" ou "Audit"
+            # Sinon, on peut l'envoyer dans une colonne spéciale de ta feuille principale
+            new_row = [now, user, action]
+            cloud_conn.append_row(worksheet="Logs", data=new_row)
+        except:
+            pass # On évite de crash si le Sheets a un souci
 # ======================================================================================
 # 4. SIDEBAR CONDITIONNELLE (LOGO & INFOS)
 # ======================================================================================
