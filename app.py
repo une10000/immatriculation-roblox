@@ -386,93 +386,84 @@ if st.session_state.user_auth is None:
 # LE RESTE DU CODE (S'affiche uniquement après connexion)
 # ======================================================================================
 # ======================================================================================
-# 6. MODULE : DOSSIER CITOYEN UNIFIÉ (VISIBILITÉ TOTALE)
+# 6. MODULE : DOSSIER CITOYEN UNIFIÉ (LOOK ORIGINAL RESTAURÉ)
 # ======================================================================================
 
 st.markdown('<div class="header-box"><h2>📂 REGISTRE NATIONAL DES CITOYENS</h2></div>', unsafe_allow_html=True)
 
-with st.container():
-    search_list = ["---"] + sorted(df_b["Nom Roblox"].unique().tolist())
-    target = st.selectbox("Sélectionner un citoyen :", search_list, key="main_search")
+# Recherche du citoyen
+search_list = ["---"] + sorted(df_b["Nom Roblox"].unique().tolist())
+target = st.selectbox("Sélectionner un citoyen :", search_list, key="main_search")
+
+if target != "---":
+    # --- EN-TÊTE INFOS (Permis / Banque / Archives) ---
+    col_p, col_b, col_a = st.columns(3)
     
-    if target != "---":
-        col1, col2, col3 = st.columns(3)
-        
-        # --- COLONNE 1 : PERMIS & VÉHICULES (LOOK TICKET) ---
-        with col1:
-            st.markdown("### 🛡️ PERMIS & VÉHICULES")
-            p_data = df_p[df_p["Nom Roblox"] == target]
-            if not p_data.empty:
-                pts_val = int(p_data.iloc[0]["PTS"])
-                st.metric("POINTS PERMIS", f"{pts_val}/25")
-            
-            st.markdown("---")
-            st.markdown("##### 🚗 Titres de Circulation")
-            v_data = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
-            
-            if not v_data.empty:
-                for _, v in v_data.iterrows():
-                    # Affichage style "Ticket de caisse" pour chaque immatriculation
+    with col_p:
+        st.markdown("### 🛡️ PERMIS")
+        p_data = df_p[df_p["Nom Roblox"] == target]
+        pts = int(p_data.iloc[0]["PTS"]) if not p_data.empty else 0
+        st.metric("POINTS RESTANTS", f"{pts}/25")
+        st.markdown(f"Statut : <b style='color:{'green' if pts > 0 else 'red'};'>{'VALIDE' if pts > 0 else 'SUSPENDU'}</b>", unsafe_allow_html=True)
+
+    with col_b:
+        st.markdown("### 💳 BANQUE")
+        b_data = df_b[df_b["Nom Roblox"] == target]
+        if not b_data.empty:
+            st.metric("SOLDE ACTUEL", f"{b_data.iloc[0]['Solde']}$")
+            st.write(f"🏢 Métier : **{b_data.iloc[0]['Emploiement']}**")
+            st.caption(f"📅 Arrivée : {b_data.iloc[0].get('Date d\'arrivée', '01/01/2026')}")
+
+    with col_a:
+        st.markdown("### 📁 ARCHIVES")
+        df_f_h = cloud_conn.read(worksheet="Factures").fillna("")
+        hist = df_f_h[(df_f_h["Cible"] == target) & (df_f_h["Statut"] == "PAYÉ")]
+        if hist.empty:
+            st.info("Aucun historique payé.")
+        else:
+            for _, f in hist.tail(3).iterrows():
+                with st.expander(f"📄 #{f['ID']} - {f['Montant']}$"):
                     st.markdown(f"""
-                    <div style="border: 2px solid black; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; margin-bottom: 10px; line-height: 1.2;">
-                        <center><b style="font-size: 1.1em;">TITRE DE CIRCULATION</b><br><small>RÉPUBLIQUE DE RENSSERLAER</small></center>
-                        <hr style="border-top: 1px solid black; margin: 8px 0;">
-                        <b>MODÈLE :</b> {v['Marque du véhicule'].upper()}<br>
-                        <b>PLAQUE :</b> <span style="border: 1px solid black; padding: 0 4px;">{v['Numéro de la plaque']}</span><br>
-                        <b>ASSUR. :</b> {v['Assurance'].upper()}<br>
-                        <b>POINTS :</b> {v['Points']} PTS
+                    <div style="border: 1px solid black; padding: 10px; background: white; color: black; font-family: monospace; font-size: 0.8em;">
+                        <center><b>REÇU DE PAIEMENT</b></center>
+                        <hr style="border-top: 1px dashed black;">
+                        <b>ID :</b> {f['ID']}<br><b>MOTIF :</b> {f['Motif']}<br>
+                        <center><b>PAYÉ : {f['Montant']}$</b></center>
                     </div>
                     """, unsafe_allow_html=True)
-            else:
-                st.info("Aucun véhicule enregistré.")
 
-        # --- COLONNE 2 : BANQUE & EMPLOI ---
-        with col2:
-            st.markdown("### 💳 BANQUE")
-            b_data = df_b[df_b["Nom Roblox"] == target]
-            if not b_data.empty:
-                st.metric("SOLDE ACTUEL", f"{b_data.iloc[0]['Solde']}$")
-                st.write(f"🏢 Métier : **{b_data.iloc[0]['Emploiement']}**")
+    # --- SECTION VÉHICULES (LE LOOK QUE TU VOULAIS) ---
+    st.markdown("---")
+    st.markdown("### 🚗 VÉHICULES ENREGISTRÉS")
+    v_data = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
+    
+    if v_data.empty:
+        st.warning("Aucun véhicule trouvé pour ce citoyen.")
+    else:
+        # Affichage en 3 colonnes pour les titres de circulation
+        v_cols = st.columns(3)
+        for i, (_, v) in enumerate(v_data.iterrows()):
+            with v_cols[i % 3]:
+                # Détermination du statut d'assurance
+                assu_status = "DANGER : NON-ASSURÉ RCT" if v['Assurance'] == "Aucune" else f"ASSURANCE : {v['Assurance'].upper()}"
+                assu_color = "#ff4b4b" if v['Assurance'] == "Aucune" else "#1a73e8"
                 
-                if st.session_state.user_auth in ["POLSTA", "RCT", "Staff", "Admin"]:
-                    if st.button("✏️ Modifier Métier", key=f"job_btn_{target}"):
-                        st.session_state[f"edit_mode_{target}"] = not st.session_state.get(f"edit_mode_{target}", False)
-                    
-                    if st.session_state.get(f"edit_mode_{target}", False):
-                        new_j = st.text_input("Nouveau métier :", value=str(b_data.iloc[0]['Emploiement']))
-                        if st.button("Sauvegarder", key=f"save_job_{target}"):
-                            idx = df_b[df_b["Nom Roblox"] == target].index[0]
-                            df_b.at[idx, "Emploiement"] = new_j
-                            cloud_conn.update(worksheet="Banque", data=df_b)
-                            st.rerun()
-
-                date_arr = b_data.iloc[0].get("Date d'arrivée", "")
-                if not date_arr or str(date_arr) == "nan":
-                    date_arr = datetime.now().strftime("%d/%m/%Y")
-                st.caption(f"📅 Arrivée : {date_arr}")
-
-        # --- COLONNE 3 : ARCHIVES FACTURES (DÉJÀ EN TICKET) ---
-        with col3:
-            st.markdown("### 📁 ARCHIVES")
-            df_f_history = cloud_conn.read(worksheet="Factures").fillna("")
-            historique = df_f_history[(df_f_history["Cible"] == target) & (df_f_history["Statut"] == "PAYÉ")]
-
-            if not historique.empty:
-                for _, f in historique.tail(5).iterrows():
-                    with st.expander(f"📄 Reçu #{f['ID']} ({f['Montant']}$)", expanded=False):
-                        st.markdown(f"""
-                        <div style="border: 2px solid black; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; font-size: 0.9em;">
-                            <center><b>REÇU DE PAIEMENT</b><br><small>RÉPUBLIQUE DE RENSSERLAER</small></center>
-                            <hr style="border-top: 1px dashed black; margin: 10px 0;">
-                            <b>ID      :</b> #{f['ID']}<br>
-                            <b>ÉMETTEUR :</b> {f['Emetteur'].upper()}<br>
-                            <b>MOTIF   :</b> {f['Motif'].upper()}<br>
-                            <hr style="border-top: 1px dashed black; margin: 10px 0;">
-                            <center><b style="font-size: 1.2em;">TOTAL PAYÉ : {f['Montant']}$</b></center>
-                        </div>
-                        """, unsafe_allow_html=True)
-            else:
-                st.info("Aucun historique payé.")
+                st.markdown(f"""
+                <div style="border: 2px solid black; padding: 10px; background: white; color: black; font-family: 'Courier New', monospace; min-height: 250px; position: relative;">
+                    <center><b><u>TITRE DE CIRCULATION</u></b><br><small>RÉPUBLIQUE DE RENSSERLAER</small></center>
+                    <br>
+                    <small><b>DATE :</b> {v.get('Horodateur', 'N/A').split(' ')[0]}</small><br>
+                    <b>NOM :</b> {v["Nom d'utilisateur ROBLOX"]}<br>
+                    <b>MODÈLE :</b> {v['Marque du véhicule']}<br>
+                    <b>PLAQUE :</b> <span style="border: 1px solid #ccc; padding: 0 5px;">{v['Numéro de la plaque']}</span><br>
+                    <b>ASSURANCE :</b> {v['Assurance']}<br>
+                    <br><br>
+                    <center style="color: {assu_color}; font-size: 0.7em; font-weight: bold;">
+                        ⚠️ {assu_status}<br>
+                        <span style="font-size: 0.8em;">Par le Terminal National</span>
+                    </center>
+                </div>
+                """, unsafe_allow_html=True)
 # ======================================================================================
 # 7. LOGIQUE DES ONGLETS (CORRIGÉE & OPTIMISÉE)
 # ======================================================================================
