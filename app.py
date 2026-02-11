@@ -1052,41 +1052,58 @@ if st.session_state.get("user_auth") == "Staff":
             total_net = total_brut - total_prelevement
             solde_final = solde_actuel + total_net
             
-            # --- AFFICHAGE ---
-            st.markdown(f"#### 📊 Fiche de Paie : {target_paie}")
-            col_rev1, col_rev2 = st.columns(2)
-            
-            with col_rev1:
-                with st.container(border=True):
-                    st.write("**💰 REVENUS**")
-                    st.write(f"• Salaire de Base : 15,000$")
-                    if primes_detail_list:
-                        for p in primes_detail_list: st.write(p)
-                    else: st.write("• Aucune prime métier")
-            
-            with col_rev2:
-                with st.container(border=True):
-                    st.write("**📉 PRÉLÈVEMENTS**")
-                    if argent_pour_rct > 0: st.write(f"• {label_rct_display} : -{argent_pour_rct}$")
-                    if argent_pour_averis > 0: st.write(f"• Part Averis : -{argent_pour_averis}$")
-                    if argent_standard > 0: st.write(f"• Part Standard : -{argent_standard}$")
-                    
-                    if est_jeune_conducteur:
-                        st.write(f"• Taxes JC ({anciennete_jours}j) : -{taxe_jc_total}$")
-                    else:
-                        st.write(f"• Taxes JC : **EXONÉRÉ** ✅")
+# --- AFFICHAGE ---
+st.markdown(f"#### 📊 Fiche de Paie : {target_paie}")
+col_rev1, col_rev2 = st.columns(2)
 
-            st.markdown("---")
-            c1, c2, c3, c4 = st.columns(4)
-            c1.metric("Solde Actuel", f"{solde_actuel}$")
-            
-            points_actuels = mes_vehicules["Points"].values[0] if not mes_vehicules.empty and "Points" in df_i.columns else 25
-            diff_points = 25 - points_actuels
-            c2.metric("Points Permis", "25/25", delta=f"+{diff_points}" if diff_points > 0 else None)
-            
-            c3.metric("Net à Verser", f"+{total_net}$", delta=f"-{total_prelevement}$ Taxes", delta_color="inverse")
-            c4.metric("Solde Final", f"{solde_final}$", delta=f"+{total_net}$")
+with col_rev1:
+    with st.container(border=True):
+        st.write("**💰 REVENUS**")
+        st.write(f"• Salaire de Base : 15,000$")
+        if primes_detail_list:
+            for p in primes_detail_list: st.write(p)
+        else: 
+            st.write("• Aucune prime métier")
 
+with col_rev2:
+    with st.container(border=True):
+        st.write("**📉 PRÉLÈVEMENTS**")
+        if argent_pour_rct > 0: st.write(f"• {label_rct_display} : -{argent_pour_rct}$")
+        if argent_pour_averis > 0: st.write(f"• Part Averis : -{argent_pour_averis}$")
+        if argent_standard > 0: st.write(f"• Part Standard : -{argent_standard}$")
+        
+        if est_jeune_conducteur:
+            st.write(f"• Taxes JC ({anciennete_jours}j) : -{taxe_jc_total}$")
+        else:
+            st.write(f"• Taxes JC : **EXONÉRÉ** ✅")
+
+st.markdown("---")
+c1, c2, c3, c4 = st.columns(4)
+
+# 1. Solde Actuel
+c1.metric("Solde Actuel", f"{solde_actuel}$")
+
+# 2. Points Permis (SÉCURISÉ)
+try:
+    # On cherche dans l'onglet Points Permis (df_p) via le Nom Roblox
+    user_points_row = df_p[df_p["Nom Roblox"] == target_paie]
+    if not user_points_row.empty:
+        # On utilise .iloc[0] sur la colonne 'PTS' (vu sur ton screen)
+        val_pts = user_points_row["PTS"].values[0]
+        points_actuels = int(float(str(val_pts).replace(',', '.')))
+    else:
+        points_actuels = 25
+except:
+    points_actuels = 25
+
+diff_points = 25 - points_actuels
+c2.metric("Points Permis", "25/25", delta=f"+{diff_points} récupérés" if diff_points > 0 else None)
+
+# 3. Net à Verser
+c3.metric("Net à Verser", f"+{total_net}$", delta=f"-{total_prelevement}$ Taxes", delta_color="inverse")
+
+# 4. Solde Final
+c4.metric("Solde Final", f"{solde_final}$", delta=f"+{total_net}$")
 # --- BOUTON DE VALIDATION (PARFAITEMENT ALIGNÉ) ---
 if st.button(f"🧧 CONFIRMER LE VERSEMENT ET LES TRANSFERTS", use_container_width=True, type="primary"):
     try:
