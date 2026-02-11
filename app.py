@@ -877,25 +877,25 @@ if st.session_state.user_auth in ["RCT", "Staff", "POLSTA"]:
                             <b>MODÈLE :</b> {veh['Marque du véhicule']}<br>
                             <b>PLAQUE :</b> <span style="border: 1px solid black; padding: 0 2px;">{veh['Numéro de la plaque']}</span>
                         </div>
-                        """, unsafe_allow_html=True)import streamlit as st
-import pandas as pd
-from datetime import datetime, timedelta
-import random # <--- C'EST CETTE LIGNE QUI MANQUAIT POUR FIXER TON ERREUR !
+                        """, unsafe_allow_html=True)
+                else:
+                    st.info("Aucun véhicule.")
 
 # ======================================================================================
-# 7. LOGIQUE DES ONGLETS (CORRIGÉE & SANS BUG)
+# 7. LOGIQUE DES ONGLETS (PROPRE ET SANS DOUBLONS)
 # ======================================================================================
 tab_labels = ["🚗 IMMATRICULATION"]
 
-# On ajoute POLSTA ici pour qu'il voie l'onglet Agent
 if st.session_state.user_auth in ["RCT", "Staff", "POLSTA"]: 
     tab_labels.append("👮 SERVICES AGENT")
 
-# On ajoute POLSTA ici pour qu'il voie l'onglet Administration
 if st.session_state.user_auth in ["Staff", "POLSTA"]: 
     tab_labels.append("🛠️ ADMINISTRATION")
 
 tabs = st.tabs(tab_labels)
+
+# --- CONTENU DES ONGLETS ---
+# (Remets ici la suite de ton code avec "with tabs[0]:" etc.)
 
 # --- ONGLET 1 : IMMATRICULATION & RADIATION ---
 with tabs[0]:
