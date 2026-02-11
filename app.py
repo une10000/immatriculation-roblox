@@ -246,21 +246,16 @@ if st.session_state.user_auth is not None:
             for log in reversed(st.session_state.audit_logs[-8:]):
                 st.caption(log)
 # ======================================================================================
-# ======================================================================================
 # 5. LOCKSCREEN (CONNEXION) - UNITÉ FÉDÉRALE DE RENSSELAER
 # ======================================================================================
 if st.session_state.user_auth is None:
-    # --- CONFIGURATION INTERFACE ---
+    # --- CONFIGURATION INTERFACE (CSS) ---
     st.markdown("""
         <style>
             [data-testid="stSidebar"], [data-testid="stSidebarNav"] { display: none; }
             [data-testid="stStatusWidget"] { display: none; }
             .block-container { padding-top: 2rem !important; }
-            iframe { 
-                border: none !important; 
-                box-shadow: none !important; 
-                background: transparent !important;
-            }
+            iframe { border: none !important; box-shadow: none !important; background: transparent !important; }
         </style>
     """, unsafe_allow_html=True)
 
@@ -280,20 +275,14 @@ if st.session_state.user_auth is None:
         t_color = "#FFFFFF"
         glow = "0 0 40px rgba(255,255,255,0.9), 0 0 80px rgba(255,255,255,0.4)"
 
-    # --- LE BLOC MONOLITHIQUE ---
+    # --- LE BLOC MONOLITHIQUE (Design) ---
     import streamlit.components.v1 as components
     components.html(f"""
         <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; width: 100%; border-radius: 25px; overflow: hidden; border: none;">
             <div style="text-align: center; padding: 70px 20px; color: {t_color}; {pattern_style} height: 350px; box-sizing: border-box;">
-                <h1 style="font-size: 5.5em; margin: 0; font-weight: 900; letter-spacing: -3px; text-shadow: {glow}; line-height: 1.1;">
-                    {salut_complet}
-                </h1>
-                <p style="font-size: 1.1em; opacity: 0.8; letter-spacing: 5px; font-weight: bold; text-transform: uppercase; margin: 25px 0;">
-                    Unité Fédérale de Rensselaer
-                </p>
-                <div id="clock" style="font-size: 3.8em; letter-spacing: 3px; font-weight: bold; border-top: 2px solid {t_color}33; display: inline-block; padding-top: 10px;">
-                    00:00:00
-                </div>
+                <h1 style="font-size: 5.5em; margin: 0; font-weight: 900; letter-spacing: -3px; text-shadow: {glow}; line-height: 1.1;">{salut_complet}</h1>
+                <p style="font-size: 1.1em; opacity: 0.8; letter-spacing: 5px; font-weight: bold; text-transform: uppercase; margin: 25px 0;">Unité Fédérale de Rensselaer</p>
+                <div id="clock" style="font-size: 3.8em; letter-spacing: 3px; font-weight: bold; border-top: 2px solid {t_color}33; display: inline-block; padding-top: 10px;">00:00:00</div>
             </div>
             <div style="background-color: #1a1c23; border-left: 10px solid #ff4b4b; padding: 45px 20px; text-align: center; color: white;">
                 <div style="font-size: 45px; margin-bottom: 15px;">👤</div>
@@ -311,41 +300,53 @@ if st.session_state.user_auth is None:
                 const s = String(now.getSeconds()).padStart(2, '0');
                 document.getElementById('clock').textContent = h + ":" + m + ":" + s;
             }}
-            setInterval(update, 1000);
-            update();
+            setInterval(update, 1000); update();
         </script>
     """, height=650)
     
     st.write("")
-    st.warning("⚠️ **AVERTISSEMENT :** Toute action effectuée sur ce terminal est enregistrée sous votre identifiant unique.")
+    st.warning("⚠️ **AVERTISSEMENT :** Toute action effectuée sur ce terminal est enregistrée.")
     st.write("---")
 
-    # --- COLONNES D'ACCÈS ---
-    col_civil, col_staff = st.columns(2)
+    # --- LES 3 COLONNES D'ACCÈS ---
+    c1, c2, c3 = st.columns(3)
 
-    with col_civil:
+    with c1:
         st.markdown("### 👥 CIVIL")
-        if st.button("ACCÉDER AU TERMINAL PUBLIC", use_container_width=True):
+        if st.button("ACCÉDER AU TERMINAL", key="l_civ_f", use_container_width=True):
             st.session_state.user_auth = "Civil"
             st.session_state.staff_name = "Citoyen"
             st.rerun()
 
-    with col_staff:
-        st.markdown("### 🔐 ACCÈS SÉCURISÉ")
-        cle_input = st.text_input("Clé d'accréditation", placeholder="Entrez votre clé unique", type="password")
-        
-        if st.button("S'IDENTIFIER", type="primary", use_container_width=True):
-            if cle_input in STAFF_ACCESS:
-                nom_identifie = STAFF_ACCESS[cle_input]
-                st.session_state.user_auth = "Staff"
-                st.session_state.staff_name = nom_identifie
-                
-                # Log de connexion avec le nom précis
-                record_log(nom_identifie, "Authentification réussie")
-                st.success(f"Bienvenue {nom_identifie}")
-                st.rerun()
-            else:
-                st.error("❌ Clé invalide ou accès révoqué.")
+    with c2:
+        st.markdown("### 👨‍🔧 AGENT RCT")
+        login_rct = st.text_input("Identifiant Agent", placeholder="Code RCT", type="password", key="l_rct_ff")
+        if st.button("AUTHENTIFICATION RCT", key="b_rct_f", use_container_width=True):
+            if login_rct in STAFF_ACCESS:
+                nom = STAFF_ACCESS[login_rct]
+                # Vérification : Doit être RCT ou ADMIN
+                if "(RCT)" in nom or "(ADMIN)" in nom:
+                    st.session_state.user_auth = "Staff"
+                    st.session_state.staff_name = nom
+                    record_log(nom, "Connexion via Portail RCT")
+                    st.rerun()
+                else: st.error("Accès refusé : Cette clé n'est pas accréditée RCT.")
+            else: st.error("Clé invalide.")
+
+    with c3:
+        st.markdown("### 🛡️👮‍♂️ Portail POLSTA")
+        login_staff = st.text_input("Clé Maîtresse", placeholder="Code POLSTA", type="password", key="l_st_ff")
+        if st.button("ACCÈS ADMINISTRATEUR", key="b_st_f", use_container_width=True):
+            if login_staff in STAFF_ACCESS:
+                nom = STAFF_ACCESS[login_staff]
+                # Vérification : Doit être POLSTA ou ADMIN
+                if "(POLSTA)" in nom or "(ADMIN)" in nom:
+                    st.session_state.user_auth = "Staff"
+                    st.session_state.staff_name = nom
+                    record_log(nom, "Connexion via Portail POLSTA")
+                    st.rerun()
+                else: st.error("Accès refusé : Cette clé n'est pas accréditée POLSTA.")
+            else: st.error("Accès refusé.")
 
     st.stop()
 # ======================================================================================
