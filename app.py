@@ -523,36 +523,50 @@ if not mes_factures.empty:
         """, unsafe_allow_html=True)
 
         # 3. BOUTONS D'ACTION (Maintenant BIEN INDENTÉS à l'intérieur du 'for')
-        if st.button(f"💳 RÉGLER LA FACTURE #{fac['ID']}", key=f"pay_{fac['ID']}", use_container_width=True):
-            try:
-                idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
-                solde_raw = str(df_b.at[idx_b, "Solde"]).replace('$', '').replace(',', '')
-                solde_actuel = float(solde_raw)
-                montant_facture = float(fac['Montant'])
+        # --- BOUTON DE PAIEMENT MIS À JOUR (À placer dans ton dossier citoyen) ---
+if st.button(f"💳 RÉGLER LA FACTURE #{fac['ID']}", key=f"pay_{fac['ID']}", use_container_width=True):
+    try:
+        # 1. Récupération des données du payeur (le civil)
+        idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
+        solde_raw = str(df_b.at[idx_b, "Solde"]).replace('$', '').replace(',', '')
+        solde_actuel = float(solde_raw)
+        montant_facture = float(fac['Montant'])
+        
+        if solde_actuel >= montant_facture:
+            # DÉBIT du civil
+            df_b.at[idx_b, "Solde"] = solde_actuel - montant_facture
+            
+            # 2. LOGIQUE DE REDIRECTION (CASH-FLOW)
+            emetteur = str(fac['Emetteur'])
+            
+            if emetteur == "RCT":
+                # L'argent va à la RCT (une10000)
+                rct_idx = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
+                solde_rct = float(str(df_b.at[rct_idx, "Solde"]).replace('$', '').replace(',', ''))
+                df_b.at[rct_idx, "Solde"] = solde_rct + montant_facture
                 
-                if solde_actuel >= montant_facture:
-                    # Débit du client
-                    df_b.at[idx_b, "Solde"] = solde_actuel - montant_facture
-                    
-                    # Crédit si RCT (vers une10000)
-                    if fac['Emetteur'] == "RCT":
-                        rct_idx = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
-                        solde_dest = float(str(df_b.at[rct_idx, "Solde"]).replace('$', '').replace(',', ''))
-                        df_b.at[rct_idx, "Solde"] = solde_dest + montant_facture
-                    
-                    # Mise à jour statut
-                    df_all_f.loc[df_all_f["ID"] == fac["ID"], "Statut"] = "PAYÉ"
-                    
-                    cloud_conn.update(worksheet="Banque", data=df_b)
-                    cloud_conn.update(worksheet="Factures", data=df_all_f)
-                    
-                    st.success("✅ Paiement effectué !")
-                    st.cache_data.clear()
-                    st.rerun()
-                else:
-                    st.error("❌ Solde insuffisant.")
-            except Exception as e:
-                st.error(f"Erreur de paiement : {e}")
+            elif emetteur == "Averis":
+                # L'argent va à Averis (Moune2010)
+                ave_idx = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
+                solde_ave = float(str(df_b.at[ave_idx, "Solde"]).replace('$', '').replace(',', ''))
+                df_b.at[ave_idx, "Solde"] = solde_ave + montant_facture
+            
+            # Note : Si emetteur == "Polsta", on ne fait rien de plus. 
+            # L'argent est retiré du civil mais n'est recrédité nulle part (destruction monétaire).
+
+            # 3. Mise à jour du statut de la facture et Sauvegarde
+            df_all_f.loc[df_all_f["ID"] == fac["ID"], "Statut"] = "PAYÉ"
+            
+            cloud_conn.update(worksheet="Banque", data=df_b)
+            cloud_conn.update(worksheet="Factures", data=df_all_f)
+            
+            st.success(f"✅ Paiement de {montant_facture}$ effectué à {emetteur} !")
+            st.cache_data.clear()
+            st.rerun()
+        else:
+            st.error("❌ Solde insuffisant pour régler cette facture.")
+    except Exception as e:
+        st.error(f"Erreur lors du traitement du paiement : {e}")
 
         # BOUTON ANNULER (Seulement pour Staff/Admin)
         if st.session_state.user_auth in ["Staff", "Admin"]:
