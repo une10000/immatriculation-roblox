@@ -392,102 +392,87 @@ if st.session_state.user_auth is None:
 st.markdown('<div class="header-box"><h2>📂 REGISTRE NATIONAL DES CITOYENS</h2></div>', unsafe_allow_html=True)
 
 with st.container():
-    st.markdown("""
-    <div class="info-card">
-        <b>GUIDE DE RECHERCHE :</b> Sélectionnez un nom pour consulter le dossier complet (Banque, Permis, Factures).
-    </div>
-    """, unsafe_allow_html=True)
-    
     search_list = ["---"] + sorted(df_b["Nom Roblox"].unique().tolist())
-    target = st.selectbox("Sélectionner un citoyen :", search_list)
+    target = st.selectbox("Sélectionner un citoyen :", search_list, key="main_search")
     
     if target != "---":
         col1, col2, col3 = st.columns(3)
         
-        # --- COLONNE 1 : POINTS & PERMIS ---
+        # --- COLONNE 1 : PERMIS & VÉHICULES ---
         with col1:
-            st.markdown("### 🛡️ PERMIS")
+            st.markdown("### 🛡️ PERMIS & VÉHICULES")
+            # Partie Permis
             p_data = df_p[df_p["Nom Roblox"] == target]
             if not p_data.empty:
                 pts_val = int(p_data.iloc[0]["PTS"])
-                st.metric("POINTS RESTANTS", f"{pts_val}/25")
-                
-                status_color = "green" if pts_val > 0 else "red"
-                st.markdown(f"Statut : <b style='color:{status_color};'>{'VALIDE' if pts_val > 0 else 'SUSPENDU'}</b>", unsafe_allow_html=True)
+                st.metric("POINTS PERMIS", f"{pts_val}/25")
+            
+            # Partie Immatriculations (LES VOICI)
+            st.markdown("---")
+            st.markdown("##### 🚗 Véhicules enregistrés")
+            v_data = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
+            if not v_data.empty:
+                for _, v in v_data.iterrows():
+                    with st.container(border=True):
+                        st.markdown(f"**{v['Marque du véhicule']}**")
+                        st.code(v['Numéro de la plaque'])
+                        st.caption(f"🛡️ {v['Assurance']} | 📍 {v['Points']} pts")
             else:
-                st.error("Aucun permis trouvé.")
+                st.info("Aucun véhicule.")
 
         # --- COLONNE 2 : BANQUE & EMPLOI ---
         with col2:
             st.markdown("### 💳 BANQUE")
             b_data = df_b[df_b["Nom Roblox"] == target]
             if not b_data.empty:
-                # Affichage du solde
                 st.metric("SOLDE ACTUEL", f"{b_data.iloc[0]['Solde']}$")
                 
                 # Gestion du métier
-                current_jobs_raw = str(b_data.iloc[0]['Emploiement'])
-                st.write(f"🏢 Métier : **{current_jobs_raw}**")
+                current_jobs = str(b_data.iloc[0]['Emploiement'])
+                st.write(f"🏢 Métier : **{current_jobs}**")
                 
+                # Bouton Modifier
                 if st.session_state.user_auth in ["POLSTA", "RCT", "Staff", "Admin"]:
-                    if st.button("✏️ Modifier le métier", key=f"edit_job_{target}", use_container_width=True):
-                        st.session_state[f"show_editor_{target}"] = not st.session_state.get(f"show_editor_{target}", False)
+                    if st.button("✏️ Modifier Métier", key=f"job_btn_{target}"):
+                        st.session_state[f"edit_mode_{target}"] = not st.session_state.get(f"edit_mode_{target}", False)
                     
-                    if st.session_state.get(f"show_editor_{target}", False):
-                        with st.container(border=True):
-                            liste_metiers = ["Sans-Emploi", "Agent RCT", "Averis", "Police", "Staff", "Service Public", "Entreprise Privée"]
-                            current_jobs_list = [j.strip() for j in current_jobs_raw.split("/") if j.strip()]
-                            valid_defaults = [j for j in current_jobs_list if j in liste_metiers]
-                            
-                            new_jobs = st.multiselect("Sélection :", options=liste_metiers, default=valid_defaults)
-                            
-                            cs1, cs2 = st.columns(2)
-                            with cs1:
-                                if st.button("💾 Sauver", key=f"save_j_{target}", use_container_width=True, type="primary"):
-                                    new_str = " / ".join(new_jobs) if new_jobs else "Sans-Emploi"
-                                    idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
-                                    df_b.at[idx_b, "Emploiement"] = new_str
-                                    cloud_conn.update(worksheet="Banque", data=df_b)
-                                    st.success("Métier mis à jour !")
-                                    st.rerun()
-                            with cs2:
-                                if st.button("X", key=f"close_j_{target}", use_container_width=True):
-                                    st.session_state[f"show_editor_{target}"] = False
-                                    st.rerun()
+                    if st.session_state.get(f"edit_mode_{target}", False):
+                        new_j = st.text_input("Nouveau métier :", value=current_jobs)
+                        if st.button("Sauvegarder", key=f"save_job_{target}"):
+                            idx = df_b[df_b["Nom Roblox"] == target].index[0]
+                            df_b.at[idx, "Emploiement"] = new_j
+                            cloud_conn.update(worksheet="Banque", data=df_b)
+                            st.rerun()
 
-                # Affichage de la date d'arrivée (Automatique si vide)
+                # Date d'arrivée automatique
                 date_arr = b_data.iloc[0].get("Date d'arrivée", "")
-                if not date_arr or date_arr == "":
+                if not date_arr or str(date_arr) == "nan":
                     date_arr = datetime.now().strftime("%d/%m/%Y")
                 st.caption(f"📅 Arrivée : {date_arr}")
 
-        # --- COLONNE 3 : ARCHIVES ---
+        # --- COLONNE 3 : ARCHIVES (AVEC REÇU) ---
         with col3:
-            st.markdown("### 📁 ARCHIVES")
-            try:
-                df_f_history = cloud_conn.read(worksheet="Factures").fillna("")
-                historique = df_f_history[(df_f_history["Cible"] == target) & (df_f_history["Statut"] == "PAYÉ")]
+            st.markdown("### 📁 ARCHIVES FACTURES")
+            df_f_history = cloud_conn.read(worksheet="Factures").fillna("")
+            historique = df_f_history[(df_f_history["Cible"] == target) & (df_f_history["Statut"] == "PAYÉ")]
 
-                if not historique.empty:
-                    for _, f in historique.iterrows():
-                        with st.expander(f"📄 #{f['ID']} - {f['Montant']}$"):
-                            st.write(f"**Motif :** {f['Motif']}")
-                            st.write(f"**Émetteur :** {f['Emetteur']}")
-                            
-                            if st.session_state.user_auth in ["Staff", "Admin"]:
-                                if st.button(f"🔄 Rembourser", key=f"refund_{f['ID']}", use_container_width=True):
-                                    # ... (Logique de remboursement que nous avons finalisée précédemment)
-                                    pass 
-                else:
-                    st.info("Aucun historique payé.")
-            except Exception as e:
-                st.error(f"Erreur archives : {e}")
-import streamlit as st
-import pandas as pd
-from datetime import datetime, timedelta
-import random
-import time
-
+            if not historique.empty:
+                for _, f in historique.tail(5).iterrows():
+                    with st.expander(f"📄 Reçu #{f['ID']} ({f['Montant']}$)", expanded=False):
+                        # On réintègre le design du ticket reçu ici
+                        st.markdown(f"""
+                        <div style="border: 1px solid black; padding: 10px; background: white; color: black; font-family: monospace; font-size: 0.8em;">
+                            <center><b>REÇU DE PAIEMENT</b><br>RÉPUBLIQUE DE RENSSERLAER</center>
+                            <hr style="border-top: 1px dashed black;">
+                            <b>ID :</b> #{f['ID']}<br>
+                            <b>ÉMETTEUR :</b> {f['Emetteur']}<br>
+                            <b>MOTIF :</b> {f['Motif']}<br>
+                            <hr style="border-top: 1px dashed black;">
+                            <center><b>PAYÉ : {f['Montant']}$</b></center>
+                        </div>
+                        """, unsafe_allow_html=True)
+            else:
+                st.info("Aucun historique payé.")
 # ======================================================================================
 # 7. LOGIQUE DES ONGLETS (CORRIGÉE & OPTIMISÉE)
 # ======================================================================================
