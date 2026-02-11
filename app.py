@@ -715,15 +715,19 @@ with tabs[0]:
                                 # 2. Retrait de l'argent
                                 df_b.at[idx_user, "Solde"] = solde_actuel - total_bill
                                 
-                                # 3. Création de la ligne (avec TA date auto)
-                                nouvelle_immat = {
-                                    "Nom d'utilisateur ROBLOX": f_owner,
-                                    "Véhicule": f_model,
-                                    "Plaque": f_plate,
-                                    "Assurance": f_assu.split(" (")[0],
-                                    "Code": f_code,
-                                    "Points": 25,
-                                    "Date de création": datetime.now().strftime("%d/%m/%Y")
+                                # 3. Création de la ligne (CORRIGÉE POUR CORRESPONDRE AU SHEETS)
+nouvelle_immat = {
+    "Horodateur": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+    "Nom d'utilisateur ROBLOX": f_owner,
+    "Marque du véhicule": f_model,    # Corrigé
+    "Numéro de la plaque": f_plate,  # Corrigé
+    "Assurance": f_assu.split(" (")[0],
+    "CODE": f_code,                  # Mis en majuscules comme sur ton image
+    "Points": 25
+}
+
+# Ajout au tableau local
+new_df_i = pd.concat([df_i, pd.DataFrame([nouvelle_immat])], ignore_index=True)
                                 }
                                 
                                 # Ajout au tableau local
