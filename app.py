@@ -331,8 +331,8 @@ if st.session_state.user_auth is None:
             st.session_state.user_auth = "Civil"
             st.session_state.staff_name = "Citoyen"
             st.rerun()
-
-with c2:
+            
+    with c2:
         st.markdown("### 👨‍🔧 AGENT RCT")
         login_rct = st.text_input("Identifiant Agent", placeholder="Code RCT", type="password", key="l_rct_ff")
         if st.button("AUTHENTIFICATION RCT", key="b_rct_f", use_container_width=True):
