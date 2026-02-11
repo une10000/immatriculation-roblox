@@ -411,8 +411,7 @@ with st.container():
                     """, unsafe_allow_html=True)
             else:
                 st.error("Aucun permis trouvé.")
-
-        # --- COLONNE 2 : BANQUE ---
+# --- COLONNE 2 : BANQUE ---
         with col2:
             b_data = df_b[df_b["Nom Roblox"] == target]
             if not b_data.empty:
@@ -426,8 +425,8 @@ with st.container():
                     current_jobs_raw = str(b_data.iloc[0]['Emploiement'])
                     st.write(f"🏢 Métier : **{current_jobs_raw}**")
                     
-                    # 3. Modification Staff
-                    if st.session_state.user_auth == "Staff":
+                    # 3. MODIFICATION : Autorisation pour POLSTA et RCT (anciennement Staff)
+                    if st.session_state.user_auth in ["POLSTA", "RCT", "Staff"]:
                         if st.button("✏️ Modifier le métier", key=f"edit_job_{target}", use_container_width=True):
                             st.session_state[f"show_editor_{target}"] = not st.session_state.get(f"show_editor_{target}", False)
                         
@@ -466,7 +465,6 @@ with st.container():
                     """, unsafe_allow_html=True)
             else:
                 st.error("Aucun compte trouvé.")
-
 # --- COLONNE 3 : ARCHIVES ---
         with col3:
             st.markdown("### 📁 ARCHIVES")
