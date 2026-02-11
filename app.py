@@ -386,17 +386,16 @@ if st.session_state.user_auth is None:
 # LE RESTE DU CODE (S'affiche uniquement après connexion)
 # ======================================================================================
 # ======================================================================================
-# 6. MODULE : DOSSIER CITOYEN UNIFIÉ (LOOK ORIGINAL RESTAURÉ)
+# 6. MODULE : DOSSIER CITOYEN UNIFIÉ (VISIBILITÉ TOTALE & ARCHIVES OUVERTES)
 # ======================================================================================
 
 st.markdown('<div class="header-box"><h2>📂 REGISTRE NATIONAL DES CITOYENS</h2></div>', unsafe_allow_html=True)
 
-# Recherche du citoyen
 search_list = ["---"] + sorted(df_b["Nom Roblox"].unique().tolist())
 target = st.selectbox("Sélectionner un citoyen :", search_list, key="main_search")
 
 if target != "---":
-    # --- EN-TÊTE INFOS (Permis / Banque / Archives) ---
+    # --- EN-TÊTE INFOS ---
     col_p, col_b, col_a = st.columns(3)
     
     with col_p:
@@ -412,56 +411,68 @@ if target != "---":
         if not b_data.empty:
             st.metric("SOLDE ACTUEL", f"{b_data.iloc[0]['Solde']}$")
             st.write(f"🏢 Métier : **{b_data.iloc[0]['Emploiement']}**")
-            st.caption(f"📅 Arrivée : {b_data.iloc[0].get('Date d\'arrivée', '01/01/2026')}")
+            st.caption(f"📅 Arrivée : {b_data.iloc[0].get('Date d\'arrivée', '11/02/2026')}")
 
     with col_a:
-        st.markdown("### 📁 ARCHIVES")
+        st.markdown("### 📁 ARCHIVES (DERNIERS REÇUS)")
         df_f_h = cloud_conn.read(worksheet="Factures").fillna("")
         hist = df_f_h[(df_f_h["Cible"] == target) & (df_f_h["Statut"] == "PAYÉ")]
+        
         if hist.empty:
             st.info("Aucun historique payé.")
         else:
-            for _, f in hist.tail(3).iterrows():
-                with st.expander(f"📄 #{f['ID']} - {f['Montant']}$"):
-                    st.markdown(f"""
-                    <div style="border: 1px solid black; padding: 10px; background: white; color: black; font-family: monospace; font-size: 0.8em;">
-                        <center><b>REÇU DE PAIEMENT</b></center>
-                        <hr style="border-top: 1px dashed black;">
-                        <b>ID :</b> {f['ID']}<br><b>MOTIF :</b> {f['Motif']}<br>
-                        <center><b>PAYÉ : {f['Montant']}$</b></center>
-                    </div>
-                    """, unsafe_allow_html=True)
+            # ON NE MET PLUS D'EXPANDER ICI, ON LES AFFICHE DIRECTEMENT
+            for _, f in hist.tail(2).iterrows(): # On affiche les 2 derniers pour pas flooder
+                st.markdown(f"""
+                <div style="border: 1px solid black; padding: 10px; background: white; color: black; font-family: monospace; font-size: 0.8em; margin-bottom: 10px;">
+                    <center><b>REÇU DE PAIEMENT</b><br><small>RÉPUBLIQUE DE RENSSERLAER</small></center>
+                    <hr style="border-top: 1px dashed black; margin: 5px 0;">
+                    <b>ID      :</b> #{f['ID']}<br>
+                    <b>MOTIF   :</b> {str(f['Motif'])[:30]}...<br>
+                    <b>AGENT   :</b> {f['Emetteur']}<br>
+                    <hr style="border-top: 1px dashed black; margin: 5px 0;">
+                    <center><b>PAYÉ : {f['Montant']}$</b></center>
+                </div>
+                """, unsafe_allow_html=True)
 
-    # --- SECTION VÉHICULES (LE LOOK QUE TU VOULAIS) ---
+    # --- SECTION VÉHICULES (LOOK 20.54.14) ---
     st.markdown("---")
     st.markdown("### 🚗 VÉHICULES ENREGISTRÉS")
     v_data = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
     
     if v_data.empty:
-        st.warning("Aucun véhicule trouvé pour ce citoyen.")
+        st.warning("Aucun véhicule trouvé.")
     else:
-        # Affichage en 3 colonnes pour les titres de circulation
         v_cols = st.columns(3)
         for i, (_, v) in enumerate(v_data.iterrows()):
             with v_cols[i % 3]:
-                # Détermination du statut d'assurance
-                assu_status = "DANGER : NON-ASSURÉ RCT" if v['Assurance'] == "Aucune" else f"ASSURANCE : {v['Assurance'].upper()}"
-                assu_color = "#ff4b4b" if v['Assurance'] == "Aucune" else "#1a73e8"
+                # Logique couleur assurance
+                assu_val = str(v['Assurance']).upper()
+                is_danger = "AUCUNE" in assu_val or assu_val == ""
+                status_color = "#ff4b4b" if is_danger else "#1a73e8"
+                status_msg = "DANGER : NON-ASSURÉ RCT" if is_danger else f"ASSURANCE : {assu_val}"
                 
                 st.markdown(f"""
-                <div style="border: 2px solid black; padding: 10px; background: white; color: black; font-family: 'Courier New', monospace; min-height: 250px; position: relative;">
-                    <center><b><u>TITRE DE CIRCULATION</u></b><br><small>RÉPUBLIQUE DE RENSSERLAER</small></center>
-                    <br>
-                    <small><b>DATE :</b> {v.get('Horodateur', 'N/A').split(' ')[0]}</small><br>
-                    <b>NOM :</b> {v["Nom d'utilisateur ROBLOX"]}<br>
-                    <b>MODÈLE :</b> {v['Marque du véhicule']}<br>
-                    <b>PLAQUE :</b> <span style="border: 1px solid #ccc; padding: 0 5px;">{v['Numéro de la plaque']}</span><br>
-                    <b>ASSURANCE :</b> {v['Assurance']}<br>
-                    <br><br>
-                    <center style="color: {assu_color}; font-size: 0.7em; font-weight: bold;">
-                        ⚠️ {assu_status}<br>
-                        <span style="font-size: 0.8em;">Par le Terminal National</span>
-                    </center>
+                <div style="border: 2px solid black; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; min-height: 300px;">
+                    <div style="text-align: center;">
+                        <b style="text-decoration: underline;">TITRE DE CIRCULATION</b><br>
+                        <small>RÉPUBLIQUE DE RENSSERLAER</small>
+                    </div>
+                    <div style="margin: 10px 0; border-top: 1px dashed black;"></div>
+                    <div style="font-size: 0.85em; line-height: 1.6;">
+                        <pre style="background: none; border: none; padding: 0; margin: 0; font-family: inherit; color: inherit;">
+DATE    : {str(v.get('Horodateur', '11/02/2026')).split(' ')[0]}
+NOM     : {v["Nom d'utilisateur ROBLOX"]}
+MODÈLE  : {v['Marque du véhicule']}
+PLAQUE  : <span style="border: 1px solid #999; padding: 0 3px;">{v['Numéro de la plaque']}</span>
+ASSURANCE : {v['Assurance']}</pre>
+                    </div>
+                    <div style="margin-top: 30px; text-align: center; border: 1px solid {status_color}; padding: 5px;">
+                        <b style="color: {status_color}; font-size: 0.7em;">
+                            ⚠️ {status_msg}<br>
+                            Par le Terminal National
+                        </b>
+                    </div>
                 </div>
                 """, unsafe_allow_html=True)
 # ======================================================================================
