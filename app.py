@@ -930,8 +930,9 @@ if st.session_state.user_auth == "Staff":
                         st.rerun()
 # --- SECTION 2 : SYSTÈME DE PAIE & ASSURANCES AUTOMATIQUES ---
 
-# On vérifie l'accès : Seuls les pseudos listés ici peuvent voir cette section
-if st.session_state.get("user_auth") in ["Moune2010", "une10000", "TonPseudoAdmin"]: 
+# On vérifie uniquement le RÔLE détecté par ton Lockscreen
+# (Adapte 'Polsta' ou 'Staff' selon le nom exact utilisé dans ton système de login)
+if st.session_state.get("user_role") in ["Polsta", "Staff"] or st.session_state.get("access_type") == "Polsta":
     st.divider()
     st.markdown("### 🧧 Terminal de Paie Nationale")
     
@@ -975,7 +976,6 @@ if st.session_state.get("user_auth") in ["Moune2010", "une10000", "TonPseudoAdmi
             mes_vehicules = df_i[df_i["Nom d'utilisateur ROBLOX"] == target_paie]
             nb_vehicules = len(mes_vehicules)
             
-            # Récupération des points actuels pour le delta cute
             points_actuels = 0
             if not mes_vehicules.empty and "Points" in df_i.columns:
                 points_actuels = mes_vehicules["Points"].values[0]
@@ -983,12 +983,10 @@ if st.session_state.get("user_auth") in ["Moune2010", "une10000", "TonPseudoAdmi
             total_assurance = 0
             taxe_jc_total = 0
             
-            # RÈGLE : Taxe JC (50$/vhc) seulement si ancienneté < 30 jours
             est_jeune_conducteur = anciennete_jours < 30
             if est_jeune_conducteur:
                 taxe_jc_total = nb_vehicules * 50
             
-            # Logique Tarifaire Assurance
             if nb_vehicules > 0:
                 if "Agent RCT" in user_jobs_list:
                     nb_payants = min(nb_vehicules, 2)
@@ -1016,72 +1014,50 @@ if st.session_state.get("user_auth") in ["Moune2010", "une10000", "TonPseudoAdmi
                     st.write(f"• Salaire de Base : 15,000$")
                     if primes_detail_list:
                         for p in primes_detail_list: st.write(p)
-                    else:
-                        st.write("• Aucune prime métier")
             
             with col_rev2:
                 with st.container(border=True):
                     st.write("**📉 PRÉLÈVEMENTS**")
                     st.write(f"• Assurance {type_assurance} : -{total_assurance}$")
                     if est_jeune_conducteur:
-                        st.write(f"• Taxes JC (Nouveau : {anciennete_jours}j) : -{taxe_jc_total}$")
-                        st.caption(f"⏳ Exonération dans {30 - anciennete_jours} jours")
+                        st.write(f"• Taxes JC (Nouveau) : -{taxe_jc_total}$")
                     else:
                         st.write(f"• Taxes JC : **EXONÉRÉ** ✅")
-                        st.caption(f"✨ Citoyen depuis {anciennete_jours} jours")
             
-            # Metrics avec flèches "cute"
             st.markdown("---")
             c1, c2, c3, c4 = st.columns(4)
-            
             c1.metric("Solde Actuel", f"{solde_actuel}$")
-            
             diff_points = 25 - points_actuels
-            c2.metric("Points Permis", "25/25", delta=f"+{diff_points}" if diff_points > 0 else None, delta_color="normal")
-            
+            c2.metric("Points Permis", "25/25", delta=f"+{diff_points}" if diff_points > 0 else None)
             c3.metric("Net à Verser", f"+{total_net}$", delta=f"-{total_prelevement}$ Taxes", delta_color="inverse")
-            
-            c4.metric("Solde Final", f"{solde_final}$", delta=f"+{total_net}$", delta_color="normal")
-
-            if nb_vehicules >= 3 and "Agent RCT" in user_jobs_list:
-                st.success("💡 **Note Staff :** L'offre Trio a été appliquée (3ème assurance gratuite).")
+            c4.metric("Solde Final", f"{solde_final}$", delta=f"+{total_net}$")
 
             # Bouton de validation
             if st.button(f"🧧 CONFIRMER LE VERSEMENT ET LE RESET DES POINTS", use_container_width=True, type="primary"):
                 try:
-                    with st.spinner("Traitement de la paie nationale..."):
-                        # A. Débit des caisses patronales
+                    with st.spinner("Traitement..."):
                         if "Agent RCT" in user_jobs_list:
                             idx_rct = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
                             df_b.at[idx_rct, "Solde"] = float(df_b.at[idx_rct, "Solde"]) - 2000
-                        
                         if "Averis" in user_jobs_list:
                             idx_av = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
                             df_b.at[idx_av, "Solde"] = float(df_b.at[idx_av, "Solde"]) - 2000
 
-                        # B. Crédit du citoyen
                         idx_ben = df_b[df_b["Nom Roblox"] == target_paie].index[0]
                         df_b.at[idx_ben, "Solde"] = solde_final 
-                        
-                        # C. Mise à jour automatique (Assurances + Points)
                         df_i.loc[df_i["Nom d'utilisateur ROBLOX"] == target_paie, "Assurance"] = "PAYÉ (AUTO+JC)"
                         if "Points" in df_i.columns:
                             df_i.loc[df_i["Nom d'utilisateur ROBLOX"] == target_paie, "Points"] = 25
                         
-                        # D. Envoi au Cloud
                         cloud_conn.update(worksheet="Banque", data=df_b)
                         cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i)
                         
-                        # E. Logs et Rerun
-                        record_log(st.session_state.user_auth, f"PAIE & RESET : {target_paie} | {total_net}$ | Points à 25")
-                        st.success(f"✅ Paie validée et points réinitialisés pour {target_paie} !")
+                        record_log(st.session_state.user_auth, f"PAIE : {target_paie} | {total_net}$")
+                        st.success(f"✅ Terminé !")
                         st.cache_data.clear()
-                        import time
-                        time.sleep(1)
                         st.rerun()
                 except Exception as e:
-                    st.error(f"⚠️ Erreur lors de la transaction : {e}")
-
+                    st.error(f"⚠️ Erreur : {e}")
 # <-- Plus rien ici, le terminal est fini et protégé.
         # --- SECTION 3 : LOGS ET STATISTIQUES ---
         st.divider()
