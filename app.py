@@ -809,24 +809,38 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                 """, unsafe_allow_html=True)
 
 with col_vehicules:
-    st.markdown("### 🚗 Titres")
+    st.markdown("#### 🚗 Aperçu véhicules")
+
     if not target_veh.empty:
         for _, veh in target_veh.iterrows():
             assu = str(veh['Assurance']).upper()
-            # Couleur orange spécifique pour Averis comme sur ton image
             col_v = "#E67E22" if "AVERIS" in assu else ("green" if "RCT" in assu else "red")
-            
+
             st.markdown(f"""
-            <div style="border: 5px solid black; padding: 15px; background: white; color: black; margin-bottom: 10px; font-family: Arial, sans-serif;">
-                <b style="font-size: 1.3em;">{veh['Marque du véhicule']}</b><br>
-                <div style="margin: 10px 0; font-size: 1.1em;">
-                    Plaque : <span style="border: 2px solid black; padding: 2px 8px; font-family: 'Courier New', monospace; font-weight: bold;">{veh['Numéro de la plaque']}</span>
-                </div>
-                <b style="color: {col_v}; font-size: 1.1em;">{assu}</b>
+            <div style="
+                border: 2px solid black;
+                padding: 15px;
+                background: white;
+                color: black;
+                font-family: 'Courier New', monospace;
+                font-size: 0.9em;
+                margin-bottom: 12px;
+            ">
+                <center><b>FICHE VÉHICULE</b></center>
+                <hr style="border-top: 1px solid #000; margin: 10px 0;">
+
+                <b>MARQUE :</b> {veh['Marque du véhicule']}<br>
+                <b>PLAQUE :</b> {veh['Numéro de la plaque']}<br>
+                <b>ASSURANCE :</b> 
+                <span style="color:{col_v}; font-weight:bold;">{assu}</span>
+
+                <hr style="border-top: 1px dashed #000; margin: 10px 0;">
+                <center><small>DOCUMENT INTERNE</small></center>
             </div>
             """, unsafe_allow_html=True)
     else:
         st.info("Aucun véhicule.")
+
 # --- ONGLET 3 : ADMINISTRATION (STAFF ONLY) ---
 if st.session_state.user_auth == "Staff":
     with tabs[2]:
