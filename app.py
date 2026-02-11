@@ -932,7 +932,6 @@ if st.session_state.user_auth == "Staff":
         st.divider()
         st.markdown("### 🧧 Terminal de Paie Nationale")
         with st.container(border=True):
-            # Sécurité si la base est vide
             options_paie = sorted(df_b["Nom Roblox"].unique().tolist()) if not df_b.empty else []
             target_paie = st.selectbox("Sélectionner le bénéficiaire :", options_paie, key="paie_auto_target")
             
@@ -942,9 +941,19 @@ if st.session_state.user_auth == "Staff":
                 user_jobs_raw = user_data["Emploiement"].values[0]
                 user_jobs_list = [j.strip() for j in str(user_jobs_raw).split("/")]
                 
-                # 2. Calcul des Primes (15k base + primes métiers)
-                # Assure-toi que PRIME_JOB est défini en haut de ton code, sinon ça met 0
-                calcul_primes = sum(PRIME_JOB.get(j, 0) for j in user_jobs_list) if 'PRIME_JOB' in locals() else 0
+                # Récupération du solde actuel (nettoyage des caractères $ et ,)
+                solde_actuel = float(str(user_data["Solde"].values[0]).replace('$', '').replace(',', ''))
+                
+                # 2. Calcul détaillé des Primes Métier
+                primes_detail_list = []
+                calcul_primes = 0
+                if 'PRIME_JOB' in locals():
+                    for job in user_jobs_list:
+                        m_prime = PRIME_JOB.get(job, 0)
+                        if m_prime > 0:
+                            primes_detail_list.append(f"• **{job}** : +{m_prime}$")
+                            calcul_primes += m_prime
+                
                 total_brut = 15000 + calcul_primes
                 
                 # 3. Calcul précis des Assurances et Taxes
@@ -952,21 +961,17 @@ if st.session_state.user_auth == "Staff":
                 nb_vehicules = len(mes_vehicules)
                 
                 total_assurance = 0
-                taxe_jc_total = nb_vehicules * 50  # Taxe Jeune Conducteur : 50$ / vhc
+                taxe_jc_total = nb_vehicules * 50  # Taxe JC : 50$ / vhc
                 
-                # Logique Tarifaire
                 if nb_vehicules > 0:
                     if "Agent RCT" in user_jobs_list:
-                        # OFFRE TRIO RCT : 150$ l'unité, 3ème gratuite (max 300$ d'assurance)
                         nb_payants = min(nb_vehicules, 2)
                         total_assurance = nb_payants * 150
                         type_assurance = "RCT (Offre Trio)" if nb_vehicules >= 3 else "RCT Standard"
                     elif "Averis" in user_jobs_list:
-                        # TARIF AVERIS : 130$ par véhicule
                         total_assurance = nb_vehicules * 130
                         type_assurance = "Averis"
                     else:
-                        # Si aucun métier spécial, on applique un tarif de base (ex: 150) ou 0
                         total_assurance = nb_vehicules * 150
                         type_assurance = "Standard"
                 else:
@@ -974,24 +979,34 @@ if st.session_state.user_auth == "Staff":
 
                 total_prelevement = total_assurance + taxe_jc_total
                 total_net = total_brut - total_prelevement
+                solde_final = solde_actuel + total_net
                 
-                # --- AFFICHAGE DÉTAILLÉ POUR LE STAFF ---
-                st.markdown(f"#### 📊 Détails pour {target_paie}")
-                col_info1, col_info2 = st.columns(2)
-                with col_info1:
-                    st.write(f"**💰 Salaire Brut :** {total_brut}$")
-                    st.write(f"**🛠️ Métiers :** {', '.join(user_jobs_list)}")
-                with col_info2:
-                    st.write(f"**🚗 Véhicules :** {nb_vehicules}")
-                    st.write(f"**🛡️ Régime :** {type_assurance}")
-
+                # --- AFFICHAGE DÉTAILLÉ ---
+                st.markdown(f"#### 📊 Fiche de Paie : {target_paie}")
+                
+                col_rev1, col_rev2 = st.columns(2)
+                with col_rev1:
+                    with st.container(border=True):
+                        st.write("**💰 REVENUS**")
+                        st.write("• Salaire de Base : 15,000$")
+                        if primes_detail_list:
+                            for p in primes_detail_list:
+                                st.write(p)
+                        else:
+                            st.write("• Aucune prime métier")
+                
+                with col_rev2:
+                    with st.container(border=True):
+                        st.write("**📉 PRÉLÈVEMENTS**")
+                        st.write(f"• Assurance {type_assurance} : -{total_assurance}$")
+                        st.write(f"• Taxes JC ({nb_vehicules} vhc) : -{taxe_jc_total}$")
+                
+                # Section Solde Avant / Après
                 st.markdown("---")
-                
-                # Metrics pour la clarté
-                c1, c2, c3 = st.columns(3)
-                c1.metric("Assurances", f"-{total_assurance}$")
-                c2.metric("Taxes JC", f"-{taxe_jc_total}$")
-                c3.metric("NET À VERSER", f"{total_net}$", delta=f"{total_brut}$ Brut", delta_color="normal")
+                c_s1, c_s2, c_s3 = st.columns(3)
+                c_s1.metric("Solde Actuel", f"{solde_actuel}$")
+                c_s2.metric("Versement Net", f"+{total_net}$", delta=f"-{total_prelevement}$ Taxes", delta_color="inverse")
+                c_s3.metric("Solde Final", f"{solde_final}$")
 
                 if nb_vehicules >= 3 and "Agent RCT" in user_jobs_list:
                     st.success("💡 **Note Staff :** L'offre Trio a été appliquée (3ème assurance gratuite).")
@@ -1009,21 +1024,19 @@ if st.session_state.user_auth == "Staff":
                                 idx_av = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
                                 df_b.at[idx_av, "Solde"] = float(df_b.at[idx_av, "Solde"]) - 2000
 
-                            # B. Crédit du citoyen (Solde actuel + Net calculé)
+                            # B. Crédit du citoyen
                             idx_ben = df_b[df_b["Nom Roblox"] == target_paie].index[0]
-                            solde_vrai = float(str(df_b.at[idx_ben, "Solde"]).replace('$', '').replace(',', ''))
-                            df_b.at[idx_ben, "Solde"] = solde_vrai + total_net
+                            df_b.at[idx_ben, "Solde"] = solde_final # On applique directement le solde calculé
                             
-                            # C. Mise à jour automatique des assurances sur les véhicules
+                            # C. Mise à jour automatique des assurances
                             df_i.loc[df_i["Nom d'utilisateur ROBLOX"] == target_paie, "Assurance"] = "PAYÉ (AUTO+JC)"
                             
-                            # D. Envoi au Cloud (Sauvegarde)
+                            # D. Envoi au Cloud
                             cloud_conn.update(worksheet="Banque", data=df_b)
                             cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i)
                             
-                            # E. Logs et Rerun
-                            record_log(st.session_state.user_auth, f"PAIE NATIONALE : {target_paie} | {total_net}$ versés | {nb_vehicules} vhc assurés.")
-                            st.success(f"✅ Paie et assurances validées pour {target_paie} !")
+                            record_log(st.session_state.user_auth, f"PAIE : {target_paie} | {total_net}$ versés (Final: {solde_final}$)")
+                            st.success(f"✅ Paie validée pour {target_paie} !")
                             st.cache_data.clear()
                             import time
                             time.sleep(1)
