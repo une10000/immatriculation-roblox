@@ -524,26 +524,43 @@ if not mes_factures.empty:
             </div>
             """, unsafe_allow_html=True)
 
-            # --- BOUTON DE PAIEMENT (Aligné avec le ticket) ---
+            # --- BOUTON DE PAIEMENT (AVEC TES RÈGLES DE DESTINATION) ---
             if st.button(f"💳 RÉGLER LA FACTURE #{fac['ID']}", key=f"pay_{fac['ID']}", use_container_width=True):
                 try:
+                    # 1. Préparation des données
                     idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
-                    solde_raw = str(df_b.at[idx_b, "Solde"]).replace('$', '').replace(',', '')
-                    solde_actuel = float(solde_raw)
+                    solde_actuel = float(str(df_b.at[idx_b, "Solde"]).replace('$', '').replace(',', ''))
                     montant_facture = float(fac['Montant'])
                     
                     if solde_actuel >= montant_facture:
+                        # 2. Débit systématique du client
                         df_b.at[idx_b, "Solde"] = solde_actuel - montant_facture
-                        rct_idx = df_b[df_b["Nom Roblox"] == ACC_RCT].index[0]
-                        solde_dest = float(str(df_b.at[rct_idx, "Solde"]).replace('$', '').replace(',', ''))
-                        df_b.at[rct_idx, "Solde"] = solde_dest + montant_facture
+                        
+                        # 3. Logique de redirection selon l'émetteur
+                        emetteur = fac['Emetteur']
+                        
+                        if emetteur == "RCT":
+                            # L'argent va sur une10000
+                            idx_dest = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
+                            df_b.at[idx_dest, "Solde"] += montant_facture
+                        
+                        elif emetteur == "Averis":
+                            # L'argent va sur Moune2010
+                            idx_dest = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
+                            df_b.at[idx_dest, "Solde"] += montant_facture
+                        
+                        # Note : Si emetteur est "Staff", "Police" ou autre, on ne rentre pas dans les IF, 
+                        # donc l'argent est débité du client mais n'est ajouté nulle part.
+
+                        # 4. Mise à jour du statut de la facture
                         df_all_f.loc[df_all_f["ID"] == fac["ID"], "Statut"] = "PAYÉ"
                         
+                        # 5. Sauvegarde vers le Cloud
                         cloud_conn.update(worksheet="Banque", data=df_b)
                         cloud_conn.update(worksheet="Factures", data=df_all_f)
                         
-                        record_log(target, f"Paiement facture {fac['Emetteur']} #{fac['ID']}")
-                        st.success("✅ Paiement effectué !")
+                        record_log(target, f"Paiement facture {emetteur} #{fac['ID']}")
+                        st.success("✅ Paiement effectué et redirigé !")
                         st.cache_data.clear()
                         time.sleep(1)
                         st.rerun()
