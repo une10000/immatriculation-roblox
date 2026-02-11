@@ -500,30 +500,34 @@ if not mes_factures.empty:
         except:
             timer_info = "⌛ Délai : 24 heures"
             t_color = "#555"
+# 2. AFFICHAGE DU TICKET HTML (MIS À JOUR AVEC POINTS)
+prefix_name = "POLICE NATIONALE" if fac['Emetteur'] == "Staff" else "RÉSEAU RCT"
+if fac['Emetteur'] == "Averis": prefix_name = "SERVICES AVERIS"
 
-# 2. AFFICHAGE DU TICKET HTML
-        prefix_name = "POLICE NATIONALE" if fac['Emetteur'] == "Staff" else "RÉSEAU RCT"
-        if fac['Emetteur'] == "Averis": prefix_name = "SERVICES AVERIS"
+# Sécurité : On récupère les points ou 0 si la colonne est vide
+nb_points_retires = fac.get('Points', 0) 
 
-        st.markdown(f"""
-        <div style="border: 2px solid #000; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; margin-bottom: 5px; box-shadow: 6px 6px 0px #000;">
-            <center><b style="font-size:1.1em; text-decoration: underline;">FACTURE OFFICIELLE</b><br>
-            <small>{prefix_name}</small></center>
-            <hr style="border-top: 1px dashed #000; margin: 10px 0;">
-            <div style="font-size: 0.9em; line-height: 1.2;">
-                <b>RÉFÉRENCE :</b> #{fac['ID']}<br>
-                <b>ÉMETTEUR   :</b> {fac['Emetteur']}<br>
-                <b>MOTIF     :</b> {fac['Motif']}<br>
-                <b style="color: {t_color};">{timer_info}</b>
-            </div>
-            <hr style="border-top: 1px dashed #000; margin: 10px 0;">
-            <div style="text-align: center; color: #d32f2f; font-weight: bold; font-size: 1.3em;">
-                MONTANT : {fac['Montant']}$
-            </div>
-            <center><small style="font-size: 0.6em; opacity: 0.5; margin-top:10px; display:block;">RCRP SYSTEM - DOCUMENT OFFICIEL</small></center>
-        </div>
-        """, unsafe_allow_html=True)
-
+st.markdown(f"""
+<div style="border: 2px solid #000; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; margin-bottom: 5px; box-shadow: 6px 6px 0px #000;">
+    <center><b style="font-size:1.1em; text-decoration: underline;">FACTURE OFFICIELLE</b><br>
+    <small>{prefix_name}</small></center>
+    <hr style="border-top: 1px dashed #000; margin: 10px 0;">
+    <div style="font-size: 0.9em; line-height: 1.2;">
+        <b>RÉFÉRENCE :</b> #{fac['ID']}<br>
+        <b>ÉMETTEUR   :</b> {fac['Emetteur']}<br>
+        <b>MOTIF     :</b> {fac['Motif']}<br>
+        <b style="color: {t_color};">{timer_info}</b>
+    </div>
+    <hr style="border-top: 1px dashed #000; margin: 10px 0;">
+    <div style="text-align: center; color: #d32f2f; font-weight: bold; font-size: 1.3em;">
+        MONTANT : {fac['Montant']}$
+    </div>
+    <div style="text-align: center; font-weight: bold; font-size: 1em; margin-top: 5px;">
+        POINTS : -{nb_points_retires}
+    </div>
+    <center><small style="font-size: 0.6em; opacity: 0.5; margin-top:10px; display:block;">RCRP SYSTEM - DOCUMENT OFFICIEL</small></center>
+</div>
+""", unsafe_allow_html=True)
         # 3. BOUTON DE PAIEMENT (BIEN INDENTÉ)
         # On ajoute 8 espaces (ou 2 tabulations) devant pour qu'il soit DANS la boucle
         if st.button(f"💳 RÉGLER LA FACTURE #{fac['ID']}", key=f"pay_{fac['ID']}", use_container_width=True):
