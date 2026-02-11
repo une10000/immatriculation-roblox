@@ -254,24 +254,28 @@ if st.session_state.user_auth is None:
     """, unsafe_allow_html=True)
 
     # 1. CALCUL DU MOMENT (UTC+1)
+    # Import local pour être sûr que c'est reconnu si les imports du haut ont sauté
+    from datetime import datetime, timedelta, timezone
+    import streamlit.components.v1 as components 
+
     t_now_lock = datetime.now(timezone.utc) + timedelta(hours=1)
     h_lock = t_now_lock.hour
 
     if 5 <= h_lock < 18:
         salut_complet = "Bonjour☀️"
-        pattern_style = "background-color: #87CEEB; background-image: conic-gradient(from 200deg at 85% 10%, transparent 0deg, rgba(255,255,255,0.4) 15deg, transparent 30deg, rgba(255,223,137,0.5) 45deg, transparent 60deg, rgba(255,255,255,0.4) 75deg, transparent 90deg), radial-gradient(circle at 85% 10%, #FFF9E3 0%, #FFD700 15%, rgba(255,215,0,0.4) 30%, transparent 60%);"
+        p_style = "background-color: #87CEEB; background-image: conic-gradient(from 200deg at 85% 10%, transparent 0deg, rgba(255,255,255,0.4) 15deg, transparent 30deg, rgba(255,223,137,0.5) 45deg, transparent 60deg, rgba(255,255,255,0.4) 75deg, transparent 90deg), radial-gradient(circle at 85% 10%, #FFF9E3 0%, #FFD700 15%, rgba(255,215,0,0.4) 30%, transparent 60%);"
         t_color = "#1E1E1E"
         glow = "0 0 30px rgba(255, 255, 255, 1), 0 0 60px rgba(255, 200, 0, 0.6)"
     else:
         salut_complet = "Bonsoir🌕"
-        pattern_style = "background-color: #05070a; background-image: radial-gradient(1px 1px at 25% 35%, white, transparent), radial-gradient(1px 1px at 50% 10%, white, transparent); background-size: 150px 150px, 200px 200px;"
+        p_style = "background-color: #05070a; background-image: radial-gradient(1px 1px at 25% 35%, white, transparent), radial-gradient(1px 1px at 50% 10%, white, transparent); background-size: 150px 150px, 200px 200px;"
         t_color = "#FFFFFF"
         glow = "0 0 40px rgba(255,255,255,0.9), 0 0 80px rgba(255,255,255,0.4)"
 
     # --- LE BLOC MONOLITHIQUE ---
     components.html(f"""
         <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; width: 100%; border-radius: 25px; overflow: hidden; border: none;">
-            <div style="text-align: center; padding: 70px 20px; color: {t_color}; {pattern_style} height: 350px; box-sizing: border-box;">
+            <div style="text-align: center; padding: 70px 20px; color: {t_color}; {p_style} height: 350px; box-sizing: border-box;">
                 <h1 style="font-size: 5.5em; margin: 0; font-weight: 900; letter-spacing: -3px; text-shadow: {glow}; line-height: 1.1;">{salut_complet}</h1>
                 <p style="font-size: 1.1em; opacity: 0.8; letter-spacing: 5px; font-weight: bold; text-transform: uppercase; margin: 25px 0;">Unité Fédérale de Rensselaer</p>
                 <div id="clock_lock" style="font-size: 3.8em; letter-spacing: 3px; font-weight: bold; border-top: 2px solid {t_color}33; display: inline-block; padding-top: 10px;">00:00:00</div>
@@ -300,38 +304,38 @@ if st.session_state.user_auth is None:
     st.warning("⚠️ **AVERTISSEMENT :** Toute action effectuée sur ce terminal est enregistrée.")
     st.write("---")
 
-    # --- COLONNES D'ACCÈS (4 COLONNES POUR INCLURE AVERIS) ---
+    # --- COLONNES D'ACCÈS ---
     c1, c2, c3, c4 = st.columns(4)
     with c1:
         st.markdown("### 👥 CIVIL")
-        st.text_input("Commentaire (Optionnel)", placeholder="Ex: Renault Coupé.", key="input_civil_align")
-        if st.button("ACCÉDER AU TERMINAL", key="l_civ_f", use_container_width=True):
+        st.text_input("Commentaire", placeholder="Ex: Liberté...", key="input_civ")
+        if st.button("ACCÉDER", key="btn_civ", use_container_width=True):
             st.session_state.user_auth = "Civil"
             st.rerun()
     with c2:
         st.markdown("### 👨‍🔧 AGENT RCT")
-        login_rct = st.text_input("Identifiant Agent", placeholder="Code RCT", type="password", key="l_rct_ff")
-        if st.button("AUTHENTIFICATION RCT", key="b_rct_f", use_container_width=True):
-            if login_rct == KEY_RCT:
+        l_rct = st.text_input("Identifiant", type="password", key="in_rct")
+        if st.button("AUTH RCT", key="btn_rct", use_container_width=True):
+            if l_rct == KEY_RCT:
                 st.session_state.user_auth = "RCT"
                 st.rerun()
-            else: st.error("Clé invalide.")
+            else: st.error("Invalide")
     with c3:
         st.markdown("### 🏢 AVERIS")
-        login_ave = st.text_input("Code Entreprise", placeholder="Code AVE", type="password", key="l_ave_ff")
-        if st.button("ACCÈS AVERIS", key="b_ave_f", use_container_width=True):
-            if login_ave == KEY_AVERIS:
+        l_ave = st.text_input("Code Entreprise", type="password", key="in_ave")
+        if st.button("ACCÈS AVERIS", key="btn_ave", use_container_width=True):
+            if l_ave == KEY_AVERIS:
                 st.session_state.user_auth = "Averis"
                 st.rerun()
-            else: st.error("Clé invalide.")
+            else: st.error("Invalide")
     with c4:
-        st.markdown("### 🛡️ POLSTA")
-        login_staff = st.text_input("Clé Maîtresse", placeholder="Code STAFF", type="password", key="l_st_ff")
-        if st.button("ACCÈS ADMIN", key="b_st_f", use_container_width=True):
-            if login_staff == KEY_STAFF:
+        st.markdown("### 🛡️ STAFF")
+        l_st = st.text_input("Clé Maîtresse", type="password", key="in_st")
+        if st.button("ACCÈS ADMIN", key="btn_st", use_container_width=True):
+            if l_st == KEY_STAFF:
                 st.session_state.user_auth = "Staff"
                 st.rerun()
-            else: st.error("Accès refusé.")
+            else: st.error("Refusé")
 
     st.stop()
 # ======================================================================================
