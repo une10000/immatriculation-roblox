@@ -659,23 +659,25 @@ if "👮 SERVICES AGENT" in tab_labels:
                         else:
                             f_id = random.randint(1000, 9999)
                             new_row = {
-                                "ID": f_id, "Cible": target, "Emetteur": f_emetteur,
-                                "Montant": f_val, "Points": f_pts if can_pull_points else 0, 
+                                "ID": f_id, 
+                                "Cible": target, 
+                                "Emetteur": f_emetteur,
+                                "Montant": f_val, 
+                                "Points": f_pts if can_pull_points else 0, 
                                 "Motif": f"{f_motif} [{f_plate}]",
                                 "Statut": "EN ATTENTE",
                                 "Date_Limite": (datetime.now() + timedelta(hours=24)).strftime("%d/%m/%Y %H:%M:%S")
                             }
                             
                             # MISE À JOUR DATA
-                            df_f_updated = pd.concat([cloud_conn.read(worksheet="Factures"), pd.DataFrame([new_row])], ignore_index=True)
+                            df_f_current = cloud_conn.read(worksheet="Factures")
+                            df_f_updated = pd.concat([df_f_current, pd.DataFrame([new_row])], ignore_index=True)
                             cloud_conn.update(worksheet="Factures", data=df_f_updated)
                             
-                            user_name = st.session_state.get('user_name', 'Inconnu') 
-                            record_log(user_name, f"[{f_emetteur}] Facture #{f_id} envoyée à {target}")
-                            
-                            # --- FIX ERREUR record_log ---
-                            # On concatène l'action et la cible dans le même argument
-                            # Utilise ton nom d'affichage au lieu du grade
+                            # --- LOGS (Correction Alec / Nom d'utilisateur) ---
+                            # On récupère le nom exact affiché dans ta barre latérale
+                            qui_est_ce = st.session_state.get('username', st.session_state.get('user_name', 'Agent'))
+                            record_log(qui_est_ce, f"[{f_emetteur}] Facture #{f_id} envoyée à {target}")
                             
                             st.success(f"✅ Facture #{f_id} envoyée !")
                             time.sleep(1)
