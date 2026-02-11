@@ -956,13 +956,32 @@ if st.session_state.user_auth == "Staff":
                 
                 total_brut = 15000 + calcul_primes
                 
-                # 3. Calcul précis des Assurances et Taxes
+                # 3. Calcul précis des Assurances et Taxes (Ancienneté Citoyen)
+                from datetime import datetime
+                import pandas as pd
+                
+                # Récupération de la date d'arrivée du citoyen
+                try:
+                    date_arrivee_str = str(user_data["Date d'arrivée"].values[0])
+                    date_arrivee = pd.to_datetime(date_arrivee_str, dayfirst=True)
+                    date_actuelle = datetime.now()
+                    anciennete_jours = (date_actuelle - date_arrivee).days
+                except:
+                    # Si la date est manquante ou invalide, on considère qu'il est nouveau par sécurité
+                    anciennete_jours = 0
+                
                 mes_vehicules = df_i[df_i["Nom d'utilisateur ROBLOX"] == target_paie]
                 nb_vehicules = len(mes_vehicules)
                 
                 total_assurance = 0
-                taxe_jc_total = nb_vehicules * 50  # Taxe JC : 50$ / vhc
+                taxe_jc_total = 0
                 
+                # Condition Jeune Conducteur : Seulement si < 30 jours d'ancienneté
+                est_jeune_conducteur = anciennete_jours < 30
+                if est_jeune_conducteur:
+                    taxe_jc_total = nb_vehicules * 50
+                
+                # Logique Tarifaire Assurance
                 if nb_vehicules > 0:
                     if "Agent RCT" in user_jobs_list:
                         nb_payants = min(nb_vehicules, 2)
@@ -981,26 +1000,28 @@ if st.session_state.user_auth == "Staff":
                 total_net = total_brut - total_prelevement
                 solde_final = solde_actuel + total_net
                 
-                # --- AFFICHAGE DÉTAILLÉ ---
+                # --- AFFICHAGE ---
                 st.markdown(f"#### 📊 Fiche de Paie : {target_paie}")
-                
                 col_rev1, col_rev2 = st.columns(2)
                 with col_rev1:
                     with st.container(border=True):
                         st.write("**💰 REVENUS**")
-                        st.write("• Salaire de Base : 15,000$")
+                        st.write(f"• Salaire de Base : 15,000$")
                         if primes_detail_list:
-                            for p in primes_detail_list:
-                                st.write(p)
-                        else:
-                            st.write("• Aucune prime métier")
+                            for p in primes_detail_list: st.write(p)
                 
                 with col_rev2:
                     with st.container(border=True):
                         st.write("**📉 PRÉLÈVEMENTS**")
                         st.write(f"• Assurance {type_assurance} : -{total_assurance}$")
-                        st.write(f"• Taxes JC ({nb_vehicules} vhc) : -{taxe_jc_total}$")
+                        
+                        # Affichage du statut JC
+                        if est_jeune_conducteur:
+                            st.write(f"• Taxes JC (Nouveau : {anciennete_jours}j) : -{taxe_jc_total}$")
+                        else:
+                            st.write(f"• Taxes JC : **EXONÉRÉ** (Ancienneté : {anciennete_jours}j) ✅")
                 
+                # Metrics avec flèches
                 # Section Solde Avant / Après avec Flèches de couleur
                 st.markdown("---")
                 c_s1, c_s2, c_s3 = st.columns(3)
