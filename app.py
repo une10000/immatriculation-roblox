@@ -932,7 +932,6 @@ if st.session_state.user_auth == "Staff":
         st.divider()
         st.markdown("### 🧧 Terminal de Paie Nationale")
         with st.container(border=True):
-            # Sécurité si la base est vide
             options_paie = sorted(df_b["Nom Roblox"].unique().tolist()) if not df_b.empty else []
             target_paie = st.selectbox("Sélectionner le bénéficiaire :", options_paie, key="paie_auto_target")
             
@@ -943,13 +942,13 @@ if st.session_state.user_auth == "Staff":
                 user_jobs_list = [j.strip() for j in str(user_jobs_raw).split("/")]
                 
                 # 2. Calcul détaillé des Primes Métier
-                primes_detail_list = []
+                primes_affichage = [] # Variable pour l'affichage
                 calcul_primes = 0
                 if 'PRIME_JOB' in locals():
                     for job in user_jobs_list:
                         m_prime = PRIME_JOB.get(job, 0)
                         if m_prime > 0:
-                            primes_detail_list.append(f"• **{job}** : +{m_prime}$")
+                            primes_affichage.append(f"• **{job}** : +{m_prime}$")
                             calcul_primes += m_prime
                 
                 total_brut = 15000 + calcul_primes
@@ -963,7 +962,6 @@ if st.session_state.user_auth == "Staff":
                 
                 if nb_vehicules > 0:
                     if "Agent RCT" in user_jobs_list:
-                        # OFFRE TRIO RCT : 150$ unité, 3ème gratuite
                         nb_payants = min(nb_vehicules, 2)
                         total_assurance = nb_payants * 150
                         type_assurance = "RCT (Offre Trio)" if nb_vehicules >= 3 else "RCT Standard"
@@ -978,20 +976,16 @@ if st.session_state.user_auth == "Staff":
 
                 total_prelevement = total_assurance + taxe_jc_total
                 total_net = total_brut - total_prelevement
-                # ... (Calculs des variables au-dessus) ...
-
-                total_prelevement = total_assurance + taxe_jc_total
-                total_net = total_brut - total_prelevement
                 
-                # --- C'EST ICI QUE TU COLLES LE BLOC ---
+                # --- AFFICHAGE DU RÉCAPITULATIF MÉTIER & TAXES ---
                 st.markdown(f"#### 📊 Détails des Revenus pour {target_paie}")
                 with st.expander("🔍 Voir le détail du calcul", expanded=True):
                     col_rev1, col_rev2 = st.columns(2)
                     with col_rev1:
                         st.write("**💰 Revenus (Salaire + Primes) :**")
                         st.write(f"• Salaire de Base : 15,000$")
-                        if primes_detail:
-                            for p in primes_detail:
+                        if primes_affichage:
+                            for p in primes_affichage:
                                 st.write(p)
                         else:
                             st.write("• Aucune prime métier détectée")
@@ -1000,12 +994,11 @@ if st.session_state.user_auth == "Staff":
                         st.write("**📉 Prélèvements (Automatiques) :**")
                         st.write(f"• Assurance {type_assurance} : -{total_assurance}$ **(Prime incluse)**")
                         st.write(f"• Taxes Jeune Conducteur : -{taxe_jc_total}$")
-                        st.caption("ℹ️ Les véhicules seront marqués comme 'ASSURÉ' après versement.")
+                        st.caption(f"ℹ️ {nb_vehicules} véhicule(s) détecté(s).")
                 
                 st.markdown("---")
-                # ----------------------------------------
-
-                # Puis tes Metrics
+                
+                # Metrics finales
                 c1, c2, c3 = st.columns(3)
                 c1.metric("Total Brut", f"{total_brut}$")
                 c2.metric("Total Déduit", f"-{total_prelevement}$")
@@ -1014,7 +1007,7 @@ if st.session_state.user_auth == "Staff":
                 # Bouton de validation
                 if st.button(f"🧧 CONFIRMER LE VERSEMENT DE {total_net}$", use_container_width=True, type="primary"):
                     try:
-                        with st.spinner("Mise à jour des comptes nationaux..."):
+                        with st.spinner("Mise à jour des comptes..."):
                             # A. Débit des caisses patronales
                             if "Agent RCT" in user_jobs_list:
                                 idx_rct = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
@@ -1032,13 +1025,12 @@ if st.session_state.user_auth == "Staff":
                             # C. Mise à jour automatique des assurances
                             df_i.loc[df_i["Nom d'utilisateur ROBLOX"] == target_paie, "Assurance"] = "PAYÉ (AUTO+JC)"
                             
-                            # D. Envoi au Cloud
+                            # D. Sauvegarde
                             cloud_conn.update(worksheet="Banque", data=df_b)
                             cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i)
                             
-                            # E. Logs
-                            record_log(st.session_state.user_auth, f"PAIE : {target_paie} | Net: {total_net}$ | Primes: {calcul_primes}$")
-                            st.success(f"✅ Paie validée pour {target_paie} !")
+                            record_log(st.session_state.user_auth, f"PAIE : {target_paie} | Net: {total_net}$")
+                            st.success(f"✅ Paie validée !")
                             st.cache_data.clear()
                             import time
                             time.sleep(1)
