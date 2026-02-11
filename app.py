@@ -327,8 +327,8 @@ if st.session_state.user_auth is None:
                 st.rerun()
             else: st.error("Clé invalide.")
     with c3:
-        st.markdown("### 🛡️👮‍♂️ Portail POLSTA")
-        login_staff = st.text_input("Clé Maîtresse", placeholder="Code POLSTA", type="password", key="l_st_ff")
+        st.markdown("### 🛡️👮‍♂️ Portail POLSTA(RIS)")
+        login_staff = st.text_input("Clé Maîtresse", placeholder="Code POLSTA(RIS)", type="password", key="l_st_ff")
         if st.button("ACCÈS ADMINISTRATEUR", key="b_st_f", use_container_width=True):
             if login_staff == KEY_STAFF:
                 st.session_state.user_auth = "Staff"
@@ -779,7 +779,7 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                     # --- NOUVEAU : CHOIX DE L'ÉMETTEUR ---
                     if st.session_state.user_auth == "Staff":
                         # Le Staff peut choisir entre Polsta (amende) ou Averis (facture pro)
-                        f_emetteur = st.selectbox("Émetteur", ["Polsta", "Averis"], key="v_emetteur_final")
+                        f_emetteur = st.selectbox("Émetteur", ["POLSTA", "Averis"], key="v_emetteur_final")
                     else:
                         # Si c'est un compte RCT, l'émetteur est forcément RCT
                         f_emetteur = "RCT"
