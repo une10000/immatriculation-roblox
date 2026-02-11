@@ -682,7 +682,8 @@ if "👮 SERVICES AGENT" in tab_labels:
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
-                with col_vehicules:
+                
+            with col_vehicules:
                 st.markdown("#### 🚗 Véhicules")
                 if not target_veh.empty:
                     for _, veh in target_veh.iterrows():
