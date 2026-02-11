@@ -663,15 +663,23 @@ if "👮 SERVICES AGENT" in tab_labels:
 
             with col_facture:
                 st.markdown("#### 📄 Aperçu")
+                # Design dynamique selon l'émetteur
                 header_ticket = "FACTURE AVERIS" if f_emetteur == "Averis" else "FACTURE OFFICIELLE"
                 st.markdown(f"""
-                <div style="border: 2px solid black; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; font-size: 0.9em;">
+                <div style="border: 2px solid black; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; line-height: 1.2;">
                     <center><b>{header_ticket}</b><br><small>RÉPUBLIQUE DE RENSSERLAER</small></center>
-                    <hr style="border-top: 1px dashed #000;">
+                    <hr style="border-top: 1px solid #ccc; margin: 10px 0;">
                     <b>ÉMETTEUR :</b> {f_emetteur.upper()}<br>
-                    <b>CIBLE    :</b> {target}<br>
-                    <b>MOTIF    :</b> {f_motif.upper() if f_motif else '...'}<br>
-                    <b>MONTANT  :</b> {f_val}$
+                    <b>DATE    :</b> {datetime.now().strftime('%d/%m/%Y')}<br>
+                    <b>NOM     :</b> {target}<br>
+                    <b>MOTIF   :</b> {f_motif.upper() if f_motif else '...'}<br>
+                    <b>PLAQUE  :</b> <span style="border: 1px solid black; padding: 0 3px;">{f_plate}</span><br>
+                    <b>MONTANT :</b> {f_val}$
+                    <hr style="border-top: 1px solid #ccc; margin: 10px 0;">
+                    <div style="text-align: center; color: black; font-weight: bold; font-size: 0.8em;">
+                        POINTS : -{f_pts if can_pull_points else 0}<br>
+                        <small>Document généré par terminal</small>
+                    </div>
                 </div>
                 """, unsafe_allow_html=True)
 # --- ONGLET 3 : ADMINISTRATION (STAFF & POLSTA) ---
