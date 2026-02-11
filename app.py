@@ -819,26 +819,29 @@ if st.button(f"S'ACQUITTER DE {total_bill}$ ET ENREGISTRER", use_container_width
         except Exception as e:
             st.error(f"⚠️ Erreur de connexion au Sheets : {e}")
 # --- ONGLET 2 : SERVICES AGENT (FACTURES / POINTS / CONSULTATION) ---
-if st.session_state.user_auth in ["RCT", "Staff", "POLSTA"]:
+if st.session_state.user_auth in ["RCT", "Staff", "POLSTA", "Averis"]:
     with tabs[1]:
         # 1. PANEL D'ALERTE : FACTURES IMPAYÉES
-        df_all_f = cloud_conn.read(worksheet="Factures").fillna("")
-        alertes = []
-        maintenant = datetime.now()
+        try:
+            df_all_f = cloud_conn.read(worksheet="Factures").fillna("")
+            alertes = []
+            maintenant = datetime.now()
 
-        for idx, f in df_all_f.iterrows():
-            if f["Statut"] == "EN ATTENTE":
-                try:
-                    limite = datetime.strptime(str(f['Date_Limite']), "%d/%m/%Y %H:%M:%S")
-                    if maintenant > limite:
-                        alertes.append(f)
-                except: pass 
+            for idx, f in df_all_f.iterrows():
+                if f["Statut"] == "EN ATTENTE":
+                    try:
+                        limite = datetime.strptime(str(f['Date_Limite']), "%d/%m/%Y %H:%M:%S")
+                        if maintenant > limite:
+                            alertes.append(f)
+                    except: pass 
 
-        if alertes:
-            st.error(f"⚠️ {len(alertes)} FACTURE(S) EN SOUFFRANCE")
-            with st.expander("🔍 VOIR LES REQUÊTES PRIORITAIRES"):
-                for _, row in pd.DataFrame(alertes).iterrows():
-                    st.write(f"🆔 **#{row['ID']}** | 👤 **{row['Cible']}** ({row['Montant']}$)")
+            if alertes:
+                st.error(f"⚠️ {len(alertes)} FACTURE(S) EN SOUFFRANCE")
+                with st.expander("🔍 VOIR LES REQUÊTES PRIORITAIRES"):
+                    for _, row in pd.DataFrame(alertes).iterrows():
+                        st.write(f"🆔 **#{row['ID']}** | 👤 **{row['Cible']}** ({row['Montant']}$)")
+        except Exception as e:
+            st.error(f"Erreur lecture factures : {e}")
         
         st.divider()
 
@@ -851,6 +854,8 @@ if st.session_state.user_auth in ["RCT", "Staff", "POLSTA"]:
             with col_saisie:
                 with st.container(border=True):
                     st.markdown("#### 📝 Saisie")
+                    
+                    # --- LOGIQUE ÉMETTEUR DYNAMIQUE ---
                     if st.session_state.user_auth == "Staff":
                         f_emetteur = st.selectbox("Émetteur", ["POLSTA", "Averis"], key="v_emetteur_final")
                     elif st.session_state.user_auth == "POLSTA":
@@ -862,13 +867,11 @@ if st.session_state.user_auth in ["RCT", "Staff", "POLSTA"]:
                     else:
                         f_emetteur = "RCT"
                         st.info("Émetteur : RCT")
-        # ----------------------------------------
 
-        f_val = st.number_input("Montant ($)", min_value=0, step=50, key="v_val_final")
-        
-        # On vérifie si l'utilisateur peut retirer des points (seulement POLSTA ou Staff agissant pour POLSTA)
-        can_pull_points = (st.session_state.user_auth in ["Staff", "POLSTA"] and f_emetteur == "POLSTA")
-        f_pts = st.number_input("Points à retirer", 0, 12, 0, key="v_pts_final", disabled=not can_pull_points)
+                    f_val = st.number_input("Montant ($)", min_value=0, step=50, key="v_val_final")
+                    
+                    can_pull_points = (st.session_state.user_auth in ["Staff", "POLSTA"] and f_emetteur == "POLSTA")
+                    f_pts = st.number_input("Points à retirer", 0, 12, 0, key="v_pts_final", disabled=not can_pull_points)
                     
                     f_motif = st.text_input("Motif", key="v_mot_final")
                     
@@ -876,47 +879,33 @@ if st.session_state.user_auth in ["RCT", "Staff", "POLSTA"]:
                     v_list = ["AUCUN / PIÉTON"] + target_veh["Numéro de la plaque"].tolist()
                     f_plate = st.selectbox("Véhicule concerné", v_list, key="v_plate_final")
                     
-                    st.write("")
-                    label = "🚨 ENVOYER FACTURE"
-                    
-                    if st.button(label, use_container_width=True, type="primary"):
+                    if st.button("🚨 ENVOYER FACTURE", use_container_width=True, type="primary"):
                         if not f_motif:
                             st.error("Motif obligatoire.")
                         else:
-                            # 1. Logique Points
-                            if f_pts > 0 and can_pull_points:
-                                try:
-                                    idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
-                                    df_p.at[idx_p, "PTS"] = max(0, int(df_p.at[idx_p, "PTS"]) - f_pts)
-                                    cloud_conn.update(worksheet="Points Permis", data=df_p)
-                                except: pass
+                            with st.spinner("Envoi..."):
+                                # 1. Logique Points
+                                if f_pts > 0 and can_pull_points:
+                                    try:
+                                        idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
+                                        df_p.at[idx_p, "PTS"] = max(0, int(df_p.at[idx_p, "PTS"]) - f_pts)
+                                        cloud_conn.update(worksheet="Points Permis", data=df_p)
+                                    except: pass
 
-                            # 2. Enregistrement de la facture
-                            import random
-                            f_id = random.randint(1000, 9999)
-                            new_row = {
-                                "ID": f_id, 
-                                "Cible": target,
-                                "Emetteur": f_emetteur,
-                                "Montant": f_val,
-                                "Points": f_pts, 
-                                "Motif": f"{f_motif} [{f_plate}]", 
-                                "Statut": "EN ATTENTE",
-                                "Date_Limite": (datetime.now() + timedelta(hours=24)).strftime("%d/%m/%Y %H:%M:%S")
-                            }
-                            
-                            df_f_updated = pd.concat([df_all_f, pd.DataFrame([new_row])], ignore_index=True)
-                            cloud_conn.update(worksheet="Factures", data=df_f_updated)
-                            
-                            # --- ENREGISTREMENT DU LOG ---
-                            pts_txt = f"(-{f_pts} pts)" if f_pts > 0 else ""
-                            log_txt = f"Émission Facture #{f_id} [{f_emetteur}] : {f_val}$ {pts_txt} - Motif: {f_motif} [{f_plate}]"
-                            record_log(st.session_state.user_auth, log_txt, target)
-                            
-                            st.success(f"✅ Facture {f_emetteur} envoyée !")
-                            st.cache_data.clear()
-                            st.rerun()
-
+                                # 2. Création Facture
+                                f_id = random.randint(1000, 9999)
+                                new_row = {
+                                    "ID": f_id, "Cible": target, "Emetteur": f_emetteur,
+                                    "Montant": f_val, "Points": f_pts, "Motif": f"{f_motif} [{f_plate}]",
+                                    "Statut": "EN ATTENTE",
+                                    "Date_Limite": (datetime.now() + timedelta(hours=24)).strftime("%d/%m/%Y %H:%M:%S")
+                                }
+                                df_f_updated = pd.concat([df_all_f, pd.DataFrame([new_row])], ignore_index=True)
+                                cloud_conn.update(worksheet="Factures", data=df_f_updated)
+                                
+                                record_log(st.session_state.user_auth, f"Facture #{f_id} ({f_val}$)", target)
+                                st.success("✅ Envoyée !")
+                                st.rerun()
             with col_facture:
                 st.markdown("#### 📄 Aperçu")
                 header_ticket = "FACTURE AVERIS" if f_emetteur == "Averis" else "FACTURE OFFICIELLE"
