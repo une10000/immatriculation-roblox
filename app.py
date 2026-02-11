@@ -699,25 +699,29 @@ if not v_data.empty:
                     else:
                         st.error("Code incorrect")
 # ======================================================================================
-# 7. LOGIQUE DES ONGLETS (VERSION FINALE CORRIGÉE)
+# 7. LOGIQUE DES ONGLETS (CORRIGÉE)
 # ======================================================================================
 tab_labels = ["🚗 IMMATRICULATION"]
 
-# On ajoute les accès selon le grade
-if st.session_state.user_auth in ["RCT", "Staff", "POLSTA", "Averis"]: 
+# On ajoute POLSTA ici pour qu'il voie l'onglet Agent
+if st.session_state.user_auth in ["RCT", "Staff", "POLSTA"]: 
     tab_labels.append("👮 SERVICES AGENT")
 
+# On ajoute POLSTA ici pour qu'il voie l'onglet Administration
 if st.session_state.user_auth in ["Staff", "POLSTA"]: 
     tab_labels.append("🛠️ ADMINISTRATION")
 
 tabs = st.tabs(tab_labels)
 
-# --- ONGLET 1 : IMMATRICULATION & RADIATION ---
+# --- ONGLET 1 : IMMATRICULATION & RADIATION (ALIGNÉ) ---
 with tabs[0]:
+    # On crée les colonnes DIRECTEMENT au début du tab
     col_f, col_t = st.columns([1.3, 1])
     
     with col_f:
+        # On place le titre ICI pour l'aligner avec la droite
         st.markdown("### 📝 Gestion des Titres")
+        
         with st.container(border=True):
             f_owner = st.selectbox("Propriétaire du véhicule", ["---"] + df_b["Nom Roblox"].tolist(), key="k_owner_v7")
             f_model = st.text_input("Marque", key="k_model_v7")
@@ -736,7 +740,7 @@ with tabs[0]:
                         st.warning(f"🔰 JEUNE CONDUCTEUR détecté (+{val_taxe_jeune}$)")
                 except: pass
 
-            # --- CALCUL DU TOTAL ---
+            # --- CALCUL DU TOTAL + OFFRE TRIO RCT ---
             taxe_gouv = 175
             taxe_assu = 130 if "AVERIS" in f_assu else (150 if "RCT" in f_assu else 0)
             
@@ -747,24 +751,26 @@ with tabs[0]:
                     st.success(f"🎁 OFFRE TRIO ACTIVÉE")
 
             total_bill = taxe_gouv + taxe_assu + val_taxe_jeune
-
-        # --- BOUTON DE VALIDATION (INDENTÉ DANS TABS[0]) ---
+            
+        # --- BOUTON DE VALIDATION (LOGIQUE RÉELLE - DÉPLACÉ DEDANS) ---
         if st.button(f"S'ACQUITTER DE {total_bill}$ ET ENREGISTRER", use_container_width=True, key="btn_pay_final", type="primary"):
+            # Vérification que le formulaire n'est pas vide
             if f_owner == "---" or not f_model or not f_plate or not f_code:
                 st.error("⚠️ Formulaire incomplet ! Remplis tous les champs.")
             else:
                 try:
                     with st.spinner("Paiement et enregistrement en cours..."):
+                        # 1. Calcul du solde
                         idx_user = df_b[df_b["Nom Roblox"] == f_owner].index[0]
                         solde_actuel = float(str(df_b.at[idx_user, "Solde"]).replace('$', '').replace(',', ''))
                         
                         if solde_actuel < total_bill:
                             st.error(f"❌ Solde insuffisant ! (Solde: {solde_actuel}$)")
                         else:
-                            # Retrait de l'argent
+                            # 2. Retrait de l'argent
                             df_b.at[idx_user, "Solde"] = solde_actuel - total_bill
                             
-                            # Création de la ligne
+                            # 3. Création de la ligne
                             nouvelle_immat = {
                                 "Horodateur": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
                                 "Nom d'utilisateur ROBLOX": f_owner,
@@ -775,44 +781,63 @@ with tabs[0]:
                                 "Points": 25
                             }
 
+                            # Ajout au tableau local
                             new_df_i = pd.concat([df_i, pd.DataFrame([nouvelle_immat])], ignore_index=True)
+                            
+                            # 4. Envoi au Google Sheets
                             cloud_conn.update(worksheet="Banque", data=df_b)
                             cloud_conn.update(worksheet="Copie de Immatriculations", data=new_df_i)
                             
-                            record_log(st.session_state.user_auth, f"Immatriculation {f_model} [{f_plate}] - {total_bill}$", f_owner)
+                            # --- ENREGISTREMENT DANS LES LOGS ---
+                            record_log(st.session_state.user_auth, f"Immatriculation {f_model} [{f_plate}] - Payé {total_bill}$", f_owner)
                             
-                            st.balloons()
-                            st.success(f"### ✅ IMMATRICULATION RÉUSSIE !")
+                            # 5. Effet de fête et Confirmation
+                            st.balloons() 
+                            st.success(f"""
+                            ### ✅ IMMATRICULATION RÉUSSIE !
+                            ---
+                            * **Propriétaire :** {f_owner}
+                            * **Véhicule :** {f_model}
+                            * **Plaque :** {f_plate}
+                            * **Montant débité :** {total_bill}$
+                            """)
+                            
+                            import time
                             time.sleep(3)
                             st.cache_data.clear()
                             st.rerun()
+                            
                 except Exception as e:
-                    st.error(f"⚠️ Erreur de connexion : {e}")
+                    st.error(f"⚠️ Erreur de connexion au Sheets : {e}")
 
-# --- ONGLET 2 : SERVICES AGENT ---
-if st.session_state.user_auth in ["RCT", "Staff", "POLSTA", "Averis"]:
+# --- ONGLET 2 : SERVICES AGENT (FACTURES / POINTS / CONSULTATION) ---
+if st.session_state.user_auth in ["RCT", "Staff", "POLSTA"]:
     with tabs[1]:
-        # 1. PANEL D'ALERTE
+        # 1. PANEL D'ALERTE : FACTURES IMPAYÉES
         try:
             df_all_f = cloud_conn.read(worksheet="Factures").fillna("")
             alertes = []
             maintenant = datetime.now()
+
             for idx, f in df_all_f.iterrows():
                 if f["Statut"] == "EN ATTENTE":
                     try:
                         limite = datetime.strptime(str(f['Date_Limite']), "%d/%m/%Y %H:%M:%S")
-                        if maintenant > limite: alertes.append(f)
+                        if maintenant > limite:
+                            alertes.append(f)
                     except: pass 
+
             if alertes:
                 st.error(f"⚠️ {len(alertes)} FACTURE(S) EN SOUFFRANCE")
-                with st.expander("🔍 VOIR LES REQUÊTES"):
+                with st.expander("🔍 VOIR LES REQUÊTES PRIORITAIRES"):
                     for _, row in pd.DataFrame(alertes).iterrows():
                         st.write(f"🆔 **#{row['ID']}** | 👤 **{row['Cible']}** ({row['Montant']}$)")
-        except: pass
+        except Exception as e:
+            st.error(f"Erreur lecture factures : {e}")
         
         st.divider()
 
-        # 2. SYSTÈME DE SAISIE
+        # 2. SYSTÈME DE SAISIE ET CONSULTATION
         if target == "---":
             st.warning("⚠️ Sélectionnez un citoyen en haut de la page.")
         else:
@@ -822,16 +847,21 @@ if st.session_state.user_auth in ["RCT", "Staff", "POLSTA", "Averis"]:
                 with st.container(border=True):
                     st.markdown("#### 📝 Saisie")
                     
-                    # --- LOGIQUE ÉMETTEUR (POLSTA PEUT CHOISIR AVERIS) ---
+                    # --- LOGIQUE ÉMETTEUR DYNAMIQUE (POLSTA PEUT CHOISIR AVERIS) ---
                     if st.session_state.user_auth in ["Staff", "POLSTA"]:
-                        f_emetteur = st.selectbox("Émetteur", ["POLSTA", "Averis"], key="v_em_final")
+                        f_emetteur = st.selectbox("Émetteur", ["POLSTA", "Averis"], key="v_emetteur_final")
+                    elif st.session_state.user_auth == "Averis":
+                        f_emetteur = "Averis"
+                        st.info("Émetteur : Averis")
                     else:
-                        f_emetteur = st.session_state.user_auth
-                        st.info(f"Émetteur : {f_emetteur}")
+                        f_emetteur = "RCT"
+                        st.info("Émetteur : RCT")
 
                     f_val = st.number_input("Montant ($)", min_value=0, step=50, key="v_val_final")
+                    
                     can_pull_points = (st.session_state.user_auth in ["Staff", "POLSTA"] and f_emetteur == "POLSTA")
                     f_pts = st.number_input("Points à retirer", 0, 12, 0, key="v_pts_final", disabled=not can_pull_points)
+                    
                     f_motif = st.text_input("Motif", key="v_mot_final")
                     
                     target_veh = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
@@ -859,6 +889,7 @@ if st.session_state.user_auth in ["RCT", "Staff", "POLSTA", "Averis"]:
                                 }
                                 df_f_updated = pd.concat([df_all_f, pd.DataFrame([new_row])], ignore_index=True)
                                 cloud_conn.update(worksheet="Factures", data=df_f_updated)
+                                
                                 record_log(st.session_state.user_auth, f"Facture #{f_id} ({f_val}$)", target)
                                 st.success("✅ Envoyée !")
                                 st.rerun()
@@ -867,15 +898,20 @@ if st.session_state.user_auth in ["RCT", "Staff", "POLSTA", "Averis"]:
                 st.markdown("#### 📄 Aperçu")
                 header_ticket = "FACTURE AVERIS" if f_emetteur == "Averis" else "FACTURE OFFICIELLE"
                 st.markdown(f"""
-                <div style="border: 2px solid black; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; font-size: 0.9em;">
+                <div style="border: 2px solid black; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; line-height: 1.2;">
                     <center><b>{header_ticket}</b><br><small>RÉPUBLIQUE DE RENSSERLAER</small></center>
-                    <hr>
+                    <hr style="border-top: 1px solid #ccc; margin: 10px 0;">
                     <b>ÉMETTEUR :</b> {f_emetteur.upper()}<br>
-                    <b>NOM      :</b> {target}<br>
-                    <b>MOTIF    :</b> {f_motif.upper() if f_motif else '...'}<br>
-                    <b>MONTANT  :</b> {f_val}$
-                    <hr>
-                    <div style="text-align: center;">POINTS : -{f_pts if can_pull_points else 0}</div>
+                    <b>DATE     :</b> {datetime.now().strftime('%d/%m/%Y')}<br>
+                    <b>NOM      :</b> {target}<br>
+                    <b>MOTIF    :</b> {f_motif.upper() if f_motif else '...'}<br>
+                    <b>PLAQUE   :</b> <span style="border: 1px solid black; padding: 0 3px;">{f_plate}</span><br>
+                    <b>MONTANT :</b> {f_val}$
+                    <hr style="border-top: 1px solid #ccc; margin: 10px 0;">
+                    <div style="text-align: center; color: black; font-weight: bold; font-size: 0.8em;">
+                        POINTS : -{f_pts if can_pull_points else 0}<br>
+                        <small>Document généré par terminal</small>
+                    </div>
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -883,13 +919,26 @@ if st.session_state.user_auth in ["RCT", "Staff", "POLSTA", "Averis"]:
                 st.markdown("#### 🚗 Véhicules")
                 if not target_veh.empty:
                     for _, veh in target_veh.iterrows():
+                        assu_v = str(veh['Assurance']).upper()
+                        if st.session_state.user_auth == "RCT":
+                            if "RCT" in assu_v: col_v, txt_v = "green", "✅ ASSURÉ RCT"
+                            elif "AVERIS" in assu_v: col_v, txt_v = "#E67E22", "⚠️ ASSURÉ AVERIS"
+                            else: col_v, txt_v = "#d32f2f", "🚨 DANGER : NON-ASSURÉ"
+                        else:
+                            col_v, txt_v = "green", "✅ VÉHICULE EN RÈGLE"
+
                         st.markdown(f"""
-                        <div style="border: 1px solid gray; padding: 5px; margin-bottom: 5px; font-size: 0.8em;">
-                            <b>{veh['Marque du véhicule']}</b><br>
-                            Plaque : {veh['Numéro de la plaque']}<br>
-                            Assu : {veh['Assurance']}
+                        <div style="border: 2px solid black; padding: 10px; background: white; color: black; font-family: 'Courier New', monospace; margin-bottom: 10px; font-size: 0.8em;">
+                            <center><b>TITRE DE CIRCULATION</b></center>
+                            <hr style="border-top: 1px solid #ccc; margin: 5px 0;">
+                            <b>MODÈLE :</b> {veh['Marque du véhicule']}<br>
+                            <b>PLAQUE :</b> <span style="border: 1px solid black; padding: 0 2px;">{veh['Numéro de la plaque']}</span><br>
+                            <hr style="border-top: 1px solid #ccc; margin: 5px 0;">
+                            <div style="text-align: center; color: {col_v}; font-weight: bold;">{txt_v}</div>
                         </div>
                         """, unsafe_allow_html=True)
+                else:
+                    st.info("Aucun véhicule.")
 # --- ONGLET 3 : ADMINISTRATION (STAFF & POLSTA) ---
 if st.session_state.user_auth in ["Staff", "POLSTA"]:
     with tabs[2]:
