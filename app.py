@@ -930,7 +930,6 @@ if st.session_state.user_auth == "Staff":
                         st.rerun()
 # --- SECTION 2 : SYSTÈME DE PAIE & ASSURANCES AUTOMATIQUES ---
 
-# On vérifie si l'utilisateur est connecté avec le rôle "Staff"
 if st.session_state.get("user_auth") == "Staff":
     st.divider()
     st.markdown("### 🧧 Terminal de Paie Nationale")
@@ -940,117 +939,94 @@ if st.session_state.get("user_auth") == "Staff":
         target_paie = st.selectbox("Sélectionner le bénéficiaire :", options_paie, key="paie_auto_target")
         
         if target_paie:
-            # 1. Analyse du dossier
+            # 1. Analyse du dossier Citoyen
             user_data = df_b[df_b["Nom Roblox"] == target_paie]
             user_jobs_raw = user_data["Emploiement"].values[0]
             user_jobs_list = [j.strip() for j in str(user_jobs_raw).split("/")]
-            
-            # Récupération du solde actuel
             solde_actuel = float(str(user_data["Solde"].values[0]).replace('$', '').replace(',', ''))
             
-            # 2. Calcul détaillé des Primes Métier
-            primes_detail_list = []
+            # 2. Salaire et Primes
             calcul_primes = 0
             if 'PRIME_JOB' in locals():
                 for job in user_jobs_list:
-                    m_prime = PRIME_JOB.get(job, 0)
-                    if m_prime > 0:
-                        primes_detail_list.append(f"• **{job}** : +{m_prime}$")
-                        calcul_primes += m_prime
-            
+                    calcul_primes += PRIME_JOB.get(job, 0)
             total_brut = 15000 + calcul_primes
             
-            # 3. Calcul précis des Assurances et Taxes
-            from datetime import datetime
-            import pandas as pd
-            
-            try:
-                date_arrivee_str = str(user_data["Date d'arrivée"].values[0])
-                date_arrivee = pd.to_datetime(date_arrivee_str, dayfirst=True)
-                date_actuelle = datetime.now()
-                anciennete_jours = (date_actuelle - date_arrivee).days
-            except:
-                anciennete_jours = 0
-            
+            # 3. ANALYSE RÉELLE DES ASSURANCES (via df_i)
             mes_vehicules = df_i[df_i["Nom d'utilisateur ROBLOX"] == target_paie]
-            nb_vehicules = len(mes_vehicules)
             
-            points_actuels = 0
-            if not mes_vehicules.empty and "Points" in df_i.columns:
-                points_actuels = mes_vehicules["Points"].values[0]
+            # On initialise les compteurs d'argent pour les patrons
+            argent_pour_rct = 0
+            argent_pour_averis = 0
+            argent_standard = 0 # Argent qui part dans le vide (taxes)
             
-            total_assurance = 0
-            taxe_jc_total = 0
-            
-            est_jeune_conducteur = (anciennete_jours < 30)
-            if est_jeune_conducteur:
-                taxe_jc_total = nb_vehicules * 50
-            
-            if nb_vehicules > 0:
-                if "Agent RCT" in user_jobs_list:
-                    nb_payants = min(nb_vehicules, 2)
-                    total_assurance = nb_payants * 150
-                    type_assurance = "RCT (Offre Trio)" if nb_vehicules >= 3 else "RCT Standard"
-                elif "Averis" in user_jobs_list:
-                    total_assurance = nb_vehicules * 130
-                    type_assurance = "Averis"
+            # On boucle sur chaque véhicule pour voir son assurance choisie
+            for index, vhc in mes_vehicules.iterrows():
+                choix = str(vhc["Assurance"]).upper()
+                if "RCT" in choix:
+                    argent_pour_rct += 150
+                elif "AVERIS" in choix:
+                    argent_pour_averis += 130
                 else:
-                    total_assurance = nb_vehicules * 150
-                    type_assurance = "Standard"
-            else:
-                type_assurance = "Aucun véhicule"
+                    argent_standard += 150
 
-            total_prelevement = total_assurance + taxe_jc_total
-            total_net = total_brut - total_prelevement
+            total_assurance = argent_pour_rct + argent_pour_averis + argent_standard
+            
+            # 4. Calcul Jeune Conducteur (inchangé)
+            try:
+                date_arr = pd.to_datetime(str(user_data["Date d'arrivée"].values[0]), dayfirst=True)
+                anciennete = (datetime.now() - date_arr).days
+            except: anciennete = 0
+            
+            taxe_jc = (len(mes_vehicules) * 50) if anciennete < 30 else 0
+            
+            total_net = total_brut - total_assurance - taxe_jc
             solde_final = solde_actuel + total_net
             
             # --- AFFICHAGE ---
             st.markdown(f"#### 📊 Fiche de Paie : {target_paie}")
-            col_rev1, col_rev2 = st.columns(2)
-            with col_rev1:
-                with st.container(border=True):
-                    st.write("**💰 REVENUS**")
-                    st.write(f"• Salaire de Base : 15,000$")
-                    if primes_detail_list:
-                        for p in primes_detail_list: st.write(p)
-            
-            with col_rev2:
-                with st.container(border=True):
-                    st.write("**📉 PRÉLÈVEMENTS**")
-                    st.write(f"• Assurance {type_assurance} : -{total_assurance}$")
-                    if est_jeune_conducteur:
-                        st.write(f"• Taxes JC (Nouveau) : -{taxe_jc_total}$")
-            
-            st.markdown("---")
-            c1, c2, c3, c4 = st.columns(4)
-            c1.metric("Solde Actuel", f"{solde_actuel}$")
-            diff_points = 25 - points_actuels
-            c2.metric("Points Permis", "25/25", delta=f"+{diff_points}" if diff_points > 0 else None)
-            c3.metric("Net à Verser", f"+{total_net}$", delta=f"-{total_prelevement}$ Taxes", delta_color="inverse")
-            c4.metric("Solde Final", f"{solde_final}$", delta=f"+{total_net}$")
+            c1, c2 = st.columns(2)
+            c1.metric("Net à Verser", f"{total_net}$")
+            c2.write(f"🛡️ **Détail Assurances :**")
+            if argent_pour_rct > 0: c2.caption(f"RCT : {argent_pour_rct}$")
+            if argent_pour_averis > 0: c2.caption(f"Averis : {argent_pour_averis}$")
 
-            # Bouton de validation
-            if st.button(f"🧧 CONFIRMER LE VERSEMENT ET LE RESET DES POINTS", use_container_width=True, type="primary"):
+            # 5. BOUTON DE VALIDATION AVEC TRANSFERTS RÉELS
+            if st.button(f"🧧 CONFIRMER LE VERSEMENT", use_container_width=True, type="primary"):
                 try:
-                    with st.spinner("Traitement..."):
+                    with st.spinner("Transferts en cours..."):
+                        # A. Crédit du Citoyen
+                        idx_citoyen = df_b[df_b["Nom Roblox"] == target_paie].index[0]
+                        df_b.at[idx_citoyen, "Solde"] = solde_final
+
+                        # B. Part Patronale + Transfert Assurances
+                        # Si le gars travaille pour RCT, une10000 paie 2000, mais récupère ses assurances
                         if "Agent RCT" in user_jobs_list:
                             idx_rct = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
-                            df_b.at[idx_rct, "Solde"] = float(df_b.at[idx_rct, "Solde"]) - 2000
+                            df_b.at[idx_rct, "Solde"] = float(df_b.at[idx_rct, "Solde"]) - 2000 + argent_pour_rct
+                        elif argent_pour_rct > 0: # Si c'est un client externe assuré RCT
+                            idx_rct = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
+                            df_b.at[idx_rct, "Solde"] = float(df_b.at[idx_rct, "Solde"]) + argent_pour_rct
+
+                        # Idem pour Averis et Moune2010
                         if "Averis" in user_jobs_list:
                             idx_av = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
-                            df_b.at[idx_av, "Solde"] = float(df_b.at[idx_av, "Solde"]) - 2000
+                            df_b.at[idx_av, "Solde"] = float(df_b.at[idx_av, "Solde"]) - 2000 + argent_pour_averis
+                        elif argent_pour_averis > 0:
+                            idx_av = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
+                            df_b.at[idx_av, "Solde"] = float(df_b.at[idx_av, "Solde"]) + argent_pour_averis
 
-                        idx_ben = df_b[df_b["Nom Roblox"] == target_paie].index[0]
-                        df_b.at[idx_ben, "Solde"] = solde_final 
-                        df_i.loc[df_i["Nom d'utilisateur ROBLOX"] == target_paie, "Assurance"] = "PAYÉ (AUTO+JC)"
+                        # C. Mise à jour des immatriculations
+                        df_i.loc[df_i["Nom d'utilisateur ROBLOX"] == target_paie, "Assurance"] = "PAYÉ (AUTO)"
                         if "Points" in df_i.columns:
                             df_i.loc[df_i["Nom d'utilisateur ROBLOX"] == target_paie, "Points"] = 25
                         
+                        # D. Envoi Cloud
                         cloud_conn.update(worksheet="Banque", data=df_b)
                         cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i)
                         
-                        record_log("Staff", f"PAIE : {target_paie} | {total_net}$")
-                        st.success(f"✅ Terminé !")
+                        record_log("Staff", f"PAIE : {target_paie} | Net: {total_net}$")
+                        st.success("✅ Paie et transferts d'assurances terminés !")
                         st.cache_data.clear()
                         st.rerun()
                 except Exception as e:
