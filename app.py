@@ -1033,11 +1033,11 @@ if st.session_state.get("user_auth") == "Staff":
             c3.metric("Net à Verser", f"+{total_net}$", delta=f"-{total_prelevement}$ Taxes", delta_color="inverse")
             c4.metric("Solde Final", f"{solde_final}$", delta=f"+{total_net}$")
 
-            # Bouton de validation
+# Bouton de validation
             if st.button(f"🧧 CONFIRMER LE VERSEMENT ET LES TRANSFERTS", use_container_width=True, type="primary"):
                 try:
                     with st.spinner("Mise à jour des comptes..."):
-                        # A. Transferts Patrons (Salaire -2000 + Assurances récupérées)
+                        # A. Transferts Patrons
                         if "Agent RCT" in user_jobs_list:
                             idx_rct = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
                             df_b.at[idx_rct, "Solde"] = float(df_b.at[idx_rct, "Solde"]) - 2000 + argent_pour_rct
@@ -1056,20 +1056,25 @@ if st.session_state.get("user_auth") == "Staff":
                         idx_ben = df_b[df_b["Nom Roblox"] == target_paie].index[0]
                         df_b.at[idx_ben, "Solde"] = solde_final 
                         
-                        # C. Reset Immatriculations
-                        df_i.loc[df_i["Nom d'utilisateur ROBLOX"] == target_paie, "Assurance"] = "PAYÉ (AUTO)"
-                        if "Points" in df_i.columns:
-                            df_i.loc[df_i["Nom d'utilisateur ROBLOX"] == target_paie, "Points"] = 25
+                        # C. Reset Immatriculations (MAINTIENT LE TYPE D'ASSURANCE)
+                        mask_user = df_i["Nom d'utilisateur ROBLOX"] == target_paie
+                        df_i.loc[mask_user, "Assurance"] = df_i.loc[mask_user, "Assurance"].apply(
+                            lambda x: f"✅ {x}" if not str(x).startswith("✅") else x
+                        )
                         
+                        if "Points" in df_i.columns:
+                            df_i.loc[mask_user, "Points"] = 25
+                        
+                        # Enregistrement Cloud
                         cloud_conn.update(worksheet="Banque", data=df_b)
                         cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i)
                         
                         record_log("Staff", f"PAIE : {target_paie} | Net: {total_net}$")
-                        st.success(f"✅ Terminé ! L'offre Trio a été appliquée si éligible.")
+                        st.success(f"✅ Terminé ! Statuts mis à jour et points réinitialisés.")
                         st.cache_data.clear()
                         st.rerun()
                 except Exception as e:
-                    st.error(f"⚠️ Erreur : {e}")
+                    st.error(f"⚠️ Erreur lors de la validation : {e}")
 # <-- Plus rien ici, le terminal est fini et protégé.
         # --- SECTION 3 : LOGS ET STATISTIQUES ---
         st.divider()
