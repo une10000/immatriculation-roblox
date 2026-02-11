@@ -313,6 +313,8 @@ if st.session_state.user_auth is None:
 
     with c1:
         st.markdown("### 👥 CIVIL")
+        # Textbox inutile mais nécessaire pour l'alignement visuel
+        st.text_input("Identifiant Citoyen", placeholder="Accès Libre", key="civil_align_input")
         if st.button("ACCÉDER AU TERMINAL", key="l_civ_f", use_container_width=True):
             st.session_state.user_auth = "Civil"
             st.session_state.staff_name = "Citoyen"
