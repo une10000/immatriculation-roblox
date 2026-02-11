@@ -867,6 +867,7 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                                 "Cible": target,
                                 "Emetteur": f_emetteur,
                                 "Montant": f_val,
+                                "Points": f_pts, 
                                 "Motif": f"{f_motif} [{f_plate}]", 
                                 "Statut": "EN ATTENTE",
                                 "Date_Limite": (datetime.now() + timedelta(hours=24)).strftime("%d/%m/%Y %H:%M:%S")
