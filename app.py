@@ -585,7 +585,6 @@ if not mes_factures.empty:
                     st.cache_data.clear()
                     st.rerun
         st.write("---") # Séparateur entre les tickets s'il y en a plusieurs
-# --- SECTION VÉHICULES CORRIGÉE ---
 # --- SECTION VÉHICULES UNIFORMISÉE ---
 st.write("### 🚗 VÉHICULES ENREGISTRÉS")
 v_data = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
