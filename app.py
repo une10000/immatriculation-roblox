@@ -978,34 +978,39 @@ if st.session_state.user_auth == "Staff":
 
                 total_prelevement = total_assurance + taxe_jc_total
                 total_net = total_brut - total_prelevement
+                # ... (Calculs des variables au-dessus) ...
+
+                total_prelevement = total_assurance + taxe_jc_total
+                total_net = total_brut - total_prelevement
                 
-                # --- AFFICHAGE DÉTAILLÉ POUR LE STAFF ---
-                st.markdown(f"#### 📊 Fiche de Paie : {target_paie}")
-                
-                with st.expander("🔍 Décomposition des revenus et taxes", expanded=True):
-                    col_det1, col_det2 = st.columns(2)
-                    with col_det1:
-                        st.write("**💰 REVENUS**")
-                        st.write("• Salaire de Base : 15,000$")
-                        if primes_detail_list:
-                            for p in primes_detail_list:
+                # --- C'EST ICI QUE TU COLLES LE BLOC ---
+                st.markdown(f"#### 📊 Détails des Revenus pour {target_paie}")
+                with st.expander("🔍 Voir le détail du calcul", expanded=True):
+                    col_rev1, col_rev2 = st.columns(2)
+                    with col_rev1:
+                        st.write("**💰 Revenus (Salaire + Primes) :**")
+                        st.write(f"• Salaire de Base : 15,000$")
+                        if primes_detail:
+                            for p in primes_detail:
                                 st.write(p)
-                        st.write(f"**Total Brut : {total_brut}$**")
+                        else:
+                            st.write("• Aucune prime métier détectée")
                     
-                    with col_det2:
-                        st.write("**📉 PRÉLÈVEMENTS**")
-                        st.write(f"• Assurances ({type_assurance}) : -{total_assurance}$")
-                        st.write(f"• Taxes JC ({nb_vehicules} vhc) : -{taxe_jc_total}$")
-                        st.write(f"**Total Déduit : -{total_prelevement}$**")
-
-                st.markdown("---")
+                    with col_rev2:
+                        st.write("**📉 Prélèvements (Automatiques) :**")
+                        st.write(f"• Assurance {type_assurance} : -{total_assurance}$ **(Prime incluse)**")
+                        st.write(f"• Taxes Jeune Conducteur : -{taxe_jc_total}$")
+                        st.caption("ℹ️ Les véhicules seront marqués comme 'ASSURÉ' après versement.")
                 
-                # Metrics finales
-                c1, c2, c3 = st.columns(3)
-                c1.metric("BRUT", f"{total_brut}$")
-                c2.metric("TAXES", f"-{total_prelevement}$")
-                c3.metric("NET À VERSER", f"{total_net}$", delta_color="normal")
+                st.markdown("---")
+                # ----------------------------------------
 
+                # Puis tes Metrics
+                c1, c2, c3 = st.columns(3)
+                c1.metric("Total Brut", f"{total_brut}$")
+                c2.metric("Total Déduit", f"-{total_prelevement}$")
+                c3.metric("NET À VERSER", f"{total_net}$")
+                
                 # Bouton de validation
                 if st.button(f"🧧 CONFIRMER LE VERSEMENT DE {total_net}$", use_container_width=True, type="primary"):
                     try:
