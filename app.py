@@ -812,17 +812,26 @@ with tabs[0]:
         with st.container(border=True):
             f_owner = st.selectbox(
                 "Propriétaire du véhicule",
-                ["---"] + df_b["Nom Roblox"].tolist()
+                ["---"] + df_b["Nom Roblox"].tolist(),
+                key="imm_owner_select"
             )
-            f_model = st.text_input("Marque")
-            f_plate = st.text_input("Numéro de Plaque souhaité").upper()
+            f_model = st.text_input(
+                "Marque",
+                key="imm_marque"
+            )
+            f_plate = st.text_input(
+                "Numéro de Plaque souhaité",
+                key="imm_plate"
+            ).upper()
             f_assu = st.selectbox(
                 "Type d'Assurance",
-                ["Aucune", "AVERIS (130$)", "RCT (150$)"]
+                ["Aucune", "AVERIS (130$)", "RCT (150$)"],
+                key="imm_assu"
             )
             f_code = st.text_input(
                 "Définir un Code de Radiation (Secret)",
-                type="password"
+                type="password",
+                key="imm_code"
             )
 
             # ---- TAXE JEUNE ----
