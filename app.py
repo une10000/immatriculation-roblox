@@ -522,31 +522,33 @@ if not mes_factures.empty:
             </div>
             """, unsafe_allow_html=True)
 # --- BOUTON DE PAIEMENT ---
+# --- BOUTON DE PAIEMENT ---
 if st.button(f"💳 RÉGLER LA FACTURE #{fac['ID']}", key=f"pay_{fac['ID']}", use_container_width=True):
     try:
+        # On récupère l'index du citoyen qui doit payer
         idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
         solde_raw = str(df_b.at[idx_b, "Solde"]).replace('$', '').replace(',', '')
         solde_actuel = float(solde_raw)
         montant_facture = float(fac['Montant'])
         
         if solde_actuel >= montant_facture:
-            # 1. Le citoyen paie toujours (débité)
+            # 1. Le citoyen paie (débité)
             df_b.at[idx_b, "Solde"] = solde_actuel - montant_facture
             
             # 2. Argent vers RCT (une10000) seulement si émetteur est RCT
             if fac['Emetteur'] == "RCT":
                 rct_idx = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
-                solde_dest = float(str(df_b.at[rct_idx, "Solde"]).replace('$', '').replace(',', ''))
+                solde_dest_raw = str(df_b.at[rct_idx, "Solde"]).replace('$', '').replace(',', '')
+                solde_dest = float(solde_dest_raw)
                 df_b.at[rct_idx, "Solde"] = solde_dest + montant_facture
             
-            # 3. Mise à jour statut
+            # 3. Mise à jour statut facture
             df_all_f.loc[df_all_f["ID"] == fac["ID"], "Statut"] = "PAYÉ"
             
-            # 4. Sauvegarde
+            # 4. Sauvegarde Cloud
             cloud_conn.update(worksheet="Banque", data=df_b)
             cloud_conn.update(worksheet="Factures", data=df_all_f)
             
-            record_log(target, f"Paiement facture {fac['Emetteur']} #{fac['ID']}")
             st.success("✅ Paiement effectué !")
             st.cache_data.clear()
             time.sleep(1)
@@ -554,17 +556,15 @@ if st.button(f"💳 RÉGLER LA FACTURE #{fac['ID']}", key=f"pay_{fac['ID']}", us
         else:
             st.error("❌ Solde insuffisant.")
     except Exception as e:
-        st.error(f"Erreur lors du paiement : {e}")
+        st.error(f"Erreur de paiement : {e}")
 
-# --- BOUTON ANNULER (Aligné aussi) ---
-# Correction de l'indentation ici pour éviter l'erreur de ton screen
+# --- BOUTON ANNULER (Bien aligné au même niveau que le 'if' du bouton précédent) ---
 if st.session_state.user_auth in ["Staff", "Admin"]:
     if st.button(f"🗑️ ANNULER LA FACTURE #{fac['ID']}", key=f"admin_del_{fac['ID']}", use_container_width=True):
         try:
             df_f_sync = cloud_conn.read(worksheet="Factures")
             row_up = df_f_sync[df_f_sync["ID"] == fac["ID"]].index[0] + 2
             cloud_conn.update(worksheet="Factures", range=f"E{row_up}", data=[["ANNULÉ"]])
-            record_log(st.session_state.user_auth, f"Annulation #{fac['ID']}")
             st.warning("Facture annulée.")
             st.cache_data.clear()
             time.sleep(1)
