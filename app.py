@@ -666,8 +666,10 @@ with tabs[0]:
         with st.container(border=True):
             f_owner = st.selectbox(
                 "Propriétaire du véhicule",
-                ["---"] + df_b["Nom Roblox"].tolist()
+                ["---"] + df_b["Nom Roblox"].tolist(),
+                key="imm_owner_select"
             )
+
             f_model = st.text_input("Marque")
             f_plate = st.text_input("Numéro de Plaque souhaité").upper()
             f_assu = st.selectbox(
