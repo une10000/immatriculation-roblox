@@ -863,15 +863,12 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
         st.divider()
 
         # ======================================================================================
-        # 2. RECHERCHE PAR RÉFÉRENCE (VERSION ALIGNÉE & COMPACTE)
+        # 2. RECHERCHE PAR RÉFÉRENCE (VERSION ALIGNÉE AU PIXEL)
         # ======================================================================================
         
-        # Ligne 1 : Titre + Message de confirmation
-        header_col1, header_col2 = st.columns([1, 1.5])
-        
+        # Pré-chargement des données pour l'affichage
         target_by_ref = None 
         f_data = None
-        # On récupère l'ID en nettoyant le #
         search_id = st.session_state.get("search_ref_agent", "").replace("#", "")
 
         if search_id:
@@ -879,56 +876,61 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
             if not res_f.empty:
                 f_data = res_f.iloc[0]
                 target_by_ref = f_data["Cible"]
-                with header_col2:
-                    st.success(f"✅ Facture #{search_id} identifiée")
-            else:
-                with header_col2:
-                    st.warning("⚠️ ID inexistant")
 
-        with header_col1:
+        # Affichage du Titre et du message de succès sur la même ligne
+        h1, h2 = st.columns([1, 1.5])
+        with h1:
             st.markdown("### 🔎 ACCÈS RAPIDE")
+        with h2:
+            if search_id and target_by_ref:
+                st.success(f"Facture #{search_id} identifiée")
+            elif search_id:
+                st.warning("Référence inconnue")
 
-        # Ligne 2 : Barre de recherche + Ticket/Stats ALIGNÉS
+        # Zone de recherche et détails
         input_col, ticket_col = st.columns([1, 1.5])
 
         with input_col:
-            st.text_input("ID Facture :", placeholder="Ex: 1024", key="search_ref_agent", label_visibility="collapsed")
+            # Champ de saisie
+            st.text_input("ID :", placeholder="Ex: 1024", key="search_ref_agent", label_visibility="collapsed")
             
-            # Bloc de statistiques pour remplir le vide
-            total_fact_count = len(df_all_f)
-            impayees_count = len(df_all_f[df_all_f["Statut"] == "EN ATTENTE"])
-            
+            # REMPLACEMENT : SERVICES ACTIFS (Plus utile que l'état global)
             st.markdown(f"""
-                <div style="background-color: #f0f2f6; padding: 12px; border-radius: 5px; border: 1px solid #d1d1d1; margin-top: 10px;">
-                    <div style="font-size: 0.75em; color: #555; font-weight: bold; text-transform: uppercase; margin-bottom: 5px;">📊 État Global du Réseau</div>
-                    <div style="display: flex; justify-content: space-between; font-size: 0.85em;">
-                        <span>Total émises :</span><b>{total_fact_count}</b>
+                <div style="background-color: #f8f9fa; padding: 12px; border-radius: 8px; border: 1px solid #e0e0e0; margin-top: 10px;">
+                    <div style="font-size: 0.7em; color: #666; font-weight: bold; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px;">🏢 Services en ligne</div>
+                    <div style="display: flex; align-items: center; margin-bottom: 4px;">
+                        <span style="color: #2e7d32; margin-right: 8px;">●</span>
+                        <span style="font-size: 0.85em;"><b>Réseau RCT</b> : Opérationnel</span>
                     </div>
-                    <div style="display: flex; justify-content: space-between; font-size: 0.85em;">
-                        <span>En attente :</span><b style="color: #d32f2f;">{impayees_count}</b>
+                    <div style="display: flex; align-items: center;">
+                        <span style="color: #1565c0; margin-right: 8px;">●</span>
+                        <span style="font-size: 0.85em;"><b>Averis</b> : Traitement actif</span>
                     </div>
                 </div>
             """, unsafe_allow_html=True)
             
-        if target_by_ref and f_data is not None:
-            statut_color = "green" if f_data['Statut'] == "PAYÉ" else "#d32f2f"
-            statut_icon = "✔" if f_data['Statut'] == "PAYÉ" else "⏳"
-            
-            with ticket_col:
+        with ticket_col:
+            if target_by_ref and f_data is not None:
+                statut_color = "#2e7d32" if f_data['Statut'] == "PAYÉ" else "#c62828"
+                statut_bg = "#e8f5e9" if f_data['Statut'] == "PAYÉ" else "#ffeae0"
+                
+                # Le margin-top est ajusté pour s'aligner pile avec le champ texte
                 st.markdown(f"""
-                    <div style="border: 1px solid #000; padding: 10px; background: #f9f9f9; color: black; border-left: 5px solid {statut_color}; line-height: 1.2; box-shadow: 3px 3px 0px rgba(0,0,0,0.1); margin-top: 0px;">
-                        <div style="display: flex; justify-content: space-between; font-size: 0.8em;">
-                            <b>REF: #{f_data['ID']}</b> 
-                            <b style="color: {statut_color};">{f_data['Statut']} {statut_icon}</b>
+                    <div style="border: 1px solid #000; padding: 12px; background: {statut_bg}; color: black; border-left: 6px solid {statut_color}; box-shadow: 4px 4px 0px rgba(0,0,0,1); margin-top: 0px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.8em; margin-bottom: 5px;">
+                            <span style="font-family: monospace;"><b>REF: #{f_data['ID']}</b></span>
+                            <span style="font-weight: bold; color: {statut_color};">{f_data['Statut'].upper()}</span>
                         </div>
-                        <hr style="margin: 5px 0; border-top: 1px dashed #000;">
-                        <div style="font-size: 0.85em;">
+                        <div style="font-size: 0.9em; border-top: 1px dashed #000; padding-top: 8px;">
                             <b>CITOYEN :</b> {f_data['Cible']}<br>
                             <b>MOTIF :</b> {f_data['Motif']}<br>
                             <b>MONTANT :</b> {f_data['Montant']}$
                         </div>
                     </div>
                 """, unsafe_allow_html=True)
+            else:
+                # Si rien n'est cherché, on met une petite info discrète pour garder l'alignement
+                st.info("Entrez une référence pour prévisualiser le ticket.")
 
         st.divider()
 
@@ -938,7 +940,7 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
         if target_by_ref and target_by_ref in search_list:
             default_index = search_list.index(target_by_ref)
 
-        target = st.selectbox("🎯 Sélectionner le citoyen pour action :", search_list, index=default_index, key="main_target_agent")
+        target = st.selectbox("🎯 Dossier Citoyen :", search_list, index=default_index, key="main_target_agent")
         # ======================================================================================
         # 2. MODULE : BUREAU DES MANDATS (GESTION NATIONALE)
         # ======================================================================================
