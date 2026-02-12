@@ -860,27 +860,41 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                 for _, row in pd.DataFrame(alertes).iterrows():
                     st.write(f"🆔 **#{row['ID']}** | 👤 **{row['Cible']}** ({row['Montant']}$)")
         
+# ======================================================================================
+        # RECHERCHE PAR RÉFÉRENCE (VERSION COMPACTE)
         # ======================================================================================
-        # RECHERCHE PAR RÉFÉRENCE (Placée juste sous les requêtes prioritaires)
-        # ======================================================================================
-        st.markdown("### 🔎 ACCÈS RAPIDE PAR FACTURE")
-        col_search_ref, col_info_ref = st.columns([1, 2])
+        
+        # Ligne 1 : Titre + Message de succès/erreur à côté
+        header_col1, header_col2 = st.columns([1, 1.5])
+        
         target_by_ref = None 
+        search_id = st.session_state.get("search_ref_agent", "").replace("#", "")
 
-        with col_search_ref:
-            search_id = st.text_input("Saisir ID Facture", placeholder="Ex: 1024", key="search_ref_agent").replace("#", "")
-            
+        # On fait la recherche avant pour pouvoir afficher le résultat dans le header
         if search_id:
             res_f = df_all_f[df_all_f["ID"].astype(str) == search_id]
             if not res_f.empty:
                 f_data = res_f.iloc[0]
                 target_by_ref = f_data["Cible"]
-                with col_info_ref:
-                    st.success(f"Facture #{search_id} trouvée !")
-                    st.info(f"👤 Citoyen : **{target_by_ref}** | État : **{f_data['Statut']}**")
+                with header_col2:
+                    st.success(f"✅ Facture #{search_id} trouvée !")
             else:
-                with col_info_ref:
+                with header_col2:
                     st.warning("⚠️ ID inconnu.")
+
+        with header_col1:
+            st.markdown("### 🔎 ACCÈS RAPIDE")
+
+        # Ligne 2 : Barre de recherche + Infos Citoyen à côté
+        input_col, info_col = st.columns([1, 1.5])
+
+        with input_col:
+            search_id = st.text_input("ID Facture :", placeholder="Ex: 1024", key="search_ref_agent", label_visibility="collapsed").replace("#", "")
+            
+        if target_by_ref:
+            with info_col:
+                # Affichage compact de l'état et du citoyen
+                st.info(f"👤 **{target_by_ref}** | État : **{f_data['Statut']}**")
 
         st.divider()
         # ======================================================================================
