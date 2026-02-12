@@ -356,12 +356,9 @@ with st.container():
     target = st.selectbox("Sélectionner un citoyen :", search_list)
     
     if target != "---":
-        # ======================================================================================
-        # NOUVEAU : ALERTE SÉCURITÉ (VISIBLE PAR TOUS SUR LE PROFIL)
-        # ======================================================================================
+        # --- ALERTE SÉCURITÉ (MANDAT D'ARRÊT) ---
         citoyen_info = df_b[df_b["Nom Roblox"] == target]
         if not citoyen_info.empty:
-            # On vérifie si la colonne Statut existe et contient RECHERCHÉ
             status_check = str(citoyen_info.iloc[0].get("Statut", "RAS")).upper()
             if "RECHERCHÉ" in status_check or "WANTED" in status_check:
                 motif_web = str(citoyen_info.iloc[0].get("Motif Recherche", "Non spécifié"))
@@ -373,225 +370,154 @@ with st.container():
                         <p style="font-size: 1.1em;"><b>MOTIF DU MANDAT :</b> {motif_web.upper()}</p>
                     </div>
                 """, unsafe_allow_html=True)
-        # ======================================================================================
-        # --- RECHERCHE PAR PLAQUE (Payante par le citoyen sélectionné) ---
-        st.markdown("---")
+
+        # --- RECHERCHE PAR PLAQUE ---
         with st.expander("🔍 RECHERCHE D'IDENTITÉ PAR PLAQUE (Coût : 10$)", expanded=False):
-            # AVERTISSEMENT EN GRAND ET ROUGE
             st.error(f"""
                 ### ⚠️ AVERTISSEMENT LÉGAL
                 Les **10$** de frais de dossier seront prélevés sur le compte de : **{target}**.
-                
-                **USAGE ABUSIF :** Si vous effectuez une recherche sur le compte d'un autre citoyen sans son accord, 
-                vous vous exposez à une **amende de 1000$** pour usurpation d'identité.
+                **USAGE ABUSIF :** Amende de **1000$** en cas d'usurpation.
             """)
 
-            # Barre de saisie et bouton sur la même ligne
             c1, c2 = st.columns([3, 1]) 
-            
             with c1:
-                search_plate = st.text_input("Saisir un numéro de plaque", key="search_p", label_visibility="collapsed", placeholder="Entrez la plaque ici...").upper()
-            
+                search_plate = st.text_input("Saisir un numéro de plaque", key="search_p_unique", label_visibility="collapsed", placeholder="Entrez la plaque ici...").upper()
             with c2:
-                launch_search = st.button("Lancer la recherche", use_container_width=True, type="primary")
+                launch_search = st.button("Lancer la recherche", key="btn_search_p", use_container_width=True, type="primary")
 
             if launch_search:
                 if search_plate:
                     try:
-                        # 1. Vérification du solde
                         idx_payer = df_b[df_b["Nom Roblox"] == target].index[0]
                         solde_payer = float(str(df_b.at[idx_payer, "Solde"]).replace('$', '').replace(',', ''))
                         
                         if solde_payer >= 10:
-                            # 2. Recherche
                             res_plate = df_i[df_i["Numéro de la plaque"] == search_plate]
-                            
                             if not res_plate.empty:
                                 prop_found = res_plate.iloc[0]["Nom d'utilisateur ROBLOX"]
                                 v_found = res_plate.iloc[0]["Marque du véhicule"]
-                                
-                                # 3. Paiement
                                 df_b.at[idx_payer, "Solde"] = solde_payer - 10
                                 cloud_conn.update(worksheet="Banque", data=df_b)
-                                
-                                # 4. Résultat
                                 st.success(f"🔍 **RÉSULTAT :** La plaque **{search_plate}** appartient à **{prop_found}** ({v_found}).")
-                                record_log(target, f"Recherche Plaque {search_plate} (10$ prélevés)")
-                                
                                 st.cache_data.clear()
                             else:
-                                st.warning("⚠️ Aucune plaque correspondante dans la base nationale.")
+                                st.warning("⚠️ Aucune plaque correspondante.")
                         else:
                             st.error("❌ Solde insuffisant (10$ requis).")
                     except Exception as e:
                         st.error(f"Erreur système : {e}")
-                else:
-                    st.error("Veuillez entrer une plaque.")
-        
-        st.markdown("---")
-        # --- LA SUITE DE TON CODE (Colonnes Argent, Points, etc.) REPREND ICI ---
-        # --- ICI COMMENCE L'AFFICHAGE DU DOSSIER (col1, col2, col3...) ---
 
-        # --- AFFICHAGE DU DOSSIER ---
+        st.markdown("---")
+
+        # --- AFFICHAGE DU DOSSIER (COLONNES) ---
         col1, col2, col3 = st.columns(3)
-        # La suite de ton code col1, col2, col3 continue ici...
+
         # --- COLONNE 1 : POINTS & PERMIS ---
         with col1:
+            st.markdown("### 🪪 PERMIS")
             p_data = df_p[df_p["Nom Roblox"] == target]
             if not p_data.empty:
                 pts_val = int(p_data.iloc[0]["PTS"])
-                c_pts, c_vide, c_motif_p = st.columns([3, 0.5, 2])
-                
-                with c_pts:
-                    st.metric("POINTS PERMIS", f"{pts_val}/25")
-                    status_color = "green" if pts_val > 0 else "red"
-                    st.markdown(f"Statut : <b style='color:{status_color};'>{'VALIDE' if pts_val > 0 else 'SUSPENDU'}</b>", unsafe_allow_html=True)
-                
-                with c_motif_p:
-                    st.markdown("""
-                        <div style="text-align: right; line-height: 1; padding-top: 5px;">
-                            <div style="opacity: 0.15; font-size: 40px; margin-bottom: -10px;">🛡️</div>
-                            <div style="opacity: 0.1; font-size: 50px; margin-bottom: -10px;">🚗</div>
-                            <div style="height: 4px; width: 60px; background: linear-gradient(90deg, transparent, #d32f2f); display: inline-block; opacity: 0.2; border-radius: 2px;"></div>
-                        </div>
-                    """, unsafe_allow_html=True)
+                st.metric("POINTS PERMIS", f"{pts_val}/25")
+                status_color = "green" if pts_val > 0 else "red"
+                st.markdown(f"Statut : <b style='color:{status_color};'>{'VALIDE' if pts_val > 0 else 'SUSPENDU'}</b>", unsafe_allow_html=True)
             else:
                 st.error("Aucun permis trouvé.")
 
-        # --- COLONNE 2 : BANQUE ---
+        # --- COLONNE 2 : BANQUE & EMPLOI ---
         with col2:
+            st.markdown("### 💰 ÉCONOMIE")
             b_data = df_b[df_b["Nom Roblox"] == target]
             if not b_data.empty:
-                c_info, c_v, c_m = st.columns([3, 0.5, 2])
+                st.metric("SOLDE BANCAIRE", f"{b_data.iloc[0]['Solde']}$")
+                current_jobs_raw = str(b_data.iloc[0]['Emploiement'])
+                st.write(f"🏢 Métier : **{current_jobs_raw}**")
                 
-                with c_info:
-                    # 1. Solde
-                    st.metric("SOLDE BANCAIRE", f"{b_data.iloc[0]['Solde']}$")
+                if st.session_state.user_auth == "Staff":
+                    if st.button("✏️ Modifier le métier", key=f"edit_job_{target}", use_container_width=True):
+                        st.session_state[f"show_editor_{target}"] = not st.session_state.get(f"show_editor_{target}", False)
                     
-                    # 2. Métier
-                    current_jobs_raw = str(b_data.iloc[0]['Emploiement'])
-                    st.write(f"🏢 Métier : **{current_jobs_raw}**")
-                    
-                    # 3. Modification Staff
-                    if st.session_state.user_auth == "Staff":
-                        if st.button("✏️ Modifier le métier", key=f"edit_job_{target}", use_container_width=True):
-                            st.session_state[f"show_editor_{target}"] = not st.session_state.get(f"show_editor_{target}", False)
-                        
-                        if st.session_state.get(f"show_editor_{target}", False):
-                            with st.container(border=True):
-                                liste_metiers = ["Sans-Emploi", "Agent RCT", "Averis", "Police", "Staff", "Service Public", "Entreprise Privée"]
-                                current_jobs_list = [j.strip() for j in current_jobs_raw.split("/") if j.strip()]
-                                valid_defaults = [j for j in current_jobs_list if j in liste_metiers]
-                                
-                                new_jobs = st.multiselect("Sélection :", options=liste_metiers, default=valid_defaults)
-                                
-                                cs1, cs2 = st.columns(2)
-                                with cs1:
-                                    if st.button("💾 Sauver", key=f"save_j_{target}", use_container_width=True, type="primary"):
-                                        new_str = " / ".join(new_jobs) if new_jobs else "Sans-Emploi"
-                                        idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
-                                        df_b.at[idx_b, "Emploiement"] = new_str
-                                        cloud_conn.update(worksheet="Banque", data=df_b)
-                                        st.session_state[f"show_editor_{target}"] = False
-                                        st.cache_data.clear()
-                                        st.rerun()
-                                with cs2:
-                                    if st.button("Annuler", key=f"cancel_j_{target}", use_container_width=True):
-                                        st.session_state[f"show_editor_{target}"] = False
-                                        st.rerun()
-
-                    st.caption(f"📅 Arrivée : {b_data.iloc[0]['Date d\'arrivée']}")
-                
-                with c_m:
-                    st.markdown("""
-                        <div style="text-align: right; line-height: 1; padding-top: 5px;">
-                            <div style="opacity: 0.15; font-size: 40px; margin-bottom: -10px;">🏛️</div>
-                            <div style="opacity: 0.1; font-size: 50px; margin-bottom: -10px;">💳</div>
-                            <div style="height: 4px; width: 60px; background: linear-gradient(90deg, transparent, #000); display: inline-block; opacity: 0.2; border-radius: 2px;"></div>
-                        </div>
-                    """, unsafe_allow_html=True)
+                    if st.session_state.get(f"show_editor_{target}", False):
+                        with st.container(border=True):
+                            liste_metiers = ["Sans-Emploi", "Agent RCT", "Averis", "Police", "Staff", "Service Public", "Entreprise Privée"]
+                            current_jobs_list = [j.strip() for j in current_jobs_raw.split("/") if j.strip()]
+                            valid_defaults = [j for j in current_jobs_list if j in liste_metiers]
+                            new_jobs = st.multiselect("Sélection :", options=liste_metiers, default=valid_defaults)
+                            
+                            cs1, cs2 = st.columns(2)
+                            with cs1:
+                                if st.button("💾 Sauver", key=f"save_j_{target}", use_container_width=True, type="primary"):
+                                    new_str = " / ".join(new_jobs) if new_jobs else "Sans-Emploi"
+                                    idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
+                                    df_b.at[idx_b, "Emploiement"] = new_str
+                                    cloud_conn.update(worksheet="Banque", data=df_b)
+                                    st.session_state[f"show_editor_{target}"] = False
+                                    st.cache_data.clear()
+                                    st.rerun()
+                            with cs2:
+                                if st.button("Annuler", key=f"cancel_j_{target}", use_container_width=True):
+                                    st.session_state[f"show_editor_{target}"] = False
+                                    st.rerun()
+                st.caption(f"📅 Arrivée : {b_data.iloc[0]['Date d\'arrivée']}")
             else:
                 st.error("Aucun compte trouvé.")
 
-# --- COLONNE 3 : ARCHIVES ---
-with col3:
-    st.markdown("### 📁 ARCHIVES")
-    try:
-        # Lecture fraîche des données
-        df_f_history = cloud_conn.read(worksheet="Factures").fillna("")
-        historique = df_f_history[(df_f_history["Cible"] == target) & (df_f_history["Statut"] == "PAYÉ")]
+        # --- COLONNE 3 : ARCHIVES ---
+        with col3:
+            st.markdown("### 📁 ARCHIVES")
+            try:
+                df_f_history = cloud_conn.read(worksheet="Factures").fillna("")
+                historique = df_f_history[(df_f_history["Cible"] == target) & (df_f_history["Statut"] == "PAYÉ")]
 
-        if not historique.empty:
-            # On affiche le nombre total d'archives pour informer l'agent
-            st.info(f"📄 {len(historique)} facture(s) réglée(s)")
-            
-            # Le bouton "Voir les archives" sous forme d'expander
-            with st.expander("👁️ Consulter l'historique"):
-                for _, f in historique.iterrows():
-                    # BOUTON REMBOURSER (Visible seulement par Staff/Admin)
-                    if st.session_state.user_auth in ["Staff", "Admin"]:
-                        if st.button(f"🔄 Rembourser #{f['ID']}", key=f"refund_{f['ID']}", use_container_width=True):
-                            try:
-                                with st.spinner("Remboursement en cours..."):
-                                    # 1. Charger les soldes actuels
-                                    idx_civil = df_b[df_b["Nom Roblox"] == target].index[0]
-                                    montant_remb = float(str(f["Montant"]).replace('$', '').replace(',', ''))
-                                    emetteur = f["Emetteur"]
-                                    
-                                    # 2. Rendre l'money au civil
-                                    solde_civ = float(str(df_b.at[idx_civil, "Solde"]).replace('$', '').replace(',', ''))
-                                    df_b.at[idx_civil, "Solde"] = solde_civ + montant_remb
-                                    
-                                    # 3. Retirer l'argent à l'organisation
-                                    if emetteur == "RCT":
-                                        idx_org = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
-                                    elif emetteur == "Averis":
-                                        idx_org = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
-                                    
-                                    if emetteur in ["RCT", "Averis"]:
-                                        solde_org = float(str(df_b.at[idx_org, "Solde"]).replace('$', '').replace(',', ''))
-                                        df_b.at[idx_org, "Solde"] = solde_org - montant_remb
-                                    
-                                    # 4. Rendre les points
-                                    pts_a_rendre = f.get('Points', 0)
-                                    if pts_a_rendre and str(pts_a_rendre).isdigit() and int(pts_a_rendre) > 0:
-                                        try:
-                                            idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
-                                            df_p.at[idx_p, "PTS"] = int(df_p.at[idx_p, "PTS"]) + int(pts_a_rendre)
-                                            cloud_conn.update(worksheet="Points Permis", data=df_p)
-                                        except: pass
-
-                                    # 5. Changer statut et Sauvegarder
-                                    df_f_history.loc[df_f_history["ID"] == f["ID"], "Statut"] = "REMBOURSÉ"
-                                    cloud_conn.update(worksheet="Banque", data=df_b)
-                                    cloud_conn.update(worksheet="Factures", data=df_f_history)
-                                    
-                                    st.success("✅ Remboursé !")
-                                    st.cache_data.clear()
-                                    st.rerun()
-                            except Exception as e:
-                                st.error(f"Erreur : {e}")
-                    
-                    # Affichage du ticket
-                    st.markdown(f"""
-                    <div style="border: 1px solid #000; padding: 10px; background: #f9f9f9; color: black; margin-bottom: 8px; border-left: 5px solid green;">
-                        <div style="display: flex; justify-content: space-between; font-size: 0.8em;">
-                            <b>REF: #{f['ID']}</b>
-                            <b style="color: green;">ACQUITTÉE ✔</b>
-                        </div>
-                        <hr style="margin: 5px 0; border-top: 1px dashed #000;">
-                        <div style="font-size: 0.9em;">
-                            <b>MOTIF :</b> {f['Motif']}<br>
-                            <b>MONTANT :</b> {f['Montant']}$<br>
-                            <b>POINTS :</b> {f.get('Points', 0)}
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-        else:
-            st.write("∅ Aucune archive pour ce citoyen.")
-            
-    except Exception as e:
-        st.error(f"Erreur Archives : {e}")
+                if not historique.empty:
+                    st.info(f"📄 {len(historique)} facture(s) réglée(s)")
+                    with st.expander("👁️ Consulter l'historique"):
+                        for _, f in historique.iterrows():
+                            # Bouton Rembourser (Staff/Admin uniquement)
+                            if st.session_state.user_auth in ["Staff", "Admin"]:
+                                if st.button(f"🔄 Rembourser #{f['ID']}", key=f"refund_{f['ID']}", use_container_width=True):
+                                    try:
+                                        with st.spinner("Remboursement..."):
+                                            idx_civil = df_b[df_b["Nom Roblox"] == target].index[0]
+                                            montant_remb = float(str(f["Montant"]).replace('$', '').replace(',', ''))
+                                            emetteur = f["Emetteur"]
+                                            
+                                            # Rendre au civil
+                                            solde_civ = float(str(df_b.at[idx_civil, "Solde"]).replace('$', '').replace(',', ''))
+                                            df_b.at[idx_civil, "Solde"] = solde_civ + montant_remb
+                                            
+                                            # Retirer à l'organisation (RCT = une10000, Averis = Moune2010)
+                                            org_name = "une10000" if emetteur == "RCT" else "Moune2010"
+                                            idx_org = df_b[df_b["Nom Roblox"] == org_name].index[0]
+                                            solde_org = float(str(df_b.at[idx_org, "Solde"]).replace('$', '').replace(',', ''))
+                                            df_b.at[idx_org, "Solde"] = solde_org - montant_remb
+                                            
+                                            # Mise à jour
+                                            df_f_history.loc[df_f_history["ID"] == f["ID"], "Statut"] = "REMBOURSÉ"
+                                            cloud_conn.update(worksheet="Banque", data=df_b)
+                                            cloud_conn.update(worksheet="Factures", data=df_f_history)
+                                            st.success("✅ Remboursé !")
+                                            st.cache_data.clear()
+                                            st.rerun()
+                                    except Exception as e: st.error(f"Erreur : {e}")
+                            
+                            # Design du ticket archivé
+                            st.markdown(f"""
+                            <div style="border: 1px solid #000; padding: 10px; background: #f9f9f9; color: black; margin-bottom: 8px; border-left: 5px solid green;">
+                                <div style="display: flex; justify-content: space-between; font-size: 0.8em;">
+                                    <b>REF: #{f['ID']}</b> <b style="color: green;">ACQUITTÉE ✔</b>
+                                </div>
+                                <hr style="margin: 5px 0; border-top: 1px dashed #000;">
+                                <div style="font-size: 0.9em;">
+                                    <b>MOTIF :</b> {f['Motif']}<br>
+                                    <b>MONTANT :</b> {f['Montant']}$
+                                </div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                else:
+                    st.write("∅ Aucune archive.")
+            except Exception as e:
+                st.error(f"Erreur Archives : {e}")
 # ======================================================================================
 # 7. LOGIQUE DES ONGLETS (CORRIGÉE)
 # ======================================================================================
