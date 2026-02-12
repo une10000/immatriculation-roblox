@@ -415,6 +415,7 @@ with st.container():
                 with c_motif_p:
                     st.markdown("""
                         <div style="text-align: right; line-height: 1; padding-top: 5px;">
+                            <div style="opacity: 0.05; font-size: 10px; font-weight: bold; margin-bottom: 2px;">SECURITY CHECK COMPLETED</div>
                             <div style="opacity: 0.15; font-size: 40px; margin-bottom: -10px;">🛡️</div>
                             <div style="opacity: 0.1; font-size: 50px; margin-bottom: -10px;">🚗</div>
                             <div style="height: 4px; width: 60px; background: linear-gradient(90deg, transparent, #d32f2f); display: inline-block; opacity: 0.2; border-radius: 2px;"></div>
@@ -435,6 +436,7 @@ with st.container():
                 with c_m:
                     st.markdown("""
                         <div style="text-align: right; line-height: 1; padding-top: 5px;">
+                            <div style="opacity: 0.05; font-size: 10px; font-weight: bold; margin-bottom: 2px;">DATABASE ACCESS GRANTED</div>
                             <div style="opacity: 0.15; font-size: 40px; margin-bottom: -10px;">🏛️</div>
                             <div style="opacity: 0.1; font-size: 50px; margin-bottom: -10px;">💳</div>
                             <div style="height: 4px; width: 60px; background: linear-gradient(90deg, transparent, #000); display: inline-block; opacity: 0.2; border-radius: 2px;"></div>
