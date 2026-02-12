@@ -861,40 +861,56 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                     st.write(f"🆔 **#{row['ID']}** | 👤 **{row['Cible']}** ({row['Montant']}$)")
         
 # ======================================================================================
-        # RECHERCHE PAR RÉFÉRENCE (VERSION COMPACTE)
+        # RECHERCHE PAR RÉFÉRENCE (VERSION TICKET COMPACT)
         # ======================================================================================
         
-        # Ligne 1 : Titre + Message de succès/erreur à côté
+        # Ligne 1 : Titre + Message de confirmation
         header_col1, header_col2 = st.columns([1, 1.5])
         
         target_by_ref = None 
+        f_data = None
         search_id = st.session_state.get("search_ref_agent", "").replace("#", "")
 
-        # On fait la recherche avant pour pouvoir afficher le résultat dans le header
         if search_id:
             res_f = df_all_f[df_all_f["ID"].astype(str) == search_id]
             if not res_f.empty:
                 f_data = res_f.iloc[0]
                 target_by_ref = f_data["Cible"]
                 with header_col2:
-                    st.success(f"✅ Facture #{search_id} trouvée !")
+                    st.success(f"✅ Facture #{search_id} identifiée")
             else:
                 with header_col2:
-                    st.warning("⚠️ ID inconnu.")
+                    st.warning("⚠️ ID inexistant")
 
         with header_col1:
             st.markdown("### 🔎 ACCÈS RAPIDE")
 
-        # Ligne 2 : Barre de recherche + Infos Citoyen à côté
-        input_col, info_col = st.columns([1, 1.5])
+        # Ligne 2 : Barre de recherche + Ticket Compact à côté
+        input_col, ticket_col = st.columns([1, 1.5])
 
         with input_col:
-            search_id = st.text_input("ID Facture :", placeholder="Ex: 1024", key="search_ref_agent", label_visibility="collapsed").replace("#", "")
+            st.text_input("ID Facture :", placeholder="Ex: 1024", key="search_ref_agent", label_visibility="collapsed")
             
-        if target_by_ref:
-            with info_col:
-                # Affichage compact de l'état et du citoyen
-                st.info(f"👤 **{target_by_ref}** | État : **{f_data['Statut']}**")
+        if target_by_ref and f_data is not None:
+            # On définit la couleur selon le statut
+            statut_color = "green" if f_data['Statut'] == "PAYÉ" else "#d32f2f"
+            statut_icon = "✔" if f_data['Statut'] == "PAYÉ" else "⏳"
+            
+            with ticket_col:
+                st.markdown(f"""
+                    <div style="border: 1px solid #000; padding: 10px; background: #f9f9f9; color: black; border-left: 5px solid {statut_color}; line-height: 1.2;">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.8em;">
+                            <b>REF: #{f_data['ID']}</b> 
+                            <b style="color: {statut_color};">{f_data['Statut']} {statut_icon}</b>
+                        </div>
+                        <hr style="margin: 5px 0; border-top: 1px dashed #000;">
+                        <div style="font-size: 0.85em;">
+                            <b>CITOYEN :</b> {f_data['Cible']}<br>
+                            <b>MOTIF :</b> {f_data['Motif']}<br>
+                            <b>MONTANT :</b> {f_data['Montant']}$
+                        </div>
+                    </div>
+                """, unsafe_allow_html=True)
 
         st.divider()
         # ======================================================================================
