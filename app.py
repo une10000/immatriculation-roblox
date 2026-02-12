@@ -356,33 +356,39 @@ with st.container():
     target = st.selectbox("Sélectionner un citoyen :", search_list)
     
     if target != "---":
-        # --- NOUVEAU : RECHERCHE PAR PLAQUE (Payante) ---
+        # --- RECHERCHE PAR PLAQUE (Payante par le citoyen sélectionné) ---
         st.markdown("---")
         with st.expander("🔍 RECHERCHE D'IDENTITÉ PAR PLAQUE (Coût : 10$)", expanded=False):
+            st.write(f"⚠️ *Les 10$ seront prélevés sur le compte de **{target}***")
             c1, c2 = st.columns([2, 1])
             search_plate = c1.text_input("Saisir un numéro de plaque", key="search_p").upper()
             
             if c2.button("Lancer la recherche", use_container_width=True):
                 if search_plate:
-                    # 1. Vérification du solde du citoyen sélectionné (celui qui consulte)
                     try:
+                        # 1. Vérification du solde du citoyen sélectionné
                         idx_payer = df_b[df_b["Nom Roblox"] == target].index[0]
+                        # Nettoyage pour le calcul
                         solde_payer = float(str(df_b.at[idx_payer, "Solde"]).replace('$', '').replace(',', ''))
                         
                         if solde_payer >= 10:
-                            # 2. Recherche du propriétaire
+                            # 2. Recherche du propriétaire dans la base immatriculation
                             res_plate = df_i[df_i["Numéro de la plaque"] == search_plate]
                             
                             if not res_plate.empty:
                                 prop_found = res_plate.iloc[0]["Nom d'utilisateur ROBLOX"]
                                 v_found = res_plate.iloc[0]["Marque du véhicule"]
                                 
-                                # 3. Paiement
+                                # 3. Paiement et mise à jour Cloud
                                 df_b.at[idx_payer, "Solde"] = solde_payer - 10
                                 cloud_conn.update(worksheet="Banque", data=df_b)
                                 
+                                # 4. Résultat et Log
                                 st.success(f"🔍 Résultat : La plaque **{search_plate}** appartient à **{prop_found}** ({v_found}).")
                                 record_log(target, f"Recherche de plaque {search_plate} (Payé 10$)")
+                                
+                                # Petit refresh pour mettre à jour le solde affiché plus bas
+                                st.cache_data.clear()
                             else:
                                 st.warning("⚠️ Aucune plaque correspondante dans la base nationale.")
                         else:
@@ -391,7 +397,10 @@ with st.container():
                         st.error(f"Erreur système : {e}")
                 else:
                     st.error("Veuillez entrer une plaque.")
+        
         st.markdown("---")
+        
+        # --- ICI COMMENCE L'AFFICHAGE DU DOSSIER (col1, col2, col3...) ---
 
         # --- AFFICHAGE DU DOSSIER ---
         col1, col2, col3 = st.columns(3)
