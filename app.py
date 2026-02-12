@@ -514,79 +514,84 @@ with st.container():
                 st.error("Aucun compte trouvé.")
 
 # --- COLONNE 3 : ARCHIVES ---
-        with col3:
-            st.markdown("### 📁 ARCHIVES")
-            try:
-                # Lecture fraîche des données pour éviter les erreurs de calcul
-                df_f_history = cloud_conn.read(worksheet="Factures").fillna("")
-                historique = df_f_history[(df_f_history["Cible"] == target) & (df_f_history["Statut"] == "PAYÉ")]
+with col3:
+    st.markdown("### 📁 ARCHIVES")
+    try:
+        # Lecture fraîche des données
+        df_f_history = cloud_conn.read(worksheet="Factures").fillna("")
+        historique = df_f_history[(df_f_history["Cible"] == target) & (df_f_history["Statut"] == "PAYÉ")]
 
-                if not historique.empty:
-                    for _, f in historique.iterrows():
-                        # BOUTON REMBOURSER (Visible seulement par Staff/Admin)
-                        if st.session_state.user_auth in ["Staff", "Admin"]:
-                            if st.button(f"🔄 Rembourser #{f['ID']}", key=f"refund_{f['ID']}", use_container_width=True):
-                                try:
-                                    with st.spinner("Remboursement en cours..."):
-                                        # 1. Charger les soldes actuels
-                                        idx_civil = df_b[df_b["Nom Roblox"] == target].index[0]
-                                        montant_remb = float(str(f["Montant"]).replace('$', '').replace(',', ''))
-                                        emetteur = f["Emetteur"]
-                                        
-                                        # 2. Rendre l'argent au civil
-                                        solde_civ = float(str(df_b.at[idx_civil, "Solde"]).replace('$', '').replace(',', ''))
-                                        df_b.at[idx_civil, "Solde"] = solde_civ + montant_remb
-                                        
-                                        # 3. Retirer l'argent à l'organisation
-                                        if emetteur == "RCT":
-                                            idx_org = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
-                                        elif emetteur == "Averis":
-                                            idx_org = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
-                                        
-                                        if emetteur in ["RCT", "Averis"]:
-                                            solde_org = float(str(df_b.at[idx_org, "Solde"]).replace('$', '').replace(',', ''))
-                                            df_b.at[idx_org, "Solde"] = solde_org - montant_remb
-                                        
-                                        # 4. Rendre les points (si POLSTA)
-                                        pts_a_rendre = f.get('Points', 0)
-                                        if pts_a_rendre and str(pts_a_rendre).isdigit() and int(pts_a_rendre) > 0:
-                                            try:
-                                                idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
-                                                df_p.at[idx_p, "PTS"] = int(df_p.at[idx_p, "PTS"]) + int(pts_a_rendre)
-                                                cloud_conn.update(worksheet="Points Permis", data=df_p)
-                                            except: pass
+        if not historique.empty:
+            # On affiche le nombre total d'archives pour informer l'agent
+            st.info(f"📄 {len(historique)} facture(s) réglée(s)")
+            
+            # Le bouton "Voir les archives" sous forme d'expander
+            with st.expander("👁️ Consulter l'historique"):
+                for _, f in historique.iterrows():
+                    # BOUTON REMBOURSER (Visible seulement par Staff/Admin)
+                    if st.session_state.user_auth in ["Staff", "Admin"]:
+                        if st.button(f"🔄 Rembourser #{f['ID']}", key=f"refund_{f['ID']}", use_container_width=True):
+                            try:
+                                with st.spinner("Remboursement en cours..."):
+                                    # 1. Charger les soldes actuels
+                                    idx_civil = df_b[df_b["Nom Roblox"] == target].index[0]
+                                    montant_remb = float(str(f["Montant"]).replace('$', '').replace(',', ''))
+                                    emetteur = f["Emetteur"]
+                                    
+                                    # 2. Rendre l'money au civil
+                                    solde_civ = float(str(df_b.at[idx_civil, "Solde"]).replace('$', '').replace(',', ''))
+                                    df_b.at[idx_civil, "Solde"] = solde_civ + montant_remb
+                                    
+                                    # 3. Retirer l'argent à l'organisation
+                                    if emetteur == "RCT":
+                                        idx_org = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
+                                    elif emetteur == "Averis":
+                                        idx_org = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
+                                    
+                                    if emetteur in ["RCT", "Averis"]:
+                                        solde_org = float(str(df_b.at[idx_org, "Solde"]).replace('$', '').replace(',', ''))
+                                        df_b.at[idx_org, "Solde"] = solde_org - montant_remb
+                                    
+                                    # 4. Rendre les points
+                                    pts_a_rendre = f.get('Points', 0)
+                                    if pts_a_rendre and str(pts_a_rendre).isdigit() and int(pts_a_rendre) > 0:
+                                        try:
+                                            idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
+                                            df_p.at[idx_p, "PTS"] = int(df_p.at[idx_p, "PTS"]) + int(pts_a_rendre)
+                                            cloud_conn.update(worksheet="Points Permis", data=df_p)
+                                        except: pass
 
-                                        # 5. Changer statut et Sauvegarder
-                                        df_f_history.loc[df_f_history["ID"] == f["ID"], "Statut"] = "REMBOURSÉ"
-                                        
-                                        cloud_conn.update(worksheet="Banque", data=df_b)
-                                        cloud_conn.update(worksheet="Factures", data=df_f_history)
-                                        
-                                        st.success("✅ Remboursé !")
-                                        st.cache_data.clear()
-                                        st.rerun()
-                                except Exception as e:
-                                    st.error(f"Erreur : {e}")
-                        
-                        # Affichage du petit ticket d'archive
-                        st.markdown(f"""
-                        <div style="border: 1px solid #000; padding: 10px; background: #f9f9f9; color: black; margin-bottom: 8px; border-left: 5px solid green;">
-                            <div style="display: flex; justify-content: space-between; font-size: 0.8em;">
-                                <b>REF: #{f['ID']}</b>
-                                <b style="color: green;">ACQUITTÉE ✔</b>
-                            </div>
-                            <hr style="margin: 5px 0; border-top: 1px dashed #000;">
-                            <div style="font-size: 0.9em;">
-                                <b>MOTIF :</b> {f['Motif']}<br>
-                                <b>MONTANT :</b> {f['Montant']}$<br>
-                                <b>POINTS :</b> {f.get('Points', 0)}
-                            </div>
+                                    # 5. Changer statut et Sauvegarder
+                                    df_f_history.loc[df_f_history["ID"] == f["ID"], "Statut"] = "REMBOURSÉ"
+                                    cloud_conn.update(worksheet="Banque", data=df_b)
+                                    cloud_conn.update(worksheet="Factures", data=df_f_history)
+                                    
+                                    st.success("✅ Remboursé !")
+                                    st.cache_data.clear()
+                                    st.rerun()
+                            except Exception as e:
+                                st.error(f"Erreur : {e}")
+                    
+                    # Affichage du ticket
+                    st.markdown(f"""
+                    <div style="border: 1px solid #000; padding: 10px; background: #f9f9f9; color: black; margin-bottom: 8px; border-left: 5px solid green;">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.8em;">
+                            <b>REF: #{f['ID']}</b>
+                            <b style="color: green;">ACQUITTÉE ✔</b>
                         </div>
-                        """, unsafe_allow_html=True)
-                else:
-                    st.info("Aucun paiement archivé.")
-            except Exception as e:
-                st.error(f"Erreur Archives : {e}")
+                        <hr style="margin: 5px 0; border-top: 1px dashed #000;">
+                        <div style="font-size: 0.9em;">
+                            <b>MOTIF :</b> {f['Motif']}<br>
+                            <b>MONTANT :</b> {f['Montant']}$<br>
+                            <b>POINTS :</b> {f.get('Points', 0)}
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+        else:
+            st.write("∅ Aucune archive pour ce citoyen.")
+            
+    except Exception as e:
+        st.error(f"Erreur Archives : {e}")
 # ======================================================================================
 # 7. LOGIQUE DES ONGLETS (CORRIGÉE)
 # ======================================================================================
