@@ -863,74 +863,64 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
         st.divider()
 
         # ======================================================================================
-        # 2. RECHERCHE PAR RÉFÉRENCE (VERSION ALIGNÉE AU PIXEL)
+        # 2. RECHERCHE PAR RÉFÉRENCE (VERSION OPTIMISÉE ET TEXTE INFO)
         # ======================================================================================
         
-        # Pré-chargement des données pour l'affichage
         target_by_ref = None 
         f_data = None
         search_id = st.session_state.get("search_ref_agent", "").replace("#", "")
 
         if search_id:
-            res_f = df_all_f[df_all_f["ID"].astype(str) == search_id]
+            # On gère le .0 si l'ID est lu comme un float
+            res_f = df_all_f[df_all_f["ID"].astype(str).str.replace(".0", "", regex=False) == search_id.replace(".0", "")]
             if not res_f.empty:
                 f_data = res_f.iloc[0]
                 target_by_ref = f_data["Cible"]
 
-        # Affichage du Titre et du message de succès sur la même ligne
-        h1, h2 = st.columns([1, 1.5])
-        with h1:
-            st.markdown("### 🔎 ACCÈS RAPIDE")
-        with h2:
-            if search_id and target_by_ref:
-                st.success(f"Facture #{search_id} identifiée")
-            elif search_id:
-                st.warning("Référence inconnue")
+        st.markdown("### 🔎 ACCÈS RAPIDE")
 
-        # Zone de recherche et détails
+        # Utilisation de colonnes avec alignement vertical
         input_col, ticket_col = st.columns([1, 1.5])
 
         with input_col:
             # Champ de saisie
-            st.text_input("ID :", placeholder="Ex: 1024", key="search_ref_agent", label_visibility="collapsed")
+            st.text_input("Saisir ID Facture", placeholder="Ex: 8182", key="search_ref_agent", label_visibility="collapsed")
             
-            # REMPLACEMENT : SERVICES ACTIFS (Plus utile que l'état global)
+            # TEXTE INFORMATIF (Remplace les services en ligne)
             st.markdown(f"""
-                <div style="background-color: #f8f9fa; padding: 12px; border-radius: 8px; border: 1px solid #e0e0e0; margin-top: 10px;">
-                    <div style="font-size: 0.7em; color: #666; font-weight: bold; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px;">🏢 Services en ligne</div>
-                    <div style="display: flex; align-items: center; margin-bottom: 4px;">
-                        <span style="color: #2e7d32; margin-right: 8px;">●</span>
-                        <span style="font-size: 0.85em;"><b>Réseau RCT</b> : Opérationnel</span>
-                    </div>
-                    <div style="display: flex; align-items: center;">
-                        <span style="color: #1565c0; margin-right: 8px;">●</span>
-                        <span style="font-size: 0.85em;"><b>Averis</b> : Traitement actif</span>
-                    </div>
+                <div style="padding: 5px 0px; color: #888; font-size: 0.85em; font-style: italic; line-height: 1.4;">
+                    💡 <b>Note :</b> La recherche par ID permet de lier automatiquement le dossier citoyen ci-dessous pour une application immédiate de sanctions ou majorations.
                 </div>
             """, unsafe_allow_html=True)
             
         with ticket_col:
             if target_by_ref and f_data is not None:
                 statut_color = "#2e7d32" if f_data['Statut'] == "PAYÉ" else "#c62828"
-                statut_bg = "#e8f5e9" if f_data['Statut'] == "PAYÉ" else "#ffeae0"
+                statut_label = "PAYÉ ✔" if f_data['Statut'] == "PAYÉ" else "EN ATTENTE ⏳"
                 
-                # Le margin-top est ajusté pour s'aligner pile avec le champ texte
+                # Ticket sans ombre massive, plus fin
                 st.markdown(f"""
-                    <div style="border: 1px solid #000; padding: 12px; background: {statut_bg}; color: black; border-left: 6px solid {statut_color}; box-shadow: 4px 4px 0px rgba(0,0,0,1); margin-top: 0px;">
-                        <div style="display: flex; justify-content: space-between; font-size: 0.8em; margin-bottom: 5px;">
-                            <span style="font-family: monospace;"><b>REF: #{f_data['ID']}</b></span>
-                            <span style="font-weight: bold; color: {statut_color};">{f_data['Statut'].upper()}</span>
+                    <div style="border: 1px solid #444; padding: 12px; background: #ffffff; color: #111; border-left: 5px solid {statut_color}; margin-top: -5px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.75em; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">
+                            <span>RCRP / SERVICE FACTURATION</span>
+                            <span style="color: {statut_color};">{statut_label}</span>
                         </div>
-                        <div style="font-size: 0.9em; border-top: 1px dashed #000; padding-top: 8px;">
-                            <b>CITOYEN :</b> {f_data['Cible']}<br>
-                            <b>MOTIF :</b> {f_data['Motif']}<br>
-                            <b>MONTANT :</b> {f_data['Montant']}$
+                        <hr style="margin: 8px 0; border: 0; border-top: 1px dashed #ccc;">
+                        <div style="font-family: 'Courier New', Courier, monospace; font-size: 0.9em;">
+                            <b>REF :</b> #{str(f_data['ID']).replace('.0', '')}<br>
+                            <b>NOM :</b> {f_data['Cible']}<br>
+                            <b>OBJET :</b> {f_data['Motif']}<br>
+                            <b style="font-size: 1.1em;">TOTAL : {f_data['Montant']}$</b>
                         </div>
                     </div>
                 """, unsafe_allow_html=True)
             else:
-                # Si rien n'est cherché, on met une petite info discrète pour garder l'alignement
-                st.info("Entrez une référence pour prévisualiser le ticket.")
+                # Bloc vide mais aligné pour garder la structure
+                st.markdown("""
+                    <div style="border: 1px dashed #444; padding: 20px; text-align: center; color: #666; font-size: 0.9em; height: 115px; display: flex; align-items: center; justify-content: center;">
+                        Aucune facture sélectionnée
+                    </div>
+                """, unsafe_allow_html=True)
 
         st.divider()
 
@@ -940,7 +930,8 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
         if target_by_ref and target_by_ref in search_list:
             default_index = search_list.index(target_by_ref)
 
-        target = st.selectbox("🎯 Dossier Citoyen :", search_list, index=default_index, key="main_target_agent")
+        st.markdown("🎯 **Dossier Citoyen :**")
+        target = st.selectbox("Sélectionner le citoyen", search_list, index=default_index, key="main_target_agent", label_visibility="collapsed")
         # ======================================================================================
         # 2. MODULE : BUREAU DES MANDATS (GESTION NATIONALE)
         # ======================================================================================
