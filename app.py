@@ -841,7 +841,7 @@ with tabs[0]:
 # --- ONGLET 2 : SERVICES AGENT (FACTURES / POINTS / CONSULTATION) ---
 if st.session_state.user_auth in ["RCT", "Staff"]:
     with tabs[1]:
-        # 1. PANEL D'ALERTE : FACTURES IMPAYÉES
+        # 1. PANEL D'ALERTE : FACTURES IMPAYÉES (Ton code actuel)
         df_all_f = cloud_conn.read(worksheet="Factures").fillna("")
         alertes = []
         maintenant = datetime.now()
@@ -860,6 +860,33 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                 for _, row in pd.DataFrame(alertes).iterrows():
                     st.write(f"🆔 **#{row['ID']}** | 👤 **{row['Cible']}** ({row['Montant']}$)")
         
+        st.divider()
+
+        # ======================================================================================
+        # NOUVEAU : RECHERCHE PAR RÉFÉRENCE DE FACTURE
+        # ======================================================================================
+        st.markdown("### 🔎 ACCÈS RAPIDE PAR FACTURE")
+        col_search_ref, col_info_ref = st.columns([1, 2])
+        
+        target_by_ref = None # Variable pour stocker le nom trouvé
+
+        with col_search_ref:
+            search_id = st.text_input("Saisir ID Facture", placeholder="Ex: 1024", key="search_ref_agent").replace("#", "")
+            
+        if search_id:
+            # On cherche dans df_all_f qu'on a déjà chargé plus haut
+            res_f = df_all_f[df_all_f["ID"].astype(str) == search_id]
+            
+            if not res_f.empty:
+                f_data = res_f.iloc[0]
+                target_by_ref = f_data["Cible"]
+                with col_info_ref:
+                    st.success(f"Facture #{search_id} trouvée !")
+                    st.info(f"👤 Citoyen : **{target_by_ref}** | Statut : **{f_data['Statut']}**")
+            else:
+                with col_info_ref:
+                    st.warning("⚠️ ID inconnu.")
+
         st.divider()
 
         # ======================================================================================
