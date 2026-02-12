@@ -956,6 +956,56 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
         st.divider()
 
         # ======================================================================================
+        # 2. MODULE : BUREAU DES MANDATS (GESTION NATIONALE)
+        # ======================================================================================
+        st.markdown("#### ⚖️ Bureau des Mandats & Avis de Recherche")
+        
+        # On récupère les individus recherchés dans la base Banque
+        # Assure-toi que les colonnes 'Statut' et 'Motif Recherche' existent dans ton Excel
+        recherches_actuels = df_b[df_b["Statut"].str.upper().str.contains("RECHERCHÉ", na=False)]
+
+        col_liste, col_ajout = st.columns([1.5, 1])
+
+        with col_liste:
+            with st.container(border=True):
+                st.markdown("##### 📋 Individus en cavale")
+                if not recherches_actuels.empty:
+                    for _, criminel in recherches_actuels.iterrows():
+                        with st.expander(f"🔴 {criminel['Nom Roblox']}"):
+                            st.write(f"**Motif :** {criminel.get('Motif Recherche', 'Non précisé')}")
+                            if st.button("✅ Individu Interpellé (RAS)", key=f"clear_{criminel['Nom Roblox']}", use_container_width=True):
+                                idx = df_b[df_b["Nom Roblox"] == criminel["Nom Roblox"]].index[0]
+                                df_b.at[idx, "Statut"] = "RAS"
+                                df_b.at[idx, "Motif Recherche"] = ""
+                                cloud_conn.update(worksheet="Banque", data=df_b)
+                                st.success(f"Mandat levé pour {criminel['Nom Roblox']} !")
+                                st.cache_data.clear()
+                                st.rerun()
+                else:
+                    st.success("✅ Aucun mandat d'arrêt actif en République.")
+
+        with col_ajout:
+            with st.container(border=True):
+                st.markdown("##### 🚨 Lancer un Mandat")
+                target_crim = st.selectbox("Citoyen :", ["---"] + sorted(df_b["Nom Roblox"].unique().tolist()), key="select_crim_agent")
+                motif_crim = st.text_input("Motif du mandat :", placeholder="Braquage, refus d'obtempérer...", key="motif_crim_agent")
+                
+                if st.button("PUBLIER L'AVIS", type="primary", use_container_width=True):
+                    if target_crim != "---" and motif_crim:
+                        idx_c = df_b[df_b["Nom Roblox"] == target_crim].index[0]
+                        df_b.at[idx_c, "Statut"] = "RECHERCHÉ"
+                        df_b.at[idx_c, "Motif Recherche"] = motif_crim
+                        cloud_conn.update(worksheet="Banque", data=df_b)
+                        st.error(f"🚨 Mandat d'arrêt publié pour {target_crim} !")
+                        st.cache_data.clear()
+                        st.rerun()
+                    else:
+                        st.warning("Veuillez sélectionner un nom et un motif.")
+
+        st.divider()
+        
+        # LA SUITE DE TON CODE (Recherche par plaque, Saisie de facture, etc.)
+        # ======================================================================================
         # MODULE UNIQUE : CONSULTATION FICHIER NATIONAL (AVEC ALERTE WANTED)
         # ======================================================================================
         st.markdown("#### 🚔 Consultation du Fichier des Immatriculations")
