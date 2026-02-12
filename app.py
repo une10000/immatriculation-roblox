@@ -523,11 +523,16 @@ if not mes_factures.empty:
             timer_info = "⌛ Délai : 24 heures"
             t_color = "#555"
 # 2. AFFICHAGE DU TICKET HTML (AVEC POINTS)
-        prefix_name = "POLICE NATIONALE" if fac['Emetteur'] == "Staff" else "RÉSEAU RCT"
-        if fac['Emetteur'] == "Averis": prefix_name = "SERVICES AVERIS"
+# On définit qui appartient à la Police
+if fac['Emetteur'] in ["Staff", "POLSTA", "POLICE"]:
+    prefix_name = "POLICE NATIONALE"
+elif fac['Emetteur'] == "Averis":
+    prefix_name = "SERVICES AVERIS"
+else:
+    prefix_name = "RÉSEAU RCT"
 
-        # On récupère les points ou 0 si vide
-        nb_points_retires = fac.get('Points', 0) 
+# On récupère les points ou 0 si vide
+nb_points_retires = fac.get('Points', 0)
 
         st.markdown(f"""
         <div style="border: 2px solid #000; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; margin-bottom: 5px; box-shadow: 6px 6px 0px #000;">
