@@ -1065,7 +1065,7 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
 
         st.divider()
 
-        # 2. SYSTÈME DE SAISIE ET CONSULTATION (SUITE)
+# 2. SYSTÈME DE SAISIE ET CONSULTATION (SUITE)
         if target == "---":
             st.warning("⚠️ Sélectionnez un citoyen en haut de la page pour les services de facturation.")
         else:
@@ -1089,6 +1089,24 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                     target_veh = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
                     v_list = ["AUCUN / PIÉTON"] + target_veh["Numéro de la plaque"].tolist()
                     f_plate = st.selectbox("Véhicule concerné", v_list, key="v_plate_final")
+                    
+                    # --- RAPPEL DE SÉCURITÉ FLASH (Juste avant le bouton) ---
+                    citoyen_data = df_b[df_b["Nom Roblox"] == target]
+                    if not citoyen_data.empty:
+                        status_check = str(citoyen_data.iloc[0].get("Statut", "RAS")).upper()
+                        motif_crime = str(citoyen_data.iloc[0].get("Motif Recherche", "Non précisé"))
+                        if "RECHERCHÉ" in status_check:
+                            st.markdown(f"""
+                                <div style="background-color: #ff0000; padding: 12px; border-radius: 8px; animation: blinker 1.2s linear infinite; text-align: center; margin-bottom: 15px; border: 2px solid white;">
+                                    <b style="color: white; font-size: 1.1em; text-shadow: 1px 1px 2px black;">🚨 INDIVIDU RECHERCHÉ 🚨</b><br>
+                                    <b style="color: yellow; font-size: 0.9em;">MOTIF : {motif_crime.upper()}</b><br>
+                                    <small style="color: white;">Arrêtez le suspect immédiatement !</small>
+                                </div>
+                                <style>
+                                @keyframes blinker {{ 50% {{ opacity: 0.4; }} }}
+                                </style>
+                            """, unsafe_allow_html=True)
+                    # -------------------------------------------------------
                     
                     if st.button("🚨 ENVOYER FACTURE", use_container_width=True, type="primary"):
                         if not f_motif:
