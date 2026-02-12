@@ -357,63 +357,61 @@ with st.container():
     
     if target != "---":
         # --- RECHERCHE PAR PLAQUE (Payante par le citoyen sélectionné) ---
-        # --- RECHERCHE PAR PLAQUE (Payante par le citoyen sélectionné) ---
-st.markdown("---")
-with st.expander("🔍 RECHERCHE D'IDENTITÉ PAR PLAQUE (Coût : 10$)", expanded=False):
-    # AVERTISSEMENT EN GRAND
-    st.error(f"""
-        ### ⚠️ AVERTISSEMENT LÉGAL
-        Les **10$** de frais de dossier seront prélevés sur le compte de : **{target}**.
-        
-        **USAGE ABUSIF :** Si vous effectuez une recherche sur le compte d'un autre citoyen sans son accord, 
-        vous vous exposez à une **amende de 1000$** pour usurpation d'identité.
-    """)
-
-    # Barre de saisie et bouton sur la même ligne
-    c1, c2 = st.columns([3, 1]) # Proportion ajustée pour que le bouton soit bien à côté
-    
-    with c1:
-        search_plate = st.text_input("Saisir un numéro de plaque", key="search_p", label_visibility="collapsed", placeholder="Entrez la plaque ici...").upper()
-    
-    with c2:
-        launch_search = st.button("Lancer la recherche", use_container_width=True, type="primary")
-
-    if launch_search:
-        if search_plate:
-            try:
-                # 1. Vérification du solde
-                idx_payer = df_b[df_b["Nom Roblox"] == target].index[0]
-                solde_payer = float(str(df_b.at[idx_payer, "Solde"]).replace('$', '').replace(',', ''))
+        st.markdown("---")
+        with st.expander("🔍 RECHERCHE D'IDENTITÉ PAR PLAQUE (Coût : 10$)", expanded=False):
+            # AVERTISSEMENT EN GRAND ET ROUGE
+            st.error(f"""
+                ### ⚠️ AVERTISSEMENT LÉGAL
+                Les **10$** de frais de dossier seront prélevés sur le compte de : **{target}**.
                 
-                if solde_payer >= 10:
-                    # 2. Recherche
-                    res_plate = df_i[df_i["Numéro de la plaque"] == search_plate]
-                    
-                    if not res_plate.empty:
-                        prop_found = res_plate.iloc[0]["Nom d'utilisateur ROBLOX"]
-                        v_found = res_plate.iloc[0]["Marque du véhicule"]
+                **USAGE ABUSIF :** Si vous effectuez une recherche sur le compte d'un autre citoyen sans son accord, 
+                vous vous exposez à une **amende de 1000$** pour usurpation d'identité.
+            """)
+
+            # Barre de saisie et bouton sur la même ligne
+            c1, c2 = st.columns([3, 1]) 
+            
+            with c1:
+                search_plate = st.text_input("Saisir un numéro de plaque", key="search_p", label_visibility="collapsed", placeholder="Entrez la plaque ici...").upper()
+            
+            with c2:
+                launch_search = st.button("Lancer la recherche", use_container_width=True, type="primary")
+
+            if launch_search:
+                if search_plate:
+                    try:
+                        # 1. Vérification du solde
+                        idx_payer = df_b[df_b["Nom Roblox"] == target].index[0]
+                        solde_payer = float(str(df_b.at[idx_payer, "Solde"]).replace('$', '').replace(',', ''))
                         
-                        # 3. Paiement
-                        df_b.at[idx_payer, "Solde"] = solde_payer - 10
-                        cloud_conn.update(worksheet="Banque", data=df_b)
-                        
-                        # 4. Résultat
-                        st.success(f"🔍 **RÉSULTAT :** La plaque **{search_plate}** appartient à **{prop_found}** ({v_found}).")
-                        record_log(target, f"Recherche Plaque {search_plate} (10$ prélevés)")
-                        
-                        st.cache_data.clear()
-                        # On ne fait pas de rerun immédiat ici pour laisser le temps de lire le résultat
-                    else:
-                        st.warning("⚠️ Aucune plaque correspondante dans la base nationale.")
+                        if solde_payer >= 10:
+                            # 2. Recherche
+                            res_plate = df_i[df_i["Numéro de la plaque"] == search_plate]
+                            
+                            if not res_plate.empty:
+                                prop_found = res_plate.iloc[0]["Nom d'utilisateur ROBLOX"]
+                                v_found = res_plate.iloc[0]["Marque du véhicule"]
+                                
+                                # 3. Paiement
+                                df_b.at[idx_payer, "Solde"] = solde_payer - 10
+                                cloud_conn.update(worksheet="Banque", data=df_b)
+                                
+                                # 4. Résultat
+                                st.success(f"🔍 **RÉSULTAT :** La plaque **{search_plate}** appartient à **{prop_found}** ({v_found}).")
+                                record_log(target, f"Recherche Plaque {search_plate} (10$ prélevés)")
+                                
+                                st.cache_data.clear()
+                            else:
+                                st.warning("⚠️ Aucune plaque correspondante dans la base nationale.")
+                        else:
+                            st.error("❌ Solde insuffisant (10$ requis).")
+                    except Exception as e:
+                        st.error(f"Erreur système : {e}")
                 else:
-                    st.error("❌ Solde insuffisant (10$ requis).")
-            except Exception as e:
-                st.error(f"Erreur système : {e}")
-        else:
-            st.error("Veuillez entrer une plaque.")
+                    st.error("Veuillez entrer une plaque.")
         
         st.markdown("---")
-        
+        # --- LA SUITE DE TON CODE (Colonnes Argent, Points, etc.) REPREND ICI ---
         # --- ICI COMMENCE L'AFFICHAGE DU DOSSIER (col1, col2, col3...) ---
 
         # --- AFFICHAGE DU DOSSIER ---
