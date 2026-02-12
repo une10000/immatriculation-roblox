@@ -860,8 +860,10 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                 for _, row in pd.DataFrame(alertes).iterrows():
                     st.write(f"🆔 **#{row['ID']}** | 👤 **{row['Cible']}** ({row['Montant']}$)")
         
-# ======================================================================================
-        # RECHERCHE PAR RÉFÉRENCE (VERSION TICKET COMPACT)
+        st.divider()
+
+        # ======================================================================================
+        # 2. RECHERCHE PAR RÉFÉRENCE (VERSION ALIGNÉE & COMPACTE)
         # ======================================================================================
         
         # Ligne 1 : Titre + Message de confirmation
@@ -869,30 +871,7 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
         
         target_by_ref = None 
         f_data = None
-        search_id = st.session_state.get("search_ref_agent", "").replace("#", "")
-
-        if search_id:
-            res_f = df_all_f[df_all_f["ID"].astype(str) == search_id]
-            if not res_f.empty:
-                f_data = res_f.iloc[0]
-                target_by_ref = f_data["Cible"]
-                with header_col2:
-                    st.success(f"✅ Facture #{search_id} identifiée")
-            else:
-                with header_col2:
-                    st.warning("⚠️ ID inexistant")
-
-        with header_col1:
-            st.markdown("### 🔎 ACCÈS RAPIDE")
-# ======================================================================================
-        # RECHERCHE PAR RÉFÉRENCE (VERSION ALIGNÉE)
-        # ======================================================================================
-        
-        # Ligne 1 : Titre + Confirmation
-        header_col1, header_col2 = st.columns([1, 1.5])
-        
-        target_by_ref = None 
-        f_data = None
+        # On récupère l'ID en nettoyant le #
         search_id = st.session_state.get("search_ref_agent", "").replace("#", "")
 
         if search_id:
@@ -909,25 +888,24 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
         with header_col1:
             st.markdown("### 🔎 ACCÈS RAPIDE")
 
-        # Ligne 2 : Barre de recherche + Ticket Compact ALIGNÉS
+        # Ligne 2 : Barre de recherche + Ticket/Stats ALIGNÉS
         input_col, ticket_col = st.columns([1, 1.5])
 
         with input_col:
-            # On utilise un container pour forcer l'alignement vertical si besoin
             st.text_input("ID Facture :", placeholder="Ex: 1024", key="search_ref_agent", label_visibility="collapsed")
             
-            # Ton bloc de stats pour remplir le vide
-            total_factures = len(df_all_f)
-            impayees = len(df_all_f[df_all_f["Statut"] == "EN ATTENTE"])
+            # Bloc de statistiques pour remplir le vide
+            total_fact_count = len(df_all_f)
+            impayees_count = len(df_all_f[df_all_f["Statut"] == "EN ATTENTE"])
             
             st.markdown(f"""
                 <div style="background-color: #f0f2f6; padding: 12px; border-radius: 5px; border: 1px solid #d1d1d1; margin-top: 10px;">
                     <div style="font-size: 0.75em; color: #555; font-weight: bold; text-transform: uppercase; margin-bottom: 5px;">📊 État Global du Réseau</div>
                     <div style="display: flex; justify-content: space-between; font-size: 0.85em;">
-                        <span>Total émises :</span><b>{total_factures}</b>
+                        <span>Total émises :</span><b>{total_fact_count}</b>
                     </div>
                     <div style="display: flex; justify-content: space-between; font-size: 0.85em;">
-                        <span>En attente :</span><b style="color: #d32f2f;">{impayees}</b>
+                        <span>En attente :</span><b style="color: #d32f2f;">{impayees_count}</b>
                     </div>
                 </div>
             """, unsafe_allow_html=True)
@@ -937,7 +915,6 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
             statut_icon = "✔" if f_data['Statut'] == "PAYÉ" else "⏳"
             
             with ticket_col:
-                # L'astuce : margin-top: 0 pour coller au haut de la colonne
                 st.markdown(f"""
                     <div style="border: 1px solid #000; padding: 10px; background: #f9f9f9; color: black; border-left: 5px solid {statut_color}; line-height: 1.2; box-shadow: 3px 3px 0px rgba(0,0,0,0.1); margin-top: 0px;">
                         <div style="display: flex; justify-content: space-between; font-size: 0.8em;">
@@ -954,6 +931,14 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                 """, unsafe_allow_html=True)
 
         st.divider()
+
+        # --- 3. SYSTÈME DE SÉLECTION CITOYEN AUTO ---
+        search_list = ["---"] + sorted(df_b["Nom Roblox"].unique().tolist())
+        default_index = 0
+        if target_by_ref and target_by_ref in search_list:
+            default_index = search_list.index(target_by_ref)
+
+        target = st.selectbox("🎯 Sélectionner le citoyen pour action :", search_list, index=default_index, key="main_target_agent")
         # ======================================================================================
         # 2. MODULE : BUREAU DES MANDATS (GESTION NATIONALE)
         # ======================================================================================
