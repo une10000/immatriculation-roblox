@@ -885,11 +885,35 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
         with header_col1:
             st.markdown("### 🔎 ACCÈS RAPIDE")
 
-        # Ligne 2 : Barre de recherche + Ticket Compact à côté
+# Ligne 2 : Barre de recherche + Ticket Compact à côté
         input_col, ticket_col = st.columns([1, 1.5])
 
         with input_col:
+            # On récupère l'ID
             st.text_input("ID Facture :", placeholder="Ex: 1024", key="search_ref_agent", label_visibility="collapsed")
+            
+            # --- REMPLISSAGE DU VIDE : MINI DASHBOARD ---
+            st.markdown("<br>", unsafe_allow_html=True) # Petit espace
+            
+            # Calcul rapide des stats pour le look
+            total_factures = len(df_all_f)
+            impayees = len(df_all_f[df_all_f["Statut"] == "EN ATTENTE"])
+            
+            st.markdown(f"""
+                <div style="background-color: #f0f2f6; padding: 10px; border-radius: 5px; border: 1px solid #d1d1d1;">
+                    <div style="font-size: 0.75em; color: #555; font-weight: bold; text-transform: uppercase; margin-bottom: 5px;">📊 État Global du Réseau</div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="font-size: 0.85em;">Total émises :</span>
+                        <span style="font-size: 0.85em; font-weight: bold;">{total_factures}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="font-size: 0.85em;">En attente :</span>
+                        <span style="font-size: 0.85em; font-weight: bold; color: #d32f2f;">{impayees}</span>
+                    </div>
+                    <hr style="margin: 5px 0; border-top: 1px solid #ccc;">
+                    <div style="font-size: 0.7em; font-style: italic; color: #888; text-align: center;">Mise à jour en temps réel</div>
+                </div>
+            """, unsafe_allow_html=True)
             
         if target_by_ref and f_data is not None:
             # On définit la couleur selon le statut
@@ -898,7 +922,7 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
             
             with ticket_col:
                 st.markdown(f"""
-                    <div style="border: 1px solid #000; padding: 10px; background: #f9f9f9; color: black; border-left: 5px solid {statut_color}; line-height: 1.2;">
+                    <div style="border: 1px solid #000; padding: 10px; background: #f9f9f9; color: black; border-left: 5px solid {statut_color}; line-height: 1.2; box-shadow: 3px 3px 0px rgba(0,0,0,0.1);">
                         <div style="display: flex; justify-content: space-between; font-size: 0.8em;">
                             <b>REF: #{f_data['ID']}</b> 
                             <b style="color: {statut_color};">{f_data['Statut']} {statut_icon}</b>
