@@ -938,29 +938,42 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
         st.divider()
 
         # ======================================================================================
-        # NOUVEAU : RECHERCHE DE PLAQUE GRATUITE (ACCÈS SERVICES)
+        # MODULE : BASE DE DONNÉES DES IMMATRICULATIONS (ACCÈS SERVICES)
         # ======================================================================================
         st.markdown("#### 🚔 Consultation du Fichier des Immatriculations")
+
         with st.container(border=True):
+            # Ligne de saisie
             c1_srv, c2_srv = st.columns([3, 1])
+            
             with c1_srv:
-                plate_srv = st.text_input("Saisir une plaque pour identification rapide", key="plate_srv_agent", label_visibility="collapsed", placeholder="Ex: ABC-123").upper()
+                plate_srv = st.text_input("Saisir une plaque", key="plate_srv_agent", label_visibility="collapsed", placeholder="Entrez le numéro de plaque (ex: ABC-123)").upper()
+            
             with c2_srv:
-                if st.button("🔎 CHERCHER", key="btn_srv_plate", use_container_width=True):
-                    if plate_srv:
-                        match_srv = df_i[df_i["Numéro de la plaque"] == plate_srv]
-                        if not match_srv.empty:
-                            prop_srv = match_srv.iloc[0]["Nom d'utilisateur ROBLOX"]
-                            v_srv = match_srv.iloc[0]["Marque du véhicule"]
-                            st.info(f"📍 **IDENTIFICATION :** {prop_srv} ({v_srv})")
-                            record_log(st.session_state.get('staff_name', 'Agent'), f"Consultation Plaque {plate_srv}")
-                        else:
-                            st.error("⚠️ Plaque inconnue.")
+                search_triggered = st.button("🔎 CHERCHER", key="btn_srv_plate", use_container_width=True)
+
+            # Le résultat s'affiche en dessous, sur toute la largeur (allongé)
+            if search_triggered:
+                if plate_srv:
+                    match_srv = df_i[df_i["Numéro de la plaque"] == plate_srv]
+                    if not match_srv.empty:
+                        prop_srv = match_srv.iloc[0]["Nom d'utilisateur ROBLOX"]
+                        v_srv = match_srv.iloc[0]["Marque du véhicule"]
+                        
+                        # Affichage allongé
+                        st.info(f"📍 **RÉSULTAT :** Le véhicule **{v_srv}** est enregistré au nom de : **{prop_srv}**")
+                        
+                        # Log de l'action
+                        record_log(st.session_state.get('staff_name', 'Agent'), f"Consultation Plaque {plate_srv}")
                     else:
-                        st.warning("Entrez une plaque.")
+                        st.error(f"❌ Aucun véhicule trouvé pour la plaque : {plate_srv}")
+                else:
+                    st.warning("⚠️ Veuillez entrer une plaque.")
 
         st.divider()
-
+        
+        # 2. SYSTÈME DE SAISIE ET CONSULTATION (La suite de ton code...)
+        # N'oublie pas de garder l'indentation ici aussi !
         # 2. SYSTÈME DE SAISIE ET CONSULTATION
         if target == "---":
             st.warning("⚠️ Sélectionnez un citoyen en haut de la page.")
