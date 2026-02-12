@@ -938,6 +938,62 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
         st.divider()
 
         # ======================================================================================
+        # MODULE : RECHERCHE SERVICES (AVEC ALERTE INDIVIDU RECHERCHÉ)
+        # ======================================================================================
+        st.markdown("#### 🚔 Consultation du Fichier National")
+
+        with st.container(border=True):
+            c1_srv, c2_srv = st.columns([3, 1])
+            with c1_srv:
+                plate_srv = st.text_input("Saisir une plaque", key="plate_srv_agent", label_visibility="collapsed", placeholder="Ex: ABC-123").upper()
+            with c2_srv:
+                search_triggered = st.button("🔎 CHERCHER", key="btn_srv_plate", use_container_width=True)
+
+            if search_triggered:
+                if plate_srv:
+                    # 1. Recherche du véhicule
+                    match_srv = df_i[df_i["Numéro de la plaque"] == plate_srv]
+                    
+                    if not match_srv.empty:
+                        prop_srv = match_srv.iloc[0]["Nom d'utilisateur ROBLOX"]
+                        v_srv = match_srv.iloc[0]["Marque du véhicule"]
+                        
+                        # 2. Vérification du statut du propriétaire dans df_b
+                        citoyen_info = df_b[df_b["Nom Roblox"] == prop_srv]
+                        
+                        est_recherche = False
+                        motif_recherche = ""
+                        
+                        if not citoyen_info.empty:
+                            # On vérifie la colonne 'Statut' (doit contenir 'RECHERCHÉ')
+                            status = str(citoyen_info.iloc[0].get("Statut", "RAS")).upper()
+                            if "RECHERCHÉ" in status or "WANTED" in status:
+                                est_recherche = True
+                                motif_recherche = citoyen_info.iloc[0].get("Motif Recherche", "Non précisé")
+
+                        # 3. Affichage du résultat
+                        if est_recherche:
+                            st.markdown(f"""
+                                <div style="background-color: #d32f2f; padding: 15px; border-radius: 5px; border: 2px solid #ff0000; color: white;">
+                                    <h3 style="margin:0; color: white;">🚨 INDIVIDU RECHERCHÉ : {prop_srv}</h3>
+                                    <p style="margin:5px 0 0 0; font-weight: bold; font-size: 1.1em;">
+                                        VÉHICULE : {v_srv} <br>
+                                        MOTIF : {motif_recherche.upper()}
+                                    </p>
+                                </div>
+                            """, unsafe_allow_html=True)
+                        else:
+                            st.info(f"📍 **IDENTIFICATION :** {v_srv} appartient à **{prop_srv}** (Individu en règle)")
+                        
+                        record_log(st.session_state.get('staff_name', 'Agent'), f"Consultation Plaque {plate_srv}")
+                    else:
+                        st.error(f"❌ Aucune correspondance pour la plaque : {plate_srv}")
+                else:
+                    st.warning("⚠️ Veuillez entrer un numéro de plaque.")
+
+        st.divider()
+        # --- LA SUITE DE TON CODE (SAISIE FACTURE ETC) ---
+        # ======================================================================================
         # MODULE : BASE DE DONNÉES DES IMMATRICULATIONS (ACCÈS SERVICES)
         # ======================================================================================
         st.markdown("#### 🚔 Consultation du Fichier des Immatriculations")
