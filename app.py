@@ -356,6 +356,24 @@ with st.container():
     target = st.selectbox("Sélectionner un citoyen :", search_list)
     
     if target != "---":
+        # ======================================================================================
+        # NOUVEAU : ALERTE SÉCURITÉ (VISIBLE PAR TOUS SUR LE PROFIL)
+        # ======================================================================================
+        citoyen_info = df_b[df_b["Nom Roblox"] == target]
+        if not citoyen_info.empty:
+            # On vérifie si la colonne Statut existe et contient RECHERCHÉ
+            status_check = str(citoyen_info.iloc[0].get("Statut", "RAS")).upper()
+            if "RECHERCHÉ" in status_check or "WANTED" in status_check:
+                motif_web = str(citoyen_info.iloc[0].get("Motif Recherche", "Non spécifié"))
+                st.markdown(f"""
+                    <div style="background-color: #d32f2f; padding: 20px; border-radius: 10px; border: 4px solid #ff0000; color: white; text-align: center; margin-bottom: 20px;">
+                        <h2 style="margin:0; color: white;">🚨 SIGNALEMENT : INDIVIDU RECHERCHÉ 🚨</h2>
+                        <p style="font-size: 1.2em; margin: 10px 0;">L'individu <b>{target}</b> fait l'objet d'un mandat d'arrêt actif.</p>
+                        <hr style="border-top: 1px solid white;">
+                        <p style="font-size: 1.1em;"><b>MOTIF DU MANDAT :</b> {motif_web.upper()}</p>
+                    </div>
+                """, unsafe_allow_html=True)
+        # ======================================================================================
         # --- RECHERCHE PAR PLAQUE (Payante par le citoyen sélectionné) ---
         st.markdown("---")
         with st.expander("🔍 RECHERCHE D'IDENTITÉ PAR PLAQUE (Coût : 10$)", expanded=False):
