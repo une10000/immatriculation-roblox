@@ -348,7 +348,7 @@ st.markdown('<div class="header-box"><h2>📂 REGISTRE NATIONAL DES CITOYENS</h2
 with st.container():
     st.markdown("""
     <div class="info-card">
-        <b>GUIDE DE RECHERCHE :</b> Sélectionnez un nom dans la liste déroulante pour extraire instantanément le dossier financier...
+        <b>GUIDE DE RECHERCHE :</b> Sélectionnez un nom dans la liste déroulante pour extraire le dossier complet ou utilisez la recherche par plaque (frais de 10$).
     </div>
     """, unsafe_allow_html=True)
     
@@ -356,8 +356,46 @@ with st.container():
     target = st.selectbox("Sélectionner un citoyen :", search_list)
     
     if target != "---":
+        # --- NOUVEAU : RECHERCHE PAR PLAQUE (Payante) ---
+        st.markdown("---")
+        with st.expander("🔍 RECHERCHE D'IDENTITÉ PAR PLAQUE (Coût : 10$)", expanded=False):
+            c1, c2 = st.columns([2, 1])
+            search_plate = c1.text_input("Saisir un numéro de plaque", key="search_p").upper()
+            
+            if c2.button("Lancer la recherche", use_container_width=True):
+                if search_plate:
+                    # 1. Vérification du solde du citoyen sélectionné (celui qui consulte)
+                    try:
+                        idx_payer = df_b[df_b["Nom Roblox"] == target].index[0]
+                        solde_payer = float(str(df_b.at[idx_payer, "Solde"]).replace('$', '').replace(',', ''))
+                        
+                        if solde_payer >= 10:
+                            # 2. Recherche du propriétaire
+                            res_plate = df_i[df_i["Numéro de la plaque"] == search_plate]
+                            
+                            if not res_plate.empty:
+                                prop_found = res_plate.iloc[0]["Nom d'utilisateur ROBLOX"]
+                                v_found = res_plate.iloc[0]["Marque du véhicule"]
+                                
+                                # 3. Paiement
+                                df_b.at[idx_payer, "Solde"] = solde_payer - 10
+                                cloud_conn.update(worksheet="Banque", data=df_b)
+                                
+                                st.success(f"🔍 Résultat : La plaque **{search_plate}** appartient à **{prop_found}** ({v_found}).")
+                                record_log(target, f"Recherche de plaque {search_plate} (Payé 10$)")
+                            else:
+                                st.warning("⚠️ Aucune plaque correspondante dans la base nationale.")
+                        else:
+                            st.error("❌ Solde insuffisant (10$ requis).")
+                    except Exception as e:
+                        st.error(f"Erreur système : {e}")
+                else:
+                    st.error("Veuillez entrer une plaque.")
+        st.markdown("---")
+
+        # --- AFFICHAGE DU DOSSIER ---
         col1, col2, col3 = st.columns(3)
-        
+        # La suite de ton code col1, col2, col3 continue ici...
         # --- COLONNE 1 : POINTS & PERMIS ---
         with col1:
             p_data = df_p[df_p["Nom Roblox"] == target]
