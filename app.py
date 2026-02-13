@@ -859,11 +859,27 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
             with st.expander("🔍 VOIR LES REQUÊTES PRIORITAIRES"):
                 for _, row in pd.DataFrame(alertes).iterrows():
                     st.write(f"🆔 **#{row['ID']}** | 👤 **{row['Cible']}** ({row['Montant']}$)")
+
+        # --- RECHERCHE PAR NUMÉRO DE FACTURE ---
+        with st.container(border=True):
+            st.markdown("##### 🔎 Recherche Rapide de Facture")
+            f_search_id = st.text_input("Entrer le N° de facture (#)", key="agent_f_search", placeholder="Ex: 4502").replace("#", "")
+            if f_search_id:
+                res_f = df_all_f[df_all_f["ID"].astype(str).str.contains(f_search_id, na=False)]
+                if not res_f.empty:
+                    f_dat = res_f.iloc[0]
+                    col_res1, col_res2 = st.columns(2)
+                    with col_res1:
+                        st.info(f"**Cible :** {f_dat['Cible']}\n\n**Montant :** {f_dat['Montant']}$\n\n**Statut :** {f_dat['Statut']}")
+                    with col_res2:
+                        st.info(f"**Émetteur :** {f_dat['Emetteur']}\n\n**Motif :** {f_dat['Motif']}\n\n**Points :** -{f_dat['Points']}")
+                else:
+                    st.warning("Aucune facture trouvée avec cet ID.")
         
         st.divider()
 
         # ======================================================================================
-        # 2. MODULE : BUREAU DES MANDATS (GESTION NATIONALE)
+        # 2. MODULE : BUREAU DES MANDATS
         # ======================================================================================
         st.markdown("#### ⚖️ Bureau des Mandats & Avis de Recherche")
         recherches_actuels = df_b[df_b["Statut"].str.upper().str.contains("RECHERCHÉ", na=False)]
@@ -931,14 +947,12 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
         st.divider()
 
         # ======================================================================================
-        # 4. SYSTÈME DE SAISIE ET CONSULTATION (DESIGN ORIGINAL)
+        # 4. SYSTÈME DE SAISIE ET CONSULTATION (DESIGN EN 3 COLONNES)
         # ======================================================================================
         st.markdown("### 🎯 INTERVENTION ET FACTURATION")
-        # On utilise le 'target' défini par ton selectbox en haut (dans ton script global)
         if target == "---":
             st.warning("⚠️ Sélectionnez un citoyen en haut de la page.")
         else:
-            # ALIGNEMENT : Saisie (Gauche) | Facture (Milieu) | Titres (Droite)
             col_saisie, col_facture, col_vehicules = st.columns([1.1, 1, 0.9])
 
             with col_saisie:
@@ -960,6 +974,20 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                     v_list = ["AUCUN / PIÉTON"] + target_veh["Numéro de la plaque"].tolist()
                     f_plate = st.selectbox("Véhicule concerné", v_list, key="v_plate_final")
                     
+                    # --- ALERTE FLASHANTE (WANTED) ---
+                    citoyen_check = df_b[df_b["Nom Roblox"] == target]
+                    if not citoyen_check.empty and "RECHERCHÉ" in str(citoyen_check.iloc[0].get("Statut", "")).upper():
+                        st.markdown("""
+                            <div style="background-color: #FF0000; padding: 15px; border-radius: 10px; text-align: center; border: 4px solid #FFF; animation: blinker 1s linear infinite;">
+                                <h2 style="color: white; margin: 0; font-weight: bold;">🚨 INDIVIDU RECHERCHÉ 🚨</h2>
+                                <small style="color: white;">PROCÉDER À L'INTERPELLATION IMMÉDIATE</small>
+                            </div>
+                            <style>
+                            @keyframes blinker { 50% { opacity: 0; } }
+                            </style>
+                        """, unsafe_allow_html=True)
+                        st.write("")
+
                     if st.button("🚨 ENVOYER FACTURE", use_container_width=True, type="primary"):
                         if not f_motif:
                             st.error("Motif obligatoire.")
