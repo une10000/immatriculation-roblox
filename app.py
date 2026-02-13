@@ -346,6 +346,23 @@ if st.session_state.user_auth is None:
 st.markdown('<div class="header-box"><h2>📂 REGISTRE NATIONAL DES CITOYENS</h2></div>', unsafe_allow_html=True)
 
 with st.container():
+    # --- TABLEAU D'AFFICHAGE PUBLIC DES AVIS DE RECHERCHE ---
+    recherches_publics = df_b[df_b["Statut"].str.upper().str.contains("RECHERCHÉ", na=False)]
+    
+    if not recherches_publics.empty:
+        st.markdown("### 📢 AVIS DE RECHERCHE EN COURS")
+        # On crée une ligne de petits badges pour chaque personne recherchée
+        cols_wanted = st.columns(len(recherches_publics) if len(recherches_publics) < 4 else 4)
+        for i, (_, crim) in enumerate(recherches_publics.iterrows()):
+            with cols_wanted[i % 4]:
+                st.markdown(f"""
+                    <div style="background-color: #4a0000; padding: 10px; border-radius: 5px; border: 1px solid #ff4b4b; text-align: center;">
+                        <span style="color: #ff4b4b; font-weight: bold; font-size: 0.8em;">⚠️ RECHERCHÉ</span><br>
+                        <span style="color: white; font-weight: bold; font-size: 1em;">{crim['Nom Roblox']}</span>
+                    </div>
+                """, unsafe_allow_html=True)
+        st.divider()
+
     st.markdown("""
     <div class="info-card">
         <b>GUIDE DE RECHERCHE :</b> Sélectionnez un nom dans la liste déroulante pour extraire le dossier complet ou utilisez la recherche par plaque (frais de 10$).
@@ -356,16 +373,6 @@ with st.container():
     target = st.selectbox("Sélectionner un citoyen :", search_list, key="main_selector")
     
     if target != "---":
-        # --- PETIT BANDEAU AVIS DE RECHERCHE (DISCRET MAIS CLAIR) ---
-        citoyen_status = df_b[df_b["Nom Roblox"] == target]
-        if not citoyen_status.empty and "RECHERCHÉ" in str(citoyen_status.iloc[0].get("Statut", "")).upper():
-            motif_crim = citoyen_status.iloc[0].get("Motif Recherche", "Non précisé")
-            st.markdown(f"""
-                <div style="background-color: #721c24; padding: 10px; border-radius: 5px; border-left: 5px solid #f5c6cb; margin-bottom: 15px;">
-                    <span style="color: #f8d7da; font-weight: bold;">⚠️ AVIS DE RECHERCHE EN COURS :</span> 
-                    <span style="color: white; font-style: italic;">{motif_crim.upper()}</span>
-                </div>
-            """, unsafe_allow_html=True)
         # --- ALERTE SÉCURITÉ (MANDAT D'ARRÊT) ---
         citoyen_info = df_b[df_b["Nom Roblox"] == target]
         if not citoyen_info.empty:
