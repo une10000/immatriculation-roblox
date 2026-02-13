@@ -343,31 +343,30 @@ if st.session_state.user_auth is None:
 # 6. MODULE : DOSSIER CITOYEN UNIFIÉ (VISIBILITÉ TOTALE)
 # ======================================================================================
 
-st.markdown('<div class="header-box"><h2>📂 REGISTRE NATIONAL DES CITOYENS</h2></div>', unsafe_allow_html=True)
-
 with st.container():
-    # --- TABLEAU D'AFFICHAGE PUBLIC DES AVIS DE RECHERCHE (FLASHING & LARGE) ---
+    # --- TABLEAU D'AFFICHAGE PUBLIC DES AVIS DE RECHERCHE (AU SOMMET & À GAUCHE) ---
     recherches_publics = df_b[df_b["Statut"].str.upper().str.contains("RECHERCHÉ", na=False)]
     
     if not recherches_publics.empty:
-        st.markdown("<h2 style='color: #ff4b4b; text-align: center; margin-bottom: 20px;'>🚨 AVIS DE RECHERCHE PRIORITAIRES 🚨</h2>", unsafe_allow_html=True)
+        st.markdown("<h3 style='color: #ff4b4b; margin-bottom: 15px;'>🚨 AVIS DE RECHERCHE EN COURS</h3>", unsafe_allow_html=True)
         
         for _, crim in recherches_publics.iterrows():
             motif = crim.get('Motif Recherche', 'Motif non spécifié').upper()
             st.markdown(f"""
                 <div style="
                     display: flex; 
-                    justify-content: space-between; 
-                    align-items: center; 
+                    flex-direction: column;
+                    justify-content: center; 
+                    align-items: flex-start; 
                     background-color: #4a0000; 
-                    padding: 15px 25px; 
-                    border-radius: 10px; 
+                    padding: 12px 20px; 
+                    border-radius: 8px; 
                     border: 3px solid #ff0000; 
                     margin-bottom: 10px;
                     animation: blinker_urgent 1.5s linear infinite;
                 ">
-                    <div style="color: white; font-weight: bold; font-size: 1.4em;">👤 {crim['Nom Roblox']}</div>
-                    <div style="color: #ff4b4b; font-weight: 800; font-size: 1.1em; letter-spacing: 1px;">{motif}</div>
+                    <div style="color: white; font-weight: bold; font-size: 1.3em; margin-bottom: 2px;">👤 {crim['Nom Roblox']}</div>
+                    <div style="color: #ff4b4b; font-weight: 700; font-size: 0.9em; letter-spacing: 0.5px;">MOTIF : {motif}</div>
                 </div>
                 
                 <style>
@@ -379,6 +378,10 @@ with st.container():
         st.write("")
         st.divider()
 
+# TITRE DU REGISTRE (Maintenant placé après les avis de recherche)
+st.markdown('<div class="header-box"><h2>📂 REGISTRE NATIONAL DES CITOYENS</h2></div>', unsafe_allow_html=True)
+
+with st.container():
     st.markdown("""
     <div class="info-card">
         <b>GUIDE DE RECHERCHE :</b> Sélectionnez un nom dans la liste déroulante pour extraire le dossier complet ou utilisez la recherche par plaque (frais de 10$).
