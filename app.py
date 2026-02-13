@@ -475,36 +475,40 @@ with st.container():
                     status_color = "green" if pts_val > 0 else "red"
                     st.markdown(f"Statut : <b style='color:{status_color};'>{'VALIDE' if pts_val > 0 else 'SUSPENDU'}</b>", unsafe_allow_html=True)
                     
-                    # --- BOUTON RENDRE LE PERMIS (CORRECTIF FINAL) ---
-        # --- BOUTON RENDRE LE PERMIS (CORRECTIF FINAL) ---
-if st.session_state.user_auth in ["Staff", "Admin"] and pts_val <= 0:
-    st.write("") 
-    if st.button("🔓 Rendre son permis", key=f"restore_{target}", use_container_width=True, type="primary"):
-        try:
-            # 1. On s'assure de lire la feuille avec le bon nom (vérifie que c'est bien "Points Permis" et pas "Permis")
-            # D'après ta capture, l'onglet s'appelle "Points Permis"
-            nom_feuille = "Points Permis" 
-            
-            # 2. Nettoyage des données locales pour la correspondance
-            target_str = str(target).strip()
-            
-            # 3. Recherche de la ligne
-            # On utilise .loc pour être précis sur la colonne 'Nom Roblox' vue sur ta capture
-            if target_str in df_p["Nom Roblox"].values:
-                df_p.loc[df_p["Nom Roblox"] == target_str, "PTS"] = 25
+# --- COLONNE 1 : POINTS & PERMIS ---
+        with col1:
+            p_data = df_p[df_p["Nom Roblox"] == target]
+            if not p_data.empty:
+                try:
+                    pts_val = int(p_data.iloc[0]["PTS"])
+                except:
+                    pts_val = 0
                 
-                # 4. Mise à jour vers Google Sheets
-                cloud_conn.update(worksheet=nom_feuille, data=df_p)
+                st.metric("POINTS PERMIS", f"{pts_val}/25")
+                status_color = "green" if pts_val > 0 else "red"
+                st.markdown(f"Statut : <b style='color:{status_color};'>{'VALIDE' if pts_val > 0 else 'SUSPENDU'}</b>", unsafe_allow_html=True)
                 
-                st.success(f"✅ Permis rendu à {target_str} !")
-                st.cache_data.clear()
-                st.rerun()
+                # --- LE BOUTON DOIT ÊTRE ICI (BIEN ALIGNÉ) ---
+                if st.session_state.user_auth in ["Staff", "Admin"] and pts_val <= 0:
+                    st.write("") 
+                    if st.button("🔓 Rendre son permis", key=f"restore_{target}", use_container_width=True, type="primary"):
+                        try:
+                            nom_feuille = "Points Permis" 
+                            target_str = str(target).strip()
+                            
+                            if target_str in df_p["Nom Roblox"].values:
+                                df_p.loc[df_p["Nom Roblox"] == target_str, "PTS"] = 25
+                                cloud_conn.update(worksheet=nom_feuille, data=df_p)
+                                
+                                st.success(f"✅ Permis rendu à {target_str} !")
+                                st.cache_data.clear()
+                                st.rerun()
+                            else:
+                                st.error(f"Nom '{target_str}' introuvable.")
+                        except Exception as e:
+                            st.error(f"Erreur : {e}")
             else:
-                st.error(f"Le nom '{target_str}' n'a pas été trouvé dans la colonne 'Nom Roblox'.")
-                
-        except Exception as e: 
-            # Affichage de l'erreur réelle pour débugger
-            st.error(f"Erreur : {e}")
+                st.info("Aucun permis trouvé.")
         # --- COLONNE 2 : BANQUE & EMPLOI ---
         with col2:
             b_data = df_b[df_b["Nom Roblox"] == target]
