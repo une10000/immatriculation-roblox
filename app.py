@@ -969,7 +969,7 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
 
         st.divider()
 
-        # ======================================================================================
+# ======================================================================================
         # 4. SYSTÈME DE SAISIE ET CONSULTATION (DESIGN EN 3 COLONNES)
         # ======================================================================================
         st.markdown("### 🎯 INTERVENTION ET FACTURATION")
@@ -996,25 +996,45 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                     target_veh = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
                     v_list = ["AUCUN / PIÉTON"] + target_veh["Numéro de la plaque"].tolist()
                     f_plate = st.selectbox("Véhicule concerné", v_list, key="v_plate_final")
+
+                    # --- 1. ALERTE ORANGE (FACTURES IMPAYÉES EN RETARD) ---
+                    dettes_retard = []
+                    maintenant = datetime.now()
+                    # On filtre les factures de la cible sélectionnée
+                    f_cible = df_all_f[df_all_f["Cible"] == target]
                     
-                    # --- ALERTE FLASHANTE (WANTED) AVEC MOTIF ---
+                    for _, row_f in f_cible.iterrows():
+                        if row_f["Statut"] == "EN ATTENTE":
+                            try:
+                                limite = datetime.strptime(str(row_f['Date_Limite']), "%d/%m/%Y %H:%M:%S")
+                                if maintenant > limite:
+                                    dettes_retard.append(str(row_f['ID']))
+                            except: pass
+
+                    if dettes_retard:
+                        st.markdown(f"""
+                            <div style="background-color: #E67E22; padding: 10px; border-radius: 8px; text-align: center; border: 2px solid white; animation: blinker_orange 2s linear infinite; margin-bottom: 10px;">
+                                <b style="color: white; font-size: 0.9em;">⚠️ DETTE NON RÉGULARISÉE</b><br>
+                                <small style="color: white;">Facture(s) en retard : #{", #".join(dettes_retard)}</small>
+                            </div>
+                            <style> @keyframes blinker_orange {{ 50% {{ opacity: 0.5; }} }} </style>
+                        """, unsafe_allow_html=True)
+                    
+                    # --- 2. ALERTE ROUGE (WANTED / MANDAT) ---
                     citoyen_check = df_b[df_b["Nom Roblox"] == target]
                     if not citoyen_check.empty and "RECHERCHÉ" in str(citoyen_check.iloc[0].get("Statut", "")).upper():
-                        # On récupère le motif dans la base
                         motif_alerte = citoyen_check.iloc[0].get("Motif Recherche", "Non précisé")
-                        
                         st.markdown(f"""
-                            <div style="background-color: #FF0000; padding: 15px; border-radius: 10px; text-align: center; border: 4px solid #FFF; animation: blinker 1s linear infinite;">
+                            <div style="background-color: #FF0000; padding: 15px; border-radius: 10px; text-align: center; border: 4px solid #FFF; animation: blinker_red 1s linear infinite;">
                                 <h2 style="color: white; margin: 0; font-weight: bold;">🚨 INDIVIDU RECHERCHÉ 🚨</h2>
                                 <h4 style="color: white; margin: 5px 0;">MOTIF : {motif_alerte.upper()}</h4>
                                 <small style="color: white;">PROCÉDER À L'INTERPELLATION IMMÉDIATE</small>
                             </div>
-                            <style>
-                            @keyframes blinker {{ 50% {{ opacity: 0; }} }}
-                            </style>
+                            <style> @keyframes blinker_red {{ 50% {{ opacity: 0; }} }} </style>
                         """, unsafe_allow_html=True)
                         st.write("")
 
+                    # --- BOUTON D'ENVOI ---
                     if st.button("🚨 ENVOYER FACTURE", use_container_width=True, type="primary"):
                         if not f_motif:
                             st.error("Motif obligatoire.")
