@@ -464,17 +464,6 @@ with st.container():
         # --- AFFICHAGE DU DOSSIER ---
         col1, col2, col3 = st.columns(3)
 
-        # --- COLONNE 1 : POINTS & PERMIS ---
-        with col1:
-            p_data = df_p[df_p["Nom Roblox"] == target]
-            if not p_data.empty:
-                pts_val = int(p_data.iloc[0]["PTS"])
-                c_pts, c_v, c_motif_p = st.columns([3, 0.5, 2])
-                with c_pts:
-                    st.metric("POINTS PERMIS", f"{pts_val}/25")
-                    status_color = "green" if pts_val > 0 else "red"
-                    st.markdown(f"Statut : <b style='color:{status_color};'>{'VALIDE' if pts_val > 0 else 'SUSPENDU'}</b>", unsafe_allow_html=True)
-                    
 # --- COLONNE 1 : POINTS & PERMIS ---
         with col1:
             p_data = df_p[df_p["Nom Roblox"] == target]
@@ -484,29 +473,37 @@ with st.container():
                 except:
                     pts_val = 0
                 
-                st.metric("POINTS PERMIS", f"{pts_val}/25")
-                status_color = "green" if pts_val > 0 else "red"
-                st.markdown(f"Statut : <b style='color:{status_color};'>{'VALIDE' if pts_val > 0 else 'SUSPENDU'}</b>", unsafe_allow_html=True)
+                # On crée les sous-colonnes pour l'esthétique (le petit bouclier à droite)
+                c_pts, c_v, c_motif_p = st.columns([3, 0.5, 2])
                 
-                # --- LE BOUTON DOIT ÊTRE ICI (BIEN ALIGNÉ) ---
-                if st.session_state.user_auth in ["Staff", "Admin"] and pts_val <= 0:
-                    st.write("") 
-                    if st.button("🔓 Rendre son permis", key=f"restore_{target}", use_container_width=True, type="primary"):
-                        try:
-                            nom_feuille = "Points Permis" 
-                            target_str = str(target).strip()
-                            
-                            if target_str in df_p["Nom Roblox"].values:
-                                df_p.loc[df_p["Nom Roblox"] == target_str, "PTS"] = 25
-                                cloud_conn.update(worksheet=nom_feuille, data=df_p)
+                with c_pts:
+                    st.metric("POINTS PERMIS", f"{pts_val}/25")
+                    status_color = "green" if pts_val > 0 else "red"
+                    st.markdown(f"Statut : <b style='color:{status_color};'>{'VALIDE' if pts_val > 0 else 'SUSPENDU'}</b>", unsafe_allow_html=True)
+                    
+                    # Bouton d'action (uniquement si suspendu et Staff)
+                    if st.session_state.user_auth in ["Staff", "Admin"] and pts_val <= 0:
+                        st.write("") 
+                        if st.button("🔓 Rendre son permis", key=f"restore_{target}", use_container_width=True, type="primary"):
+                            try:
+                                nom_feuille = "Points Permis" 
+                                target_str = str(target).strip()
                                 
-                                st.success(f"✅ Permis rendu à {target_str} !")
-                                st.cache_data.clear()
-                                st.rerun()
-                            else:
-                                st.error(f"Nom '{target_str}' introuvable.")
-                        except Exception as e:
-                            st.error(f"Erreur : {e}")
+                                if target_str in df_p["Nom Roblox"].values:
+                                    df_p.loc[df_p["Nom Roblox"] == target_str, "PTS"] = 25
+                                    cloud_conn.update(worksheet=nom_feuille, data=df_p)
+                                    
+                                    st.success(f"✅ Permis rendu !")
+                                    st.cache_data.clear()
+                                    st.rerun()
+                                else:
+                                    st.error("Nom introuvable.")
+                            except Exception as e:
+                                st.error(f"Erreur : {e}")
+
+                with c_motif_p:
+                    # Le petit bouclier décoratif
+                    st.markdown('<div style="opacity: 0.15; font-size: 40px; text-align: right; padding-top:10px;">🛡️</div>', unsafe_allow_html=True)
             else:
                 st.info("Aucun permis trouvé.")
         # --- COLONNE 2 : BANQUE & EMPLOI ---
