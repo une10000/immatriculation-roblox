@@ -381,6 +381,7 @@ with st.container():
             """, unsafe_allow_html=True)
         st.write("")
         st.divider()
+
 # TITRE DU REGISTRE
 st.markdown('<div class="header-box"><h2>📂 REGISTRE NATIONAL DES CITOYENS</h2></div>', unsafe_allow_html=True)
 
@@ -411,7 +412,6 @@ with st.container():
                 """, unsafe_allow_html=True)
 
         # --- 2. ALERTE ORANGE (DETTE EN RETARD) ---
-        # On vérifie les factures en retard spécifiquement pour ce profil
         maintenant = datetime.now()
         df_f_check = cloud_conn.read(worksheet="Factures").fillna("")
         dettes_citoyen = df_f_check[(df_f_check["Cible"] == target) & (df_f_check["Statut"] == "EN ATTENTE")]
@@ -461,86 +461,57 @@ with st.container():
 
         st.markdown("---")
 
-        # --- AFFICHAGE DU DOSSIER (COLONNES AVEC FILIGRANES) ---
+        # --- AFFICHAGE DU DOSSIER ---
         col1, col2, col3 = st.columns(3)
 
-# --- COLONNE 1 : POINTS & PERMIS ---
-with col1:
-    p_data = df_p[df_p["Nom Roblox"] == target]
-    if not p_data.empty:
-        # On s'assure que PTS est bien traité comme un nombre
-        pts_val = int(p_data.iloc[0]["PTS"])
-        c_pts, c_v, c_motif_p = st.columns([3, 0.5, 2])
-        
-        with c_pts:
-            st.metric("POINTS PERMIS", f"{pts_val}/25")
-            status_color = "green" if pts_val > 0 else "red"
-            st.markdown(f"Statut : <b style='color:{status_color};'>{'VALIDE' if pts_val > 0 else 'SUSPENDU'}</b>", unsafe_allow_html=True)
-            
-            # --- BOUTON RENDRE LE PERMIS ---
-            if st.session_state.user_auth in ["Staff", "Admin"] and pts_val <= 0:
-                st.write("") 
-                if st.button("🔓 Rendre son permis", key=f"restore_{target}", use_container_width=True, type="primary"):
-                    try:
-                        # 1. On trouve l'index exact dans la feuille de calcul
-                        idx_target = df_p[df_p["Nom Roblox"] == target].index[0]
-                        
-                        # 2. On modifie la valeur localement
-                        df_p.at[idx_target, "PTS"] = 25
-                        
-                        # 3. On envoie la mise à jour à Google Sheets
-                        cloud_conn.update(worksheet="Permis", data=df_p)
-                        
-                        st.success("✅ Permis rendu !")
-                        st.cache_data.clear() # On vide le cache pour voir le changement
-                        st.rerun() # On recharge la page
-                    except Exception as e:
-                        st.error(f"Erreur mise à jour : {e}")
+        # --- COLONNE 1 : POINTS & PERMIS ---
+        with col1:
+            p_data = df_p[df_p["Nom Roblox"] == target]
+            if not p_data.empty:
+                pts_val = int(p_data.iloc[0]["PTS"])
+                c_pts, c_v, c_motif_p = st.columns([3, 0.5, 2])
+                with c_pts:
+                    st.metric("POINTS PERMIS", f"{pts_val}/25")
+                    status_color = "green" if pts_val > 0 else "red"
+                    st.markdown(f"Statut : <b style='color:{status_color};'>{'VALIDE' if pts_val > 0 else 'SUSPENDU'}</b>", unsafe_allow_html=True)
+                    
+                    if st.session_state.user_auth in ["Staff", "Admin"] and pts_val <= 0:
+                        if st.button("🔓 Rendre son permis", key=f"restore_{target}", use_container_width=True, type="primary"):
+                            try:
+                                idx_target = df_p[df_p["Nom Roblox"] == target].index[0]
+                                df_p.at[idx_target, "PTS"] = 25
+                                cloud_conn.update(worksheet="Permis", data=df_p)
+                                st.success("✅ Permis rendu !")
+                                st.cache_data.clear()
+                                st.rerun()
+                            except Exception as e: st.error(f"Erreur : {e}")
+                with c_motif_p:
+                    st.markdown('<div style="opacity: 0.15; font-size: 40px; text-align: right;">🛡️</div>', unsafe_allow_html=True)
+            else: st.error("Aucun permis trouvé.")
 
-        with c_motif_p:
-            st.markdown("""
-                <div style="text-align: right; line-height: 1; padding-top: 5px;">
-                    <div style="opacity: 0.05; font-size: 10px; font-weight: bold; margin-bottom: 2px;">SECURITY CHECK COMPLETED</div>
-                    <div style="opacity: 0.15; font-size: 40px; margin-bottom: -10px;">🛡️</div>
-                    <div style="opacity: 0.1; font-size: 50px; margin-bottom: -10px;">🚗</div>
-                    <div style="height: 4px; width: 60px; background: linear-gradient(90deg, transparent, #d32f2f); display: inline-block; opacity: 0.2; border-radius: 2px;"></div>
-                </div>
-            """, unsafe_allow_html=True)
-    else: 
-        st.error("Aucun permis trouvé.")
         # --- COLONNE 2 : BANQUE & EMPLOI ---
         with col2:
             b_data = df_b[df_b["Nom Roblox"] == target]
             if not b_data.empty:
-                c_info, c_v, c_m = st.columns([3, 0.5, 2])
-                with c_info:
-                    st.metric("SOLDE BANCAIRE", f"{b_data.iloc[0]['Solde']}$")
-                    current_jobs_raw = str(b_data.iloc[0]['Emploiement'])
-                    st.write(f"🏢 Métier : **{current_jobs_raw}**")
+                st.metric("SOLDE BANCAIRE", f"{b_data.iloc[0]['Solde']}$")
+                current_jobs_raw = str(b_data.iloc[0]['Emploiement'])
+                st.write(f"🏢 Métier : **{current_jobs_raw}**")
                 
-                with c_m:
-                    st.markdown("""
-                        <div style="text-align: right; line-height: 1; padding-top: 5px;">
-                            <div style="opacity: 0.05; font-size: 10px; font-weight: bold; margin-bottom: 2px;">DATABASE ACCESS GRANTED</div>
-                            <div style="opacity: 0.15; font-size: 40px; margin-bottom: -10px;">🏛️</div>
-                            <div style="opacity: 0.1; font-size: 50px; margin-bottom: -10px;">💳</div>
-                            <div style="height: 4px; width: 60px; background: linear-gradient(90deg, transparent, #000); display: inline-block; opacity: 0.2; border-radius: 2px;"></div>
-                        </div>
-                    """, unsafe_allow_html=True)
-                
-                if st.session_state.user_auth == "Staff":
+                if st.session_state.user_auth in ["Staff", "Admin"]:
                     if st.button("✏️ Modifier le métier", key=f"edit_job_{target}", use_container_width=True):
                         st.session_state[f"show_editor_{target}"] = not st.session_state.get(f"show_editor_{target}", False)
+                    
                     if st.session_state.get(f"show_editor_{target}", False):
                         with st.container(border=True):
-                            new_jobs = st.multiselect("Sélection :", options=["Sans-Emploi", "Agent RCT", "Averis", "Police", "Staff", "Service Public", "Entreprise Privée"], default=[j.strip() for j in current_jobs_raw.split("/") if j.strip() in ["Sans-Emploi", "Agent RCT", "Averis", "Police", "Staff", "Service Public", "Entreprise Privée"]])
+                            options_jobs = ["Sans-Emploi", "Agent RCT", "Averis", "Police", "Staff", "Service Public", "Entreprise Privée"]
+                            new_jobs = st.multiselect("Sélection :", options=options_jobs, default=[j.strip() for j in current_jobs_raw.split("/") if j.strip() in options_jobs])
                             if st.button("💾 Sauver", key=f"save_j_{target}", type="primary"):
                                 df_b.at[df_b[df_b["Nom Roblox"] == target].index[0], "Emploiement"] = " / ".join(new_jobs) if new_jobs else "Sans-Emploi"
                                 cloud_conn.update(worksheet="Banque", data=df_b)
                                 st.session_state[f"show_editor_{target}"] = False
                                 st.cache_data.clear()
                                 st.rerun()
-                st.caption(f"📅 Arrivée : {b_data.iloc[0]['Date d\'arrivée']}")
+                st.caption(f"📅 Arrivée : {b_data.iloc[0].get('Date d\'arrivée', 'Non spécifiée')}")
 
         # --- COLONNE 3 : ARCHIVES ---
         with col3:
