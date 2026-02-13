@@ -465,44 +465,49 @@ with st.container():
         col1, col2, col3 = st.columns(3)
 
 # --- COLONNE 1 : POINTS & PERMIS ---
-        with col1:
-            p_data = df_p[df_p["Nom Roblox"] == target]
-            if not p_data.empty:
-                pts_val = int(p_data.iloc[0]["PTS"])
-                c_pts, c_v, c_motif_p = st.columns([3, 0.5, 2])
-                with c_pts:
-                    st.metric("POINTS PERMIS", f"{pts_val}/25")
-                    status_color = "green" if pts_val > 0 else "red"
-                    st.markdown(f"Statut : <b style='color:{status_color};'>{'VALIDE' if pts_val > 0 else 'SUSPENDU'}</b>", unsafe_allow_html=True)
-                    
-                    # --- BOUTON POUR RENDRE LE PERMIS (STAFF SEULEMENT) ---
-                    if st.session_state.user_auth in ["Staff", "Admin"] and pts_val <= 0:
-                        st.write("") # Petit espacement
-                        if st.button("🔓 Rendre son permis", key=f"restore_p_{target}", use_container_width=True, type="primary"):
-                            try:
-                                # On récupère l'index du citoyen dans df_p
-                                idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
-                                df_p.at[idx_p, "PTS"] = 25
-                                
-                                # Mise à jour Google Sheets
-                                cloud_conn.update(worksheet="Permis", data=df_p)
-                                
-                                st.success("✅ Permis restitué (25 pts) !")
-                                st.cache_data.clear()
-                                st.rerun()
-                            except Exception as e:
-                                st.error(f"Erreur : {e}")
+with col1:
+    p_data = df_p[df_p["Nom Roblox"] == target]
+    if not p_data.empty:
+        # On s'assure que PTS est bien traité comme un nombre
+        pts_val = int(p_data.iloc[0]["PTS"])
+        c_pts, c_v, c_motif_p = st.columns([3, 0.5, 2])
+        
+        with c_pts:
+            st.metric("POINTS PERMIS", f"{pts_val}/25")
+            status_color = "green" if pts_val > 0 else "red"
+            st.markdown(f"Statut : <b style='color:{status_color};'>{'VALIDE' if pts_val > 0 else 'SUSPENDU'}</b>", unsafe_allow_html=True)
+            
+            # --- BOUTON RENDRE LE PERMIS ---
+            if st.session_state.user_auth in ["Staff", "Admin"] and pts_val <= 0:
+                st.write("") 
+                if st.button("🔓 Rendre son permis", key=f"restore_{target}", use_container_width=True, type="primary"):
+                    try:
+                        # 1. On trouve l'index exact dans la feuille de calcul
+                        idx_target = df_p[df_p["Nom Roblox"] == target].index[0]
+                        
+                        # 2. On modifie la valeur localement
+                        df_p.at[idx_target, "PTS"] = 25
+                        
+                        # 3. On envoie la mise à jour à Google Sheets
+                        cloud_conn.update(worksheet="Permis", data=df_p)
+                        
+                        st.success("✅ Permis rendu !")
+                        st.cache_data.clear() # On vide le cache pour voir le changement
+                        st.rerun() # On recharge la page
+                    except Exception as e:
+                        st.error(f"Erreur mise à jour : {e}")
 
-                with c_motif_p:
-                    st.markdown("""
-                        <div style="text-align: right; line-height: 1; padding-top: 5px;">
-                            <div style="opacity: 0.05; font-size: 10px; font-weight: bold; margin-bottom: 2px;">SECURITY CHECK COMPLETED</div>
-                            <div style="opacity: 0.15; font-size: 40px; margin-bottom: -10px;">🛡️</div>
-                            <div style="opacity: 0.1; font-size: 50px; margin-bottom: -10px;">🚗</div>
-                            <div style="height: 4px; width: 60px; background: linear-gradient(90deg, transparent, #d32f2f); display: inline-block; opacity: 0.2; border-radius: 2px;"></div>
-                        </div>
-                    """, unsafe_allow_html=True)
-            else: st.error("Aucun permis trouvé.")
+        with c_motif_p:
+            st.markdown("""
+                <div style="text-align: right; line-height: 1; padding-top: 5px;">
+                    <div style="opacity: 0.05; font-size: 10px; font-weight: bold; margin-bottom: 2px;">SECURITY CHECK COMPLETED</div>
+                    <div style="opacity: 0.15; font-size: 40px; margin-bottom: -10px;">🛡️</div>
+                    <div style="opacity: 0.1; font-size: 50px; margin-bottom: -10px;">🚗</div>
+                    <div style="height: 4px; width: 60px; background: linear-gradient(90deg, transparent, #d32f2f); display: inline-block; opacity: 0.2; border-radius: 2px;"></div>
+                </div>
+            """, unsafe_allow_html=True)
+    else: 
+        st.error("Aucun permis trouvé.")
         # --- COLONNE 2 : BANQUE & EMPLOI ---
         with col2:
             b_data = df_b[df_b["Nom Roblox"] == target]
