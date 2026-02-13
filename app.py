@@ -350,17 +350,15 @@ with st.container():
     recherches_publics = df_b[df_b["Statut"].str.upper().str.contains("RECHERCHÉ", na=False)]
     
     if not recherches_publics.empty:
-        st.markdown("### 📢 AVIS DE RECHERCHE EN COURS")
-        # On crée une ligne de petits badges pour chaque personne recherchée
-        cols_wanted = st.columns(len(recherches_publics) if len(recherches_publics) < 4 else 4)
-        for i, (_, crim) in enumerate(recherches_publics.iterrows()):
-            with cols_wanted[i % 4]:
-                st.markdown(f"""
-                    <div style="background-color: #4a0000; padding: 10px; border-radius: 5px; border: 1px solid #ff4b4b; text-align: center;">
-                        <span style="color: #ff4b4b; font-weight: bold; font-size: 0.8em;">⚠️ RECHERCHÉ</span><br>
-                        <span style="color: white; font-weight: bold; font-size: 1em;">{crim['Nom Roblox']}</span>
-                    </div>
-                """, unsafe_allow_html=True)
+        st.markdown("### 📢 AVIS DE RECHERCHE")
+        for _, crim in recherches_publics.iterrows():
+            # Design en ligne : Nom à gauche, Motif à droite
+            st.markdown(f"""
+                <div style="display: flex; justify-content: space-between; align-items: center; background-color: #2b0505; padding: 8px 15px; border-radius: 5px; border-left: 4px solid #ff4b4b; margin-bottom: 5px;">
+                    <div style="color: #ff4b4b; font-weight: bold; font-size: 0.9em;">👤 {crim['Nom Roblox']}</div>
+                    <div style="color: #cccccc; font-size: 0.85em; font-style: italic;">{crim.get('Motif Recherche', 'Motif non spécifié')}</div>
+                </div>
+            """, unsafe_allow_html=True)
         st.divider()
 
     st.markdown("""
