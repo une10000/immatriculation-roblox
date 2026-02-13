@@ -346,19 +346,37 @@ if st.session_state.user_auth is None:
 st.markdown('<div class="header-box"><h2>📂 REGISTRE NATIONAL DES CITOYENS</h2></div>', unsafe_allow_html=True)
 
 with st.container():
-    # --- TABLEAU D'AFFICHAGE PUBLIC DES AVIS DE RECHERCHE ---
+    # --- TABLEAU D'AFFICHAGE PUBLIC DES AVIS DE RECHERCHE (FLASHING & LARGE) ---
     recherches_publics = df_b[df_b["Statut"].str.upper().str.contains("RECHERCHÉ", na=False)]
     
     if not recherches_publics.empty:
-        st.markdown("### 📢 AVIS DE RECHERCHE")
+        st.markdown("<h2 style='color: #ff4b4b; text-align: center; margin-bottom: 20px;'>🚨 AVIS DE RECHERCHE PRIORITAIRES 🚨</h2>", unsafe_allow_html=True)
+        
         for _, crim in recherches_publics.iterrows():
-            # Design en ligne : Nom à gauche, Motif à droite
+            motif = crim.get('Motif Recherche', 'Motif non spécifié').upper()
             st.markdown(f"""
-                <div style="display: flex; justify-content: space-between; align-items: center; background-color: #2b0505; padding: 8px 15px; border-radius: 5px; border-left: 4px solid #ff4b4b; margin-bottom: 5px;">
-                    <div style="color: #ff4b4b; font-weight: bold; font-size: 0.9em;">👤 {crim['Nom Roblox']}</div>
-                    <div style="color: #cccccc; font-size: 0.85em; font-style: italic;">{crim.get('Motif Recherche', 'Motif non spécifié')}</div>
+                <div style="
+                    display: flex; 
+                    justify-content: space-between; 
+                    align-items: center; 
+                    background-color: #4a0000; 
+                    padding: 15px 25px; 
+                    border-radius: 10px; 
+                    border: 3px solid #ff0000; 
+                    margin-bottom: 10px;
+                    animation: blinker_urgent 1.5s linear infinite;
+                ">
+                    <div style="color: white; font-weight: bold; font-size: 1.4em;">👤 {crim['Nom Roblox']}</div>
+                    <div style="color: #ff4b4b; font-weight: 800; font-size: 1.1em; letter-spacing: 1px;">{motif}</div>
                 </div>
+                
+                <style>
+                @keyframes blinker_urgent {{
+                    50% {{ border-color: transparent; background-color: #2b0505; }}
+                }}
+                </style>
             """, unsafe_allow_html=True)
+        st.write("")
         st.divider()
 
     st.markdown("""
