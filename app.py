@@ -461,7 +461,7 @@ with st.container():
         # --- AFFICHAGE DU DOSSIER (COLONNES AVEC FILIGRANES) ---
         col1, col2, col3 = st.columns(3)
 
-        # --- COLONNE 1 : POINTS & PERMIS ---
+# --- COLONNE 1 : POINTS & PERMIS ---
         with col1:
             p_data = df_p[df_p["Nom Roblox"] == target]
             if not p_data.empty:
@@ -471,6 +471,25 @@ with st.container():
                     st.metric("POINTS PERMIS", f"{pts_val}/25")
                     status_color = "green" if pts_val > 0 else "red"
                     st.markdown(f"Statut : <b style='color:{status_color};'>{'VALIDE' if pts_val > 0 else 'SUSPENDU'}</b>", unsafe_allow_html=True)
+                    
+                    # --- BOUTON POUR RENDRE LE PERMIS (STAFF SEULEMENT) ---
+                    if st.session_state.user_auth in ["Staff", "Admin"] and pts_val <= 0:
+                        st.write("") # Petit espacement
+                        if st.button("🔓 Rendre son permis", key=f"restore_p_{target}", use_container_width=True, type="primary"):
+                            try:
+                                # On récupère l'index du citoyen dans df_p
+                                idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
+                                df_p.at[idx_p, "PTS"] = 25
+                                
+                                # Mise à jour Google Sheets
+                                cloud_conn.update(worksheet="Permis", data=df_p)
+                                
+                                st.success("✅ Permis restitué (25 pts) !")
+                                st.cache_data.clear()
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Erreur : {e}")
+
                 with c_motif_p:
                     st.markdown("""
                         <div style="text-align: right; line-height: 1; padding-top: 5px;">
@@ -481,7 +500,6 @@ with st.container():
                         </div>
                     """, unsafe_allow_html=True)
             else: st.error("Aucun permis trouvé.")
-
         # --- COLONNE 2 : BANQUE & EMPLOI ---
         with col2:
             b_data = df_b[df_b["Nom Roblox"] == target]
