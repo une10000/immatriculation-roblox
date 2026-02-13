@@ -475,26 +475,38 @@ with st.container():
                     status_color = "green" if pts_val > 0 else "red"
                     st.markdown(f"Statut : <b style='color:{status_color};'>{'VALIDE' if pts_val > 0 else 'SUSPENDU'}</b>", unsafe_allow_html=True)
                     
-                    # --- BOUTON RENDRE LE PERMIS ---
+                    # --- BOUTON RENDRE LE PERMIS (VERSION BLINDÉE) ---
                     if st.session_state.user_auth in ["Staff", "Admin"] and pts_val <= 0:
                         st.write("") 
                         if st.button("🔓 Rendre son permis", key=f"restore_{target}", use_container_width=True, type="primary"):
                             try:
-                                # Update local et Sheets
-                                idx_target = df_p[df_p["Nom Roblox"] == target].index[0]
-                                df_p.at[idx_target, "PTS"] = 25
-                                cloud_conn.update(worksheet="Permis", data=df_p)
+                                # Nettoyage des noms pour éviter les erreurs d'espaces invisibles
+                                df_p["Nom Roblox"] = df_p["Nom Roblox"].astype(str).str.strip()
+                                target_clean = str(target).strip()
                                 
-                                st.success("✅ Permis rendu !")
-                                st.cache_data.clear()
-                                st.rerun()
+                                # Vérification si le citoyen existe bien dans l'onglet Permis
+                                mask = df_p["Nom Roblox"] == target_clean
+                                
+                                if mask.any():
+                                    idx_target = df_p[mask].index[0]
+                                    df_p.at[idx_target, "PTS"] = 25
+                                    
+                                    # Tentative de mise à jour sur Google Sheets
+                                    cloud_conn.update(worksheet="Permis", data=df_p)
+                                    
+                                    st.success(f"✅ Permis rendu à {target_clean} !")
+                                    st.cache_data.clear()
+                                    st.rerun()
+                                else:
+                                    st.error(f"❌ Impossible de trouver '{target_clean}' dans l'onglet Points Permis.")
+                                    
                             except Exception as e: 
-                                st.error(f"Erreur technique : {e}")
+                                st.error(f"Erreur technique détaillée : {e}")
 
                 with c_motif_p:
                     st.markdown('<div style="opacity: 0.15; font-size: 40px; text-align: right; padding-top:10px;">🛡️</div>', unsafe_allow_html=True)
             else: 
-                st.error("Aucun permis trouvé.")
+                st.error("Aucun permis trouvé pour ce citoyen.")
         # --- COLONNE 2 : BANQUE & EMPLOI ---
         with col2:
             b_data = df_b[df_b["Nom Roblox"] == target]
