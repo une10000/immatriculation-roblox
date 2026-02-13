@@ -344,7 +344,7 @@ if st.session_state.user_auth is None:
 # ======================================================================================
 
 with st.container():
-    # --- TABLEAU D'AFFICHAGE PUBLIC DES AVIS DE RECHERCHE (AU SOMMET & À GAUCHE) ---
+    # --- TABLEAU D'AFFICHAGE PUBLIC DES AVIS DE RECHERCHE ---
     recherches_publics = df_b[df_b["Statut"].str.upper().str.contains("RECHERCHÉ", na=False)]
     
     if not recherches_publics.empty:
@@ -358,26 +358,29 @@ with st.container():
                     flex-direction: column;
                     justify-content: center; 
                     align-items: flex-start; 
-                    background-color: #4a0000; 
+                    background-color: #8B0000; 
                     padding: 12px 20px; 
                     border-radius: 8px; 
                     border: 3px solid #ff0000; 
                     margin-bottom: 10px;
-                    animation: blinker_urgent 1.5s linear infinite;
+                    animation: blinker_universal 2s linear infinite;
+                    box-shadow: 0px 4px 10px rgba(255, 0, 0, 0.2);
                 ">
-                    <div style="color: white; font-weight: bold; font-size: 1.3em; margin-bottom: 2px;">👤 {crim['Nom Roblox']}</div>
-                    <div style="color: #ff4b4b; font-weight: 700; font-size: 0.9em; letter-spacing: 0.5px;">MOTIF : {motif}</div>
+                    <div style="color: #ffffff !important; font-weight: bold; font-size: 1.3em; margin-bottom: 2px; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">👤 {crim['Nom Roblox']}</div>
+                    <div style="color: #ffcccc !important; font-weight: 700; font-size: 0.9em; letter-spacing: 0.5px;">MOTIF : {motif}</div>
                 </div>
                 
                 <style>
-                @keyframes blinker_urgent {{
-                    50% {{ border-color: transparent; background-color: #2b0505; }}
+                @keyframes blinker_universal {{
+                    50% {{ 
+                        background-color: #ff4b4b; 
+                        border-color: #8B0000;
+                    }}
                 }}
                 </style>
             """, unsafe_allow_html=True)
         st.write("")
         st.divider()
-
 # TITRE DU REGISTRE
 st.markdown('<div class="header-box"><h2>📂 REGISTRE NATIONAL DES CITOYENS</h2></div>', unsafe_allow_html=True)
 
