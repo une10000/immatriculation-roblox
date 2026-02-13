@@ -863,39 +863,32 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
         st.divider()
 
         # ======================================================================================
-        # 2. SÉLECTION DU CITOYEN (REGISTRE NATIONAL) - LE CŒUR DE L'ONGLET
+        # 2. LE REGISTRE NATIONAL (SÉLECTION DU CITOYEN - PILOTE TOUT L'ONGLET)
         # ======================================================================================
         st.markdown("### 🗃️ REGISTRE NATIONAL DES CITOYENS")
         
         search_list = ["---"] + sorted(df_b["Nom Roblox"].unique().tolist())
         
-        # On place la sélection tout en haut pour piloter tout l'onglet
-        target = st.selectbox("Sélectionner le citoyen pour intervention :", search_list, key="main_target_agent")
+        # Le nom choisi ici débloque et remplit les modules plus bas
+        target = st.selectbox("👤 Sélectionner le citoyen pour intervention :", search_list, key="main_target_agent")
 
-        # --- OUTIL DE CONSULTATION RAPIDE PAR ID (OPTIONNEL) ---
-        with st.expander("🔎 Consulter une facture par son ID (#)", expanded=False):
-            search_id = st.text_input("Saisir ID Facture", placeholder="Ex: 8182", key="search_ref_agent").replace("#", "")
+        # Optionnel : Recherche rapide d'ID (sans affecter la saisie)
+        with st.expander("🔎 Option : Vérifier les détails d'une facture par ID"):
+            search_id = st.text_input("Entrer l'ID (#)", key="quick_search_id_agent").replace("#", "")
             if search_id:
                 res_f = df_all_f[df_all_f["ID"].astype(str).str.replace(".0", "", regex=False) == search_id.replace(".0", "")]
                 if not res_f.empty:
-                    f_data = res_f.iloc[0]
-                    statut_c = "#2e7d32" if f_data['Statut'] == "PAYÉ" else "#c62828"
-                    st.markdown(f"""
-                        <div style="border: 1px solid #444; padding: 12px; background: #ffffff; color: #111; border-left: 5px solid {statut_c};">
-                            <small>RCRP / ARCHIVE FACTURATION</small><br>
-                            <b>REF :</b> #{str(f_data['ID']).replace('.0', '')} | <b>NOM :</b> {f_data['Cible']}<br>
-                            <b>MONTANT :</b> {f_data['Montant']}$ | <b>STATUT :</b> {f_data['Statut']}
-                        </div>
-                    """, unsafe_allow_html=True)
+                    f_inf = res_f.iloc[0]
+                    st.info(f"Facture #{search_id} | Nom: {f_inf['Cible']} | Montant: {f_inf['Montant']}$ | Statut: {f_inf['Statut']}")
                 else:
-                    st.warning("Aucune facture trouvée pour cet ID.")
+                    st.warning("ID introuvable.")
 
         st.divider()
 
         # ======================================================================================
-        # 3. BUREAU DES MANDATS
+        # 3. BUREAU DES MANDATS (LANCEMENT ET CONSULTATION)
         # ======================================================================================
-        st.markdown("#### ⚖️ Bureau des Mandats & Avis de Recherche")
+        st.markdown("#### ⚖️ Bureau des Mandats")
         recherches_actuels = df_b[df_b["Statut"].str.upper().str.contains("RECHERCHÉ", na=False)]
 
         col_liste, col_ajout = st.columns([1.5, 1])
@@ -907,12 +900,11 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                     for _, criminel in recherches_actuels.iterrows():
                         with st.expander(f"🔴 {criminel['Nom Roblox']}"):
                             st.write(f"**Motif :** {criminel.get('Motif Recherche', 'Non précisé')}")
-                            if st.button("✅ Individu Interpellé (RAS)", key=f"clear_{criminel['Nom Roblox']}", use_container_width=True):
+                            if st.button("✅ Interpellé (RAS)", key=f"clear_{criminel['Nom Roblox']}", use_container_width=True):
                                 idx = df_b[df_b["Nom Roblox"] == criminel["Nom Roblox"]].index[0]
                                 df_b.at[idx, "Statut"] = "RAS"
                                 df_b.at[idx, "Motif Recherche"] = ""
                                 cloud_conn.update(worksheet="Banque", data=df_b)
-                                st.success(f"Mandat levé !")
                                 st.cache_data.clear()
                                 st.rerun()
                 else:
@@ -921,9 +913,9 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
         with col_ajout:
             with st.container(border=True):
                 st.markdown("##### 🚨 Lancer un Mandat")
-                # Ici on peut soit utiliser le "target" sélectionné plus haut, soit en choisir un autre
-                target_crim = st.selectbox("Cible du mandat :", search_list, key="select_crim_agent")
-                motif_crim = st.text_input("Motif du mandat :", placeholder="Braquage...", key="motif_crim_agent")
+                # Pré-remplissage intelligent si un citoyen est sélectionné en haut
+                target_crim = st.selectbox("Citoyen :", search_list, index=search_list.index(target) if target in search_list else 0, key="select_crim_agent")
+                motif_crim = st.text_input("Motif du mandat :", placeholder="Motif de recherche...", key="motif_crim_agent")
                 
                 if st.button("PUBLIER L'AVIS", type="primary", use_container_width=True):
                     if target_crim != "---" and motif_crim:
@@ -931,50 +923,25 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                         df_b.at[idx_c, "Statut"] = "RECHERCHÉ"
                         df_b.at[idx_c, "Motif Recherche"] = motif_crim
                         cloud_conn.update(worksheet="Banque", data=df_b)
+                        st.error(f"🚨 Mandat publié pour {target_crim} !")
                         st.cache_data.clear()
                         st.rerun()
 
         st.divider()
         
         # ======================================================================================
-        # 4. FICHIER DES IMMATRICULATIONS (RECHERCHE PLAQUE)
-        # ======================================================================================
-        st.markdown("#### 🚔 Consultation Fichier Plaque")
-        with st.container(border=True):
-            c1_srv, c2_srv = st.columns([3, 1])
-            with c1_srv:
-                plate_srv = st.text_input("Saisir une plaque", key="plate_srv_agent_unique", label_visibility="collapsed", placeholder="Ex: ABC-123").upper()
-            with c2_srv:
-                search_triggered = st.button("🔎 CHERCHER", key="btn_srv_plate_unique", use_container_width=True)
-
-            if search_triggered and plate_srv:
-                match_srv = df_i[df_i["Numéro de la plaque"] == plate_srv]
-                if not match_srv.empty:
-                    prop_srv = match_srv.iloc[0]["Nom d'utilisateur ROBLOX"]
-                    v_srv = match_srv.iloc[0]["Marque du véhicule"]
-                    citoyen_info = df_b[df_b["Nom Roblox"] == prop_srv]
-                    
-                    if not citoyen_info.empty and "RECHERCHÉ" in str(citoyen_info.iloc[0].get("Statut", "")).upper():
-                        st.error(f"🚨 ALERTE : {prop_srv} est RECHERCHÉ ! (Véhicule: {v_srv})")
-                    else:
-                        st.info(f"📍 Identification : {v_srv} appartient à {prop_srv}.")
-                else:
-                    st.error("❌ Plaque inconnue.")
-
-        st.divider()
-
-        # ======================================================================================
-        # 5. SYSTÈME DE FACTURATION (PILOTÉ PAR LE NOM EN HAUT)
+        # 4. MODULE FACTURATION ET INFRACTIONS (DÉBLOQUÉ PAR LE NOM EN HAUT)
         # ======================================================================================
         if target == "---":
-            st.warning("⚠️ Sélectionnez un citoyen dans le 'Registre National' en haut pour débloquer les outils de facturation.")
+            st.warning("⚠️ Veuillez sélectionner un citoyen dans le Registre (tout en haut) pour accéder aux outils de facturation.")
         else:
-            st.markdown(f"### ⚡ Actions sur le dossier : {target}")
+            st.markdown(f"### ⚡ Actions Dossier : **{target}**")
             col_saisie, col_facture, col_vehicules = st.columns([1.1, 1, 0.9])
 
             with col_saisie:
                 with st.container(border=True):
-                    st.markdown("#### 📝 Saisie")
+                    st.markdown("#### 📝 Créer une Facture")
+                    
                     if st.session_state.user_auth == "Staff":
                         f_emetteur = st.selectbox("Émetteur", ["POLSTA", "Averis"], key="v_emetteur_final")
                     else:
@@ -982,21 +949,32 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                         st.info("Émetteur : RCT")
 
                     f_val = st.number_input("Montant ($)", min_value=0, step=50, key="v_val_final")
+                    
+                    # Logique Points Permis
                     can_pull_points = (st.session_state.user_auth == "Staff" and f_emetteur == "POLSTA")
                     f_pts = st.number_input("Points à retirer", 0, 12, 0, key="v_pts_final", disabled=not can_pull_points)
-                    f_motif = st.text_input("Motif", key="v_mot_final")
                     
+                    f_motif = st.text_input("Motif de l'infraction", key="v_mot_final")
+                    
+                    # Récupération des véhicules de la cible
                     target_veh = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
                     v_list = ["AUCUN / PIÉTON"] + target_veh["Numéro de la plaque"].tolist()
-                    f_plate = st.selectbox("Véhicule concerné", v_list, key="v_plate_final")
+                    f_plate = st.selectbox("Véhicule impliqué", v_list, key="v_plate_final")
                     
-                    # Alerte "WANTED" contextuelle
+                    # Alerte Visuelle Immédiate si le citoyen sélectionné est recherché
                     citoyen_data = df_b[df_b["Nom Roblox"] == target]
                     if not citoyen_data.empty and "RECHERCHÉ" in str(citoyen_data.iloc[0].get("Statut", "")).upper():
-                        st.markdown(f'<div style="background-color:#ff0000; padding:10px; color:white; text-align:center; border-radius:5px;"><b>🚨 INDIVIDU RECHERCHÉ</b></div>', unsafe_allow_html=True)
+                        st.markdown(f"""
+                            <div style="background-color: #ff0000; padding: 10px; border-radius: 5px; text-align: center; border: 2px solid white; margin-bottom: 10px;">
+                                <b style="color: white;">🚨 INDIVIDU RECHERCHÉ 🚨</b>
+                            </div>
+                        """, unsafe_allow_html=True)
                     
-                    if st.button("🚨 ENVOYER FACTURE", use_container_width=True, type="primary"):
-                        if f_motif:
+                    if st.button("🚨 VALIDER ET ENVOYER", use_container_width=True, type="primary"):
+                        if not f_motif:
+                            st.error("Le motif est obligatoire.")
+                        else:
+                            # 1. Mise à jour des points
                             if f_pts > 0 and can_pull_points:
                                 try:
                                     idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
@@ -1004,6 +982,7 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                                     cloud_conn.update(worksheet="Points Permis", data=df_p)
                                 except: pass
 
+                            # 2. Création de la facture
                             import random
                             new_row = {
                                 "ID": random.randint(1000, 9999), 
@@ -1017,7 +996,8 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                             }
                             df_f_updated = pd.concat([df_all_f, pd.DataFrame([new_row])], ignore_index=True)
                             cloud_conn.update(worksheet="Factures", data=df_f_updated)
-                            st.success(f"✅ Facture envoyée !")
+                            
+                            st.success(f"✅ Opération terminée pour {target} !")
                             st.cache_data.clear()
                             st.rerun()
 
@@ -1025,28 +1005,34 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                 st.markdown("#### 📄 Aperçu Ticket")
                 header_ticket = "FACTURE AVERIS" if f_emetteur == "Averis" else "FACTURE OFFICIELLE"
                 st.markdown(f"""
-                <div style="border: 2px solid black; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; font-size: 0.8em;">
-                    <center><b>{header_ticket}</b></center><hr>
-                    <b>NOM :</b> {target}<br>
-                    <b>MOTIF :</b> {f_motif.upper() if f_motif else '...'}<br>
-                    <b>TOTAL :</b> {f_val}$<br>
-                    <b>POINTS :</b> -{f_pts if can_pull_points else 0}
+                <div style="border: 2px solid black; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; line-height: 1.2; font-size: 0.85em;">
+                    <center><b>{header_ticket}</b><br><small>SÉCURITÉ NATIONALE</small></center>
+                    <hr style="border-top: 1px solid #000;">
+                    <b>DATE :</b> {datetime.now().strftime('%d/%m/%Y')}<br>
+                    <b>CITOYEN :</b> {target}<br>
+                    <b>INFRACTION :</b> {f_motif.upper() if f_motif else '...'}<br>
+                    <b>PLAQUE :</b> {f_plate}<br>
+                    <b>MONTANT :</b> {f_val}$
+                    <hr style="border-top: 1px solid #000;">
+                    <div style="text-align: center; font-weight: bold;">
+                        POINTS : -{f_pts if can_pull_points else 0}
+                    </div>
                 </div>
                 """, unsafe_allow_html=True)
 
             with col_vehicules:
-                st.markdown("#### 🚗 Garage")
+                st.markdown("#### 🚗 Garage de la Cible")
                 if not target_veh.empty:
                     for _, veh in target_veh.iterrows():
                         st.markdown(f"""
-                        <div style="border: 1px solid black; padding: 8px; background: #f9f9f9; color: black; margin-bottom: 5px; font-size: 0.75em;">
+                        <div style="border: 1px solid black; padding: 8px; background: #fff; color: black; font-family: 'Courier New', monospace; margin-bottom: 8px; font-size: 0.8em;">
                             <b>{veh['Marque du véhicule']}</b><br>
-                            Plaque : {veh['Numéro de la plaque']}<br>
-                            Assu : {veh['Assurance']}
+                            PLAQUE : {veh['Numéro de la plaque']}<br>
+                            ASSUR. : {veh['Assurance']}
                         </div>
                         """, unsafe_allow_html=True)
                 else:
-                    st.write("Aucun véhicule.")
+                    st.info("Aucun véhicule trouvé.")
 # --- ONGLET 3 : ADMINISTRATION (STAFF ONLY) ---
 if st.session_state.user_auth == "Staff":
     with tabs[2]:
