@@ -378,7 +378,7 @@ with st.container():
         st.write("")
         st.divider()
 
-# TITRE DU REGISTRE (Maintenant placé après les avis de recherche)
+# TITRE DU REGISTRE
 st.markdown('<div class="header-box"><h2>📂 REGISTRE NATIONAL DES CITOYENS</h2></div>', unsafe_allow_html=True)
 
 with st.container():
@@ -392,20 +392,43 @@ with st.container():
     target = st.selectbox("Sélectionner un citoyen :", search_list, key="main_selector")
     
     if target != "---":
-        # --- ALERTE SÉCURITÉ (MANDAT D'ARRÊT) ---
+        # --- 1. ALERTE SÉCURITÉ (MANDAT D'ARRÊT) ---
         citoyen_info = df_b[df_b["Nom Roblox"] == target]
         if not citoyen_info.empty:
             status_check = str(citoyen_info.iloc[0].get("Statut", "RAS")).upper()
             if "RECHERCHÉ" in status_check or "WANTED" in status_check:
                 motif_web = str(citoyen_info.iloc[0].get("Motif Recherche", "Non spécifié"))
                 st.markdown(f"""
-                    <div style="background-color: #d32f2f; padding: 20px; border-radius: 10px; border: 4px solid #ff0000; color: white; text-align: center; margin-bottom: 20px;">
+                    <div style="background-color: #d32f2f; padding: 20px; border-radius: 10px; border: 4px solid #ff0000; color: white; text-align: center; margin-bottom: 10px;">
                         <h2 style="margin:0; color: white;">🚨 SIGNALEMENT : INDIVIDU RECHERCHÉ 🚨</h2>
                         <p style="font-size: 1.2em; margin: 10px 0;">L'individu <b>{target}</b> fait l'objet d'un mandat d'arrêt actif.</p>
                         <hr style="border-top: 1px solid white;">
                         <p style="font-size: 1.1em;"><b>MOTIF DU MANDAT :</b> {motif_web.upper()}</p>
                     </div>
                 """, unsafe_allow_html=True)
+
+        # --- 2. ALERTE ORANGE (DETTE EN RETARD) ---
+        # On vérifie les factures en retard spécifiquement pour ce profil
+        maintenant = datetime.now()
+        df_f_check = cloud_conn.read(worksheet="Factures").fillna("")
+        dettes_citoyen = df_f_check[(df_f_check["Cible"] == target) & (df_f_check["Statut"] == "EN ATTENTE")]
+        
+        has_delay = False
+        for _, r_fact in dettes_citoyen.iterrows():
+            try:
+                limite_f = datetime.strptime(str(r_fact['Date_Limite']), "%d/%m/%Y %H:%M:%S")
+                if maintenant > limite_f:
+                    has_delay = True
+                    break
+            except: pass
+
+        if has_delay:
+            st.markdown(f"""
+                <div style="background-color: #E67E22; padding: 10px; border-radius: 8px; text-align: center; border: 2px solid white; animation: blink_orange 2s linear infinite; margin-bottom: 20px;">
+                    <b style="color: white;">⚠️ ATTENTION : FACTURE(S) EN RETARD DE PAIEMENT</b>
+                </div>
+                <style> @keyframes blink_orange {{ 50% {{ opacity: 0.7; }} }} </style>
+            """, unsafe_allow_html=True)
 
         # --- RECHERCHE PAR PLAQUE ---
         with st.expander("🔍 RECHERCHE D'IDENTITÉ PAR PLAQUE (Coût : 10$)", expanded=False):
