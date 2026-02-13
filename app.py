@@ -864,10 +864,33 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
         with st.container(border=True):
             st.markdown("##### 🔎 Recherche Rapide de Facture")
             f_search_id = st.text_input("Entrer le N° de facture (#)", key="agent_f_search", placeholder="Ex: 4502").replace("#", "")
+            
             if f_search_id:
+                # Filtrage sur l'ID
                 res_f = df_all_f[df_all_f["ID"].astype(str).str.contains(f_search_id, na=False)]
+                
                 if not res_f.empty:
                     f_dat = res_f.iloc[0]
+                    statut_actuel = str(f_dat['Statut']).upper()
+
+                    # --- ALERTE VISUELLE SELON LE STATUT ---
+                    if "ATTENTE" in statut_actuel:
+                        st.markdown("""
+                            <div style="background-color: #E67E22; padding: 12px; border-radius: 8px; text-align: center; border: 2px solid white; animation: blinker_status 1.5s linear infinite; margin-bottom: 15px;">
+                                <b style="color: white; font-size: 1.1em;">⚠️ FACTURE NON PAYÉE (EN ATTENTE)</b>
+                            </div>
+                            <style>
+                            @keyframes blinker_status { 50% { opacity: 0.4; } }
+                            </style>
+                        """, unsafe_allow_html=True)
+                    elif "PAY" in statut_actuel:
+                        st.markdown("""
+                            <div style="background-color: #27ae60; padding: 12px; border-radius: 8px; text-align: center; border: 2px solid white; margin-bottom: 15px;">
+                                <b style="color: white; font-size: 1.1em;">✅ FACTURE EN RÈGLE (PAYÉE)</b>
+                            </div>
+                        """, unsafe_allow_html=True)
+
+                    # --- AFFICHAGE DES DÉTAILS ---
                     col_res1, col_res2 = st.columns(2)
                     with col_res1:
                         st.info(f"**Cible :** {f_dat['Cible']}\n\n**Montant :** {f_dat['Montant']}$\n\n**Statut :** {f_dat['Statut']}")
