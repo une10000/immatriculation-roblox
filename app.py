@@ -356,6 +356,16 @@ with st.container():
     target = st.selectbox("Sélectionner un citoyen :", search_list, key="main_selector")
     
     if target != "---":
+        # --- PETIT BANDEAU AVIS DE RECHERCHE (DISCRET MAIS CLAIR) ---
+        citoyen_status = df_b[df_b["Nom Roblox"] == target]
+        if not citoyen_status.empty and "RECHERCHÉ" in str(citoyen_status.iloc[0].get("Statut", "")).upper():
+            motif_crim = citoyen_status.iloc[0].get("Motif Recherche", "Non précisé")
+            st.markdown(f"""
+                <div style="background-color: #721c24; padding: 10px; border-radius: 5px; border-left: 5px solid #f5c6cb; margin-bottom: 15px;">
+                    <span style="color: #f8d7da; font-weight: bold;">⚠️ AVIS DE RECHERCHE EN COURS :</span> 
+                    <span style="color: white; font-style: italic;">{motif_crim.upper()}</span>
+                </div>
+            """, unsafe_allow_html=True)
         # --- ALERTE SÉCURITÉ (MANDAT D'ARRÊT) ---
         citoyen_info = df_b[df_b["Nom Roblox"] == target]
         if not citoyen_info.empty:
