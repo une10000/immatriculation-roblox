@@ -974,16 +974,20 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                     v_list = ["AUCUN / PIÉTON"] + target_veh["Numéro de la plaque"].tolist()
                     f_plate = st.selectbox("Véhicule concerné", v_list, key="v_plate_final")
                     
-                    # --- ALERTE FLASHANTE (WANTED) ---
+                    # --- ALERTE FLASHANTE (WANTED) AVEC MOTIF ---
                     citoyen_check = df_b[df_b["Nom Roblox"] == target]
                     if not citoyen_check.empty and "RECHERCHÉ" in str(citoyen_check.iloc[0].get("Statut", "")).upper():
-                        st.markdown("""
+                        # On récupère le motif dans la base
+                        motif_alerte = citoyen_check.iloc[0].get("Motif Recherche", "Non précisé")
+                        
+                        st.markdown(f"""
                             <div style="background-color: #FF0000; padding: 15px; border-radius: 10px; text-align: center; border: 4px solid #FFF; animation: blinker 1s linear infinite;">
                                 <h2 style="color: white; margin: 0; font-weight: bold;">🚨 INDIVIDU RECHERCHÉ 🚨</h2>
+                                <h4 style="color: white; margin: 5px 0;">MOTIF : {motif_alerte.upper()}</h4>
                                 <small style="color: white;">PROCÉDER À L'INTERPELLATION IMMÉDIATE</small>
                             </div>
                             <style>
-                            @keyframes blinker { 50% { opacity: 0; } }
+                            @keyframes blinker {{ 50% {{ opacity: 0; }} }}
                             </style>
                         """, unsafe_allow_html=True)
                         st.write("")
