@@ -1387,7 +1387,7 @@ if st.session_state.user_auth == "Staff":
             st.error(f"Erreur Pointages : {e}")
 
         st.divider()
-# --- SECTION B : CALCULATEUR D'HEURES (LOOK TERMINAL DE PAIE) ---
+# --- SECTION B : CALCULATEUR D'HEURES (INTERFACE CLONE TERMINAL OPTIMISÉE) ---
 st.subheader("📊 Cumul des Heures par Agent")
 
 liste_agents = sorted(df_b["Nom Roblox"].unique().tolist())
@@ -1411,7 +1411,7 @@ if agent_cible:
     user_data = df_b[df_b["Nom Roblox"] == agent_cible]
     user_jobs_list = [j.strip() for j in str(user_data["Emploiement"].values[0]).split("/")] if not user_data.empty else []
     
-    # Primes (Même barème visuel)
+    # Primes
     primes_detail_list = []
     calcul_primes = 0
     PRIME_JOB = {"Agent RCT": 2000, "Averis": 2000, "Police": 3000, "Staff": 4000, "Service Public": 1000}
@@ -1421,7 +1421,7 @@ if agent_cible:
         if p_max > 0:
             if job == "Agent RCT" and min_rct > 0:
                 p_calc = int(p_max * min(min_rct/1200, 1.0))
-                primes_detail_list.append(f"• **Bonus RCT** : +{p_calc}$ (Prorata)")
+                primes_detail_list.append(f"• **Bonus RCT** : +{p_calc}$")
                 calcul_primes += p_calc
             elif job == "Police" and min_police > 0:
                 p_calc = int(p_max * min(min_police/1200, 1.0))
@@ -1431,12 +1431,12 @@ if agent_cible:
                 primes_detail_list.append(f"• **{job}** : +{p_max}$")
                 calcul_primes += p_max
 
-    total_brut = 15000 + calcul_primes
+    # Calcul final incluant le salaire de départ de 15k
+    total_avec_base = 15000 + calcul_primes
 
-    # --- 2. INTERFACE (CLONE DU TERMINAL DE PAIE) ---
+    # --- 2. INTERFACE (STYLE TERMINAL DE PAIE) ---
     st.markdown(f"#### 📊 Fiche de Paie Estimée : {agent_cible}")
     
-    # Utilisation du container avec bordure comme dans le terminal
     with st.container(border=True):
         col_rev1, col_rev2 = st.columns(2)
 
@@ -1446,7 +1446,7 @@ if agent_cible:
                 st.write(f"• Salaire de Base : 15,000$")
                 if primes_detail_list:
                     for p in primes_detail_list: st.write(p)
-                st.markdown(f"**TOTAL BRUT : {int(total_brut)}$**")
+                st.markdown(f"**TOTAL BRUT : {int(total_avec_base)}$**")
 
         with col_rev2:
             with st.container(border=True):
@@ -1458,17 +1458,17 @@ if agent_cible:
 
         st.divider()
         
-        # Section des Metrics en bas (Clone exact des colonnes)
-        c1, c2, c3 = st.columns(3)
+        # Section des Metrics avec seulement 2 colonnes maintenant
+        c1, c2 = st.columns(2)
         
-        # Solde actuel récupéré pour le visuel
+        # Solde actuel
         solde_actuel = float(str(user_data["Solde"].values[0]).replace('$', '').replace(',', '')) if not user_data.empty else 0
         
         c1.metric("Solde Actuel", f"{int(solde_actuel)}$")
-        c2.metric("Gain Estimé", f"+{int(total_brut - 15000)}$", delta="Hors fixe 15k")
-        c3.metric("Total à Verser", f"{int(total_brut)}$", delta=f"+{int(total_brut)}$")
+        # Le "Gain Estimé" affiche maintenant le total final (Base + Primes)
+        c2.metric("Gain Estimé (Total)", f"+{int(total_avec_base)}$", delta=f"Inclut base 15k")
 
-    if total_brut == 15000 and (min_police + min_rct) == 0:
+    if total_avec_base == 15000 and (min_police + min_rct) == 0:
         st.info("ℹ️ Cet agent n'a pas encore de temps de service validé cette semaine.")
 # --- SECTION 2 : SYSTÈME DE PAIE & ASSURANCES AUTOMATIQUES ---
 
