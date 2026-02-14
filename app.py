@@ -1059,27 +1059,32 @@ else:
         with st.container(border=True):
             st.markdown("#### 📝 Saisie")
             
-            # --- AUTHENTIFICATION ---
+# --- AUTHENTIFICATION (VERSION FORCEE) ---
             agent_code_saisi = st.text_input("🔑 Entrez votre CODE AGENT :", type="password", key="auth_agent_code")
             
             agent_identifie = None
             
-            # Vérification sécurisée de l'existence de la colonne
             if "Code" not in df_b.columns:
-                st.error("❌ Erreur : Colonne 'Code' introuvable dans Sheets. Vérifie le nom en cellule I1.")
+                st.error("❌ La colonne 'Code' n'est pas détectée. (Vérifie l'onglet Banque)")
             elif agent_code_saisi:
-                # On compare les codes en texte pur sans espaces
-                df_b["Code"] = df_b["Code"].fillna("").astype(str).str.strip()
-                res_agent = df_b[df_b["Code"] == agent_code_saisi.strip()]
+                # LA MAGIE : On nettoie le code de la base pour virer les .0 et les espaces
+                def clean_code(x):
+                    txt = str(x).strip().split('.')[0] # On garde que ce qu'il y a avant le point
+                    return txt
+
+                df_b["Code_Clean"] = df_b["Code"].apply(clean_code)
+                saisie_propre = str(agent_code_saisi).strip()
+                
+                res_agent = df_b[df_b["Code_Clean"] == saisie_propre]
                 
                 if not res_agent.empty:
                     agent_identifie = res_agent.iloc[0]["Nom Roblox"]
                     st.success(f"Agent : **{agent_identifie}** ✅")
                 else:
-                    st.error("❌ Code inconnu")
-
-            st.divider()
-
+                    # Petit debug discret pour t'aider à voir ce que l'IA lit
+                    codes_dispo = df_b["Code_Clean"].unique().tolist()
+                    st.error(f"❌ Code inconnu.")
+                    # st.write(f"DEBUG - Codes lus : {codes_dispo}") # Enlève le '#' au début de cette ligne si ça rate encore pour voir la liste
             # --- RÉGLAGES FACTURE ---
             if st.session_state.user_auth == "Staff":
                 f_emetteur = st.selectbox("Entité Émettrice", ["POLSTA", "Averis"], key="v_emetteur_final")
