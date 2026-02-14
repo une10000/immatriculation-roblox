@@ -998,31 +998,33 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                                 except Exception as e:
                                     st.error("Erreur de synchronisation Sheets.")
 
-        # --- BOUTON FIN ---
+# --- BOUTON FIN ---
                         with btn_out:
                             if st.button("🛑 FIN", use_container_width=True, disabled=not en_service):
                                 try:
-                                    with st.spinner("Enregistrement de la fin de service..."):
+                                    with st.spinner("Enregistrement..."):
                                         df_pnt = cloud_conn.read(worksheet="Pointage")
                                         new_log = pd.DataFrame([{
                                             "Nom": agent_identifie,
                                             "Service": "",
                                             "Action": "OUT",
-                                            "Horodotage": "", # On garde ta colonne avec la faute "o"
+                                            "Horodotage": "",
                                             "Job": job_actuel,
                                             "Horodatage": now_ch.strftime("%d/%m/%Y %H:%M:%S")
                                         }])
                                         df_updated = pd.concat([df_pnt, new_log], ignore_index=True)
                                         cloud_conn.update(worksheet="Pointage", data=df_updated)
                                     
-                                    # Message de confirmation visuel
-                                    st.success(f"✅ Service terminé ! À bientôt {agent_identifie}.")
+                                    # --- REMISE À ZÉRO ---
+                                    # On vide le champ de saisie du code dans le session_state
+                                    st.session_state.pnt_compact_auth = "" 
+                                    
+                                    st.success(f"✅ Service terminé ! Session réinitialisée.")
                                     st.balloons()
                                     
-                                    # Petite pause pour laisser lire, puis refresh (remise à zéro)
                                     import time
                                     time.sleep(2)
-                                    st.rerun()
+                                    st.rerun() # Le refresh remettra les métriques à --:--
                                     
                                 except Exception as e:
                                     st.error("Erreur de synchronisation Sheets.")
