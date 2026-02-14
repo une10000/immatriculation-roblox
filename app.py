@@ -1399,7 +1399,6 @@ if agent_cible:
     
     total_min_global = 0
     total_argent_horaire = 0
-    details_metiers_html = ""
 
     # RÉINITIALISATION ET CALCUL
     for _, row in user_data_h.iterrows():
@@ -1431,8 +1430,9 @@ if agent_cible:
     h_disp, m_disp = int(total_min_global // 60), int(total_min_global % 60)
     total_final = total_argent_horaire + p_staff + p_averis
 
+    # --- LE CORRECTIF EST ICI : AJOUT DE UNSAFE_ALLOW_HTML ---
     st.markdown(f"""
-    <div style="background-color: #1e1e1e; padding: 20px; border-radius: 10px; border: 1px solid #333;">
+    <div style="background-color: #1e1e1e; padding: 20px; border-radius: 10px; border: 1px solid #333; color: white;">
         <div style="text-align: center; border-bottom: 1px solid #444; padding-bottom: 10px; margin-bottom: 15px;">
             <h3 style="margin:0; color: #f1c40f;">RÉCAPITULATIF DE SERVICE</h3>
             <span style="color: #888;">Agent : {agent_cible}</span>
