@@ -918,7 +918,7 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
             col_code, col_infos = st.columns([1, 2])
             with col_code:
                 agent_code_saisi = st.text_input("🔑 Code Agent", type="password", key="pnt_compact_auth")
-                job_actuel = st.selectbox("🎭 Service", ["POLSTA", "Averis"], key="pnt_job_staff") if st.session_state.user_auth == "Staff" else "RCT"
+                job_actuel = st.selectbox("🎭 Service", ["POLSTA"], key="pnt_job_staff") if st.session_state.user_auth == "Staff" else "RCT"
             
             if agent_code_saisi:
                 # Identification Agent
