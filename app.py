@@ -986,19 +986,22 @@ with tabs[1]:
                             st.rerun()
                 else: 
                     st.success("✅ Aucun mandat actif.")
-
-        with col_m2:
+                    
+with col_m2:
             with st.container(border=True):
-                p_search = st.text_input("🔦 Scanner Plaque", key="plate_ui").upper()
+                # Utilisation de .strip() pour éviter les erreurs d'espaces avant/après
+                p_search = st.text_input("🔦 Scanner Plaque", key="plate_ui").upper().strip()
+                
                 if p_search:
-                    m = df_i[df_i["Numéro de la plaque"] == p_search]
+                    # On s'assure que la colonne de référence est aussi propre pour la comparaison
+                    m = df_i[df_i["Numéro de la plaque"].astype(str).str.contains(p_search, na=False)]
+                    
                     if not m.empty:
                         nom_proprio = m.iloc[0]["Nom d'utilisateur ROBLOX"]
                         modele_vhc = m.iloc[0]["Marque du véhicule"]
-                        st.info(f"**Proprio:** {nom_proprio}\n\n**Modèle:** {modele_vhc}")
+                        st.info(f"👤 **Proprio :** {nom_proprio}\n\n🚘 **Modèle :** {modele_vhc}")
                     else: 
-                        st.error("Plaque inconnue")
-
+                        st.error("❌ Plaque inconnue")
         # --- 3. INTERVENTION SUR CITOYEN ---
         st.divider()
         if target == "---":
