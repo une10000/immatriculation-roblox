@@ -1372,134 +1372,186 @@ if st.session_state.user_auth == "Staff":
                     
                     st.success(f"✅ Dossier créé pour {new_name} (Solde: 15k | Date: {today_str})")
                     st.cache_data.clear(); time.sleep(1); st.rerun()
-# --- SECTION 2 : TERMINAL DE PAIE (VERSION FINALE ET SÉCURISÉE) ---
-        st.divider()
-        st.markdown("### 🧧 Terminal de Paie Nationale")
+# --- SECTION 2 : SYSTÈME DE PAIE & ASSURANCES AUTOMATIQUES ---
+
+if st.session_state.get("user_auth") == "Staff":
+    st.divider()
+    st.markdown("### 🧧 Terminal de Paie Nationale")
+    
+    with st.container(border=True):
+        options_paie = sorted(df_b["Nom Roblox"].unique().tolist()) if not df_b.empty else []
+        target_paie = st.selectbox("Sélectionner le bénéficiaire :", options_paie, key="paie_auto_target")
         
-        with st.container(border=True):
-            options_paie = sorted(df_b["Nom Roblox"].unique().tolist()) if not df_b.empty else []
-            target_paie = st.selectbox("Sélectionner le bénéficiaire :", options_paie, key="paie_main")
-
-            if target_paie:
-                # 1. Récupération des données
-                user_paie_data = df_b[df_b["Nom Roblox"] == target_paie]
-                user_p_data = df_p[df_p["Nom Roblox"] == target_paie]
-                
-                u_jobs = [j.strip() for j in str(user_paie_data["Emploiement"].values[0]).split("/")]
-                solde_actuel = float(str(user_paie_data["Solde"].values[0]).replace('$', '').replace(',', ''))
-                points_permis = int(user_p_data["PTS"].values[0]) if not user_p_data.empty else 0
-                
-                # 2. Check des services en attente (Sécurité)
-                en_attente = df_admin[(df_admin["nom"] == target_paie) & (df_admin["statut"] == "à valider")]
-                if not en_attente.empty:
-                    st.warning(f"⚠️ Attention : {len(en_attente)} service(s) sont encore en attente de validation pour cet agent.")
-
-                # 3. Calcul du Temps (Uniquement les validés)
-                min_rct, min_police = 0, 0
-                user_logs = df_admin[(df_admin["nom"] == target_paie) & (df_admin["statut"] == "Validé")]
-                
-                for _, row in user_logs.iterrows():
-                    try:
-                        t1 = datetime.strptime(str(row["début"]), "%d/%m/%Y %H:%M:%S")
-                        t2 = datetime.strptime(str(row["fin"]), "%d/%m/%Y %H:%M:%S")
-                        diff = (t2 - t1).total_seconds() / 60
-                        if "RCT" in str(row["job"]).upper(): min_rct += diff
-                        elif "POL" in str(row["job"]).upper(): min_police += diff
-                    except: continue
-
-                # 4. Paramètres de Paie
-                TEMPS_REQUIS_MIN = 1200 # 20h
-                PRIME_BASE = {"Agent RCT": 2000, "Averis": 2000, "Police": 3000, "Staff": 4000, "Service Public": 1000}
-                
-                # 5. Calcul des Prélèvements (Infractions)
-                mes_v = df_i[df_i["Nom d'utilisateur ROBLOX"] == target_paie]
-                nb_v = len(mes_v)
-                c_rct = len(mes_v[mes_v["Assurance"].str.contains("RCT", na=False, case=False)])
-                c_ave = len(mes_v[mes_v["Assurance"].str.contains("AVERIS", na=False, case=False)])
-                c_std = nb_v - c_rct - c_ave
-                v_rct, v_ave, v_std = (300 if c_rct >= 3 else c_rct * 150), c_ave * 130, c_std * 150
-                
+        if target_paie:
+            # 1. Analyse du dossier
+            user_data = df_b[df_b["Nom Roblox"] == target_paie]
+            user_jobs_raw = user_data["Emploiement"].values[0]
+            user_jobs_list = [j.strip() for j in str(user_jobs_raw).split("/")]
+            solde_actuel = float(str(user_data["Solde"].values[0]).replace('$', '').replace(',', ''))
+            
+            # --- AJOUT : CALCUL DU TEMPS DE SERVICE (CLOCK) ---
+            min_rct, min_police = 0, 0
+            user_logs = df_admin[(df_admin["nom"] == target_paie) & (df_admin["statut"] == "Validé")]
+            for _, row in user_logs.iterrows():
                 try:
-                    date_arr = pd.to_datetime(user_paie_data["Date d'arrivée"].values[0], dayfirst=True)
-                    is_jc = (datetime.now() - date_arr).days < 30
-                    taxe_jc = (nb_v * 50) if is_jc else 0
-                except: is_jc, taxe_jc = False, 0
+                    t1 = datetime.strptime(str(row["début"]), "%d/%m/%Y %H:%M:%S")
+                    t2 = datetime.strptime(str(row["fin"]), "%d/%m/%Y %H:%M:%S")
+                    diff = (t2 - t1).total_seconds() / 60
+                    if "RCT" in str(row["job"]).upper(): min_rct += diff
+                    elif "POL" in str(row["job"]).upper(): min_police += diff
+                except: continue
 
-                # 6. Synthèse Financière
-                total_brut = 0
-                total_prelev = v_rct + v_ave + v_std + taxe_jc
-                
-                st.markdown(f"#### 📊 Fiche : {target_paie} | 🎫 Permis : {points_permis} PTS")
-                col_f1, col_f2 = st.columns(2)
-                
-                with col_f1:
-                    st.markdown("**💰 Détail du Brut**")
-                    for job in u_jobs:
-                        p_max = PRIME_BASE.get(job, 0)
-                        if job == "Agent RCT" and min_rct > 0:
-                            p_calc = int(p_max * min(min_rct/1200, 1.0))
-                            g_min = int(min_rct * 10)
-                            st.write(f"• Bonus Grade RCT : +{p_calc}$")
-                            st.write(f"• Temps de Service : +{g_min}$")
-                            total_brut += (p_calc + g_min)
-                        elif job == "Police" and min_police > 0:
-                            p_calc = int(p_max * min(min_police/1200, 1.0))
-                            g_min = int(min_police * 10)
-                            st.write(f"• Prime Police : +{p_calc}$")
-                            st.write(f"• Temps de Service : +{g_min}$")
-                            total_brut += (p_calc + g_min)
-                        elif p_max > 0 and job not in ["Agent RCT", "Police"]:
-                            st.write(f"• Forfait {job} : +{p_max}$")
-                            total_brut += p_max
-                    st.markdown(f"**BRUT TOTAL : {int(total_brut)}$**")
+            # 2. Salaire et Primes
+            primes_detail_list = []
+            calcul_primes = 0
+            TEMPS_REQUIS_MIN = 1200 # 20h pour bonus plein
+            
+            # Barème des primes
+            PRIME_JOB = {"Agent RCT": 2000, "Averis": 2000, "Police": 3000, "Staff": 4000, "Service Public": 1000}
+            
+            for job in user_jobs_list:
+                p_max = PRIME_JOB.get(job, 0)
+                if p_max > 0:
+                    # Logique spéciale Prorata pour RCT et Police
+                    if job == "Agent RCT" and min_rct > 0:
+                        p_calc = int(p_max * min(min_rct/TEMPS_REQUIS_MIN, 1.0))
+                        g_min = int(min_rct * 10)
+                        primes_detail_list.append(f"• **Bonus RCT** : +{p_calc}$ (Prorata)")
+                        primes_detail_list.append(f"• **Temps RCT** : +{g_min}$ ({int(min_rct)} min)")
+                        calcul_primes += (p_calc + g_min)
+                    elif job == "Police" and min_police > 0:
+                        p_calc = int(p_max * min(min_police/1200, 1.0))
+                        g_min = int(min_police * 10)
+                        primes_detail_list.append(f"• **Prime Police** : +{p_calc}$")
+                        primes_detail_list.append(f"• **Temps Police** : +{g_min}$")
+                        calcul_primes += (p_calc + g_min)
+                    elif job not in ["Agent RCT", "Police"]:
+                        primes_detail_list.append(f"• **{job}** : +{p_max}$")
+                        calcul_primes += p_max
 
-                with col_f2:
-                    st.markdown("**📉 Retenues**")
-                    if v_rct > 0: st.write(f"• Assu. RCT (Frais) : -{v_rct}$")
-                    if v_ave > 0: st.write(f"• Assu. Averis (Frais) : -{v_ave}$")
-                    if v_std > 0: st.write(f"• Assu. Standard : -{v_std}$")
-                    if taxe_jc > 0: st.write(f"• Taxe J. Citoyen : -{taxe_jc}$")
-                    st.markdown(f"**TOTAL PRÉLÈV. : -{int(total_prelev)}$**")
+            total_brut = 15000 + calcul_primes # Ton salaire de base 15k est ici
+            
+            # 3. Calcul précis des Assurances
+            mes_vehicules = df_i[df_i["Nom d'utilisateur ROBLOX"] == target_paie]
+            nb_vehicules = len(mes_vehicules)
+            count_rct, argent_pour_averis, argent_standard = 0, 0, 0
+            
+            for index, vhc in mes_vehicules.iterrows():
+                choix = str(vhc["Assurance"]).upper()
+                if "RCT" in choix: count_rct += 1
+                elif "AVERIS" in choix: argent_pour_averis += 130
+                else: argent_standard += 150
+            
+            if count_rct >= 3:
+                argent_pour_rct, label_rct_display = 300, "Part RCT (Offre Trio 🎁)"
+            else:
+                argent_pour_rct, label_rct_display = count_rct * 150, "Part RCT"
 
-                st.divider()
-                
-                net_final = total_brut - total_prelev
-                solde_apres = solde_actuel + net_final
+            total_assurance = argent_pour_rct + argent_pour_averis + argent_standard
+            
+            # 4. Taxes Jeune Conducteur
+            try:
+                date_arr = pd.to_datetime(user_data["Date d'arrivée"].values[0], dayfirst=True)
+                anciennete_jours = (datetime.now() - date_arr).days
+            except: anciennete_jours = 99
+            
+            est_jeune_conducteur = anciennete_jours < 30
+            taxe_jc_total = (nb_vehicules * 50) if est_jeune_conducteur else 0
+            
+            total_prelevement = total_assurance + taxe_jc_total
+            total_net = total_brut - total_prelevement
+            solde_final = solde_actuel + total_net
+            
+            # --- AFFICHAGE ---
+            st.markdown(f"#### 📊 Fiche de Paie : {target_paie}")
+            col_rev1, col_rev2 = st.columns(2)
 
-                c_m1, c_m2, c_m3 = st.columns(3)
-                c_m1.metric("BRUT", f"{int(total_brut)}$")
-                c_m2.metric("NET À VERSER", f"{int(net_final)}$", delta=f"-{int(total_prelev)}$", delta_color="inverse")
-                c_m3.metric("SOLDE FINAL", f"{int(solde_apres)}$")
+            with col_rev1:
+                with st.container(border=True):
+                    st.write("**💰 REVENUS (BRUT)**")
+                    st.write(f"• Salaire de Base : 15,000$")
+                    if primes_detail_list:
+                        for p in primes_detail_list: st.write(p)
+                    st.markdown(f"**TOTAL BRUT : {int(total_brut)}$**")
 
-                # 7. Bouton de Versement avec Action de Nettoyage
-                if st.button(f"🧧 CONFIRMER LE VERSEMENT POUR {target_paie.upper()}", use_container_width=True, type="primary"):
-                    def cl(v): return float(str(v).replace('$', '').replace(',', '').strip())
-                    
-                    # --- MOUVEMENTS BANCAIRES ---
-                    # Transfert Patron RCT
-                    idx_r = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
-                    gain_rct_final = (int(2000 * min(min_rct/1200, 1)) if "Agent RCT" in u_jobs else 0) + (min_rct * 10)
-                    df_b.at[idx_r, "Solde"] = round(cl(df_b.at[idx_r, "Solde"]) - gain_rct_final + v_rct, 2)
-                    
-                    # Transfert Patron Averis (Moune2010)
-                    idx_m = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
-                    p_ave = 2000 if "Averis" in u_jobs else 0
-                    df_b.at[idx_m, "Solde"] = round(cl(df_b.at[idx_m, "Solde"]) - p_ave + v_ave, 2)
-                    
-                    # Update Agent
-                    df_b.loc[df_b["Nom Roblox"] == target_paie, "Solde"] = round(solde_apres, 2)
-                    
-                    # --- NETTOYAGE (Optionnel) ---
-                    # Marquer les logs comme "Payés" pour ne pas les repayer
-                    df_admin.loc[(df_admin["nom"] == target_paie) & (df_admin["statut"] == "Validé"), "statut"] = "Archivé / Payé"
-                    
-                    # Sauvegardes
-                    cloud_conn.update(worksheet="Banque", data=df_b)
-                    cloud_conn.update(worksheet="Clock", data=df_admin)
-                    
-                    st.success(f"✅ Paie traitée ! {int(net_final)}$ versés. Logs archivés.")
-                    st.balloons()
-                    st.cache_data.clear(); time.sleep(1); st.rerun()
+            with col_rev2:
+                with st.container(border=True):
+                    st.write("**📉 PRÉLÈVEMENTS**")
+                    if argent_pour_rct > 0: st.write(f"• {label_rct_display} : -{argent_pour_rct}$")
+                    if argent_pour_averis > 0: st.write(f"• Part Averis : -{argent_pour_averis}$")
+                    if argent_standard > 0: st.write(f"• Part Standard : -{argent_standard}$")
+                    if est_jeune_conducteur: st.write(f"• Taxes JC ({anciennete_jours}j) : -{taxe_jc_total}$")
+                    else: st.write(f"• Taxes JC : **EXONÉRÉ** ✅")
+                    st.markdown(f"**TOTAL TAXES : -{int(total_prelevement)}$**")
+
+            st.divider()
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("Solde Actuel", f"{int(solde_actuel)}$")
+
+            # Points Permis
+            points_actuels = 25
+            try:
+                user_pts_row = df_p[df_p["Nom Roblox"] == target_paie]
+                if not user_pts_row.empty:
+                    points_actuels = int(float(str(user_pts_row["PTS"].values[0]).replace(',', '.')))
+            except: pass
+            
+            diff_pts = 25 - points_actuels
+            c2.metric("Points Permis", f"{points_actuels}/25", delta=f"+{diff_pts} récupérés" if diff_pts > 0 else None)
+            c3.metric("Net à Verser", f"+{int(total_net)}$", delta=f"-{int(total_prelevement)}$", delta_color="inverse")
+            c4.metric("Solde Final", f"{int(solde_final)}$", delta=f"+{int(total_net)}$")
+
+            # --- BOUTON DE VALIDATION ---
+            if st.button(f"🧧 CONFIRMER LE VERSEMENT POUR {target_paie.upper()}", use_container_width=True, type="primary"):
+                try:
+                    with st.spinner("Mise à jour des comptes..."):
+                        def clean_val(val): return float(str(val).replace('$', '').replace(',', '').strip())
+
+                        # A. Transferts Patrons (SÉCURISÉ)
+                        # Argent RCT -> une10000
+                        idx_rct = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
+                        gain_rct_final = (int(2000 * min(min_rct/1200, 1)) if "Agent RCT" in user_jobs_list else 0) + (min_rct * 10)
+                        df_b.at[idx_rct, "Solde"] = clean_val(df_b.at[idx_rct, "Solde"]) - gain_rct_final + argent_pour_rct
+                        
+                        # Argent Averis -> Moune2010
+                        idx_av = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
+                        p_ave = 2000 if "Averis" in user_jobs_list else 0
+                        df_b.at[idx_av, "Solde"] = clean_val(df_b.at[idx_av, "Solde"]) - p_ave + argent_pour_averis
+
+                        # B. Crédit Citoyen
+                        idx_ben = df_b[df_b["Nom Roblox"] == target_paie].index[0]
+                        df_b.at[idx_ben, "Solde"] = solde_final 
+                        
+                        # C. Reset Immatriculations & Points
+                        mask_user = df_i["Nom d'utilisateur ROBLOX"] == target_paie
+                        def format_assurance(x):
+                            propre = str(x).replace("✅", "").strip().upper()
+                            if "RCT" in propre: return "✅ RCT"
+                            elif "AVERIS" in propre: return "✅ AVERIS"
+                            else: return "✅ Standard"
+
+                        df_i.loc[mask_user, "Assurance"] = df_i.loc[mask_user, "Assurance"].apply(format_assurance)
+                        
+                        # D. Reset Points & Archivage Logs
+                        try:
+                            idx_p = df_p[df_p["Nom Roblox"] == target_paie].index[0]
+                            df_p.at[idx_p, "PTS"] = 25
+                            cloud_conn.update(worksheet="Permis", data=df_p)
+                        except: pass
+                        
+                        # Marquer les logs comme payés
+                        df_admin.loc[(df_admin["nom"] == target_paie) & (df_admin["statut"] == "Validé"), "statut"] = "Payé"
+
+                        # Enregistrement Final
+                        cloud_conn.update(worksheet="Banque", data=df_b)
+                        cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i)
+                        cloud_conn.update(worksheet="Clock", data=df_admin)
+                        
+                        st.success(f"✅ Paie de {int(total_net)}$ versée !")
+                        st.balloons()
+                        st.cache_data.clear(); time.sleep(1); st.rerun()
+                except Exception as e:
+                    st.error(f"⚠️ Erreur : {e}")
         # --- SECTION 3 : LOGS ET STATISTIQUES (UNIQUEMENT EN ADMIN AUSSI) ---
         st.divider()
         col_admin_left, col_admin_right = st.columns(2)
