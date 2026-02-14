@@ -1337,7 +1337,7 @@ with tabs[2]:
                                             default=["Citoyen"])
                 with col_c2:
                     # Slider pour les points de permis (0 à 50)
-                    pts_initial = st.slider("Points de permis initiaux :", 0, 50, 25)
+                    pts_initial = 25 # <-- À AJOUTER
                     solde_depart = 15000
                     date_auto = datetime.now().strftime("%d/%m/%Y")
                     st.info(f"💰 Solde : {solde_depart}$ | 📅 Date : {date_auto}")
