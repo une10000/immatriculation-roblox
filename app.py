@@ -920,7 +920,13 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
             
             with col_code:
                 agent_code_saisi = st.text_input("🔑 Code Agent", type="password", key="pnt_compact_auth")
-                st.caption("ℹ️ Entrez votre code pour pointer et débloquer les services.")
+                st.caption("ℹ️ Entrez votre code pour pointer.")
+                
+                # Sélection du métier pour le Staff
+                if st.session_state.user_auth == "Staff":
+                    job_actuel = st.selectbox("🎭 Service", ["POLSTA", "Averis"], key="pnt_job_staff")
+                else:
+                    job_actuel = "RCT" # Par défaut pour les RCT
             
             agent_identifie = None
             if agent_code_saisi:
@@ -934,7 +940,7 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                     agent_identifie = res_agent.iloc[0]["Nom Roblox"]
                     
                     # --- RÉGLAGE HEURE ZURICH (UTC+1) ---
-                    tz_ch = timezone(timedelta(hours=1)) # Force le décalage suisse
+                    tz_ch = timezone(timedelta(hours=1)) 
                     now_ch = datetime.now(tz_ch)
                     h_actuelle = now_ch.strftime("%H:%M") 
                     
@@ -955,21 +961,25 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
 
                     with col_infos:
                         c1, c2, c3 = st.columns(3)
-                        c1.metric("🕒 Heure actuelle", h_actuelle) # Affichera 16:28 si sidebar dit 16:28
+                        c1.metric("🕒 Zurich", h_actuelle)
                         c2.metric("🎬 Début", start_display)
                         c3.metric("🏁 Fin", end_display)
                         
-                        st.write(f"Agent : **{agent_identifie}** " + ("(🟢 EN SERVICE)" if en_service else "(🔴 HORS SERVICE)"))
+                        st.write(f"Agent : **{agent_identifie}** " + (f"(🟢 EN SERVICE - {job_actuel})" if en_service else "(🔴 HORS SERVICE)"))
                         
                         btn_in, btn_out = st.columns(2)
                         with btn_in:
                             if st.button("✅ DÉBUT", use_container_width=True, type="primary", disabled=en_service):
                                 try:
                                     df_pnt = cloud_conn.read(worksheet="Pointage")
-                                    # On enregistre aussi avec l'heure Zurich (now_ch)
-                                    new_log = pd.DataFrame([{"Nom": agent_identifie, "Action": "IN", "Horodatage": now_ch.strftime("%d/%m/%Y %H:%M:%S")}])
+                                    new_log = pd.DataFrame([{
+                                        "Nom": agent_identifie, 
+                                        "Action": "IN", 
+                                        "Job": job_actuel, # <--- ON ENREGISTRE LE JOB ICI
+                                        "Horodatage": now_ch.strftime("%d/%m/%Y %H:%M:%S")
+                                    }])
                                     cloud_conn.update(worksheet="Pointage", data=pd.concat([df_pnt, new_log], ignore_index=True))
-                                    st.toast("Service démarré !")
+                                    st.toast(f"Service {job_actuel} démarré !")
                                     st.rerun()
                                 except: st.error("Erreur Sheets.")
                         
@@ -977,8 +987,13 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                             if st.button("🛑 FIN", use_container_width=True, disabled=not en_service):
                                 try:
                                     df_pnt = cloud_conn.read(worksheet="Pointage")
-                                    # On enregistre aussi avec l'heure Zurich (now_ch)
-                                    new_log = pd.DataFrame([{"Nom": agent_identifie, "Action": "OUT", "Horodatage": now_ch.strftime("%d/%m/%Y %H:%M:%S")}])
+                                    # On garde le job dans le log de sortie pour faciliter les calculs de durée
+                                    new_log = pd.DataFrame([{
+                                        "Nom": agent_identifie, 
+                                        "Action": "OUT", 
+                                        "Job": job_actuel,
+                                        "Horodatage": now_ch.strftime("%d/%m/%Y %H:%M:%S")
+                                    }])
                                     cloud_conn.update(worksheet="Pointage", data=pd.concat([df_pnt, new_log], ignore_index=True))
                                     st.toast("Service terminé !")
                                     st.rerun()
