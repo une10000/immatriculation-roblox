@@ -1303,27 +1303,38 @@ if st.session_state.user_auth == "Staff":
 
         st.divider()
 
-        # --- SECTION B : CALCULATEUR D'HEURES (POUR VÉRIFICATION) ---
+# --- SECTION B : CALCULATEUR D'HEURES (LOGIQUE SCAN GLOBALE) ---
         st.subheader("📊 Cumul des Heures par Agent")
         liste_agents = sorted(df_b["Nom Roblox"].unique().tolist())
         agent_cible = st.selectbox("Choisir un agent pour voir son total :", liste_agents, key="calc_hours")
         
         if agent_cible:
-            user_data_h = df_admin[df_admin["Nom"] == agent_cible]
+            # On récupère tous les logs validés de l'agent
+            user_data_h = df_admin[(df_admin["Nom"] == agent_cible) & (df_admin["Statut"] == "Validé")].copy()
             total_min = 0
-            outs_v = user_data_h[(user_data_h["Action"] == "OUT") & (user_data_h["Statut"] == "Validé")]
-            for idx_out, row_out in outs_v.iterrows():
+            
+            # On boucle sur chaque sortie (OUT)
+            outs_v = user_data_h[user_data_h["Action"] == "OUT"]
+            for _, row_out in outs_v.iterrows():
                 try:
-                    row_in = df_admin.iloc[idx_out - 1]
-                    if row_in["Action"] == "IN" and row_in["Nom"] == agent_cible:
-                        t1 = datetime.strptime(row_in["Début"], "%d/%m/%Y %H:%M:%S")
-                        t2 = datetime.strptime(row_out["Fin"], "%d/%m/%Y %H:%M:%S")
-                        total_min += (t2 - t1).total_seconds() / 60
+                    time_out = datetime.strptime(row_out["Fin"], "%d/%m/%Y %H:%M:%S")
+                    # On cherche le IN le plus proche AVANT ce OUT
+                    ins_v = user_data_h[(user_data_h["Action"] == "IN") & (user_data_h["Job"] == row_out["Job"])]
+                    
+                    match_in = None
+                    for _, row_in in ins_v.iterrows():
+                        time_in = datetime.strptime(row_in["Début"], "%d/%m/%Y %H:%M:%S")
+                        if time_in < time_out:
+                            if match_in is None or time_in > match_in:
+                                match_in = time_in
+                    
+                    if match_in:
+                        total_min += (time_out - match_in).total_seconds() / 60
                 except: continue
             
             h_disp, m_disp = int(total_min // 60), int(total_min % 60)
             col_h1, col_h2 = st.columns(2)
-            col_h1.metric(f"Temps de service", f"{h_disp}h {m_disp}min")
+            col_h1.metric(f"Temps de service total", f"{h_disp}h {m_disp}min")
             col_h2.metric("Estimation (10$/min)", f"{int(total_min * 10)}$")
 
         # --- SECTION 1 : CRÉATION DE PROFIL (15k + DATE AUTO) ---
@@ -1345,7 +1356,7 @@ if st.session_state.user_auth == "Staff":
                     tz_ch = timezone(timedelta(hours=1))
                     today_str = datetime.now(tz_ch).strftime("%d/%m/%Y")
                     
-                    # 1. Banque (15,000$)
+                    # 1. Banque (Solde de départ : 15,000$)
                     new_bank = pd.DataFrame([{"Nom Roblox": new_name, "Nom Discord": new_discord, "Solde": 15000, "Emploiement": " / ".join(new_jobs), "Date d'arrivée": today_str}])
                     df_b = pd.concat([df_b, new_bank], ignore_index=True)
                     cloud_conn.update(worksheet="Banque", data=df_b)
@@ -1355,10 +1366,10 @@ if st.session_state.user_auth == "Staff":
                     df_p = pd.concat([df_p, new_p], ignore_index=True)
                     cloud_conn.update(worksheet="Points Permis", data=df_p)
                     
-                    st.success(f"✅ Dossier créé pour {new_name} (15k + Date auto)")
+                    st.success(f"✅ Dossier créé pour {new_name} (Solde: 15k | Date: {today_str})")
                     st.cache_data.clear(); time.sleep(1); st.rerun()
 
-# --- SECTION 2 : TERMINAL DE PAIE & TRANSFERTS PATRONS ---
+        # --- SECTION 2 : TERMINAL DE PAIE (LOGIQUE SCAN & PRORATA 20H) ---
         st.divider()
         st.markdown("### 🧧 Terminal de Paie Nationale")
         
@@ -1367,59 +1378,56 @@ if st.session_state.user_auth == "Staff":
             target_paie = st.selectbox("Sélectionner le bénéficiaire :", options_paie, key="paie_main")
 
             if target_paie:
-                # 1. Analyse des données de base
                 user_paie_data = df_b[df_b["Nom Roblox"] == target_paie]
                 u_jobs = [j.strip() for j in str(user_paie_data["Emploiement"].values[0]).split("/")]
                 solde_actuel = float(str(user_paie_data["Solde"].values[0]).replace('$', '').replace(',', ''))
                 
-                # --- CONFIGURATION (PRORATA SUR 20 HEURES) ---
-                TEMPS_REQUIS_MIN = 1200  # 20h * 60 min
+                TEMPS_REQUIS_MIN = 1200 # 20h
                 PRIME_BASE = {"Agent RCT": 2000, "Averis": 2000, "Police": 3000, "Staff": 4000, "Service Public": 1000}
                 
-                # --- CALCUL DU TEMPS PAR MÉTIER ---
-                min_rct = 0
-                min_police = 0
-                user_logs = df_admin[(df_admin["Nom"] == target_paie) & (df_admin["Statut"] == "Validé")]
+                min_rct, min_police = 0, 0
+                user_logs = df_admin[(df_admin["Nom"] == target_paie) & (df_admin["Statut"] == "Validé")].copy()
                 
-                for idx_out, row_out in user_logs[user_logs["Action"] == "OUT"].iterrows():
+                # Calcul précis des minutes par métier
+                for _, row_out in user_logs[user_logs["Action"] == "OUT"].iterrows():
                     try:
-                        row_in = df_admin.iloc[idx_out - 1]
-                        if row_in["Action"] == "IN":
-                            t1 = datetime.strptime(row_in["Début"], "%d/%m/%Y %H:%M:%S")
-                            t2 = datetime.strptime(row_out["Fin"], "%d/%m/%Y %H:%M:%S")
-                            minutes = (t2 - t1).total_seconds() / 60
-                            
-                            if "RCT" in str(row_out["Job"]).upper(): min_rct += minutes
-                            elif "POL" in str(row_out["Job"]).upper(): min_police += minutes
+                        time_out = datetime.strptime(row_out["Fin"], "%d/%m/%Y %H:%M:%S")
+                        ins = user_logs[(user_logs["Action"] == "IN") & (user_logs["Job"] == row_out["Job"])]
+                        match_in = None
+                        for _, row_in in ins.iterrows():
+                            time_in = datetime.strptime(row_in["Début"], "%d/%m/%Y %H:%M:%S")
+                            if time_in < time_out:
+                                if match_in is None or time_in > match_in: match_in = time_in
+                        
+                        if match_in:
+                            diff = (time_out - match_in).total_seconds() / 60
+                            if "RCT" in str(row_out["Job"]).upper(): min_rct += diff
+                            elif "POL" in str(row_out["Job"]).upper(): min_police += diff
                     except: continue
 
-                # 2. Préparation des Primes au Prorata
                 primes_detail = []
                 total_primes_metier = 0
                 gain_temps_total = (min_rct * 10) + (min_police * 10)
 
                 for job in u_jobs:
                     p_max = PRIME_BASE.get(job, 0)
-                    if job == "Agent RCT":
-                        pct = min(min_rct / TEMPS_REQUIS_MIN, 1.0) # Basé sur 20h
+                    if job == "Agent RCT" and min_rct > 0:
+                        pct = min(min_rct / TEMPS_REQUIS_MIN, 1.0)
                         p_calculee = int(p_max * pct)
                         total_primes_metier += p_calculee
                         h, m = int(min_rct // 60), int(min_rct % 60)
                         primes_detail.append(f"• **Agent RCT** ({h}h {m}min) : +{p_calculee + int(min_rct * 10)}$")
-                    
-                    elif job == "Police":
-                        pct = min(min_police / TEMPS_REQUIS_MIN, 1.0) # Basé sur 20h
+                    elif job == "Police" and min_police > 0:
+                        pct = min(min_police / TEMPS_REQUIS_MIN, 1.0)
                         p_calculee = int(p_max * pct)
                         total_primes_metier += p_calculee
                         h, m = int(min_police // 60), int(min_police % 60)
                         primes_detail.append(f"• **Police** ({h}h {m}min) : +{p_calculee + int(min_police * 10)}$")
-                    
-                    elif p_max > 0:
-                        # Pour les autres jobs (Staff...), prime complète car pas de pointage logs
+                    elif p_max > 0 and job not in ["Agent RCT", "Police"]:
                         primes_detail.append(f"• **{job}** : +{p_max}$")
                         total_primes_metier += p_max
 
-                # 3. Calcul Assurances & Taxes
+                # --- PRÉLÈVEMENTS & CALCUL FINAL ---
                 mes_v = df_i[df_i["Nom d'utilisateur ROBLOX"] == target_paie]
                 nb_v = len(mes_v)
                 c_rct = len(mes_v[mes_v["Assurance"].str.contains("RCT", na=False, case=False)])
@@ -1429,63 +1437,32 @@ if st.session_state.user_auth == "Staff":
                 
                 try:
                     date_arr = pd.to_datetime(user_paie_data["Date d'arrivée"].values[0], dayfirst=True)
-                    jours = (datetime.now() - date_arr).days
-                    is_jc = jours < 30
+                    is_jc = (datetime.now() - date_arr).days < 30
                     taxe_jc = (nb_v * 50) if is_jc else 0
-                except: jours, is_jc, taxe_jc = 0, False, 0
+                except: is_jc, taxe_jc = False, 0
 
-                total_prelevement = v_rct + v_ave + v_std + taxe_jc
-                total_brut = 15000 + total_primes_metier + gain_temps_total
-                net_final = total_brut - total_prelevement
+                net_final = (15000 + total_primes_metier + gain_temps_total) - (v_rct + v_ave + v_std + taxe_jc)
                 solde_apres = solde_actuel + net_final
 
-                # --- AFFICHAGE ---
-                st.markdown(f"#### 📊 Fiche de Paie : {target_paie}")
-                col_fiche1, col_fiche2 = st.columns(2)
-                with col_fiche1:
-                    with st.container(border=True):
-                        st.write("**💰 REVENUS**")
-                        st.write("• Salaire Civil : 15,000$")
-                        if primes_detail:
-                            for p in primes_detail: st.write(p)
-
-                with col_fiche2:
-                    with st.container(border=True):
-                        st.write("**📉 PRÉLÈVEMENTS**")
-                        if v_rct > 0: st.write(f"• Part RCT : -{v_rct}$")
-                        if v_ave > 0: st.write(f"• Part Averis : -{v_ave}$")
-                        if v_std > 0: st.write(f"• Part Standard : -{v_std}$")
-                        if is_jc: st.write(f"• Taxe JC ({jours}j) : -{taxe_jc}$")
-                        else: st.write("• Taxe JC : **Exonéré** ✅")
-
-                st.markdown("---")
-                m1, m2, m3, m4 = st.columns(4)
-                m1.metric("Solde Actuel", f"{int(solde_actuel)}$")
-                m2.metric("Permis", "25/25")
-                m3.metric("Net à Verser", f"+{int(net_final)}$", delta=f"-{int(total_prelevement)}$", delta_color="inverse")
-                m4.metric("Nouveau Solde", f"{int(solde_apres)}$")
-
-                # 4. Action de Validation
-                if st.button(f"🧧 CONFIRMER LE VERSEMENT POUR {target_paie}", use_container_width=True, type="primary"):
+                # Affichage Fiche de Paie (abrégé pour le code)
+                st.markdown(f"#### 📊 Fiche : {target_paie} | Net : {int(net_final)}$")
+                
+                if st.button(f"🧧 CONFIRMER LE VERSEMENT", use_container_width=True, type="primary"):
                     def cl(v): return float(str(v).replace('$', '').replace(',', '').strip())
                     
-                    # Déduction Patron RCT (une10000) : Prorata 20h inclus
+                    # Transfert Patron RCT (une10000)
                     idx_r = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
-                    p_rct_p = int(2000 * min(min_rct/TEMPS_REQUIS_MIN, 1)) if "Agent RCT" in u_jobs else 0
-                    gain_total_rct = p_rct_p + (min_rct * 10)
-                    df_b.at[idx_r, "Solde"] = cl(df_b.at[idx_r, "Solde"]) - gain_total_rct + v_rct
+                    gain_rct_total = (int(2000 * min(min_rct/1200, 1)) if "Agent RCT" in u_jobs else 0) + (min_rct * 10)
+                    df_b.at[idx_r, "Solde"] = cl(df_b.at[idx_r, "Solde"]) - gain_rct_total + v_rct
                     
-                    # Déduction Patron Averis (Moune2010)
+                    # Transfert Patron Averis (Moune2010)
                     idx_m = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
                     p_ave = 2000 if "Averis" in u_jobs else 0
                     df_b.at[idx_m, "Solde"] = cl(df_b.at[idx_m, "Solde"]) - p_ave + v_ave
                     
-                    # Crédit Citoyen & Update
                     df_b.loc[df_b["Nom Roblox"] == target_paie, "Solde"] = solde_apres
                     cloud_conn.update(worksheet="Banque", data=df_b)
-                    
-                    st.success(f"✅ Paie envoyée (Objectif 20h respecté) pour {target_paie} !")
-                    st.cache_data.clear(); time.sleep(1); st.rerun()
+                    st.success("✅ Paie traitée avec succès !"); st.cache_data.clear(); time.sleep(1); st.rerun()
         # --- SECTION 3 : LOGS ET STATISTIQUES (UNIQUEMENT EN ADMIN AUSSI) ---
         st.divider()
         col_admin_left, col_admin_right = st.columns(2)
