@@ -455,8 +455,8 @@ with st.container():
                 job_raw = str(citoyen_info.iloc[0]['Emploiement'])
                 st.write(f"🏢 Métier : **{job_raw}**")
 
-                # --- CALCULATEUR DE PAIE ---
-                with st.expander("💳 Détails de ma prochaine paie"):
+# --- CALCULATEUR DE PAIE (DESIGN AMÉLIORÉ) ---
+                with st.expander("💳 Détails de ma prochaine paie", expanded=False):
                     # 1. Calcul des minutes (via Logs)
                     m_pol, m_rct = 0, 0
                     try:
@@ -469,26 +469,62 @@ with st.container():
                             elif "RCT" in str(r["job"]).upper(): m_rct += diff
                     except: pass
 
-                    # 2. Primes (Prorata 20h) & Base 15k
-                    p_pol = int(3000 * min(m_pol/1200, 1.0)) if "police" in job_raw.lower() else 0
-                    p_rct = int(2000 * min(m_rct/1200, 1.0)) if "agent rct" in job_raw.lower() else 0
+                    # 2. Calcul des montants
+                    # Primes (Prorata 20h = 1200 min)
+                    ratio_pol = min(m_pol/1200, 1.0)
+                    ratio_rct = min(m_rct/1200, 1.0)
                     
-                    # 3. Assurances (Trio RCT 200$)
+                    p_pol = int(3000 * ratio_pol) if "police" in job_raw.lower() else 0
+                    p_rct = int(2000 * ratio_rct) if "agent rct" in job_raw.lower() else 0
+                    
+                    # Taxes Véhicules (Trio RCT)
                     mes_v = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
-                    c_rct = len(mes_v[mes_v["Assurance"].str.contains("RCT", na=False, case=False)])
-                    taxe_v = 200 if c_rct >= 3 else (len(mes_v) * 150)
-                    
-                    net = 15000 + p_pol + p_rct - taxe_v
-                    
-                    st.markdown(f"""
-                    <div style="font-size:0.85em; border:1px solid #444; padding:8px; border-radius:5px;">
-                        Base Civile: +15,000$<br>
-                        Primes Service: +{p_pol+p_rct}$<br>
-                        Taxes Auto: -{taxe_v}$<br>
-                        <hr><b>NET ESTIMÉ: {int(net)}$</b>
-                    </div>
-                    """, unsafe_allow_html=True)
+                    count_rct = len(mes_v[mes_v["Assurance"].str.contains("RCT", na=False, case=False)])
+                    is_trio = count_rct >= 3
+                    taxe_v = 200 if is_trio else (len(mes_v) * 150)
 
+                    net = 15000 + p_pol + p_rct - taxe_v
+
+                    # 3. Affichage visuel
+                    c_cred, c_deb = st.columns(2)
+                    
+                    # COLONNE CRÉDITS (VERT)
+                    with c_cred:
+                        st.markdown("<div style='color: #4CAF50; font-weight:bold; margin-bottom:5px;'>📥 REVENUS</div>", unsafe_allow_html=True)
+                        st.markdown(f"➕ **Base Civile** : `15,000$`")
+                        
+                        if "police" in job_raw.lower():
+                            st.markdown(f"👮 **Prime Police** : `{p_pol}$`")
+                            st.progress(ratio_pol, text=f"{int(m_pol/60)}h / 20h")
+                        
+                        if "agent rct" in job_raw.lower():
+                            st.markdown(f"☢️ **Prime RCT** : `{p_rct}$`")
+                            st.progress(ratio_rct, text=f"{int(m_rct/60)}h / 20h")
+
+                    # COLONNE DÉBITS (ROUGE)
+                    with c_deb:
+                        st.markdown("<div style='color: #E53935; font-weight:bold; margin-bottom:5px;'>📤 DÉPENSES</div>", unsafe_allow_html=True)
+                        
+                        if len(mes_v) > 0:
+                            if is_trio:
+                                st.markdown(f"🚗 **Assurances** : `200$`")
+                                st.caption(f"✅ Offre Trio RCT active ({len(mes_v)} véhicules)")
+                            else:
+                                st.markdown(f"🚗 **Assurances** : `{taxe_v}$`")
+                                st.caption(f"{len(mes_v)} véhicule(s) x 150$")
+                        else:
+                            st.markdown("🚗 **Assurances** : `0$`")
+                            st.caption("Aucun véhicule enregistré")
+
+                    st.markdown("---")
+                    
+                    # RÉSULTAT FINAL
+                    st.markdown(f"""
+                        <div style="background-color: #1E1E1E; padding: 15px; border-radius: 8px; border-left: 5px solid #4CAF50; display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 1.1em; color: #bbb;">NET À PERCEVOIR</span>
+                            <span style="font-size: 1.5em; font-weight: bold; color: #fff;">{int(net):,}$</span>
+                        </div>
+                    """, unsafe_allow_html=True)
                 # --- MODIFICATION MÉTIER (STAFF) ---
                 if st.session_state.user_auth in ["Staff", "Admin"]:
                     if st.button("✏️ Modifier Métier", key=f"edit_{target}", use_container_width=True):
