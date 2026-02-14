@@ -955,7 +955,7 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
 
                     with col_infos:
                         c1, c2, c3 = st.columns(3)
-                        c1.metric("🕒 Zurich", h_actuelle) # Affichera 16:28 si sidebar dit 16:28
+                        c1.metric("🕒 Heure actuelle", h_actuelle) # Affichera 16:28 si sidebar dit 16:28
                         c2.metric("🎬 Début", start_display)
                         c3.metric("🏁 Fin", end_display)
                         
