@@ -957,11 +957,11 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                             en_service = (last_action == "IN")
                             
                             if en_service:
-                                # On récupère l'heure de début uniquement si on est en service
-                                val_in = str(user_logs.iloc[-1]["Début"])
+                                # On récupère l'heure de début de la dernière ligne "IN"
+                                val_in = str(user_logs[user_logs["Action"] == "IN"].iloc[-1]["Début"])
                                 start_display = val_in.split(" ")[1][:5] if " " in val_in else val_in[:5]
-                            # Sinon (si OUT), on laisse --:-- par défaut
-                    except: pass
+                    except Exception as e:
+                        pass
 
                     with col_infos:
                         c1, c2, c3 = st.columns(3)
@@ -989,9 +989,10 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                                     
                                     st.success(f"🚀 Service démarré à {h_actuelle} !")
                                     import time
-                                    time.sleep(1.5)
+                                    time.sleep(1)
                                     st.rerun()
-                                except: st.error("Erreur Sheets : Vérifie tes colonnes Nom/Action/Job/Début/Fin")
+                                except:
+                                    st.error("Erreur Sheets : Colonnes attendues -> Nom, Action, Job, Début, Fin")
 
                         # --- BOUTON FIN ---
                         with btn_out:
@@ -1010,17 +1011,17 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                                     }])
                                     cloud_conn.update(worksheet="Pointage", data=pd.concat([df_pnt, new_log], ignore_index=True))
                                     
-                                    # Récapitulatif visuel final (Début et Fin)
+                                    # Succès et reset
                                     st.success(f"✅ Service terminé ! (Début: {start_display} | Fin: {h_fin_short})")
                                     st.balloons()
                                     
-                                    # REMISE À ZÉRO : On vide le code agent
+                                    # Reset du code pour déconnecter visuellement l'agent
                                     st.session_state.pnt_compact_auth = "" 
-                                    
                                     import time
                                     time.sleep(3)
-                                    st.rerun() # Le refresh remettra les métriques à 0 car le code est vide
-                                except: st.error("Erreur lors de la clôture.")
+                                    st.rerun()
+                                except:
+                                    st.error("Erreur lors de la clôture.")
                 else:
                     st.error("Code agent incorrect.")
 
