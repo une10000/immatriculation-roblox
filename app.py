@@ -1125,7 +1125,7 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
 
         st.divider()
 # ======================================================================================
-# 4. SYSTÈME DE SAISIE ET CONSULTATION (COMPLET ET SÉCURISÉ)
+# 4. SYSTÈME DE SAISIE ET CONSULTATION (SERVICES AGENTS)
 # ======================================================================================
 with tabs[1]: # Onglet Services Agents
     if st.session_state.user_auth in ["Staff", "Agent RCT"]:
@@ -1139,7 +1139,7 @@ with tabs[1]: # Onglet Services Agents
             tz_ch = timezone(timedelta(hours=1))
             now_ch = datetime.now(tz_ch)
             
-            # Layout en 3 colonnes
+            # Layout en 3 colonnes : Saisie | Aperçu Facture | Véhicules
             col_saisie, col_facture, col_vehicules = st.columns([1.1, 1, 0.9])
             
             # --- COLONNE 1 : SAISIE ---
@@ -1147,7 +1147,7 @@ with tabs[1]: # Onglet Services Agents
                 with st.container(border=True):
                     st.markdown("#### 📝 Saisie")
                     
-                    # Authentification Agent
+                    # Authentification Agent par Code
                     agent_code_saisi = st.text_input("🔑 CODE AGENT :", type="password", key="auth_agent_code")
                     agent_identifie = None
                     
@@ -1161,23 +1161,26 @@ with tabs[1]: # Onglet Services Agents
                         else:
                             st.error("❌ Code inconnu.")
 
-                    # Choix de l'émetteur
+                    # Choix de l'émetteur (RCT par défaut pour les agents)
                     if st.session_state.user_auth == "Staff":
-                        f_emetteur = st.selectbox("Entité Émettrice", ["POLSTA", "Averis"], key="v_emetteur_final")
+                        f_emetteur = st.selectbox("Entité Émettrice", ["POLSTA", "Averis", "RCT"], key="v_emetteur_final")
                     else:
                         f_emetteur = "RCT"
                         st.info("Émetteur : RCT")
 
                     f_val = st.number_input("Montant ($)", min_value=0, step=50, key="v_val_final")
+                    
+                    # Seul le Staff émettant pour POLSTA peut retirer des points
                     can_pull_points = (st.session_state.user_auth == "Staff" and f_emetteur == "POLSTA")
                     f_pts = st.number_input("Points à retirer", 0, 12, 0, key="v_pts_final", disabled=not can_pull_points)
+                    
                     f_motif = st.text_input("Motif", key="v_mot_final")
                     
                     target_veh = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
                     v_list = ["AUCUN / PIÉTON"] + target_veh["Numéro de la plaque"].tolist()
                     f_plate = st.selectbox("Véhicule concerné", v_list, key="v_plate_final")
 
-                    # BOUTON D'ENVOI ET ENREGISTREMENT
+                    # BOUTON D'ENVOI
                     if st.button("🚨 ENVOYER FACTURE", use_container_width=True, type="primary"):
                         if not agent_identifie:
                             st.error("Code agent requis.")
@@ -1186,7 +1189,7 @@ with tabs[1]: # Onglet Services Agents
                         else:
                             import random
                             
-                            # 1. Mise à jour des points si nécessaire
+                            # Mise à jour des points (si applicable)
                             if f_pts > 0 and can_pull_points:
                                 try:
                                     idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
@@ -1194,13 +1197,12 @@ with tabs[1]: # Onglet Services Agents
                                     cloud_conn.update(worksheet="Points Permis", data=df_p)
                                 except: pass
 
-                            # 2. Préparation de la ligne complète pour le Sheets
-                            nom_agent = agent_identifie
+                            # Création de la ligne Facture
                             new_row = {
                                 "ID": random.randint(1000, 9999),
                                 "Cible": target,
                                 "Emetteur": f_emetteur,
-                                "Agent_Signataire": nom_agent,
+                                "Agent_Signataire": agent_identifie,
                                 "Montant": f_val,
                                 "Points": f_pts if can_pull_points else 0,
                                 "Motif": f"{f_motif} [{f_plate}]",
@@ -1209,11 +1211,11 @@ with tabs[1]: # Onglet Services Agents
                                 "Date_Limite": (now_ch + timedelta(hours=24)).strftime("%d/%m/%Y %H:%M:%S")
                             }
 
-                            # 3. Fusion et envoi
+                            # Envoi vers Google Sheets
                             df_f_updated = pd.concat([df_all_f, pd.DataFrame([new_row])], ignore_index=True)
                             cloud_conn.update(worksheet="Factures", data=df_f_updated)
                             
-                            st.success(f"✅ Facture envoyée par {nom_agent} !")
+                            st.success(f"✅ Facture envoyée par {agent_identifie} !")
                             st.cache_data.clear()
                             time.sleep(1)
                             st.rerun()
@@ -1221,7 +1223,7 @@ with tabs[1]: # Onglet Services Agents
             # --- COLONNE 2 : APERÇU ET HISTORIQUE ---
             with col_facture:
                 st.markdown("#### 📄 Aperçu")
-                header_ticket = "FACTURE AVERIS" if f_emetteur == "Averis" else "FACTURE OFFICIELLE"
+                header_ticket = f"FACTURE {f_emetteur.upper()}"
                 nom_signature = agent_identifie if agent_identifie else "..."
                 
                 st.markdown(f"""
@@ -1252,7 +1254,7 @@ with tabs[1]: # Onglet Services Agents
                             use_container_width=True
                         )
                     else:
-                        st.info("Aucun antécédent pour ce citoyen.")
+                        st.info("Aucun antécédent.")
 
             # --- COLONNE 3 : VÉHICULES ---
             with col_vehicules:
@@ -1261,7 +1263,6 @@ with tabs[1]: # Onglet Services Agents
                     for _, veh in target_veh.iterrows():
                         assu_v = str(veh['Assurance']).upper()
                         col_v = "green" if "RCT" in assu_v else ("#E67E22" if "AVERIS" in assu_v else "#d32f2f")
-                        
                         st.markdown(f"""
                         <div style="border: 2px solid black; padding: 10px; background: white; color: black; font-family: 'Courier New', monospace; margin-bottom: 10px; font-size: 0.8em;">
                             <center><b>TITRE DE CIRCULATION</b></center>
@@ -1276,7 +1277,6 @@ with tabs[1]: # Onglet Services Agents
                     st.info("Aucun véhicule.")
     else:
         st.error("Accès restreint aux agents RCT et Staff.")
-
 # ======================================================================================
 # 5. ONGLET ADMINISTRATION (CORRIGÉ)
 # ======================================================================================
