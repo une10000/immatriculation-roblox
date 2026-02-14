@@ -1555,7 +1555,6 @@ if st.session_state.user_auth == "Staff":
                     st.cache_data.clear()
                     st.rerun()
     else:
-        # Fin du bloc if access_staff
         st.error("Accès non autorisé. Réservé au Staff.")
 # ======================================================================================
 # 8. PIED DE PAGE
