@@ -932,51 +932,54 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                 
                 if not res_agent.empty:
                     agent_identifie = res_agent.iloc[0]["Nom Roblox"]
-                    now_time = datetime.now().strftime("%H:%M")
                     
-                    # Récupération des pointages existants pour l'affichage
+                    # Récupération de l'heure que tu as déjà dans ton script
+                    # J'utilise strftime sur ta variable existante
+                    h_actuelle = datetime.now().strftime("%H:%M") 
+                    
+                    # Vérification du statut de service
+                    start_display, end_display = "--:--", "--:--"
+                    en_service = False
                     try:
                         df_pnt_check = cloud_conn.read(worksheet="Pointage")
                         user_logs = df_pnt_check[df_pnt_check["Nom"] == agent_identifie]
-                        
-                        # On cherche le dernier IN et le dernier OUT du jour
-                        last_in = user_logs[user_logs["Action"] == "IN"].tail(1)
-                        last_out = user_logs[user_logs["Action"] == "OUT"].tail(1)
-                        
-                        start_display = last_in.iloc[0]["Horodatage"].split(" ")[1][:5] if not last_in.empty else "--:--"
-                        end_display = last_out.iloc[0]["Horodatage"].split(" ")[1][:5] if not last_out.empty else "--:--"
-                    except:
-                        start_display, end_display = "--:--", "--:--"
+                        if not user_logs.empty:
+                            last_action = user_logs.iloc[-1]["Action"]
+                            en_service = (last_action == "IN")
+                            last_in = user_logs[user_logs["Action"] == "IN"].tail(1)
+                            last_out = user_logs[user_logs["Action"] == "OUT"].tail(1)
+                            if not last_in.empty: start_display = last_in.iloc[0]["Horodatage"].split(" ")[1][:5]
+                            if not last_out.empty: end_display = last_out.iloc[0]["Horodatage"].split(" ")[1][:5]
+                    except: pass
 
                     with col_infos:
-                        # Affichage : Heure actuelle | Début | Fin
                         c1, c2, c3 = st.columns(3)
-                        c1.metric("🕒 Actuelle", now_time)
+                        c1.metric("🕒 Actuelle", h_actuelle)
                         c2.metric("🎬 Début", start_display)
                         c3.metric("🏁 Fin", end_display)
                         
-                        st.write(f"Agent : **{agent_identifie}**")
+                        st.write(f"Agent : **{agent_identifie}** " + ("(🟢 EN SERVICE)" if en_service else "(🔴 HORS SERVICE)"))
                         
                         btn_in, btn_out = st.columns(2)
                         with btn_in:
-                            if st.button("✅ DÉBUT", use_container_width=True, type="primary"):
+                            if st.button("✅ DÉBUT", use_container_width=True, type="primary", disabled=en_service):
                                 try:
                                     df_pnt = cloud_conn.read(worksheet="Pointage")
                                     new_log = pd.DataFrame([{"Nom": agent_identifie, "Action": "IN", "Horodatage": datetime.now().strftime("%d/%m/%Y %H:%M:%S")}])
                                     cloud_conn.update(worksheet="Pointage", data=pd.concat([df_pnt, new_log], ignore_index=True))
                                     st.toast("Service démarré !")
                                     st.rerun()
-                                except: st.error("Onglet 'Pointage' manquant.")
+                                except: st.error("Erreur Sheets.")
                         
                         with btn_out:
-                            if st.button("🛑 FIN", use_container_width=True):
+                            if st.button("🛑 FIN", use_container_width=True, disabled=not en_service):
                                 try:
                                     df_pnt = cloud_conn.read(worksheet="Pointage")
                                     new_log = pd.DataFrame([{"Nom": agent_identifie, "Action": "OUT", "Horodatage": datetime.now().strftime("%d/%m/%Y %H:%M:%S")}])
                                     cloud_conn.update(worksheet="Pointage", data=pd.concat([df_pnt, new_log], ignore_index=True))
                                     st.toast("Service terminé !")
                                     st.rerun()
-                                except: st.error("Onglet 'Pointage' manquant.")
+                                except: st.error("Erreur Sheets.")
                 else:
                     st.error("Code inconnu")
 
