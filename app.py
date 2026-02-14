@@ -1387,74 +1387,85 @@ if st.session_state.user_auth == "Staff":
             st.error(f"Erreur Pointages : {e}")
 
         st.divider()
-
 # --- SECTION B : CALCULATEUR D'HEURES (LOGIQUE CLOCK) ---
 st.subheader("📊 Cumul des Heures par Agent")
 
 liste_agents = sorted(df_b["Nom Roblox"].unique().tolist())
-agent_cible = st.selectbox("Choisir un agent pour voir son total :", liste_agents, key="calc_hours")
+agent_cible = st.selectbox("Choisir un agent :", liste_agents, key="calc_hours")
 
 if agent_cible:
-    # 1. On récupère les sessions VALIDÉES de l'agent dans la feuille 'Clock'
+    # 1. On filtre df_admin pour n'avoir QUE cet agent et QUE le statut Validé
     user_data_h = df_admin[(df_admin["nom"] == agent_cible) & (df_admin["statut"] == "Validé")].copy()
     
-    total_argent_cumule = 0
+    # --- IMPORTANT : ON RÉINITIALISE TOUT ICI ---
     total_min_global = 0
-    details_metiers = {} # Pour stocker le temps par job (POLSTA, RCT, etc.)
+    total_argent_global = 0
+    stats_par_job = {} # Dictionnaire vide pour ne pas hériter des anciens calculs
 
-    # 2. On boucle sur chaque session pour calculer l'argent selon le JOB de la ligne
+    # 2. On boucle sur les lignes de la feuille Clock
     for _, row in user_data_h.iterrows():
         try:
+            # Calcul du temps de la session
             t1 = datetime.strptime(str(row["début"]), "%d/%m/%Y %H:%M:%S")
             t2 = datetime.strptime(str(row["fin"]), "%d/%m/%Y %H:%M:%S")
-            minutes_session = (t2 - t1).total_seconds() / 60
+            diff_minutes = (t2 - t1).total_seconds() / 60
             
-            # On récupère le job écrit sur CETTE ligne (ex: POLSTA)
-            job_session = str(row["job"]).upper().strip()
-            
-            # --- DÉFINITION DES TAUX PAR JOB ---
-            taux = 0
-            if "POLSTA" in job_session or "POLICE" in job_session:
-                taux = 30  # 30$/min
-            elif "RCT" in job_session:
-                taux = 20  # 20$/min
-            
-            argent_session = minutes_session * taux
-            
-            # Cumul global
-            total_argent_cumule += argent_session
-            total_min_global += minutes_session
-            
-            # Stockage pour le détail visuel
-            details_metiers[job_session] = details_metiers.get(job_session, 0) + argent_session
-            
-        except: continue
+            if diff_minutes < 0: continue # Sécurité si fin avant début
 
-    # 3. AFFICHAGE DES RÉSULTATS
-    h_disp, m_disp = int(total_min_global // 60), int(total_min_global % 60)
-    
-    st.markdown(f"### Résumé pour {agent_cible}")
-    
-    c1, c2 = st.columns(2)
-    c1.metric("Temps de service total", f"{h_disp}h {m_disp}min")
-    c2.metric("Total Cumulé", f"{int(total_argent_cumule)}$")
+            # On récupère le job PRÉCIS de la ligne
+            job_ligne = str(row["job"]).upper().strip()
+            
+            # --- DÉFINITION STRICTE DES TAUX ---
+            taux_minute = 0
+            if "POLSTA" in job_ligne or "POLICE" in job_ligne:
+                taux_minute = 30
+            elif "RCT" in job_ligne:
+                taux_minute = 20
+            
+            # Calcul de l'argent pour CETTE ligne uniquement
+            gain_ligne = diff_minutes * taux_minute
+            
+            # Cumul dans les totaux
+            total_min_global += diff_minutes
+            total_argent_global += gain_ligne
+            
+            # Enregistrement dans le dictionnaire pour l'affichage détaillé
+            if job_ligne not in stats_par_job:
+                stats_par_job[job_ligne] = {"temps": 0, "argent": 0}
+            
+            stats_par_job[job_ligne]["temps"] += diff_minutes
+            stats_par_job[job_ligne]["argent"] += gain_ligne
+            
+        except Exception as e:
+            continue # Si une ligne est mal remplie, on l'ignore proprement
 
-    st.write("---")
-    st.write("**Détail des gains par section (Feuille Clock) :**")
-    
-    if not details_metiers:
-        st.warning("Aucun gain calculable (vérifiez les jobs dans la feuille Clock).")
+    # --- 3. AFFICHAGE ALIGNÉ ET PROPRE ---
+    if total_min_global > 0:
+        h_disp, m_disp = int(total_min_global // 60), int(total_min_global % 60)
+        
+        col1, col2 = st.columns(2)
+        col1.metric("Temps Total Validé", f"{h_disp}h {m_disp}min")
+        col2.metric("Total à Verser", f"{int(total_argent_global)}$")
+
+        st.write("---")
+        st.write("**Détail par service (Feuille Clock) :**")
+
+        for job, data in stats_par_job.items():
+            # Si l'argent est 0, c'est que le job n'est pas reconnu (ex: "Civil"), on peut choisir de ne pas l'afficher
+            if data["argent"] > 0:
+                color = "#3498db" if "POL" in job else "#2ecc71"
+                h_j, m_j = int(data['temps'] // 60), int(data['temps'] % 60)
+                
+                st.markdown(f"""
+                    <div style="display: flex; justify-content: space-between; background: rgba(255,255,255,0.05); 
+                                padding: 8px 15px; border-radius: 5px; border-left: 5px solid {color}; margin-bottom: 5px;">
+                        <b style="color:{color};">{job}</b>
+                        <span>{h_j}h {m_j}min</span>
+                        <b>{int(data['argent'])}$</b>
+                    </div>
+                """, unsafe_allow_html=True)
     else:
-        for job, gain in details_metiers.items():
-            color = "#3498db" if "POL" in job else "#2ecc71"
-            st.markdown(f"""
-                <div style="background: rgba(255,255,255,0.05); padding: 10px; border-left: 5px solid {color}; margin-bottom: 5px;">
-                    <span style="color:{color}; font-weight:bold;">{job}</span> : 
-                    Vous avez cumulé <b>{int(gain)}$</b> sur ce poste.
-                </div>
-            """, unsafe_allow_html=True)
-
-    st.success(f"💰 **TOTAL À VERSER : {int(total_argent_cumule)}$**")
+        st.warning(f"Aucune minute de service validée trouvée pour **{agent_cible}**.")
         # --- SECTION 1 : CRÉATION DE PROFIL (15k + DATE AUTO) ---
         st.divider()
         st.markdown("### 👤 Création de Dossier Citoyen")
