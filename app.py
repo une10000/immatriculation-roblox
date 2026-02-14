@@ -516,8 +516,7 @@ with st.container():
 
 # --- MODULE DE CALCUL DE PAIE DÉTAILLÉ (SYNCHRONISÉ) ---
 with st.expander("💳 Détails de ma prochaine paie"):
-    # 1. RÉCUPÉRATION DES MINUTES DE SERVICE (DEPUIS DF_ADMIN)
-    # On recalcule les minutes validées pour être sûr de l'exactitude
+    # 1. RÉCUPÉRATION DES MINUTES DE SERVICE
     min_rct, min_police = 0, 0
     user_logs = df_admin[(df_admin["nom"] == target) & (df_admin["statut"] == "Validé")]
     
@@ -536,52 +535,60 @@ with st.expander("💳 Détails de ma prochaine paie"):
     primes_total = 0
     TEMPS_REQUIS = 1200 # 20h
 
-    # --- CALCUL DES REVENUS (PRORATA ET FIXES) ---
-    # Police (Prorata 20h)
+    # --- CALCUL DES REVENUS ---
     if "police" in user_jobs_list:
         p_calc = int(3000 * min(min_police / TEMPS_REQUIS, 1.0))
         primes_total += p_calc
         details_html += f'<div style="display: flex; justify-content: space-between; color: #3498db;"><span>Salaire Police ({int(min_police)} min) :</span><b>+{p_calc}$</b></div>'
     
-    # RCT (Prorata 20h)
     if "agent rct" in user_jobs_list:
         p_calc = int(2000 * min(min_rct / TEMPS_REQUIS, 1.0))
         primes_total += p_calc
         details_html += f'<div style="display: flex; justify-content: space-between; color: #2ecc71;"><span>Salaire RCT ({int(min_rct)} min) :</span><b>+{p_calc}$</b></div>'
 
-    # Primes Fixes
     RECOMPENSES_FIXES = {"averis": 2000, "staff": 4000, "service public": 1000}
     for job, montant in RECOMPENSES_FIXES.items():
         if job in user_jobs_list:
             primes_total += montant
             details_html += f'<div style="display: flex; justify-content: space-between;"><span>Prime {job.title()} :</span><b>+{montant}$</b></div>'
 
-    # --- CALCUL DES TAXES (CORRECTION TRIO RCT 200$) ---
+    # --- CALCUL DES TAXES & ASSURANCES ---
     mes_v = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
     c_rct = len(mes_v[mes_v["Assurance"].str.contains("RCT", na=False, case=False)])
     c_ave = len(mes_v[mes_v["Assurance"].str.contains("AVERIS", na=False, case=False)])
     c_std = len(mes_v) - c_rct - c_ave
     
-    taxe_rct = 200 if c_rct >= 3 else (c_rct * 150) # Réduction à 200$ fixée
+    taxe_rct = 200 if c_rct >= 3 else (c_rct * 150)
     taxe_ave = c_ave * 130
     taxe_std = c_std * 150
-    total_taxes = taxe_rct + taxe_ave + taxe_std
+    
+    # Ajout Taxe Jeune Conducteur (JC)
+    try:
+        date_arr = pd.to_datetime(b_data.iloc[0]["Date d'arrivée"], dayfirst=True)
+        est_jc = (datetime.now() - date_arr).days < 30
+    except: est_jc = False
+    taxe_jc = (len(mes_v) * 50) if est_jc else 0
+    
+    total_prelevements = taxe_rct + taxe_ave + taxe_std + taxe_jc
 
     # --- CALCUL FINAL ---
     est_brut = 15000 + primes_total
-    est_net = est_brut - total_taxes
+    est_net = est_brut - total_prelevements
 
     # --- AFFICHAGE ---
     offre_badge = '<span style="color: #00FF00; font-size: 0.8em;"> [TRIO RCT ✅]</span>' if c_rct >= 3 else ""
+    jc_info = f'<div style="display: flex; justify-content: space-between; color: #e67e22; font-size: 0.9em;"><span>Taxe Jeune Conducteur :</span><b>-{taxe_jc}$</b></div>' if taxe_jc > 0 else ""
     
     st.markdown(f"""
     <div style="background-color: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px; border: 1px solid #444;">
         <div style="display: flex; justify-content: space-between;"><span>Base Civile :</span><b>+15,000$</b></div>
         <hr style="margin: 8px 0; border-top: 1px dashed #555;">
         {details_html if details_html else '<div style="color: #888; font-style: italic; font-size: 0.9em;">Aucune prime de service détectée</div>'}
-        <div style="display: flex; justify-content: space-between; color: #ff4b4b; margin-top: 5px;">
-            <span>Taxes Véhicules {offre_badge} :</span><b>-{int(total_taxes)}$</b>
+        <hr style="margin: 8px 0; border-top: 1px dashed #555;">
+        <div style="display: flex; justify-content: space-between; color: #ff4b4b;">
+            <span>Assurances {offre_badge} :</span><b>-{int(taxe_rct + taxe_ave + taxe_std)}$</b>
         </div>
+        {jc_info}
         <hr style="margin: 10px 0; border-top: 2px solid #555;">
         <div style="display: flex; justify-content: space-between; font-size: 1.2em; color: #00FF00;">
             <b>ESTIMATION NET :</b><b>{int(est_net)}$</b>
