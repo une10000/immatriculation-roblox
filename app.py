@@ -1126,7 +1126,7 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
         st.divider()
 
 # ======================================================================================
-# 4. SYSTÈME DE SAISIE ET CONSULTATION (SÉCURISÉ ET ANTI-CRASH)
+# 4. SYSTÈME DE SAISIE ET CONSULTATION (CORRIGÉ ET SÉCURISÉ)
 # ======================================================================================
 with tabs[1]: # Onglet Services Agents
     if st.session_state.user_auth in ["Staff", "Agent RCT"]:
@@ -1135,73 +1135,71 @@ with tabs[1]: # Onglet Services Agents
         if target == "---":
             st.warning("⚠️ Sélectionnez un citoyen en haut de la page.")
         else:
-            # Nettoyage automatique des noms de colonnes
+            # On nettoie et on prépare les colonnes
             df_b.columns = df_b.columns.str.strip() 
-
             col_saisie, col_facture, col_vehicules = st.columns([1.1, 1, 0.9])
             
-            # --- ICI VIENT LA SUITE (Saisie, Aperçu, Véhicules) ---
-            # Tout ce qui est dans ces colonnes doit aussi être indenté
-    with col_saisie:
-        with st.container(border=True):
-            st.markdown("#### 📝 Saisie")
-            
-            # --- AUTHENTIFICATION (VERSION FORCEE) ---
-            agent_code_saisi = st.text_input("🔑 Entrez votre CODE AGENT :", type="password", key="auth_agent_code")
-            
-            agent_identifie = None
-            
-            if "Code" not in df_b.columns:
-                st.error("❌ La colonne 'Code' n'est pas détectée. (Vérifie l'onglet Banque)")
-            elif agent_code_saisi:
-                def clean_code(x):
-                    return str(x).strip().split('.')[0]
+            # --- TOUT DOIT ÊTRE DÉCALÉ ICI ---
+            with col_saisie:
+                with st.container(border=True):
+                    st.markdown("#### 📝 Saisie")
+                    
+                    # Authentification Agent
+                    agent_code_saisi = st.text_input("🔑 Entrez votre CODE AGENT :", type="password", key="auth_agent_code")
+                    agent_identifie = None
+                    
+                    if "Code" in df_b.columns and agent_code_saisi:
+                        def clean_code(x): return str(x).strip().split('.')[0]
+                        df_b["Code_Clean"] = df_b["Code"].apply(clean_code)
+                        saisie_propre = str(agent_code_saisi).strip()
+                        res_agent = df_b[df_b["Code_Clean"] == saisie_propre]
+                        
+                        if not res_agent.empty:
+                            agent_identifie = res_agent.iloc[0]["Nom Roblox"]
+                            st.success(f"Agent : **{agent_identifie}** ✅")
+                        else:
+                            st.error(f"❌ Code inconnu.")
 
-                df_b["Code_Clean"] = df_b["Code"].apply(clean_code)
-                saisie_propre = str(agent_code_saisi).strip()
-                res_agent = df_b[df_b["Code_Clean"] == saisie_propre]
-                
-                if not res_agent.empty:
-                    agent_identifie = res_agent.iloc[0]["Nom Roblox"]
-                    st.success(f"Agent : **{agent_identifie}** ✅")
-                else:
-                    st.error(f"❌ Code inconnu.")
+                    # Réglages Facture
+                    if st.session_state.user_auth == "Staff":
+                        f_emetteur = st.selectbox("Entité Émettrice", ["POLSTA", "Averis"], key="v_emetteur_final")
+                    else:
+                        f_emetteur = "RCT"
+                        st.info("Émetteur : RCT")
 
-            # --- RÉGLAGES FACTURE ---
-            if st.session_state.user_auth == "Staff":
-                f_emetteur = st.selectbox("Entité Émettrice", ["POLSTA", "Averis"], key="v_emetteur_final")
-            else:
-                f_emetteur = "RCT"
-                st.info("Émetteur : RCT")
+                    f_val = st.number_input("Montant ($)", min_value=0, step=50, key="v_val_final")
+                    can_pull_points = (st.session_state.user_auth == "Staff" and f_emetteur == "POLSTA")
+                    f_pts = st.number_input("Points à retirer", 0, 12, 0, key="v_pts_final", disabled=not can_pull_points)
+                    f_motif = st.text_input("Motif", key="v_mot_final")
+                    
+                    target_veh = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
+                    v_list = ["AUCUN / PIÉTON"] + target_veh["Numéro de la plaque"].tolist()
+                    f_plate = st.selectbox("Véhicule concerné", v_list, key="v_plate_final")
 
-            f_val = st.number_input("Montant ($)", min_value=0, step=50, key="v_val_final")
-            can_pull_points = (st.session_state.user_auth == "Staff" and f_emetteur == "POLSTA")
-            f_pts = st.number_input("Points à retirer", 0, 12, 0, key="v_pts_final", disabled=not can_pull_points)
-            f_motif = st.text_input("Motif", key="v_mot_final")
-            
-            target_veh = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
-            v_list = ["AUCUN / PIÉTON"] + target_veh["Numéro de la plaque"].tolist()
-            f_plate = st.selectbox("Véhicule concerné", v_list, key="v_plate_final")
+                    # Bouton d'envoi
+                    if st.button("🚨 ENVOYER FACTURE", use_container_width=True, type="primary"):
+                        if not agent_identifie:
+                            st.error("Code agent requis.")
+                        elif not f_motif:
+                            st.error("Motif obligatoire.")
+                        else:
+                            tz_ch = timezone(timedelta(hours=1))
+                            now_ch = datetime.now(tz_ch)
 
-            # --- ENVOI ---
-            if st.button("🚨 ENVOYER FACTURE", use_container_width=True, type="primary"):
-                if not agent_identifie:
-                    st.error("Code agent requis.")
-                elif not f_motif:
-                    st.error("Motif obligatoire.")
-                else:
-                    # HEURE ZURICH POUR L'ENREGISTREMENT
-                    tz_ch = timezone(timedelta(hours=1))
-                    now_ch = datetime.now(tz_ch)
-
-                    # Gestion des points
-                    if f_pts > 0 and can_pull_points:
-                        try:
-                            idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
-                            df_p.at[idx_p, "PTS"] = max(0, int(df_p.at[idx_p, "PTS"]) - f_pts)
-                            cloud_conn.update(worksheet="Points Permis", data=df_p)
-                        except: pass
-
+                            # Points Permis
+                            if f_pts > 0 and can_pull_points:
+                                try:
+                                    idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
+                                    df_p.at[idx_p, "PTS"] = max(0, int(df_p.at[idx_p, "PTS"]) - f_pts)
+                                    cloud_conn.update(worksheet="Points Permis", data=df_p)
+                                except: pass
+                            
+                            # Enregistrement Cloud (Suite du code d'envoi...)
+                            st.success("Facture traitée !")
+                            st.cache_data.clear()
+                            st.rerun()
+    else:
+        pass
 # --- ENREGISTREMENT FACTURE ---
                     import random
                     
