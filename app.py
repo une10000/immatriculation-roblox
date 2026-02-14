@@ -997,8 +997,8 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                                     st.rerun()
                                 except Exception as e:
                                     st.error("Erreur de synchronisation Sheets.")
-                        
-# --- BOUTON FIN ---
+
+        # --- BOUTON FIN ---
                         with btn_out:
                             if st.button("🛑 FIN", use_container_width=True, disabled=not en_service):
                                 try:
