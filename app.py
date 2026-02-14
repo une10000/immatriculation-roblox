@@ -1388,29 +1388,62 @@ if st.session_state.user_auth == "Staff":
 
         st.divider()
 
-        # --- SECTION B : CALCULATEUR D'HEURES (LOGIQUE MONO-LIGNE) ---
-        st.subheader("📊 Cumul des Heures par Agent")
-        liste_agents = sorted(df_b["Nom Roblox"].unique().tolist())
-        agent_cible = st.selectbox("Choisir un agent pour voir son total :", liste_agents, key="calc_hours")
-        
-        if agent_cible:
-            # On récupère les lignes validées de l'agent sur la feuille Clock
-            user_data_h = df_admin[(df_admin["nom"] == agent_cible) & (df_admin["statut"] == "Validé")].copy()
-            total_min = 0
-            
-            for _, row in user_data_h.iterrows():
-                try:
-                    # Calcul direct : Fin - Début sur la même ligne
-                    t1 = datetime.strptime(str(row["début"]), "%d/%m/%Y %H:%M:%S")
-                    t2 = datetime.strptime(str(row["fin"]), "%d/%m/%Y %H:%M:%S")
-                    total_min += (t2 - t1).total_seconds() / 60
-                except: continue
-            
-            h_disp, m_disp = int(total_min // 60), int(total_min % 60)
-            col_h1, col_h2 = st.columns(2)
-            col_h1.metric(f"Temps de service total", f"{h_disp}h {m_disp}min")
-            col_h2.metric("Estimation (10$/min)", f"{int(total_min * 10)}$")
+# --- SECTION B : CALCULATEUR D'HEURES DÉTAILLÉ ---
+st.subheader("📊 Cumul des Heures par Agent")
 
+liste_agents = sorted(df_b["Nom Roblox"].unique().tolist())
+agent_cible = st.selectbox("Choisir un agent pour voir son total :", liste_agents, key="calc_hours")
+
+if agent_cible:
+    # 1. Extraction du temps (Ta logique de base)
+    user_data_h = df_admin[(df_admin["nom"] == agent_cible) & (df_admin["statut"] == "Validé")].copy()
+    total_min = 0
+    
+    for _, row in user_data_h.iterrows():
+        try:
+            t1 = datetime.strptime(str(row["début"]), "%d/%m/%Y %H:%M:%S")
+            t2 = datetime.strptime(str(row["fin"]), "%d/%m/%Y %H:%M:%S")
+            total_min += (t2 - t1).total_seconds() / 60
+        except: continue
+    
+    # 2. Récupération des métiers de l'agent pour le calcul financier
+    agent_info = df_b[df_b["Nom Roblox"] == agent_cible]
+    metiers = str(agent_info.iloc[0]['Emploiement']).lower() if not agent_info.empty else ""
+    
+    # 3. Paramétrage des taux (À modifier selon tes besoins)
+    TAUX_POLICE = 30 # $/minute (soit 1800/h)
+    TAUX_RCT = 20    # $/minute (soit 1200/h)
+    
+    # 4. Calcul précis par branche
+    gain_police = total_min * TAUX_POLICE if "police" in metiers else 0
+    gain_rct = total_min * TAUX_RCT if "agent rct" in metiers else 0
+    
+    # 5. Affichage des Métriques
+    h_disp, m_disp = int(total_min // 60), int(total_min % 60)
+    
+    st.markdown(f"### Résumé pour {agent_cible}")
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Temps de service", f"{h_disp}h {m_disp}min")
+    
+    if gain_police > 0:
+        c2.metric("Salaire Police", f"{int(gain_police)}$", f"{TAUX_POLICE}$/min")
+    if gain_rct > 0:
+        c3.metric("Salaire RCT", f"{int(gain_rct)}$", f"{TAUX_RCT}$/min")
+
+    # 6. Détail Visuel (Optionnel mais propre pour le Staff)
+    st.markdown("---")
+    with st.container():
+        st.write("**Récapitulatif des gains accumulés :**")
+        if gain_police == 0 and gain_rct == 0:
+            st.warning("Cet agent n'a pas de métier à salaire horaire (Police/RCT).")
+        else:
+            if gain_police > 0:
+                st.info(f"🔹 **Police** : {int(total_min)} min travaillées × {TAUX_POLICE}$ = **{int(gain_police)}$**")
+            if gain_rct > 0:
+                st.success(f"🔸 **RCT** : {int(total_min)} min travaillées × {TAUX_RCT}$ = **{int(gain_rct)}$**")
+            
+            total_du = gain_police + gain_rct
+            st.markdown(f"### TOTAL À PAYER : `{int(total_du)}$`")
         # --- SECTION 1 : CRÉATION DE PROFIL (15k + DATE AUTO) ---
         st.divider()
         st.markdown("### 👤 Création de Dossier Citoyen")
