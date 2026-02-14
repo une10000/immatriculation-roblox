@@ -514,12 +514,19 @@ with st.container():
                 current_jobs_raw = str(b_data.iloc[0]['Emploiement'])
                 st.write(f"🏢 Métier : **{current_jobs_raw}**")
 
-                # --- NOUVEAU : ESTIMATION DE SALAIRE ---
+# --- NOUVEAU : ESTIMATION DE SALAIRE DYNAMIQUE ---
                 with st.expander("💳 Détails de ma prochaine paie"):
-                    # 1. Calcul des primes avec sécurité (insensible à la casse)
-                    user_jobs_list = [j.strip().lower() for j in current_jobs_raw.split("/")]
+                    # 1. RÉCUPÉRATION DU TEMPS DE SERVICE (Activité réelle)
+                    # On suppose que la colonne 'Temps de Service' contient des minutes dans df_b
+                    mins_travaillees = b_data.iloc[0].get('Temps de Service', 0)
+                    try: mins_travaillees = float(mins_travaillees)
+                    except: mins_travaillees = 0
+
+                    # Calcul du gain d'activité : 100$ toutes les 10 minutes (ajustable)
+                    gain_activite = (mins_travaillees / 10) * 100 
                     
-                    # Mapping propre (clé en minuscule pour la comparaison)
+                    # 2. CALCUL DES PRIMES MÉTIERS
+                    user_jobs_list = [j.strip().lower() for j in current_jobs_raw.split("/")]
                     RECOMPENSES = {
                         "agent rct": 2000, 
                         "averis": 2000, 
@@ -527,34 +534,43 @@ with st.container():
                         "staff": 4000, 
                         "service public": 1000
                     }
-                    
                     est_calcul_primes = sum(RECOMPENSES.get(job, 0) for job in user_jobs_list)
-                    est_brut = 15000 + est_calcul_primes # Base de 15k
                     
-                    # 2. Calcul des taxes véhicules
+                    # 3. CALCUL DES TAXES VÉHICULES (Logique Trio RCT Corrigée)
                     mes_v = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
-                    nb_v = len(mes_v)
-                    # On compte les assurances spécifiques
                     c_rct = len(mes_v[mes_v["Assurance"].str.contains("RCT", na=False, case=False)])
                     c_ave = len(mes_v[mes_v["Assurance"].str.contains("AVERIS", na=False, case=False)])
-                    c_std = nb_v - c_rct - c_ave
+                    c_std = len(mes_v) - c_rct - c_ave
+
+                    # Application stricte des tarifs
+                    taxe_rct = 300 if c_rct >= 3 else (c_rct * 150)
+                    taxe_ave = c_ave * 130
+                    taxe_std = c_std * 150
+                    est_taxe_v = taxe_rct + taxe_ave + taxe_std
+
+                    # TOTAL BRUT (Base 15k + Métier + Travail)
+                    est_brut = 15000 + est_calcul_primes + gain_activite
                     
-                    est_taxe_v = (300 if c_rct >= 3 else c_rct * 150) + (c_ave * 130) + (c_std * 150)
+                    # 4. AFFICHAGE STYLISÉ
+                    offre_trio_badge = '<span style="color: #00FF00; font-size: 0.8em;"> [OFFRE TRIO ✅]</span>' if c_rct >= 3 else ""
                     
-                    # 3. Affichage stylisé
                     st.markdown(f"""
                     <div style="background-color: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; border: 1px solid #444;">
                         <div style="display: flex; justify-content: space-between;"><span>Base Civile :</span><b>+15,000$</b></div>
+                        <div style="display: flex; justify-content: space-between; color: #a29bfe;">
+                            <span>Activité ({int(mins_travaillees)} min) :</span><b>+{int(gain_activite)}$</b>
+                        </div>
                         <div style="display: flex; justify-content: space-between;"><span>Primes Métier :</span><b>+{est_calcul_primes}$</b></div>
-                        <div style="display: flex; justify-content: space-between; color: #ff4b4b;"><span>Taxes Véhicules :</span><b>-{est_taxe_v}$</b></div>
+                        <div style="display: flex; justify-content: space-between; color: #ff4b4b;">
+                            <span>Taxes Véhicules {offre_trio_badge} :</span><b>-{int(est_taxe_v)}$</b>
+                        </div>
                         <hr style="margin: 8px 0; border-top: 1px solid #555;">
                         <div style="display: flex; justify-content: space-between; font-size: 1.1em; color: #00FF00;">
-                            <b>ESTIMATION NET :</b><b>{est_brut - est_taxe_v}$</b>
+                            <b>ESTIMATION NET :</b><b>{int(est_brut - est_taxe_v)}$</b>
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
-                    st.caption("⚠️ Estimation basée sur vos contrats actuels.")
-
+                    st.caption("⚠️ Cette estimation n'inclut pas les amendes en attente.")
                 # --- PARTIE STAFF (Modification Métier) ---
                 if st.session_state.user_auth in ["Staff", "Admin"]:
                     if st.button("✏️ Modifier le métier", key=f"edit_job_{target}", use_container_width=True):
