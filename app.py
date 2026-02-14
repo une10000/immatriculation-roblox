@@ -1388,63 +1388,73 @@ if st.session_state.user_auth == "Staff":
 
         st.divider()
 
-# --- SECTION B : CALCULATEUR D'HEURES DÉTAILLÉ ---
+# --- SECTION B : CALCULATEUR D'HEURES (LOGIQUE CLOCK) ---
 st.subheader("📊 Cumul des Heures par Agent")
 
 liste_agents = sorted(df_b["Nom Roblox"].unique().tolist())
 agent_cible = st.selectbox("Choisir un agent pour voir son total :", liste_agents, key="calc_hours")
 
 if agent_cible:
-    # 1. Extraction du temps réel depuis la feuille Clock (df_admin)
+    # 1. On récupère les sessions VALIDÉES de l'agent dans la feuille 'Clock'
     user_data_h = df_admin[(df_admin["nom"] == agent_cible) & (df_admin["statut"] == "Validé")].copy()
-    total_min = 0
     
+    total_argent_cumule = 0
+    total_min_global = 0
+    details_metiers = {} # Pour stocker le temps par job (POLSTA, RCT, etc.)
+
+    # 2. On boucle sur chaque session pour calculer l'argent selon le JOB de la ligne
     for _, row in user_data_h.iterrows():
         try:
-            # Calcul de la différence entre début et fin
             t1 = datetime.strptime(str(row["début"]), "%d/%m/%Y %H:%M:%S")
             t2 = datetime.strptime(str(row["fin"]), "%d/%m/%Y %H:%M:%S")
-            total_min += (t2 - t1).total_seconds() / 60
+            minutes_session = (t2 - t1).total_seconds() / 60
+            
+            # On récupère le job écrit sur CETTE ligne (ex: POLSTA)
+            job_session = str(row["job"]).upper().strip()
+            
+            # --- DÉFINITION DES TAUX PAR JOB ---
+            taux = 0
+            if "POLSTA" in job_session or "POLICE" in job_session:
+                taux = 30  # 30$/min
+            elif "RCT" in job_session:
+                taux = 20  # 20$/min
+            
+            argent_session = minutes_session * taux
+            
+            # Cumul global
+            total_argent_cumule += argent_session
+            total_min_global += minutes_session
+            
+            # Stockage pour le détail visuel
+            details_metiers[job_session] = details_metiers.get(job_session, 0) + argent_session
+            
         except: continue
-    
-    # 2. Récupération des métiers pour savoir quel taux appliquer
-    agent_info = df_b[df_b["Nom Roblox"] == agent_cible]
-    metiers = str(agent_info.iloc[0]['Emploiement']).lower() if not agent_info.empty else ""
-    
-    # 3. Tes Taux Horaires (en $/minute)
-    TAUX_POLICE = 30  # Soit 1800$/h
-    TAUX_RCT = 20     # Soit 1200$/h
-    
-    # 4. Calcul des gains basés SUR LE TEMPS RÉEL accumulé
-    # Si total_min est 0, le gain sera 0.
-    gain_police = total_min * TAUX_POLICE if "police" in metiers else 0
-    gain_rct = total_min * TAUX_RCT if "agent rct" in metiers else 0
-    
-    # 5. Affichage des Métriques
-    h_disp, m_disp = int(total_min // 60), int(total_min % 60)
+
+    # 3. AFFICHAGE DES RÉSULTATS
+    h_disp, m_disp = int(total_min_global // 60), int(total_min_global % 60)
     
     st.markdown(f"### Résumé pour {agent_cible}")
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Temps de service", f"{h_disp}h {m_disp}min")
     
-    # On affiche les colonnes de salaire seulement si l'agent a le métier
-    if "police" in metiers:
-        c2.metric("Salaire Police", f"{int(gain_police)}$", f"{TAUX_POLICE}$/min")
-    if "agent rct" in metiers:
-        c3.metric("Salaire RCT", f"{int(gain_rct)}$", f"{TAUX_RCT}$/min")
+    c1, c2 = st.columns(2)
+    c1.metric("Temps de service total", f"{h_disp}h {m_disp}min")
+    c2.metric("Total Cumulé", f"{int(total_argent_cumule)}$")
 
-    # 6. Récapitulatif visuel détaillé
     st.write("---")
-    if total_min > 0:
-        if "police" in metiers:
-            st.info(f"🔹 **Police** : {int(total_min)} min travaillées × {TAUX_POLICE}$ = **{int(gain_police)}$**")
-        if "agent rct" in metiers:
-            st.success(f"🔸 **RCT** : {int(total_min)} min travaillées × {TAUX_RCT}$ = **{int(gain_rct)}$**")
-        
-        total_du = gain_police + gain_rct
-        st.subheader(f"💰 TOTAL CUMULÉ : {int(total_du)}$")
+    st.write("**Détail des gains par section (Feuille Clock) :**")
+    
+    if not details_metiers:
+        st.warning("Aucun gain calculable (vérifiez les jobs dans la feuille Clock).")
     else:
-        st.warning(f"🕒 {agent_cible} n'a aucune minute de service validée dans la feuille Clock.")
+        for job, gain in details_metiers.items():
+            color = "#3498db" if "POL" in job else "#2ecc71"
+            st.markdown(f"""
+                <div style="background: rgba(255,255,255,0.05); padding: 10px; border-left: 5px solid {color}; margin-bottom: 5px;">
+                    <span style="color:{color}; font-weight:bold;">{job}</span> : 
+                    Vous avez cumulé <b>{int(gain)}$</b> sur ce poste.
+                </div>
+            """, unsafe_allow_html=True)
+
+    st.success(f"💰 **TOTAL À VERSER : {int(total_argent_cumule)}$**")
         # --- SECTION 1 : CRÉATION DE PROFIL (15k + DATE AUTO) ---
         st.divider()
         st.markdown("### 👤 Création de Dossier Citoyen")
