@@ -1128,16 +1128,20 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
 # ======================================================================================
 # 4. SYSTÈME DE SAISIE ET CONSULTATION (SÉCURISÉ ET ANTI-CRASH)
 # ======================================================================================
-st.markdown("### 🎯 INTERVENTION ET FACTURATION")
+with tabs[1]: # Onglet Services Agents
+    if st.session_state.user_auth in ["Staff", "Agent RCT"]:
+        st.markdown("### 🎯 INTERVENTION ET FACTURATION")
 
-if target == "---":
-    st.warning("⚠️ Sélectionnez un citoyen en haut de la page.")
-else:
-    # Nettoyage automatique des noms de colonnes
-    df_b.columns = df_b.columns.str.strip() 
+        if target == "---":
+            st.warning("⚠️ Sélectionnez un citoyen en haut de la page.")
+        else:
+            # Nettoyage automatique des noms de colonnes
+            df_b.columns = df_b.columns.str.strip() 
 
-    col_saisie, col_facture, col_vehicules = st.columns([1.1, 1, 0.9])
-
+            col_saisie, col_facture, col_vehicules = st.columns([1.1, 1, 0.9])
+            
+            # --- ICI VIENT LA SUITE (Saisie, Aperçu, Véhicules) ---
+            # Tout ce qui est dans ces colonnes doit aussi être indenté
     with col_saisie:
         with st.container(border=True):
             st.markdown("#### 📝 Saisie")
