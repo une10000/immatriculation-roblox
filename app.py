@@ -1128,7 +1128,7 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
 # 4. SYSTÈME DE SAISIE ET CONSULTATION (SERVICES AGENTS)
 # ======================================================================================
 with tabs[1]: # Onglet Services Agents
-    if st.session_state.user_auth in ["Staff", "Agent RCT"]:
+    if st.session_state.user_auth in ["Staff", "RCT"]:
         st.markdown("### 🎯 INTERVENTION ET FACTURATION")
 
         if target == "---":
@@ -1138,6 +1138,7 @@ with tabs[1]: # Onglet Services Agents
             df_b.columns = df_b.columns.str.strip() 
             tz_ch = timezone(timedelta(hours=1))
             now_ch = datetime.now(tz_ch)
+            df_all_f = cloud_conn.read(worksheet="Factures").fillna("")
             
             # Layout en 3 colonnes : Saisie | Aperçu Facture | Véhicules
             col_saisie, col_facture, col_vehicules = st.columns([1.1, 1, 0.9])
@@ -1148,7 +1149,7 @@ with tabs[1]: # Onglet Services Agents
                     st.markdown("#### 📝 Saisie")
                     
                     # Authentification Agent par Code
-                    agent_code_saisi = st.text_input("🔑 CODE AGENT :", type="password", key="auth_agent_code")
+                    agent_code_saisi = st.text_input("🔑 CODE AGENT :", type="password", key="auth_agent_code_factu")
                     agent_identifie = None
                     
                     if "Code" in df_b.columns and agent_code_saisi:
@@ -1161,7 +1162,7 @@ with tabs[1]: # Onglet Services Agents
                         else:
                             st.error("❌ Code inconnu.")
 
-                    # Choix de l'émetteur (RCT par défaut pour les agents)
+                    # Choix de l'émetteur
                     if st.session_state.user_auth == "Staff":
                         f_emetteur = st.selectbox("Entité Émettrice", ["POLSTA", "Averis", "RCT"], key="v_emetteur_final")
                     else:
@@ -1188,8 +1189,7 @@ with tabs[1]: # Onglet Services Agents
                             st.error("Motif obligatoire.")
                         else:
                             import random
-                            
-                            # Mise à jour des points (si applicable)
+                            # Mise à jour des points si POLSTA
                             if f_pts > 0 and can_pull_points:
                                 try:
                                     idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
@@ -1197,7 +1197,7 @@ with tabs[1]: # Onglet Services Agents
                                     cloud_conn.update(worksheet="Points Permis", data=df_p)
                                 except: pass
 
-                            # Création de la ligne Facture
+                            # Création de la facture
                             new_row = {
                                 "ID": random.randint(1000, 9999),
                                 "Cible": target,
@@ -1211,14 +1211,12 @@ with tabs[1]: # Onglet Services Agents
                                 "Date_Limite": (now_ch + timedelta(hours=24)).strftime("%d/%m/%Y %H:%M:%S")
                             }
 
-                            # Envoi vers Google Sheets
                             df_f_updated = pd.concat([df_all_f, pd.DataFrame([new_row])], ignore_index=True)
                             cloud_conn.update(worksheet="Factures", data=df_f_updated)
                             
-                            st.success(f"✅ Facture envoyée par {agent_identifie} !")
+                            st.success(f"✅ Facture envoyée !")
                             st.cache_data.clear()
-                            time.sleep(1)
-                            st.rerun()
+                            time.sleep(1); st.rerun()
 
             # --- COLONNE 2 : APERÇU ET HISTORIQUE ---
             with col_facture:
@@ -1244,17 +1242,9 @@ with tabs[1]: # Onglet Services Agents
                 """, unsafe_allow_html=True)
 
                 st.divider()
-                st.markdown("#### 📜 Historique Factures")
-                if not df_all_f.empty:
-                    hist_f = df_all_f[df_all_f["Cible"] == target].sort_index(ascending=False)
-                    if not hist_f.empty:
-                        st.dataframe(
-                            hist_f[["Date_Emission", "Emetteur", "Montant", "Statut"]], 
-                            hide_index=True, 
-                            use_container_width=True
-                        )
-                    else:
-                        st.info("Aucun antécédent.")
+                st.markdown("#### 📜 Historique")
+                hist_f = df_all_f[df_all_f["Cible"] == target].sort_index(ascending=False)
+                st.dataframe(hist_f[["Date_Emission", "Emetteur", "Montant", "Statut"]], hide_index=True, use_container_width=True)
 
             # --- COLONNE 3 : VÉHICULES ---
             with col_vehicules:
@@ -1276,7 +1266,7 @@ with tabs[1]: # Onglet Services Agents
                 else:
                     st.info("Aucun véhicule.")
     else:
-        st.error("Accès restreint aux agents RCT et Staff.")
+        st.error("Accès restreint.")
 # ======================================================================================
 # 5. ONGLET ADMINISTRATION (CORRIGÉ)
 # ======================================================================================
