@@ -530,20 +530,21 @@ with st.container():
                                 st.rerun()
                 st.caption(f"📅 Arrivée : {b_data.iloc[0].get('Date d\'arrivée', 'Non spécifiée')}")
 
-        # --- COLONNE 3 : ARCHIVES ---
+# --- COLONNE 3 : ARCHIVES ---
         with col3:
             st.markdown("### 📁 ARCHIVES")
             try:
                 df_f_history = cloud_conn.read(worksheet="Factures").fillna("")
                 historique = df_f_history[(df_f_history["Cible"] == target) & (df_f_history["Statut"] == "PAYÉ")]
+                
                 if not historique.empty:
                     st.info(f"📄 {len(historique)} réglée(s)")
                     with st.expander("👁️ Historique"):
                         for _, f in historique.iterrows():
+                            # Option de remboursement pour Staff/Admin
                             if st.session_state.user_auth in ["Staff", "Admin"]:
                                 if st.button(f"🔄 Rembourser #{f['ID']}", key=f"refund_{f['ID']}", use_container_width=True):
                                     try:
-                                        # Logique remboursement intégrée
                                         idx_civ = df_b[df_b["Nom Roblox"] == target].index[0]
                                         m_remb = float(str(f["Montant"]).replace('$', '').replace(',', ''))
                                         df_b.at[idx_civ, "Solde"] = float(str(df_b.at[idx_civ, "Solde"]).replace('$', '')) + m_remb
@@ -553,11 +554,18 @@ with st.container():
                                         st.success("✅ Remboursé !")
                                         st.rerun()
                                     except: st.error("Échec remboursement.")
+                            
+                            # Affichage de l'archive avec l'agent signataire
+                            agent_info = f.get('Agent_Signataire', 'Non spécifié')
                             st.markdown(f"""
                             <div style="border: 1px solid #000; padding: 10px; background: #f9f9f9; color: black; margin-bottom: 8px; border-left: 5px solid green;">
-                                <div style="display: flex; justify-content: space-between; font-size: 0.8em;"><b>REF: #{f['ID']}</b> <b style="color: green;">✔</b></div>
+                                <div style="display: flex; justify-content: space-between; font-size: 0.8em;"><b>REF: #{f['ID']}</b> <b style="color: green;">✔ PAYÉ</b></div>
                                 <hr style="margin: 5px 0; border-top: 1px dashed #000;">
-                                <div style="font-size: 0.9em;"><b>MOTIF :</b> {f['Motif']}<br><b>MONTANT :</b> {f['Montant']}$</div>
+                                <div style="font-size: 0.82em;">
+                                    <b>AGENT :</b> {agent_info}<br>
+                                    <b>MOTIF :</b> {f['Motif']}<br>
+                                    <b>MONTANT :</b> {f['Montant']}$
+                                </div>
                             </div>
                             """, unsafe_allow_html=True)
                 else: st.write("∅ Aucune archive.")
@@ -568,13 +576,10 @@ with st.container():
 # ======================================================================================
 # NOUVEAU : SYSTÈME DE PAIEMENT DES FACTURES (STYLE TICKET)
 # ======================================================================================
-# --- RÉCUPÉRATION DES DONNÉES (À ajouter avant le if) ---
+# --- SYSTÈME DE PAIEMENT DES FACTURES (STYLE TICKET) ---
 df_all_f = cloud_conn.read(worksheet="Factures").fillna("")
-# On filtre pour ne voir que les factures du citoyen sélectionné (target)
 mes_factures = df_all_f[(df_all_f["Cible"] == target) & (df_all_f["Statut"] == "EN ATTENTE")]
 
-# --- NOUVEAU : SYSTÈME DE PAIEMENT DES FACTURES (STYLE TICKET) ---
-# --- SYSTÈME DE PAIEMENT DES FACTURES (STYLE TICKET) ---
 if not mes_factures.empty:
     st.error(f"⚠️ {len(mes_factures)} FACTURE(S) EN ATTENTE DE PAIEMENT")
     
@@ -583,7 +588,6 @@ if not mes_factures.empty:
         try:
             date_limite = datetime.strptime(str(fac['Date_Limite']), "%d/%m/%Y %H:%M:%S")
             temps_restant = date_limite - datetime.now()
-            
             if temps_restant.total_seconds() > 0:
                 h, rem = divmod(int(temps_restant.total_seconds()), 3600)
                 m, _ = divmod(rem, 60)
@@ -593,20 +597,16 @@ if not mes_factures.empty:
                 timer_info = "⚠️ DÉLAI DÉPASSÉ (IMPAYÉ)"
                 t_color = "#d32f2f"
         except:
-            timer_info = "⌛ Délai : 24 heures"
-            t_color = "#555"
-            # 2. AFFICHAGE DU TICKET HTML (AVEC POINTS)
-        # On définit qui appartient à la Police
-        if fac['Emetteur'] in ["Staff", "POLSTA", "POLICE"]:
-            prefix_name = "POLICE NATIONALE"
-        elif fac['Emetteur'] == "Averis":
-            prefix_name = "SERVICES AVERIS"
-        else:
-            prefix_name = "RÉSEAU RCT"
+            timer_info = "⌛ Délai : 24 heures"; t_color = "#555"
 
-        # On récupère les points ou 0 si vide
-        nb_points_retires = fac.get('Points', 0)
+        # 2. IDENTIFICATION ÉMETTEUR
+        emetteur_label = str(fac.get('Emetteur_Service', fac.get('Emetteur', 'INCONNU')))
+        if "POL" in emetteur_label.upper(): prefix_name = "POLICE NATIONALE"
+        elif "AVERIS" in emetteur_label.upper(): prefix_name = "SERVICES AVERIS"
+        else: prefix_name = "RÉSEAU RCT"
 
+        # 3. AFFICHAGE DU TICKET
+        agent_nom = fac.get('Agent_Signataire', 'Officier RCT')
         st.markdown(f"""
         <div style="border: 2px solid #000; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; margin-bottom: 5px; box-shadow: 6px 6px 0px #000;">
             <center><b style="font-size:1.1em; text-decoration: underline;">FACTURE OFFICIELLE</b><br>
@@ -614,7 +614,8 @@ if not mes_factures.empty:
             <hr style="border-top: 1px dashed #000; margin: 10px 0;">
             <div style="font-size: 0.9em; line-height: 1.2;">
                 <b>RÉFÉRENCE :</b> #{fac['ID']}<br>
-                <b>ÉMETTEUR   :</b> {fac['Emetteur']}<br>
+                <b>OFFICIER   :</b> {agent_nom}<br>
+                <b>SERVICE   :</b> {emetteur_label}<br>
                 <b>MOTIF     :</b> {fac['Motif']}<br>
                 <b style="color: {t_color};">{timer_info}</b>
             </div>
@@ -623,29 +624,28 @@ if not mes_factures.empty:
                 MONTANT : {fac['Montant']}$
             </div>
             <div style="text-align: center; font-weight: bold; font-size: 1em; margin-top: 5px;">
-                POINTS : -{nb_points_retires}
+                POINTS : -{fac.get('Points', 0)}
             </div>
-            <center><small style="font-size: 0.6em; opacity: 0.5; margin-top:10px; display:block;">RCRP SYSTEM - DOCUMENT OFFICIEL</small></center>
         </div>
         """, unsafe_allow_html=True)
 
-        # 3. BOUTON DE PAIEMENT
+        # 4. BOUTON DE PAIEMENT
         if st.button(f"💳 RÉGLER LA FACTURE #{fac['ID']}", key=f"pay_{fac['ID']}", use_container_width=True):
             try:
                 idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
                 solde_actuel = float(str(df_b.at[idx_b, "Solde"]).replace('$', '').replace(',', ''))
-                montant_facture = float(fac['Montant'])
+                montant_facture = float(str(fac['Montant']).replace(',', ''))
                 
                 if solde_actuel >= montant_facture:
                     df_b.at[idx_b, "Solde"] = solde_actuel - montant_facture
-                    emetteur = str(fac['Emetteur'])
                     
-                    if emetteur == "RCT":
-                        rct_idx = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
-                        df_b.at[rct_idx, "Solde"] = float(str(df_b.at[rct_idx, "Solde"]).replace('$', '').replace(',', '')) + montant_facture
-                    elif emetteur == "Averis":
-                        ave_idx = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
-                        df_b.at[ave_idx, "Solde"] = float(str(df_b.at[ave_idx, "Solde"]).replace('$', '').replace(',', '')) + montant_facture
+                    # Redirection des fonds (Patrons)
+                    if "RCT" in emetteur_label.upper():
+                        idx_p = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
+                        df_b.at[idx_p, "Solde"] = float(str(df_b.at[idx_p, "Solde"]).replace('$', '')) + montant_facture
+                    elif "AVERIS" in emetteur_label.upper():
+                        idx_p = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
+                        df_b.at[idx_p, "Solde"] = float(str(df_b.at[idx_p, "Solde"]).replace('$', '')) + montant_facture
                     
                     df_all_f.loc[df_all_f["ID"] == fac["ID"], "Statut"] = "PAYÉ"
                     cloud_conn.update(worksheet="Banque", data=df_b)
@@ -658,7 +658,6 @@ if not mes_factures.empty:
                     st.error("❌ Solde insuffisant.")
             except Exception as e:
                 st.error(f"Erreur paiement : {e}")
-
 # 4. BOUTON ANNULER (Staff/Admin) avec remise des points
         if st.session_state.user_auth in ["Staff", "Admin", "POLSTA"]: # J'ai ajouté POLSTA au cas où
             if st.button(f"🗑️ ANNULER LA FACTURE #{fac['ID']}", key=f"admin_del_{fac['ID']}", use_container_width=True):
