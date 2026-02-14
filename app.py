@@ -1278,14 +1278,16 @@ with tabs[1]: # Onglet Services Agents
         st.error("Accès restreint aux agents RCT et Staff.")
 
 # ======================================================================================
-# 5. ONGLET ADMINISTRATION (INTÉGRALITÉ ABSOLUE : CRÉATION + HEURES + PAIE + LOGS + STATS)
+# 5. ONGLET ADMINISTRATION (CORRIGÉ)
 # ======================================================================================
-with tabs[2]:
-    if st.session_state.user_auth == "Staff":
+# ON NE RENTRE ICI QUE SI ON EST STAFF, SINON ON N'ESSAIE MÊME PAS D'OUVRIR TABS[2]
+if st.session_state.user_auth == "Staff":
+    with tabs[2]:
         st.markdown('<div class="header-box"><h2>🛠️ ADMINISTRATION GÉNÉRALE</h2></div>', unsafe_allow_html=True)
         
-        # --- SECTION 1 : VALIDATION DES SERVICES (FEUILLE CLOCK) ---
+        # --- SECTION 1 : VALIDATION DES SERVICES ---
         st.subheader("🛡️ Validation des Pointages")
+        # ... (tout le reste de ton code d'admin reste identique ici) ...
         try:
             df_admin_clock = cloud_conn.read(worksheet="Clock", ttl=0)
             df_admin_clock.columns = df_admin_clock.columns.str.strip()
