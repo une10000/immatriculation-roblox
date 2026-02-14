@@ -957,12 +957,9 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                             en_service = (last_action == "IN")
                             
                             if en_service:
-                                # On affiche l'heure du dernier "IN"
-                                last_in = user_logs[user_logs["Action"] == "IN"].tail(1)
-                                if not last_in.empty:
-                                    val_in = str(last_in.iloc[0]["Horodatage"])
-                                    start_display = val_in.split(" ")[1][:5] if " " in val_in else val_in[:5]
-                            # Si OUT, on laisse à --:-- selon ton souhait
+                                # On récupère l'heure de la colonne "Début"
+                                val_in = str(user_logs.iloc[-1]["Début"])
+                                start_display = val_in.split(" ")[1][:5] if " " in val_in else val_in[:5]
                     except: pass
 
                     with col_infos:
@@ -980,49 +977,50 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                             if st.button("✅ DÉBUT", use_container_width=True, type="primary", disabled=en_service):
                                 try:
                                     df_pnt = cloud_conn.read(worksheet="Pointage")
-                                    # Correction : on n'envoie que les colonnes présentes sur ton image E et F
+                                    # Aligné sur tes colonnes : Nom, Action, Job, Début, Fin
                                     new_log = pd.DataFrame([{
                                         "Nom": agent_identifie, 
                                         "Action": "IN", 
                                         "Job": job_actuel, 
-                                        "Horodatage": now_ch.strftime("%d/%m/%Y %H:%M:%S")
+                                        "Début": now_ch.strftime("%d/%m/%Y %H:%M:%S"),
+                                        "Fin": ""
                                     }])
                                     cloud_conn.update(worksheet="Pointage", data=pd.concat([df_pnt, new_log], ignore_index=True))
                                     
-                                    st.success(f"🚀 Service démarré à {h_actuelle}. Bon courage !")
+                                    st.success(f"🚀 Service démarré à {h_actuelle} !")
                                     import time
                                     time.sleep(1.5)
                                     st.rerun()
-                                except Exception as e:
-                                    st.error(f"Erreur Sheets : Vérifie l'ordre des colonnes.")
+                                except: st.error("Erreur Sheets : Vérifie tes colonnes Nom/Action/Job/Début/Fin")
 
                         # --- BOUTON FIN ---
                         with btn_out:
                             if st.button("🛑 FIN", use_container_width=True, disabled=not en_service):
                                 try:
-                                    # On capture l'heure de fin pour l'affichage final
-                                    h_fin = now_ch.strftime("%H:%M")
+                                    h_fin_full = now_ch.strftime("%d/%m/%Y %H:%M:%S")
+                                    h_fin_short = now_ch.strftime("%H:%M")
                                     
                                     df_pnt = cloud_conn.read(worksheet="Pointage")
+                                    # On enregistre la fin dans une nouvelle ligne OUT ou on complète la dernière
                                     new_log = pd.DataFrame([{
                                         "Nom": agent_identifie, 
                                         "Action": "OUT", 
                                         "Job": job_actuel, 
-                                        "Horodatage": now_ch.strftime("%d/%m/%Y %H:%M:%S")
+                                        "Début": "", # Optionnel, on peut laisser vide
+                                        "Fin": h_fin_full
                                     }])
                                     cloud_conn.update(worksheet="Pointage", data=pd.concat([df_pnt, new_log], ignore_index=True))
                                     
-                                    # Message de confirmation complet
-                                    st.success(f"✅ Service terminé ! (Début: {start_display} | Fin: {h_fin})")
+                                    # Confirmation visuelle avant le reset
+                                    st.success(f"✅ Service terminé ! (Début: {start_display} | Fin: {h_fin_short})")
                                     st.balloons()
                                     
-                                    # Reset du code et refresh
+                                    # Reset et refresh
                                     st.session_state.pnt_compact_auth = "" 
                                     import time
-                                    time.sleep(3) # Un peu plus de temps pour voir le résumé
+                                    time.sleep(3)
                                     st.rerun()
-                                except Exception as e:
-                                    st.error("Erreur lors de la clôture.")
+                                except: st.error("Erreur lors de la clôture.")
                 else:
                     st.error("Code agent incorrect.")
 
