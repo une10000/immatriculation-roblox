@@ -1411,7 +1411,7 @@ with tabs[2]:
                 st.caption("Hors bonus fixes (Staff/Averis)")
 
         st.divider()
-# --- SECTION 3 : TERMINAL DE PAIEMENT NATIONAL (STYLE CLASSIQUE MIS À JOUR) ---
+# --- SECTION 3 : TERMINAL DE PAIEMENT NATIONAL (OFFRE TRIO 200$ + TOUTES PRIMES) ---
 if st.session_state.get("user_auth") == "Staff":
     st.divider()
     st.markdown("### 🧧 Terminal de Paie Nationale")
@@ -1426,18 +1426,23 @@ if st.session_state.get("user_auth") == "Staff":
             user_jobs_list = [j.strip() for j in str(user_data["Emploiement"].values[0]).split("/")]
             solde_actuel = float(str(user_data["Solde"].values[0]).replace('$', '').replace(',', ''))
             
-            # 2. Calcul des Primes (Heures + Métiers)
+            # 2. Calcul de TOUTES les Primes (Heures + Métiers + Staff)
             primes_detail_list = []
             calcul_primes = 0
-            T_LIMITE = 1200 # 20h
+            T_LIMITE = 1200 # Seuil pour prime max (20h)
             
             for job in user_jobs_list:
                 m_prime = 0
-                if job == "Police": m_prime = int(3000 * min(m_pol/T_LIMITE, 1.0))
-                elif job == "Agent RCT": m_prime = int(2000 * min(m_rct/T_LIMITE, 1.0))
-                elif job == "Staff": m_prime = 4000
-                elif job == "Averis": m_prime = 2000
-                elif job == "Service Public": m_prime = 1000
+                if job == "Police": 
+                    m_prime = int(3000 * min(m_pol/T_LIMITE, 1.0))
+                elif job == "Agent RCT": 
+                    m_prime = int(2000 * min(m_rct/T_LIMITE, 1.0))
+                elif job == "Staff": 
+                    m_prime = 4000
+                elif job == "Averis": 
+                    m_prime = 2000
+                elif job == "Service Public": 
+                    m_prime = 1000
                 
                 if m_prime > 0:
                     primes_detail_list.append(f"• **{job}** : +{m_prime:,}$")
@@ -1445,7 +1450,7 @@ if st.session_state.get("user_auth") == "Staff":
             
             total_brut = 15000 + calcul_primes
             
-            # 3. Calcul Assurances & Trio
+            # 3. Calcul Assurances & Offre TRIO RCT (200$)
             mes_vehicules = df_i[df_i["Nom d'utilisateur ROBLOX"] == target_paie]
             nb_vehicules = len(mes_vehicules)
             count_rct, v_av, v_std = 0, 0, 0
@@ -1456,9 +1461,13 @@ if st.session_state.get("user_auth") == "Staff":
                 elif "AVERIS" in choix: v_av += 130
                 else: v_std += 150
             
-            # Offre Trio RCT
-            argent_pour_rct = 300 if count_rct >= 3 else (count_rct * 150)
-            label_rct = "Part RCT (Offre Trio 🎁)" if count_rct >= 3 else "Part RCT"
+            # Application Offre Trio : 200$ fixe si 3 véhicules ou plus en RCT
+            if count_rct >= 3:
+                argent_pour_rct = 200
+                label_rct = "Part RCT (Offre Trio 🎁)"
+            else:
+                argent_pour_rct = count_rct * 150
+                label_rct = "Part RCT"
 
             # 4. Taxes Jeune Conducteur
             try:
@@ -1473,7 +1482,7 @@ if st.session_state.get("user_auth") == "Staff":
             total_net = total_brut - total_prelevement
             solde_final = solde_actuel + total_net
 
-            # --- AFFICHAGE BIEN ALIGNÉ ---
+            # --- AFFICHAGE ---
             st.markdown(f"#### 📊 Fiche de Paie : {target_paie}")
             col_rev1, col_rev2 = st.columns(2)
 
@@ -1498,7 +1507,7 @@ if st.session_state.get("user_auth") == "Staff":
             c1, c2, c3, c4 = st.columns(4)
             c1.metric("Solde Actuel", f"{solde_actuel:,}$")
             
-            # Points Permis (Récupération auto à 25)
+            # Récupération Points Permis
             pts_actuels = 25
             try:
                 pts_row = df_p[df_p["Nom Roblox"] == target_paie]
@@ -1510,43 +1519,44 @@ if st.session_state.get("user_auth") == "Staff":
             c3.metric("Net à Verser", f"+{int(total_net):,}$", delta=f"-{total_prelevement}$ Taxes", delta_color="inverse")
             c4.metric("Solde Final", f"{int(solde_final):,}$", delta=f"+{int(total_net):,}$")
 
-            # --- VALIDATION ---
-            if st.button(f"🧧 CONFIRMER LE VERSEMENT POUR {target_paie.upper()}", use_container_width=True, type="primary"):
+            # --- VALIDATION & TRANSFERTS PATRONS ---
+            if st.button(f"🧧 VALIDER LE VERSEMENT POUR {target_paie.upper()}", use_container_width=True, type="primary"):
                 try:
                     def clean_v(val): return float(str(val).replace('$', '').replace(',', '').strip())
 
-                    # A. Transferts Patrons (Moune2010 / une10000)
+                    # A. Transferts Patrons (Assurances)
                     idx_r = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
                     idx_m = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
                     df_b.at[idx_r, "Solde"] = clean_v(df_b.at[idx_r, "Solde"]) + argent_pour_rct
                     df_b.at[idx_m, "Solde"] = clean_v(df_b.at[idx_m, "Solde"]) + v_av
                     
-                    # B. Crédit Citoyen
+                    # B. Crédit Citoyen (Solde Final)
                     idx_ben = df_b[df_b["Nom Roblox"] == target_paie].index[0]
                     df_b.at[idx_ben, "Solde"] = solde_final 
                     
-                    # C. Reset Assurances & Heures
+                    # C. Reset Assurances, Heures & Permis
                     mask_u = df_i["Nom d'utilisateur ROBLOX"] == target_paie
                     df_i.loc[mask_u, "Assurance"] = df_i.loc[mask_u, "Assurance"].apply(lambda x: f"✅ {str(x).replace('✅','')}")
                     df_clock.loc[(df_clock["nom"] == target_paie) & (df_clock["statut"] == "Validé"), "statut"] = "Payé"
                     
-                    # D. Reset Points
                     try:
                         idx_p = df_p[df_p["Nom Roblox"] == target_paie].index[0]
                         df_p.at[idx_p, "PTS"] = 25
                         cloud_conn.update(worksheet="Points Permis", data=df_p)
                     except: pass
 
-                    # Sauvegarde
+                    # D. Sauvegarde Globale
                     cloud_conn.update(worksheet="Banque", data=df_b)
                     cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i)
                     cloud_conn.update(worksheet="Clock", data=df_clock)
                     
+                    # Log Audit
                     if "audit_logs" not in st.session_state: st.session_state.audit_logs = []
                     st.session_state.audit_logs.append(f"[{datetime.now().strftime('%H:%M')}] PAIE : {target_paie} (+{int(total_net)}$)")
                     
-                    st.success("✅ Virement effectué !"); st.balloons(); st.cache_data.clear(); time.sleep(1); st.rerun()
-                except Exception as e: st.error(f"Erreur : {e}")
+                    st.success("✅ Paie et transferts effectués !"); st.balloons()
+                    st.cache_data.clear(); time.sleep(1); st.rerun()
+                except Exception as e: st.error(f"Erreur de traitement : {e}")
         # --- SECTION 3 : LOGS ET STATISTIQUES ---
         st.divider()
         col_admin_left, col_admin_right = st.columns(2)
