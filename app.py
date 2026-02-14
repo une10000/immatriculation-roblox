@@ -1401,16 +1401,21 @@ with tabs[2]:
 
         st.divider()
 
-# --- SECTION 3 : TERMINAL DE PAIEMENT NATIONAL (BLOC À REMPLACER) ---
+# --- SECTION 3 : TERMINAL DE PAIEMENT NATIONAL (CORRIGÉ) ---
         st.subheader("🧧 Terminal de Paiement National")
         with st.container(border=True):
-            target_paie = st.selectbox("Bénéficiaire du virement :", liste_c, key="term_final")
+            # Création de la liste des noms pour éviter le NameError
+            liste_agents = sorted(df_b["Nom Roblox"].unique().tolist())
+            
+            target_paie = st.selectbox("Bénéficiaire du virement :", liste_agents, key="term_final")
             
             if target_paie:
                 # 1. Calcul des Primes & Bonus Staff/Averis
                 u_row = df_b[df_b["Nom Roblox"] == target_paie]
                 u_jobs = [j.strip() for j in str(u_row["Emploiement"].values[0]).split("/")]
                 s_primes, T_LIMITE = 0, 1200
+                
+                # Récupération des minutes depuis la section précédente
                 for j in u_jobs:
                     if j == "Police": s_primes += int(3000 * min(m_pol/T_LIMITE, 1.0))
                     elif j == "Agent RCT": s_primes += int(2000 * min(m_rct/T_LIMITE, 1.0))
@@ -1450,14 +1455,14 @@ with tabs[2]:
                             <td style="text-align:right;">{int(t_net):,}$</td>
                         </tr>
                     </table>
-                    <p style="color:#555; font-size:0.7em; margin-top:15px; text-align:center;">L'argent des assurances est automatiquement redirigé vers Moune2010 et une10000.</p>
+                    <p style="color:#555; font-size:0.7em; margin-top:15px; text-align:center;">L'argent des assurances est redirigé vers Moune2010 et une10000.</p>
                 </div>
                 """, unsafe_allow_html=True)
                 st.write("")
 
                 if st.button(f"💸 EXÉCUTER LE VIREMENT NATIONAL", use_container_width=True, type="primary"):
                     try:
-                        # Redirection vers Patrons (Règles mémorisées)
+                        # Redirection vers Patrons
                         idx_r = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
                         idx_a = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
                         df_b.at[idx_r, "Solde"] = float(df_b.at[idx_r, "Solde"]) + p_rct
@@ -1467,20 +1472,18 @@ with tabs[2]:
                         idx_t = df_b[df_b["Nom Roblox"] == target_paie].index[0]
                         df_b.at[idx_t, "Solde"] = float(df_b.at[idx_t, "Solde"]) + t_net
                         
-                        # Reset Heures (Validé -> Payé) et Assurances (-> ✅ Payée)
+                        # Reset
                         df_clock.loc[(df_clock["nom"] == target_paie) & (df_clock["statut"] == "Validé"), "statut"] = "Payé"
                         df_i.loc[df_i["Nom d'utilisateur ROBLOX"] == target_paie, "Assurance"] = "✅ Payée"
                         
-                        # Mise à jour Sheets
                         cloud_conn.update(worksheet="Banque", data=df_b)
                         cloud_conn.update(worksheet="Clock", data=df_clock)
                         cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i)
                         
-                        # Journal d'audit
                         if "audit_logs" not in st.session_state: st.session_state.audit_logs = []
                         st.session_state.audit_logs.append(f"[{datetime.now().strftime('%H:%M')}] VIREMENT : {target_paie} (+{int(t_net)}$)")
                         
-                        st.success(f"✅ Virement national effectué pour {target_paie} !"); st.balloons()
+                        st.success(f"✅ Virement effectué !"); st.balloons()
                         st.cache_data.clear(); time.sleep(1); st.rerun()
                     except Exception as e: st.error(f"Erreur Terminal : {e}")
         # --- SECTION 4 : JOURNAUX D'AUDIT & STATISTIQUES ---
