@@ -1372,7 +1372,7 @@ if st.session_state.user_auth == "Staff":
                     
                     st.success(f"✅ Dossier créé pour {new_name} (Solde: 15k | Date: {today_str})")
                     st.cache_data.clear(); time.sleep(1); st.rerun()
-# --- SECTION 2 : TERMINAL DE PAIE (LOOK ESTHÉTIQUE & BONUS DÉTAILLÉS) ---
+# --- SECTION 2 : TERMINAL DE PAIE (VERSION FINALE ET SÉCURISÉE) ---
         st.divider()
         st.markdown("### 🧧 Terminal de Paie Nationale")
         
@@ -1381,17 +1381,23 @@ if st.session_state.user_auth == "Staff":
             target_paie = st.selectbox("Sélectionner le bénéficiaire :", options_paie, key="paie_main")
 
             if target_paie:
+                # 1. Récupération des données
                 user_paie_data = df_b[df_b["Nom Roblox"] == target_paie]
+                user_p_data = df_p[df_p["Nom Roblox"] == target_paie]
+                
                 u_jobs = [j.strip() for j in str(user_paie_data["Emploiement"].values[0]).split("/")]
                 solde_actuel = float(str(user_paie_data["Solde"].values[0]).replace('$', '').replace(',', ''))
+                points_permis = int(user_p_data["PTS"].values[0]) if not user_p_data.empty else 0
                 
-                TEMPS_REQUIS_MIN = 1200 # 20h
-                PRIME_BASE = {"Agent RCT": 2000, "Averis": 2000, "Police": 3000, "Staff": 4000, "Service Public": 1000}
-                
+                # 2. Check des services en attente (Sécurité)
+                en_attente = df_admin[(df_admin["nom"] == target_paie) & (df_admin["statut"] == "à valider")]
+                if not en_attente.empty:
+                    st.warning(f"⚠️ Attention : {len(en_attente)} service(s) sont encore en attente de validation pour cet agent.")
+
+                # 3. Calcul du Temps (Uniquement les validés)
                 min_rct, min_police = 0, 0
                 user_logs = df_admin[(df_admin["nom"] == target_paie) & (df_admin["statut"] == "Validé")]
                 
-                # Calcul du temps de travail
                 for _, row in user_logs.iterrows():
                     try:
                         t1 = datetime.strptime(str(row["début"]), "%d/%m/%Y %H:%M:%S")
@@ -1401,42 +1407,11 @@ if st.session_state.user_auth == "Staff":
                         elif "POL" in str(row["job"]).upper(): min_police += diff
                     except: continue
 
-                total_primes_metier = 0
-                gain_temps_total = (min_rct * 10) + (min_police * 10)
+                # 4. Paramètres de Paie
+                TEMPS_REQUIS_MIN = 1200 # 20h
+                PRIME_BASE = {"Agent RCT": 2000, "Averis": 2000, "Police": 3000, "Staff": 4000, "Service Public": 1000}
                 
-                # --- AFFICHAGE DE LA FICHE ---
-                st.markdown(f"#### 📊 Fiche de Paie : {target_paie}")
-                
-                col_f1, col_f2 = st.columns(2)
-                
-                with col_f1:
-                    st.markdown("**💰 Détail des Gains**")
-                    # On boucle pour afficher les bonus et minutes
-                    for job in u_jobs:
-                        p_max = PRIME_BASE.get(job, 0)
-                        
-                        if job == "Agent RCT" and min_rct > 0:
-                            pct = min(min_rct / TEMPS_REQUIS_MIN, 1.0)
-                            p_calculee = int(p_max * pct)
-                            st.write(f"🟢 **Bonus RCT (Prorata)** : +{p_calculee}$")
-                            st.write(f"⏱️ **Temps RCT ({int(min_rct)} min)** : +{int(min_rct * 10)}$")
-                            total_primes_metier += p_calculee
-                            
-                        elif job == "Police" and min_police > 0:
-                            pct = min(min_police / TEMPS_REQUIS_MIN, 1.0)
-                            p_calculee = int(p_max * pct)
-                            st.write(f"🔵 **Prime Police (Prorata)** : +{p_calculee}$")
-                            st.write(f"⏱️ **Temps Police ({int(min_police)} min)** : +{int(min_police * 10)}$")
-                            total_primes_metier += p_calculee
-                            
-                        elif p_max > 0 and job not in ["Agent RCT", "Police"]:
-                            st.write(f"⭐ **Prime {job}** : +{p_max}$")
-                            total_primes_metier += p_max
-                            
-                    if (total_primes_metier + gain_temps_total) == 0:
-                        st.caption("Aucun gain (travaillez plus !)")
-
-                # --- PRÉLÈVEMENTS ---
+                # 5. Calcul des Prélèvements (Infractions)
                 mes_v = df_i[df_i["Nom d'utilisateur ROBLOX"] == target_paie]
                 nb_v = len(mes_v)
                 c_rct = len(mes_v[mes_v["Assurance"].str.contains("RCT", na=False, case=False)])
@@ -1450,41 +1425,79 @@ if st.session_state.user_auth == "Staff":
                     taxe_jc = (nb_v * 50) if is_jc else 0
                 except: is_jc, taxe_jc = False, 0
 
+                # 6. Synthèse Financière
+                total_brut = 0
+                total_prelev = v_rct + v_ave + v_std + taxe_jc
+                
+                st.markdown(f"#### 📊 Fiche : {target_paie} | 🎫 Permis : {points_permis} PTS")
+                col_f1, col_f2 = st.columns(2)
+                
+                with col_f1:
+                    st.markdown("**💰 Détail du Brut**")
+                    for job in u_jobs:
+                        p_max = PRIME_BASE.get(job, 0)
+                        if job == "Agent RCT" and min_rct > 0:
+                            p_calc = int(p_max * min(min_rct/1200, 1.0))
+                            g_min = int(min_rct * 10)
+                            st.write(f"• Bonus Grade RCT : +{p_calc}$")
+                            st.write(f"• Temps de Service : +{g_min}$")
+                            total_brut += (p_calc + g_min)
+                        elif job == "Police" and min_police > 0:
+                            p_calc = int(p_max * min(min_police/1200, 1.0))
+                            g_min = int(min_police * 10)
+                            st.write(f"• Prime Police : +{p_calc}$")
+                            st.write(f"• Temps de Service : +{g_min}$")
+                            total_brut += (p_calc + g_min)
+                        elif p_max > 0 and job not in ["Agent RCT", "Police"]:
+                            st.write(f"• Forfait {job} : +{p_max}$")
+                            total_brut += p_max
+                    st.markdown(f"**BRUT TOTAL : {int(total_brut)}$**")
+
                 with col_f2:
-                    st.markdown("**📉 Prélèvements**")
-                    if v_rct > 0: st.write(f"• Assurance RCT : -{v_rct}$")
-                    if v_ave > 0: st.write(f"• Assurance Averis : -{v_ave}$")
-                    if v_std > 0: st.write(f"• Assurance Standard : -{v_std}$")
-                    if taxe_jc > 0: st.write(f"• Taxe Jeune Citoyen : -{taxe_jc}$")
-                    if (v_rct + v_ave + v_std + taxe_jc) == 0: st.caption("Aucun prélèvement.")
+                    st.markdown("**📉 Retenues**")
+                    if v_rct > 0: st.write(f"• Assu. RCT (Frais) : -{v_rct}$")
+                    if v_ave > 0: st.write(f"• Assu. Averis (Frais) : -{v_ave}$")
+                    if v_std > 0: st.write(f"• Assu. Standard : -{v_std}$")
+                    if taxe_jc > 0: st.write(f"• Taxe J. Citoyen : -{taxe_jc}$")
+                    st.markdown(f"**TOTAL PRÉLÈV. : -{int(total_prelev)}$**")
 
                 st.divider()
                 
-                # Calcul final et Metrics
-                net_final = (total_primes_metier + gain_temps_total) - (v_rct + v_ave + v_std + taxe_jc)
+                net_final = total_brut - total_prelev
                 solde_apres = solde_actuel + net_final
 
                 c_m1, c_m2, c_m3 = st.columns(3)
-                c_m1.metric("Solde Actuel", f"{int(solde_actuel)}$")
-                c_m2.metric("NET À VERSER", f"{int(net_final)}$", delta=f"{int(net_final)}$")
-                c_m3.metric("Nouveau Solde", f"{int(solde_apres)}$")
+                c_m1.metric("BRUT", f"{int(total_brut)}$")
+                c_m2.metric("NET À VERSER", f"{int(net_final)}$", delta=f"-{int(total_prelev)}$", delta_color="inverse")
+                c_m3.metric("SOLDE FINAL", f"{int(solde_apres)}$")
 
+                # 7. Bouton de Versement avec Action de Nettoyage
                 if st.button(f"🧧 CONFIRMER LE VERSEMENT POUR {target_paie.upper()}", use_container_width=True, type="primary"):
                     def cl(v): return float(str(v).replace('$', '').replace(',', '').strip())
                     
-                    # Logique de transfert Patrons
+                    # --- MOUVEMENTS BANCAIRES ---
+                    # Transfert Patron RCT
                     idx_r = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
                     gain_rct_final = (int(2000 * min(min_rct/1200, 1)) if "Agent RCT" in u_jobs else 0) + (min_rct * 10)
-                    df_b.at[idx_r, "Solde"] = cl(df_b.at[idx_r, "Solde"]) - gain_rct_final + v_rct
+                    df_b.at[idx_r, "Solde"] = round(cl(df_b.at[idx_r, "Solde"]) - gain_rct_final + v_rct, 2)
                     
+                    # Transfert Patron Averis (Moune2010)
                     idx_m = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
                     p_ave = 2000 if "Averis" in u_jobs else 0
-                    df_b.at[idx_m, "Solde"] = cl(df_b.at[idx_m, "Solde"]) - p_ave + v_ave
+                    df_b.at[idx_m, "Solde"] = round(cl(df_b.at[idx_m, "Solde"]) - p_ave + v_ave, 2)
                     
-                    df_b.loc[df_b["Nom Roblox"] == target_paie, "Solde"] = solde_apres
+                    # Update Agent
+                    df_b.loc[df_b["Nom Roblox"] == target_paie, "Solde"] = round(solde_apres, 2)
+                    
+                    # --- NETTOYAGE (Optionnel) ---
+                    # Marquer les logs comme "Payés" pour ne pas les repayer
+                    df_admin.loc[(df_admin["nom"] == target_paie) & (df_admin["statut"] == "Validé"), "statut"] = "Archivé / Payé"
+                    
+                    # Sauvegardes
                     cloud_conn.update(worksheet="Banque", data=df_b)
+                    cloud_conn.update(worksheet="Clock", data=df_admin)
                     
-                    st.success(f"✅ Paie de {int(net_final)}$ versée avec succès !")
+                    st.success(f"✅ Paie traitée ! {int(net_final)}$ versés. Logs archivés.")
                     st.balloons()
                     st.cache_data.clear(); time.sleep(1); st.rerun()
         # --- SECTION 3 : LOGS ET STATISTIQUES (UNIQUEMENT EN ADMIN AUSSI) ---
