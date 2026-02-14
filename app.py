@@ -919,10 +919,10 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
             col_code, col_infos = st.columns([1, 2])
             
             with col_code:
+                # Utilisation d'une clé session_state pour pouvoir vider le champ
                 agent_code_saisi = st.text_input("🔑 Code Agent", type="password", key="pnt_compact_auth")
                 st.caption("ℹ️ Entrez votre code pour pointer.")
                 
-                # Sélection du métier pour le Staff
                 if st.session_state.user_auth == "Staff":
                     job_actuel = st.selectbox("🎭 Service", ["POLSTA", "Averis"], key="pnt_job_staff")
                 else:
@@ -930,7 +930,6 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
             
             agent_identifie = None
             if agent_code_saisi:
-                # Nettoyage et identification
                 df_b.columns = df_b.columns.str.strip()
                 def clean_code(x): return str(x).strip().split('.')[0]
                 df_b["Code_Clean"] = df_b["Code"].apply(clean_code)
@@ -944,9 +943,10 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                     now_ch = datetime.now(tz_ch)
                     h_actuelle = now_ch.strftime("%H:%M") 
                     
-                    # Vérification du statut
+                    # Initialisation affichage vide
                     start_display, end_display = "--:--", "--:--"
                     en_service = False
+                    
                     try:
                         df_pnt_check = cloud_conn.read(worksheet="Pointage")
                         df_pnt_check.columns = df_pnt_check.columns.str.strip()
@@ -956,15 +956,19 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                             last_action = user_logs.iloc[-1]["Action"]
                             en_service = (last_action == "IN")
                             
+                            # On récupère les dernières heures
                             last_in = user_logs[user_logs["Action"] == "IN"].tail(1)
                             last_out = user_logs[user_logs["Action"] == "OUT"].tail(1)
                             
-                            if not last_in.empty: 
-                                val_in = str(last_in.iloc[0]["Horodatage"])
-                                start_display = val_in.split(" ")[1][:5] if " " in val_in else val_in[:5]
-                            if not last_out.empty: 
-                                val_out = str(last_out.iloc[0]["Horodatage"])
-                                end_display = val_out.split(" ")[1][:5] if " " in val_out else val_out[:5]
+                            if en_service:
+                                # Si en service, on affiche l'heure de début, mais pas de fin
+                                if not last_in.empty:
+                                    val_in = str(last_in.iloc[0]["Horodatage"])
+                                    start_display = val_in.split(" ")[1][:5] if " " in val_in else val_in[:5]
+                                end_display = "--:--"
+                            else:
+                                # Si hors service, on ne montre rien par défaut (ton souhait)
+                                start_display, end_display = "--:--", "--:--"
                     except: pass
 
                     with col_infos:
@@ -973,7 +977,7 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                         c2.metric("🎬 Début", start_display)
                         c3.metric("🏁 Fin", end_display)
                         
-                        st.write(f"Agent : **{agent_identifie}** " + (f"(🟢 EN SERVICE - {job_actuel})" if en_service else "(🔴 HORS SERVICE)"))
+                        st.write(f"Agent : **{agent_identifie}** " + (f"(🟢 EN SERVICE)" if en_service else "(🔴 HORS SERVICE)"))
                         
                         btn_in, btn_out = st.columns(2)
                         
@@ -982,52 +986,40 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                             if st.button("✅ DÉBUT", use_container_width=True, type="primary", disabled=en_service):
                                 try:
                                     df_pnt = cloud_conn.read(worksheet="Pointage")
-                                    new_log = pd.DataFrame([{
-                                        "Nom": agent_identifie,
-                                        "Service": "",
-                                        "Action": "IN",
-                                        "Horodotage": "", # Maintien de la colonne avec faute
-                                        "Job": job_actuel,
-                                        "Horodatage": now_ch.strftime("%d/%m/%Y %H:%M:%S")
-                                    }])
-                                    # Fusion forcée pour respecter l'ordre des colonnes du Sheets
-                                    df_updated = pd.concat([df_pnt, new_log], ignore_index=True)
-                                    cloud_conn.update(worksheet="Pointage", data=df_updated)
-                                    st.toast(f"Service {job_actuel} démarré !")
+                                    new_log = pd.DataFrame([{"Nom": agent_identifie, "Service": "", "Action": "IN", "Horodotage": "", "Job": job_actuel, "Horodatage": now_ch.strftime("%d/%m/%Y %H:%M:%S")}])
+                                    cloud_conn.update(worksheet="Pointage", data=pd.concat([df_pnt, new_log], ignore_index=True))
+                                    
+                                    st.success(f"🚀 Bon service {agent_identifie} !")
+                                    import time
+                                    time.sleep(1.5)
                                     st.rerun()
-                                except Exception as e:
-                                    st.error("Erreur de synchronisation Sheets.")
+                                except: st.error("Erreur Sheets.")
 
-# --- BOUTON FIN ---
+                        # --- BOUTON FIN ---
                         with btn_out:
                             if st.button("🛑 FIN", use_container_width=True, disabled=not en_service):
                                 try:
-                                    with st.spinner("Enregistrement..."):
-                                        df_pnt = cloud_conn.read(worksheet="Pointage")
-                                        new_log = pd.DataFrame([{
-                                            "Nom": agent_identifie,
-                                            "Service": "",
-                                            "Action": "OUT",
-                                            "Horodotage": "",
-                                            "Job": job_actuel,
-                                            "Horodatage": now_ch.strftime("%d/%m/%Y %H:%M:%S")
-                                        }])
-                                        df_updated = pd.concat([df_pnt, new_log], ignore_index=True)
-                                        cloud_conn.update(worksheet="Pointage", data=df_updated)
+                                    # Avant de refresh, on affiche l'heure de fin pour que l'agent la voie
+                                    end_display = now_ch.strftime("%H:%M")
                                     
-                                    # --- REMISE À ZÉRO ---
-                                    # On vide le champ de saisie du code dans le session_state
+                                    df_pnt = cloud_conn.read(worksheet="Pointage")
+                                    new_log = pd.DataFrame([{"Nom": agent_identifie, "Service": "", "Action": "OUT", "Horodotage": "", "Job": job_actuel, "Horodatage": now_ch.strftime("%d/%m/%Y %H:%M:%S")}])
+                                    cloud_conn.update(worksheet="Pointage", data=pd.concat([df_pnt, new_log], ignore_index=True))
+                                    
+                                    # Remise à zéro du champ code
                                     st.session_state.pnt_compact_auth = "" 
                                     
-                                    st.success(f"✅ Service terminé ! Session réinitialisée.")
+                                    st.success(f"✅ Service terminé ! Heure enregistrée : {end_display}")
                                     st.balloons()
                                     
                                     import time
-                                    time.sleep(2)
-                                    st.rerun() # Le refresh remettra les métriques à --:--
-                                    
-                                except Exception as e:
-                                    st.error("Erreur de synchronisation Sheets.")
+                                    time.sleep(2.5)
+                                    st.rerun()
+                                except: st.error("Erreur Sheets.")
+                else:
+                    st.error("Code agent incorrect.")
+
+        st.divider()
         # 1. PANEL D'ALERTE : FACTURES IMPAYÉES
         df_all_f = cloud_conn.read(worksheet="Factures").fillna("")
         alertes = []
