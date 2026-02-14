@@ -983,13 +983,6 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                 else:
                     st.error("Code incorrect.")
 
-### 🛠 Pourquoi ce code règle tes problèmes :
-
-1.  **L'erreur Streamlit disparue** : J'ai retiré la ligne `st.session_state.pnt_compact_auth = ""`. Streamlit interdit de modifier la clé d'un widget qui est actif à l'écran. Pour "vider" le code, il faudra le faire manuellement ou utiliser une autre méthode (mais ça évite le crash actuel).
-2.  **Affichage immédiat de l'heure** : J'ai ajouté `ttl=0` dans `cloud_conn.read`. Sans ça, Streamlit garde en cache l'ancienne version de ton Sheets pendant quelques minutes. Avec `ttl=0`, il va chercher la ligne que tu viens d'écrire immédiatement après le `st.rerun()`.
-3.  **Le rafraîchissement** : Le `st.rerun()` après le bouton début force l'application à relire le tableau Sheets, à voir que tu es "IN", et donc à mettre à jour la case `🎬 Début` avec l'heure.
-
-**Vérifie bien que tu as `import time` en haut.** Est-ce que l'heure s'affiche bien maintenant quand tu cliques sur Début ?
         # 1. PANEL D'ALERTE : FACTURES IMPAYÉES
         df_all_f = cloud_conn.read(worksheet="Factures").fillna("")
         alertes = []
