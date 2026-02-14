@@ -1387,59 +1387,56 @@ if st.session_state.user_auth == "Staff":
             st.error(f"Erreur Pointages : {e}")
 
         st.divider()
-# --- SECTION B : CALCULATEUR D'HEURES (INTERFACE STYLE PAIE NATIONALE) ---
+# --- SECTION B : CALCULATEUR D'HEURES (INTERFACE RECAP) ---
 st.subheader("📊 Cumul des Heures par Agent")
 
 liste_agents = sorted(df_b["Nom Roblox"].unique().tolist())
 agent_cible = st.selectbox("Choisir un agent :", liste_agents, key="calc_hours")
 
 if agent_cible:
-    # 1. Extraction des données de la feuille 'Clock' (Sessions Validées)
+    # 1. Extraction des données Clock (Sessions Validées uniquement)
     user_data_h = df_admin[(df_admin["nom"] == agent_cible) & (df_admin["statut"] == "Validé")].copy()
     
     total_min_global = 0
-    total_argent_horaire = 0
+    total_police, total_rct = 0, 0
+    argent_police, argent_rct = 0, 0
 
-    # RÉINITIALISATION ET CALCUL STRICT
+    # RÉINITIALISATION ET CALCUL
     for _, row in user_data_h.iterrows():
         try:
             t1 = datetime.strptime(str(row["début"]), "%d/%m/%Y %H:%M:%S")
             t2 = datetime.strptime(str(row["fin"]), "%d/%m/%Y %H:%M:%S")
-            diff_sec = (t2 - t1).total_seconds()
-            mins = diff_sec / 60
-            
+            mins = (t2 - t1).total_seconds() / 60
             if mins <= 0: continue
 
             job_ligne = str(row["job"]).upper().strip()
             
-            # --- LOGIQUE PRORATA 20H (3000$ pour 1200 min / 2000$ pour 1200 min) ---
-            taux = 0
-            if "POL" in job_ligne: 
-                taux = 2.5       # 3000$ / 1200 min
-            elif "RCT" in job_ligne: 
-                taux = 1.666     # 2000$ / 1200 min
+            if "POL" in job_ligne:
+                total_police += mins
+                argent_police += (mins * 2.5) # Prorata 3000$ / 20h
+            elif "RCT" in job_ligne:
+                total_rct += mins
+                argent_rct += (mins * 1.66) # Prorata 2000$ / 20h
             
             total_min_global += mins
-            total_argent_horaire += (mins * taux)
         except: continue
 
     # 2. Primes Fixes (Extraites de la feuille Banque)
     agent_info = df_b[df_b["Nom Roblox"] == agent_cible]
     metiers_banque = str(agent_info.iloc[0]['Emploiement']).lower() if not agent_info.empty else ""
-    
     p_staff = 4000 if "staff" in metiers_banque else 0
     p_averis = 2000 if "averis" in metiers_banque else 0
 
-    # 3. INTERFACE VISUELLE (RENDU HTML)
+    # 3. INTERFACE VISUELLE RENDUE
     h_disp, m_disp = int(total_min_global // 60), int(total_min_global % 60)
-    total_final = total_argent_horaire + p_staff + p_averis
+    total_argent_service = argent_police + argent_rct
+    total_final = total_argent_service + p_staff + p_averis
 
-    # Utilisation de f-string pour injecter les variables dans le HTML
-    fiche_paie_html = f"""
+    st.markdown(f"""
     <div style="background-color: #1e1e1e; padding: 20px; border-radius: 10px; border: 1px solid #333; color: white; font-family: sans-serif;">
         <div style="text-align: center; border-bottom: 1px solid #444; padding-bottom: 10px; margin-bottom: 15px;">
-            <h3 style="margin:0; color: #f1c40f; letter-spacing: 1px;">RÉCAPITULATIF DE SERVICE</h3>
-            <span style="color: #888; font-size: 0.9em;">Agent : {agent_cible}</span>
+            <h3 style="margin:0; color: #f1c40f;">RÉCAPITULATIF DE SERVICE</h3>
+            <span style="color: #888;">Agent : {agent_cible}</span>
         </div>
         
         <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
@@ -1448,26 +1445,21 @@ if agent_cible:
         </div>
 
         <div style="background: rgba(255,255,255,0.03); padding: 12px; border-radius: 8px; margin-bottom: 20px;">
-            <div style="display: flex; justify-content: space-between; font-size: 0.95em; margin-bottom: 8px;">
-                <span>💼 Salaire Horaire (Prorata 20h)</span>
-                <b style="color: #2ecc71;">+{int(total_argent_horaire)}$</b>
-            </div>
-            {"<div style='display: flex; justify-content: space-between; font-size: 0.95em; margin-bottom: 8px;'><span>⭐ Prime Staff</span><b style='color: #2ecc71;'>+4000$</b></div>" if p_staff > 0 else ""}
-            {"<div style='display: flex; justify-content: space-between; font-size: 0.95em;'><span>🛡️ Prime Averis</span><b style='color: #2ecc71;'>+2000$</b></div>" if p_averis > 0 else ""}
+            {"<div style='display:flex; justify-content:space-between; margin-bottom:5px;'><span>🚔 Service Police</span><b>+" + str(int(argent_police)) + "$</b></div>" if argent_police > 0 else ""}
+            {"<div style='display:flex; justify-content:space-between; margin-bottom:5px;'><span>🛡️ Service RCT</span><b>+" + str(int(argent_rct)) + "$</b></div>" if argent_rct > 0 else ""}
+            {"<div style='display:flex; justify-content:space-between; margin-bottom:5px;'><span>⭐ Prime Staff</span><b>+4000$</b></div>" if p_staff > 0 else ""}
+            {"<div style='display:flex; justify-content:space-between;'><span>🎖️ Prime Averis</span><b>+2000$</b></div>" if p_averis > 0 else ""}
         </div>
 
-        <div style="background: #2ecc71; color: #000; padding: 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
-            <b style="font-size: 1.1em; text-transform: uppercase;">Total à Verser</b>
+        <div style="background: #2ecc71; color: black; padding: 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+            <b style="font-size: 1.1em;">CUMUL ESTIMÉ</b>
             <b style="font-size: 1.6em;">{int(total_final)}$</b>
         </div>
     </div>
-    """
-
-    # L'argument unsafe_allow_html=True est CRUCIAL ici
-    st.markdown(fiche_paie_html, unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
     if total_final == 0:
-        st.warning("⚠️ Aucune activité enregistrée ou grade éligible pour cet agent.")
+        st.warning("Aucune donnée de service trouvée pour cet agent.")
 # --- SECTION 2 : SYSTÈME DE PAIE & ASSURANCES AUTOMATIQUES ---
 
 if st.session_state.get("user_auth") == "Staff":
