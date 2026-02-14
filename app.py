@@ -505,7 +505,7 @@ with st.container():
                             st.progress(ratio_pol, text=f"{int(m_pol/60)}h / 20h")
                         
                         if "agent rct" in job_raw.lower():
-                            st.markdown(f"☢️ **Prime RCT** : `{p_rct}$`")
+                            st.markdown(f"👷‍♂️ **Prime RCT** : `{p_rct}$`")
                             st.progress(ratio_rct, text=f"{int(m_rct/60)}h / 20h")
                             
                         if p_extra > 0:
