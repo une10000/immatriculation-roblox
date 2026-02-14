@@ -1395,26 +1395,28 @@ liste_agents = sorted(df_b["Nom Roblox"].unique().tolist())
 agent_cible = st.selectbox("Choisir un agent pour voir son total :", liste_agents, key="calc_hours")
 
 if agent_cible:
-    # 1. Extraction du temps (Ta logique de base)
+    # 1. Extraction du temps réel depuis la feuille Clock (df_admin)
     user_data_h = df_admin[(df_admin["nom"] == agent_cible) & (df_admin["statut"] == "Validé")].copy()
     total_min = 0
     
     for _, row in user_data_h.iterrows():
         try:
+            # Calcul de la différence entre début et fin
             t1 = datetime.strptime(str(row["début"]), "%d/%m/%Y %H:%M:%S")
             t2 = datetime.strptime(str(row["fin"]), "%d/%m/%Y %H:%M:%S")
             total_min += (t2 - t1).total_seconds() / 60
         except: continue
     
-    # 2. Récupération des métiers de l'agent pour le calcul financier
+    # 2. Récupération des métiers pour savoir quel taux appliquer
     agent_info = df_b[df_b["Nom Roblox"] == agent_cible]
     metiers = str(agent_info.iloc[0]['Emploiement']).lower() if not agent_info.empty else ""
     
-    # 3. Paramétrage des taux (À modifier selon tes besoins)
-    TAUX_POLICE = 30 # $/minute (soit 1800/h)
-    TAUX_RCT = 20    # $/minute (soit 1200/h)
+    # 3. Tes Taux Horaires (en $/minute)
+    TAUX_POLICE = 30  # Soit 1800$/h
+    TAUX_RCT = 20     # Soit 1200$/h
     
-    # 4. Calcul précis par branche
+    # 4. Calcul des gains basés SUR LE TEMPS RÉEL accumulé
+    # Si total_min est 0, le gain sera 0.
     gain_police = total_min * TAUX_POLICE if "police" in metiers else 0
     gain_rct = total_min * TAUX_RCT if "agent rct" in metiers else 0
     
@@ -1425,25 +1427,24 @@ if agent_cible:
     c1, c2, c3 = st.columns(3)
     c1.metric("Temps de service", f"{h_disp}h {m_disp}min")
     
-    if gain_police > 0:
+    # On affiche les colonnes de salaire seulement si l'agent a le métier
+    if "police" in metiers:
         c2.metric("Salaire Police", f"{int(gain_police)}$", f"{TAUX_POLICE}$/min")
-    if gain_rct > 0:
+    if "agent rct" in metiers:
         c3.metric("Salaire RCT", f"{int(gain_rct)}$", f"{TAUX_RCT}$/min")
 
-    # 6. Détail Visuel (Optionnel mais propre pour le Staff)
-    st.markdown("---")
-    with st.container():
-        st.write("**Récapitulatif des gains accumulés :**")
-        if gain_police == 0 and gain_rct == 0:
-            st.warning("Cet agent n'a pas de métier à salaire horaire (Police/RCT).")
-        else:
-            if gain_police > 0:
-                st.info(f"🔹 **Police** : {int(total_min)} min travaillées × {TAUX_POLICE}$ = **{int(gain_police)}$**")
-            if gain_rct > 0:
-                st.success(f"🔸 **RCT** : {int(total_min)} min travaillées × {TAUX_RCT}$ = **{int(gain_rct)}$**")
-            
-            total_du = gain_police + gain_rct
-            st.markdown(f"### TOTAL À PAYER : `{int(total_du)}$`")
+    # 6. Récapitulatif visuel détaillé
+    st.write("---")
+    if total_min > 0:
+        if "police" in metiers:
+            st.info(f"🔹 **Police** : {int(total_min)} min travaillées × {TAUX_POLICE}$ = **{int(gain_police)}$**")
+        if "agent rct" in metiers:
+            st.success(f"🔸 **RCT** : {int(total_min)} min travaillées × {TAUX_RCT}$ = **{int(gain_rct)}$**")
+        
+        total_du = gain_police + gain_rct
+        st.subheader(f"💰 TOTAL CUMULÉ : {int(total_du)}$")
+    else:
+        st.warning(f"🕒 {agent_cible} n'a aucune minute de service validée dans la feuille Clock.")
         # --- SECTION 1 : CRÉATION DE PROFIL (15k + DATE AUTO) ---
         st.divider()
         st.markdown("### 👤 Création de Dossier Citoyen")
