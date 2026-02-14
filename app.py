@@ -920,6 +920,7 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
             
             with col_code:
                 agent_code_saisi = st.text_input("🔑 Code Agent", type="password", key="pnt_compact_auth")
+                st.caption("ℹ️ Entrez votre code pour pointer et débloquer les services.")
             
             agent_identifie = None
             if agent_code_saisi:
@@ -931,17 +932,31 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                 
                 if not res_agent.empty:
                     agent_identifie = res_agent.iloc[0]["Nom Roblox"]
-                    
-                    # Récupération des dernières heures (optionnel, pour l'affichage)
                     now_time = datetime.now().strftime("%H:%M")
                     
+                    # Récupération des pointages existants pour l'affichage
+                    try:
+                        df_pnt_check = cloud_conn.read(worksheet="Pointage")
+                        user_logs = df_pnt_check[df_pnt_check["Nom"] == agent_identifie]
+                        
+                        # On cherche le dernier IN et le dernier OUT du jour
+                        last_in = user_logs[user_logs["Action"] == "IN"].tail(1)
+                        last_out = user_logs[user_logs["Action"] == "OUT"].tail(1)
+                        
+                        start_display = last_in.iloc[0]["Horodatage"].split(" ")[1][:5] if not last_in.empty else "--:--"
+                        end_display = last_out.iloc[0]["Horodatage"].split(" ")[1][:5] if not last_out.empty else "--:--"
+                    except:
+                        start_display, end_display = "--:--", "--:--"
+
                     with col_infos:
-                        # Affichage sur une seule ligne : Heure actuelle | Début | Fin
+                        # Affichage : Heure actuelle | Début | Fin
                         c1, c2, c3 = st.columns(3)
                         c1.metric("🕒 Actuelle", now_time)
+                        c2.metric("🎬 Début", start_display)
+                        c3.metric("🏁 Fin", end_display)
                         
-                        # Boutons d'action rapides
                         st.write(f"Agent : **{agent_identifie}**")
+                        
                         btn_in, btn_out = st.columns(2)
                         with btn_in:
                             if st.button("✅ DÉBUT", use_container_width=True, type="primary"):
@@ -950,6 +965,7 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                                     new_log = pd.DataFrame([{"Nom": agent_identifie, "Action": "IN", "Horodatage": datetime.now().strftime("%d/%m/%Y %H:%M:%S")}])
                                     cloud_conn.update(worksheet="Pointage", data=pd.concat([df_pnt, new_log], ignore_index=True))
                                     st.toast("Service démarré !")
+                                    st.rerun()
                                 except: st.error("Onglet 'Pointage' manquant.")
                         
                         with btn_out:
@@ -959,6 +975,7 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                                     new_log = pd.DataFrame([{"Nom": agent_identifie, "Action": "OUT", "Horodatage": datetime.now().strftime("%d/%m/%Y %H:%M:%S")}])
                                     cloud_conn.update(worksheet="Pointage", data=pd.concat([df_pnt, new_log], ignore_index=True))
                                     st.toast("Service terminé !")
+                                    st.rerun()
                                 except: st.error("Onglet 'Pointage' manquant.")
                 else:
                     st.error("Code inconnu")
