@@ -514,46 +514,64 @@ with st.container():
                 current_jobs_raw = str(b_data.iloc[0]['Emploiement'])
                 st.write(f"🏢 Métier : **{current_jobs_raw}**")
 
-                # --- NOUVEAU : ESTIMATION DE SALAIRE POUR LE CITOYEN ---
+                # --- NOUVEAU : ESTIMATION DE SALAIRE ---
                 with st.expander("💳 Détails de ma prochaine paie"):
-                    # 1. Calcul rapide des primes (Même logique que le terminal)
-                    user_jobs_list = [j.strip() for j in current_jobs_raw.split("/")]
-                    PRIME_JOB = {"Agent RCT": 2000, "Averis": 2000, "Police": 3000, "Staff": 4000, "Service Public": 1000}
+                    # 1. Calcul des primes avec sécurité (insensible à la casse)
+                    user_jobs_list = [j.strip().lower() for j in current_jobs_raw.split("/")]
                     
-                    est_calcul_primes = 0
-                    for job in user_jobs_list:
-                        est_calcul_primes += PRIME_JOB.get(job, 0)
+                    # Mapping propre (clé en minuscule pour la comparaison)
+                    RECOMPENSES = {
+                        "agent rct": 2000, 
+                        "averis": 2000, 
+                        "police": 3000, 
+                        "staff": 4000, 
+                        "service public": 1000
+                    }
                     
-                    est_brut = 15000 + est_calcul_primes
+                    est_calcul_primes = sum(RECOMPENSES.get(job, 0) for job in user_jobs_list)
+                    est_brut = 15000 + est_calcul_primes # Base de 15k
                     
-                    # 2. Calcul des taxes véhicules (Scan rapide)
+                    # 2. Calcul des taxes véhicules
                     mes_v = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
                     nb_v = len(mes_v)
+                    # On compte les assurances spécifiques
                     c_rct = len(mes_v[mes_v["Assurance"].str.contains("RCT", na=False, case=False)])
                     c_ave = len(mes_v[mes_v["Assurance"].str.contains("AVERIS", na=False, case=False)])
                     c_std = nb_v - c_rct - c_ave
                     
                     est_taxe_v = (300 if c_rct >= 3 else c_rct * 150) + (c_ave * 130) + (c_std * 150)
                     
-                    # 3. Affichage clair
+                    # 3. Affichage stylisé
                     st.markdown(f"""
-                    <div style="background-color: rgba(255,255,255,0.05); padding: 10px; border-radius: 5px; font-size: 0.9em;">
-                        <b>Revenus prévus :</b><br>
-                        • Base Civile : +15,000$<br>
-                        • Primes Métiers : +{est_calcul_primes}$<br>
-                        <hr style="margin: 5px 0; border-top: 1px dashed #555;">
-                        <b>Retenues prévues :</b><br>
-                        • Assurances : -{est_taxe_v}$<br>
-                        <hr style="margin: 5px 0;">
-                        <b style="color: #00FF00;">ESTIMATION NET : {est_brut - est_taxe_v}$</b>
+                    <div style="background-color: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; border: 1px solid #444;">
+                        <div style="display: flex; justify-content: space-between;"><span>Base Civile :</span><b>+15,000$</b></div>
+                        <div style="display: flex; justify-content: space-between;"><span>Primes Métier :</span><b>+{est_calcul_primes}$</b></div>
+                        <div style="display: flex; justify-content: space-between; color: #ff4b4b;"><span>Taxes Véhicules :</span><b>-{est_taxe_v}$</b></div>
+                        <hr style="margin: 8px 0; border-top: 1px solid #555;">
+                        <div style="display: flex; justify-content: space-between; font-size: 1.1em; color: #00FF00;">
+                            <b>ESTIMATION NET :</b><b>{est_brut - est_taxe_v}$</b>
+                        </div>
                     </div>
                     """, unsafe_allow_html=True)
-                    st.caption("⚠️ Hors bonus de temps et amendes éventuelles.")
-                
-                # --- FIN DE L'AJOUT ---
+                    st.caption("⚠️ Estimation basée sur vos contrats actuels.")
 
+                # --- PARTIE STAFF (Modification Métier) ---
                 if st.session_state.user_auth in ["Staff", "Admin"]:
-                    # ... (Ton code existant pour modifier le métier)
+                    if st.button("✏️ Modifier le métier", key=f"edit_job_{target}", use_container_width=True):
+                        st.session_state[f"show_editor_{target}"] = not st.session_state.get(f"show_editor_{target}", False)
+                    
+                    if st.session_state.get(f"show_editor_{target}", False):
+                        with st.container(border=True):
+                            options_jobs = ["Sans-Emploi", "Agent RCT", "Averis", "Police", "Staff", "Service Public", "Entreprise Privée"]
+                            new_jobs = st.multiselect("Sélection :", options=options_jobs, default=[j.strip() for j in current_jobs_raw.split("/") if j.strip() in options_jobs])
+                            if st.button("💾 Sauver", key=f"save_j_{target}", type="primary"):
+                                df_b.at[df_b[df_b["Nom Roblox"] == target].index[0], "Emploiement"] = " / ".join(new_jobs) if new_jobs else "Sans-Emploi"
+                                cloud_conn.update(worksheet="Banque", data=df_b)
+                                st.session_state[f"show_editor_{target}"] = False
+                                st.cache_data.clear()
+                                st.rerun()
+
+                st.caption(f"📅 Arrivée : {b_data.iloc[0].get('Date d\'arrivée', 'Non spécifiée')}")
 # --- COLONNE 3 : ARCHIVES ---
         with col3:
             st.markdown("### 📁 ARCHIVES")
