@@ -910,7 +910,7 @@ with tabs[0]:
         </div>
         """
         st.components.v1.html(ticket_html, height=500)
-# --- ONGLET 2 : SERVICES AGENT ---
+# --- ONGLET 2 : SERVICES AGENT (SYSTÈME MONO-LIGNE) ---
 if st.session_state.user_auth in ["RCT", "Staff"]:
     with tabs[1]:
         with st.container(border=True):
@@ -928,25 +928,22 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                     agent_identifie = res_agent.iloc[0]["Nom Roblox"]
                     now_ch = datetime.now(timezone(timedelta(hours=1)))
                     
-                    # Lecture des logs
+                    # Lecture des logs (Worksheet "Pointage")
                     try:
-                        df_pnt = cloud_conn.read(worksheet="Pointage", ttl=0)
+                        df_pnt = cloud_conn.read(worksheet="Pointage", ttl=0).fillna("")
                         df_pnt.columns = df_pnt.columns.str.strip()
-                        user_logs = df_pnt[df_pnt["Nom"] == agent_identifie]
+                        # On cherche si l'agent a une session "En cours"
+                        session_ouverte = df_pnt[(df_pnt["Nom"] == agent_identifie) & (df_pnt["Statut"] == "En cours")]
+                        en_service = not session_ouverte.empty
                     except:
-                        df_pnt = pd.DataFrame(columns=["Nom", "Action", "Job", "Début", "Fin", "Statut"])
-                        user_logs = pd.DataFrame()
+                        df_pnt = pd.DataFrame(columns=["Nom", "Job", "Début", "Fin", "Statut"])
+                        en_service = False
                     
-                    # État du service
-                    en_service = False
+                    # Récupération de l'heure de début pour l'affichage
                     start_disp = "--:--"
-                    
-                    if not user_logs.empty:
-                        last_action = user_logs.iloc[-1]["Action"]
-                        en_service = (last_action == "IN")
-                        if en_service:
-                            val_debut = str(user_logs.iloc[-1]["Début"])
-                            start_disp = val_debut.split(" ")[1][:5] if " " in val_debut else val_debut[:5]
+                    if en_service:
+                        val_debut = str(session_ouverte.iloc[-1]["Début"])
+                        start_disp = val_debut.split(" ")[1][:5] if " " in val_debut else val_debut[:5]
 
                     with col_infos:
                         c1, c2, c3 = st.columns(3)
@@ -958,26 +955,39 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                         
                         b_in, b_out = st.columns(2)
                         
-                        # --- BOUTON DÉBUT ---
+                        # --- BOUTON DÉBUT (CRÉATION DE LIGNE) ---
                         with b_in:
                             if st.button("✅ DÉBUT", use_container_width=True, type="primary", disabled=en_service):
                                 h_debut = now_ch.strftime("%d/%m/%Y %H:%M:%S")
-                                # Ajout du statut "En cours" pour plus de clarté
-                                new_row = pd.DataFrame([{"Nom": agent_identifie, "Action": "IN", "Job": job_actuel, "Début": h_debut, "Fin": "", "Statut": "En cours"}])
-                                cloud_conn.update(worksheet="Pointage", data=pd.concat([df_pnt, new_row], ignore_index=True))
+                                new_row = pd.DataFrame([{
+                                    "Nom": agent_identifie, 
+                                    "Job": job_actuel, 
+                                    "Début": h_debut, 
+                                    "Fin": "", 
+                                    "Statut": "En cours"
+                                }])
+                                df_pnt_updated = pd.concat([df_pnt, new_row], ignore_index=True)
+                                cloud_conn.update(worksheet="Pointage", data=df_pnt_updated)
                                 st.success("Service démarré !")
                                 time.sleep(1)
                                 st.rerun()
                                 
-                        # --- BOUTON FIN ---
+                        # --- BOUTON FIN (MISE À JOUR DE LA LIGNE) ---
                         with b_out:
                             if st.button("🛑 FIN", use_container_width=True, disabled=not en_service):
                                 h_fin = now_ch.strftime("%d/%m/%Y %H:%M:%S")
-                                # ICI : On marque "À valider" pour que ça apparaisse dans ton onglet Admin
-                                new_row = pd.DataFrame([{"Nom": agent_identifie, "Action": "OUT", "Job": job_actuel, "Début": "", "Fin": h_fin, "Statut": "À valider"}])
-                                cloud_conn.update(worksheet="Pointage", data=pd.concat([df_pnt, new_row], ignore_index=True))
                                 
-                                st.success("Service terminé ! En attente de validation Staff.")
+                                # On trouve l'index de la ligne "En cours" pour cet agent
+                                idx_a_modifier = df_pnt[(df_pnt["Nom"] == agent_identifie) & (df_pnt["Statut"] == "En cours")].index[-1]
+                                
+                                # Mise à jour des données locales
+                                df_pnt.at[idx_a_modifier, "Fin"] = h_fin
+                                df_pnt.at[idx_a_modifier, "Statut"] = "À valider"
+                                
+                                # Envoi de la mise à jour
+                                cloud_conn.update(worksheet="Pointage", data=df_pnt)
+                                
+                                st.success("Service terminé ! Ligne complétée.")
                                 st.balloons()
                                 time.sleep(1)
                                 st.rerun()
