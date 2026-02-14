@@ -1345,10 +1345,15 @@ if st.session_state.user_auth == "Staff":
         # --- SOUS-SECTION : GESTION DES FACTURES ---
         st.divider()
         st.subheader("📑 Historique Global des Factures")
-        # Ici on peut remettre un aperçu de toutes les factures "EN ATTENTE"
-        df_all_f.columns = df_all_f.columns.str.strip()
-        st.dataframe(df_all_f[df_all_f["Statut"] == "EN ATTENTE"], use_container_width=True)
+        try:
+            # On s'assure que df_all_f existe (chargé au début du script normalement)
+            df_all_f.columns = df_all_f.columns.str.strip()
+            st.dataframe(df_all_f[df_all_f["Statut"] == "EN ATTENTE"], use_container_width=True)
+        except:
+            st.write("Aucune facture en attente ou erreur de chargement.")
+
         # --- SECTION 1 : CRÉATION DE PROFIL ---
+        st.divider()
         st.markdown("### 👤 Création de Dossier Citoyen")
         with st.container(border=True):
             c1, c2 = st.columns(2)
@@ -1363,26 +1368,33 @@ if st.session_state.user_auth == "Staff":
             if st.button("🆕 GÉNÉRER LE DOSSIER (15k + Date Auto)", use_container_width=True, type="primary"):
                 if new_name and new_name not in df_b["Nom Roblox"].values:
                     with st.spinner("Initialisation..."):
-                        today_str = datetime.now().strftime("%d/%m/%Y")
+                        # Utilisation de l'heure de Zurich pour la date d'arrivée
+                        tz_ch = timezone(timedelta(hours=1))
+                        today_str = datetime.now(tz_ch).strftime("%d/%m/%Y")
                         jobs_string = " / ".join(new_jobs) if new_jobs else "Sans-Emploi"
                         
-                        # Banque (Solde 15k auto comme demandé)
+                        # Banque (Solde 15k auto)
                         new_bank_row = pd.DataFrame([{"Nom Roblox": new_name, "Nom Discord": new_discord, "Solde": 15000, "Emploiement": jobs_string, "Date d'arrivée": today_str}])
-                        df_b = pd.concat([df_b, new_bank_row], ignore_index=True)
-                        cloud_conn.update(worksheet="Banque", data=df_b)
+                        df_b_new = pd.concat([df_b, new_bank_row], ignore_index=True)
+                        cloud_conn.update(worksheet="Banque", data=df_b_new)
 
-                        # Permis
+                        # Permis (Assure-toi que df_p est bien chargé en haut du script)
                         new_pts_row = pd.DataFrame([{"Nom Roblox": new_name, "PTS": new_pts, "Validité": "OUI" if new_pts > 0 else "NON"}])
-                        df_p = pd.concat([df_p, new_pts_row], ignore_index=True)
-                        cloud_conn.update(worksheet="Points Permis", data=df_p)
+                        df_p_new = pd.concat([df_p, new_pts_row], ignore_index=True)
+                        cloud_conn.update(worksheet="Points Permis", data=df_p_new)
 
-                        record_log(st.session_state.user_auth, f"Profil créé : {new_name}")
-                        st.success(f"✅ Dossier créé pour {new_name}")
+                        # Log de l'action
+                        try:
+                            record_log(st.session_state.user_auth, f"Profil créé : {new_name}")
+                        except: pass
+                        
+                        st.success(f"✅ Dossier créé pour {new_name} (Solde: 15k)")
                         st.cache_data.clear()
                         import time
                         time.sleep(1)
                         st.rerun()
-
+                elif new_name in df_b["Nom Roblox"].values:
+                    st.error("Ce citoyen possède déjà un dossier !")
         # --- SECTION 2 : SYSTÈME DE PAIE & ASSURANCES (DÉSORMAIS UNIQUEMENT EN ADMIN) ---
         st.divider()
         st.markdown("### 🧧 Terminal de Paie Nationale")
