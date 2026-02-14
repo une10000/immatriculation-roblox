@@ -1324,57 +1324,41 @@ if st.session_state.user_auth == "Staff":
 with tabs[2]:
     if st.session_state.user_auth == "Staff":
         st.markdown("## 🛡️ SYSTÈME D'ADMINISTRATION GÉNÉRAL")
-
-        # --- SECTION 1 : CRÉATION DE PROFIL AVEC SLIDER DE POINTS ---
-        st.subheader("🆕 Enregistrement Nouveau Citoyen")
+        
+        # --- SECTION 1 : CRÉATION DE PROFIL ---
+        st.markdown("### 👤 Création de Dossier Citoyen")
         with st.container(border=True):
-            with st.form("form_creation_totale"):
-                col_c1, col_c2 = st.columns(2)
-                with col_c1:
-                    new_nom = st.text_input("Nom d'utilisateur Roblox :")
-                    new_jobs = st.multiselect("Grades / Emplois :", 
-                                            ["Citoyen", "Agent RCT", "Police", "Staff", "Averis", "Service Public"], 
-                                            default=["Citoyen"])
-                with col_c2:
-                    # Slider pour les points de permis (0 à 50)
-                    pts_initial = 25 # <-- À AJOUTER
-                    solde_depart = 15000
-                    date_auto = datetime.now().strftime("%d/%m/%Y")
-                    st.info(f"💰 Solde : {solde_depart}$ | 📅 Date : {date_auto}")
+            c1, c2 = st.columns(2)
+            with c1:
+                new_name = st.text_input("Nom d'utilisateur ROBLOX", placeholder="Pseudo exact", key="admin_new_name")
+                new_discord = st.text_input("Utilisateur Discord", placeholder="pseudo#0000", key="admin_new_discord")
+            with c2:
+                job_list = ["Sans-Emploi", "Agent RCT", "Averis", "Police", "Staff", "Entreprise Privée", "Service Public"]
+                new_jobs = st.multiselect("Emploiement(s)", job_list, default=["Sans-Emploi"], key="admin_new_jobs")
+                new_pts = st.slider("Points Permis (Départ)", 0, 25, 25, key="admin_new_pts")
 
-                if st.form_submit_button("🔨 CRÉER LE PROFIL COMPLET"):
-                    if new_nom:
-                        if new_nom in df_b["Nom Roblox"].values:
-                            st.error("❌ Ce citoyen existe déjà.")
-                        else:
-                            try:
-                                # A. Base Banque (15k + Date auto)
-                                new_user_b = {
-                                    "Nom Roblox": new_nom, "Solde": solde_depart,
-                                    "Emploiement": "/".join(new_jobs), "Date d'arrivée": date_auto,
-                                    "Code": random.randint(1000, 9999)
-                                }
-                                df_b = pd.concat([df_b, pd.DataFrame([new_user_b])], ignore_index=True)
-                                cloud_conn.update(worksheet="Banque", data=df_b)
-                                
-                                # B. Base Permis (Points via Slider)
-                                new_user_p = {"Nom Roblox": new_nom, "PTS": pts_initial}
-                                try:
-                                    df_p = pd.concat([df_p, pd.DataFrame([new_user_p])], ignore_index=True)
-                                    cloud_conn.update(worksheet="Permis", data=df_p)
-                                except:
-                                    cloud_conn.update(worksheet="Points Permis", data=pd.concat([df_p, pd.DataFrame([new_user_p])], ignore_index=True))
-                                
-                                # C. Audit Log
-                                if "audit_logs" not in st.session_state: st.session_state.audit_logs = []
-                                st.session_state.audit_logs.append(f"[{datetime.now().strftime('%H:%M')}] CRÉATION : {new_nom} ({pts_initial} PTS)")
-                                
-                                st.success(f"✅ Profil créé !"); st.cache_data.clear(); time.sleep(1); st.rerun()
-                            except Exception as e: st.error(f"Erreur : {e}")
-                    else: st.warning("Nom requis.")
+            if st.button("🆕 GÉNÉRER LE DOSSIER (15k + Date Auto)", use_container_width=True, type="primary"):
+                if new_name and new_name not in df_b["Nom Roblox"].values:
+                    with st.spinner("Initialisation..."):
+                        today_str = datetime.now().strftime("%d/%m/%Y")
+                        jobs_string = " / ".join(new_jobs) if new_jobs else "Sans-Emploi"
+                        
+                        # Banque (Solde 15k auto)
+                        new_bank_row = pd.DataFrame([{"Nom Roblox": new_name, "Nom Discord": new_discord, "Solde": 15000, "Emploiement": jobs_string, "Date d'arrivée": today_str}])
+                        df_b = pd.concat([df_b, new_bank_row], ignore_index=True)
+                        cloud_conn.update(worksheet="Banque", data=df_b)
 
-        st.divider()
+                        # Permis
+                        new_pts_row = pd.DataFrame([{"Nom Roblox": new_name, "PTS": new_pts, "Validité": "OUI" if new_pts > 0 else "NON"}])
+                        df_p = pd.concat([df_p, new_pts_row], ignore_index=True)
+                        cloud_conn.update(worksheet="Points Permis", data=df_p)
 
+                        record_log(st.session_state.user_auth, f"Profil créé : {new_name}")
+                        st.success(f"✅ Dossier créé pour {new_name}")
+                        st.cache_data.clear()
+                        import time
+                        time.sleep(1)
+                        st.rerun()
 # --- SECTION 2 : CUMUL DES HEURES & ARGENT (VERSION CORRIGÉE) ---
         st.subheader("📊 Analyse du Temps & Primes de Service")
         if 'df_clock' not in locals():
