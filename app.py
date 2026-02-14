@@ -933,9 +933,10 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                 if not res_agent.empty:
                     agent_identifie = res_agent.iloc[0]["Nom Roblox"]
                     
-                    # Récupération de l'heure que tu as déjà dans ton script
-                    # J'utilise strftime sur ta variable existante
-                    h_actuelle = datetime.now().strftime("%H:%M") 
+                    # --- RÉGLAGE HEURE ZURICH (UTC+1) ---
+                    tz_ch = timezone(timedelta(hours=1)) # Force le décalage suisse
+                    now_ch = datetime.now(tz_ch)
+                    h_actuelle = now_ch.strftime("%H:%M") 
                     
                     # Vérification du statut de service
                     start_display, end_display = "--:--", "--:--"
@@ -954,7 +955,7 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
 
                     with col_infos:
                         c1, c2, c3 = st.columns(3)
-                        c1.metric("🕒 Actuelle", h_actuelle)
+                        c1.metric("🕒 Zurich", h_actuelle) # Affichera 16:28 si sidebar dit 16:28
                         c2.metric("🎬 Début", start_display)
                         c3.metric("🏁 Fin", end_display)
                         
@@ -965,7 +966,8 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                             if st.button("✅ DÉBUT", use_container_width=True, type="primary", disabled=en_service):
                                 try:
                                     df_pnt = cloud_conn.read(worksheet="Pointage")
-                                    new_log = pd.DataFrame([{"Nom": agent_identifie, "Action": "IN", "Horodatage": datetime.now().strftime("%d/%m/%Y %H:%M:%S")}])
+                                    # On enregistre aussi avec l'heure Zurich (now_ch)
+                                    new_log = pd.DataFrame([{"Nom": agent_identifie, "Action": "IN", "Horodatage": now_ch.strftime("%d/%m/%Y %H:%M:%S")}])
                                     cloud_conn.update(worksheet="Pointage", data=pd.concat([df_pnt, new_log], ignore_index=True))
                                     st.toast("Service démarré !")
                                     st.rerun()
@@ -975,7 +977,8 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                             if st.button("🛑 FIN", use_container_width=True, disabled=not en_service):
                                 try:
                                     df_pnt = cloud_conn.read(worksheet="Pointage")
-                                    new_log = pd.DataFrame([{"Nom": agent_identifie, "Action": "OUT", "Horodatage": datetime.now().strftime("%d/%m/%Y %H:%M:%S")}])
+                                    # On enregistre aussi avec l'heure Zurich (now_ch)
+                                    new_log = pd.DataFrame([{"Nom": agent_identifie, "Action": "OUT", "Horodatage": now_ch.strftime("%d/%m/%Y %H:%M:%S")}])
                                     cloud_conn.update(worksheet="Pointage", data=pd.concat([df_pnt, new_log], ignore_index=True))
                                     st.toast("Service terminé !")
                                     st.rerun()
@@ -984,7 +987,6 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                     st.error("Code inconnu")
 
         st.divider()
-        # Suite de ton code (Facturation...)
         # 1. PANEL D'ALERTE : FACTURES IMPAYÉES
         df_all_f = cloud_conn.read(worksheet="Factures").fillna("")
         alertes = []
