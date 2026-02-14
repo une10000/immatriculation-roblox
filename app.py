@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
+import time  # <--- AJOUTE CETTE LIGNE ICI
 from datetime import datetime, timedelta, timezone
-# AJOUT DE L'IMPORT MANQUANT ICI :
 from streamlit_gsheets import GSheetsConnection
 
 # 1. INTERFACE & DESIGN
@@ -911,96 +911,53 @@ with tabs[0]:
         </div>
         """
         st.components.v1.html(ticket_html, height=500)
-# --- ONGLET 2 : SERVICES AGENT (FACTURES / POINTS / CONSULTATION) ---
+# --- ONGLET 2 : SERVICES AGENT ---
 if st.session_state.user_auth in ["RCT", "Staff"]:
     with tabs[1]:
         with st.container(border=True):
             col_code, col_infos = st.columns([1, 2])
-            
             with col_code:
                 agent_code_saisi = st.text_input("🔑 Code Agent", type="password", key="pnt_compact_auth")
-                if st.session_state.user_auth == "Staff":
-                    job_actuel = st.selectbox("🎭 Service", ["POLSTA", "Averis"], key="pnt_job_staff")
-                else:
-                    job_actuel = "RCT"
+                job_actuel = st.selectbox("🎭 Service", ["POLSTA", "Averis"], key="pnt_job_staff") if st.session_state.user_auth == "Staff" else "RCT"
             
             if agent_code_saisi:
-                # Identification Agent
                 df_b.columns = df_b.columns.str.strip()
-                def clean_code(x): return str(x).strip().split('.')[0]
-                df_b["Code_Clean"] = df_b["Code"].apply(clean_code)
-                res_agent = df_b[df_b["Code_Clean"] == agent_code_saisi.strip()]
+                res_agent = df_b[df_b["Code"].astype(str).str.contains(agent_code_saisi.strip())]
                 
                 if not res_agent.empty:
                     agent_identifie = res_agent.iloc[0]["Nom Roblox"]
-                    tz_ch = timezone(timedelta(hours=1)) 
-                    now_ch = datetime.now(tz_ch)
-                    h_actuelle = now_ch.strftime("%H:%M") 
+                    now_ch = datetime.now(timezone(timedelta(hours=1)))
                     
-                    start_display = "--:--"
-                    en_service = False
+                    # Lecture des logs
+                    df_pnt = cloud_conn.read(worksheet="Pointage")
+                    df_pnt.columns = df_pnt.columns.str.strip()
+                    user_logs = df_pnt[df_pnt["Nom"] == agent_identifie]
                     
-                    try:
-                        # Lecture propre des données existantes
-                        df_pnt = cloud_conn.read(worksheet="Pointage")
-                        df_pnt.columns = df_pnt.columns.str.strip()
-                        user_logs = df_pnt[df_pnt["Nom"] == agent_identifie]
-                        
-                        if not user_logs.empty:
-                            last_action = user_logs.iloc[-1]["Action"]
-                            en_service = (last_action == "IN")
-                            if en_service:
-                                val_in = str(user_logs.iloc[-1]["Début"])
-                                start_display = val_in.split(" ")[1][:5] if " " in val_in else val_in[:5]
-                    except: 
-                        df_pnt = pd.DataFrame(columns=["Nom", "Action", "Job", "Début", "Fin"])
+                    en_service = (user_logs.iloc[-1]["Action"] == "IN") if not user_logs.empty else False
+                    start_disp = user_logs.iloc[-1]["Début"].split(" ")[1][:5] if en_service else "--:--"
 
                     with col_infos:
-                        c1, c2, c3 = st.columns(3)
-                        c1.metric("🕒 Zurich", h_actuelle)
-                        c2.metric("🎬 Début", start_display)
-                        c3.metric("🏁 Fin", "--:--")
+                        c1, c2 = st.columns(2)
+                        c1.metric("🕒 Zurich", now_ch.strftime("%H:%M"))
+                        c2.metric("🎬 Début", start_disp)
+                        st.write(f"Agent : **{agent_identifie}** " + ("(🟢 EN SERVICE)" if en_service else "(🔴 HORS SERVICE)"))
                         
-                        st.write(f"Agent : **{agent_identifie}** " + (f"(🟢 EN SERVICE)" if en_service else "(🔴 HORS SERVICE)"))
-                        btn_in, btn_out = st.columns(2)
-                        
-                        # --- BOUTON DÉBUT ---
-                        with btn_in:
+                        b_in, b_out = st.columns(2)
+                        with b_in:
                             if st.button("✅ DÉBUT", use_container_width=True, type="primary", disabled=en_service):
-                                # ICI : On ne définit QUE les colonnes qui existent dans ton Sheets
-                                new_log = pd.DataFrame([{
-                                    "Nom": agent_identifie, 
-                                    "Action": "IN", 
-                                    "Job": job_actuel, 
-                                    "Début": now_ch.strftime("%d/%m/%Y %H:%M:%S"),
-                                    "Fin": "" 
-                                }])
-                                cloud_conn.update(worksheet="Pointage", data=pd.concat([df_pnt, new_log], ignore_index=True))
+                                new_row = pd.DataFrame([{"Nom": agent_identifie, "Action": "IN", "Job": job_actuel, "Début": now_ch.strftime("%d/%m/%Y %H:%M:%S"), "Fin": ""}])
+                                cloud_conn.update(worksheet="Pointage", data=pd.concat([df_pnt, new_row], ignore_index=True))
                                 st.success("Service démarré !")
-                                time.sleep(1)
+                                time.sleep(1) # Ne plantera plus !
                                 st.rerun()
-
-                        # --- BOUTON FIN ---
-                        with btn_out:
+                        with b_out:
                             if st.button("🛑 FIN", use_container_width=True, disabled=not en_service):
-                                h_fin_full = now_ch.strftime("%d/%m/%Y %H:%M:%S")
-                                # ICI : Pareil, aucune mention de 'Horodotage'
-                                new_log = pd.DataFrame([{
-                                    "Nom": agent_identifie, 
-                                    "Action": "OUT", 
-                                    "Job": job_actuel, 
-                                    "Début": "", 
-                                    "Fin": h_fin_full
-                                }])
-                                cloud_conn.update(worksheet="Pointage", data=pd.concat([df_pnt, new_log], ignore_index=True))
-                                st.success(f"Service terminé à {h_actuelle}")
+                                new_row = pd.DataFrame([{"Nom": agent_identifie, "Action": "OUT", "Job": job_actuel, "Début": "", "Fin": now_ch.strftime("%d/%m/%Y %H:%M:%S")}])
+                                cloud_conn.update(worksheet="Pointage", data=pd.concat([df_pnt, new_row], ignore_index=True))
+                                st.session_state.pnt_compact_auth = ""
                                 st.balloons()
-                                st.session_state.pnt_compact_auth = "" # Reset du champ code
                                 time.sleep(2)
                                 st.rerun()
-                else:
-                    st.error("Code incorrect.")
-        st.divider()
         # 1. PANEL D'ALERTE : FACTURES IMPAYÉES
         df_all_f = cloud_conn.read(worksheet="Factures").fillna("")
         alertes = []
