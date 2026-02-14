@@ -1372,8 +1372,7 @@ if st.session_state.user_auth == "Staff":
                     
                     st.success(f"✅ Dossier créé pour {new_name} (Solde: 15k | Date: {today_str})")
                     st.cache_data.clear(); time.sleep(1); st.rerun()
-
-        # --- SECTION 2 : TERMINAL DE PAIE (LOGIQUE SIMPLIFIÉE FEUILLE CLOCK) ---
+# --- SECTION 2 : TERMINAL DE PAIE (LOOK ESTHÉTIQUE RESTAURÉ) ---
         st.divider()
         st.markdown("### 🧧 Terminal de Paie Nationale")
         
@@ -1390,10 +1389,10 @@ if st.session_state.user_auth == "Staff":
                 PRIME_BASE = {"Agent RCT": 2000, "Averis": 2000, "Police": 3000, "Staff": 4000, "Service Public": 1000}
                 
                 min_rct, min_police = 0, 0
-                # On utilise df_admin qui contient déjà les données de la feuille Clock
+                # Utilisation de df_admin qui pointe sur la feuille "Clock"
                 user_logs = df_admin[(df_admin["nom"] == target_paie) & (df_admin["statut"] == "Validé")]
                 
-                # Calcul des minutes (Logiciel Mono-ligne)
+                # Calcul des minutes (mono-ligne)
                 for _, row in user_logs.iterrows():
                     try:
                         t1 = datetime.strptime(str(row["début"]), "%d/%m/%Y %H:%M:%S")
@@ -1426,7 +1425,7 @@ if st.session_state.user_auth == "Staff":
                         primes_detail.append(f"• **{job}** : +{p_max}$")
                         total_primes_metier += p_max
 
-                # --- PRÉLÈVEMENTS & CALCUL FINAL ---
+                # --- PRÉLÈVEMENTS ---
                 mes_v = df_i[df_i["Nom d'utilisateur ROBLOX"] == target_paie]
                 nb_v = len(mes_v)
                 c_rct = len(mes_v[mes_v["Assurance"].str.contains("RCT", na=False, case=False)])
@@ -1440,25 +1439,54 @@ if st.session_state.user_auth == "Staff":
                     taxe_jc = (nb_v * 50) if is_jc else 0
                 except: is_jc, taxe_jc = False, 0
 
-                net_final = (15000 + total_primes_metier + gain_temps_total) - (v_rct + v_ave + v_std + taxe_jc)
+                # Calcul Final
+                net_final = (total_primes_metier + gain_temps_total) - (v_rct + v_ave + v_std + taxe_jc)
                 solde_apres = solde_actuel + net_final
 
-                st.markdown(f"#### 📊 Fiche : {target_paie} | Net : {int(net_final)}$")
+                # --- AFFICHAGE DE LA FICHE ---
+                st.markdown(f"#### 📊 Fiche de Paie : {target_paie}")
                 
-                if st.button(f"🧧 CONFIRMER LE VERSEMENT", use_container_width=True, type="primary"):
+                col_f1, col_f2 = st.columns(2)
+                with col_f1:
+                    st.markdown("**💰 Détail des Gains**")
+                    for p in primes_detail: st.write(p)
+                    if not primes_detail: st.caption("Aucun gain (temps de service nul).")
+                
+                with col_f2:
+                    st.markdown("**📉 Prélèvements**")
+                    if v_rct > 0: st.write(f"• Assurance RCT : -{v_rct}$")
+                    if v_ave > 0: st.write(f"• Assurance Averis : -{v_ave}$")
+                    if v_std > 0: st.write(f"• Assurance Standard : -{v_std}$")
+                    if taxe_jc > 0: st.write(f"• Taxe Jeune Citoyen : -{taxe_jc}$")
+
+                st.divider()
+                
+                # Metrics de solde
+                c_m1, c_m2, c_m3 = st.columns(3)
+                c_m1.metric("Solde Actuel", f"{int(solde_actuel)}$")
+                c_m2.metric("NET À VERSER", f"{int(net_final)}$", delta=f"{int(net_final)}$")
+                c_m3.metric("Nouveau Solde", f"{int(solde_apres)}$")
+
+                if st.button(f"🧧 CONFIRMER LE VERSEMENT POUR {target_paie.upper()}", use_container_width=True, type="primary"):
                     def cl(v): return float(str(v).replace('$', '').replace(',', '').strip())
                     
+                    # Transfert Patron RCT (une10000)
                     idx_r = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
                     gain_rct_total = (int(2000 * min(min_rct/1200, 1)) if "Agent RCT" in u_jobs else 0) + (min_rct * 10)
                     df_b.at[idx_r, "Solde"] = cl(df_b.at[idx_r, "Solde"]) - gain_rct_total + v_rct
                     
+                    # Transfert Patron Averis (Moune2010)
                     idx_m = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
                     p_ave = 2000 if "Averis" in u_jobs else 0
                     df_b.at[idx_m, "Solde"] = cl(df_b.at[idx_m, "Solde"]) - p_ave + v_ave
                     
+                    # Update Bénéficiaire
                     df_b.loc[df_b["Nom Roblox"] == target_paie, "Solde"] = solde_apres
                     cloud_conn.update(worksheet="Banque", data=df_b)
-                    st.success("✅ Paie traitée avec succès !"); st.cache_data.clear(); time.sleep(1); st.rerun()
+                    
+                    st.success(f"✅ Paie de {int(net_final)}$ versée !")
+                    st.balloons()
+                    st.cache_data.clear(); time.sleep(1); st.rerun()
         # --- SECTION 3 : LOGS ET STATISTIQUES (UNIQUEMENT EN ADMIN AUSSI) ---
         st.divider()
         col_admin_left, col_admin_right = st.columns(2)
