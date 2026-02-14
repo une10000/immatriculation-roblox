@@ -910,17 +910,17 @@ with tabs[0]:
         </div>
         """
         st.components.v1.html(ticket_html, height=500)
-# --- ONGLET 2 : SERVICES AGENT (SYSTÈME MONO-LIGNE) ---
+# --- ONGLET 2 : SERVICES AGENT (FEUILLE CLOCK) ---
 if st.session_state.user_auth in ["RCT", "Staff"]:
     with tabs[1]:
         with st.container(border=True):
             col_code, col_infos = st.columns([1, 2])
             with col_code:
-                agent_code_saisi = st.text_input("🔑 Code Agent", type="password", key="pnt_compact_auth")
+                agent_code_saisi = st.text_input("🔑 Code Agent", type="password", key="pnt_clock_auth")
                 job_actuel = st.selectbox("🎭 Service", ["POLSTA"], key="pnt_job_staff") if st.session_state.user_auth == "Staff" else "RCT"
             
             if agent_code_saisi:
-                # Identification Agent
+                # Identification Agent dans la table Banque
                 df_b.columns = df_b.columns.str.strip()
                 res_agent = df_b[df_b["Code"].astype(str).str.contains(agent_code_saisi.strip())]
                 
@@ -928,26 +928,27 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                     agent_identifie = res_agent.iloc[0]["Nom Roblox"]
                     now_ch = datetime.now(timezone(timedelta(hours=1)))
                     
-                    # Lecture des logs (Worksheet "Pointage")
+                    # Lecture de la nouvelle feuille "Clock"
                     try:
-                        df_pnt = cloud_conn.read(worksheet="Pointage", ttl=0).fillna("")
-                        df_pnt.columns = df_pnt.columns.str.strip()
-                        # On cherche si l'agent a une session "En cours"
-                        session_ouverte = df_pnt[(df_pnt["Nom"] == agent_identifie) & (df_pnt["Statut"] == "En cours")]
-                        en_service = not session_ouverte.empty
+                        df_clock = cloud_conn.read(worksheet="Clock", ttl=0).fillna("")
+                        df_clock.columns = df_clock.columns.str.strip().str.lower()
+                        
+                        # On cherche une session active (statut "en cours")
+                        session_active = df_clock[(df_clock["nom"] == agent_identifie) & (df_clock["statut"] == "en cours")]
+                        en_service = not session_active.empty
                     except:
-                        df_pnt = pd.DataFrame(columns=["Nom", "Job", "Début", "Fin", "Statut"])
+                        df_clock = pd.DataFrame(columns=["nom", "action", "job", "début", "fin", "statut"])
                         en_service = False
                     
-                    # Récupération de l'heure de début pour l'affichage
+                    # Affichage des infos
                     start_disp = "--:--"
                     if en_service:
-                        val_debut = str(session_ouverte.iloc[-1]["Début"])
+                        val_debut = str(session_active.iloc[-1]["début"])
                         start_disp = val_debut.split(" ")[1][:5] if " " in val_debut else val_debut[:5]
 
                     with col_infos:
                         c1, c2, c3 = st.columns(3)
-                        c1.metric("🕒 Zurich", now_ch.strftime("%H:%M"))
+                        c1.metric("🕒 Heure", now_ch.strftime("%H:%M"))
                         c2.metric("🎬 Début", start_disp)
                         c3.metric("🏁 Fin", "--:--")
                         
@@ -955,42 +956,39 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                         
                         b_in, b_out = st.columns(2)
                         
-                        # --- BOUTON DÉBUT (CRÉATION DE LIGNE) ---
+                        # --- BOUTON DÉBUT ---
                         with b_in:
                             if st.button("✅ DÉBUT", use_container_width=True, type="primary", disabled=en_service):
                                 h_debut = now_ch.strftime("%d/%m/%Y %H:%M:%S")
                                 new_row = pd.DataFrame([{
-                                    "Nom": agent_identifie, 
-                                    "Job": job_actuel, 
-                                    "Début": h_debut, 
-                                    "Fin": "", 
-                                    "Statut": "En cours"
+                                    "nom": agent_identifie, 
+                                    "action": "WORK", # On peut mettre WORK pour dire "en travail"
+                                    "job": job_actuel, 
+                                    "début": h_debut, 
+                                    "fin": "", 
+                                    "statut": "en cours"
                                 }])
-                                df_pnt_updated = pd.concat([df_pnt, new_row], ignore_index=True)
-                                cloud_conn.update(worksheet="Pointage", data=df_pnt_updated)
+                                df_clock_up = pd.concat([df_clock, new_row], ignore_index=True)
+                                cloud_conn.update(worksheet="Clock", data=df_clock_up)
                                 st.success("Service démarré !")
-                                time.sleep(1)
-                                st.rerun()
+                                time.sleep(1); st.rerun()
                                 
-                        # --- BOUTON FIN (MISE À JOUR DE LA LIGNE) ---
+                        # --- BOUTON FIN ---
                         with b_out:
                             if st.button("🛑 FIN", use_container_width=True, disabled=not en_service):
                                 h_fin = now_ch.strftime("%d/%m/%Y %H:%M:%S")
                                 
-                                # On trouve l'index de la ligne "En cours" pour cet agent
-                                idx_a_modifier = df_pnt[(df_pnt["Nom"] == agent_identifie) & (df_pnt["Statut"] == "En cours")].index[-1]
+                                # On trouve l'index de la ligne à modifier
+                                idx_ligne = session_active.index[-1]
                                 
-                                # Mise à jour des données locales
-                                df_pnt.at[idx_a_modifier, "Fin"] = h_fin
-                                df_pnt.at[idx_a_modifier, "Statut"] = "À valider"
+                                # Mise à jour de la ligne existante
+                                df_clock.at[idx_ligne, "fin"] = h_fin
+                                df_clock.at[idx_ligne, "statut"] = "à valider"
                                 
-                                # Envoi de la mise à jour
-                                cloud_conn.update(worksheet="Pointage", data=df_pnt)
-                                
-                                st.success("Service terminé ! Ligne complétée.")
+                                cloud_conn.update(worksheet="Clock", data=df_clock)
+                                st.success("Service terminé !")
                                 st.balloons()
-                                time.sleep(1)
-                                st.rerun()
+                                time.sleep(1); st.rerun()
                 else:
                     st.error("Code incorrect.")
         # 1. PANEL D'ALERTE : FACTURES IMPAYÉES
