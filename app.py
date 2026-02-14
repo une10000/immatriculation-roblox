@@ -917,7 +917,6 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
         with st.container(border=True):
             col_code, col_infos = st.columns([1, 2])
             with col_code:
-                # On utilise le text_input normalement
                 agent_code_saisi = st.text_input("🔑 Code Agent", type="password", key="pnt_compact_auth")
                 job_actuel = st.selectbox("🎭 Service", ["POLSTA", "Averis"], key="pnt_job_staff") if st.session_state.user_auth == "Staff" else "RCT"
             
@@ -932,14 +931,14 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                     
                     # Lecture des logs
                     try:
-                        df_pnt = cloud_conn.read(worksheet="Pointage", ttl=0) # ttl=0 force la lecture fraîche
+                        df_pnt = cloud_conn.read(worksheet="Pointage", ttl=0)
                         df_pnt.columns = df_pnt.columns.str.strip()
                         user_logs = df_pnt[df_pnt["Nom"] == agent_identifie]
                     except:
-                        df_pnt = pd.DataFrame(columns=["Nom", "Action", "Job", "Début", "Fin"])
+                        df_pnt = pd.DataFrame(columns=["Nom", "Action", "Job", "Début", "Fin", "Statut"])
                         user_logs = pd.DataFrame()
                     
-                    # État du service & Heure de début
+                    # État du service
                     en_service = False
                     start_disp = "--:--"
                     
@@ -960,29 +959,31 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                         
                         b_in, b_out = st.columns(2)
                         
+                        # --- BOUTON DÉBUT ---
                         with b_in:
                             if st.button("✅ DÉBUT", use_container_width=True, type="primary", disabled=en_service):
                                 h_debut = now_ch.strftime("%d/%m/%Y %H:%M:%S")
-                                new_row = pd.DataFrame([{"Nom": agent_identifie, "Action": "IN", "Job": job_actuel, "Début": h_debut, "Fin": ""}])
+                                # Ajout du statut "En cours" pour plus de clarté
+                                new_row = pd.DataFrame([{"Nom": agent_identifie, "Action": "IN", "Job": job_actuel, "Début": h_debut, "Fin": "", "Statut": "En cours"}])
                                 cloud_conn.update(worksheet="Pointage", data=pd.concat([df_pnt, new_row], ignore_index=True))
                                 st.success("Service démarré !")
                                 time.sleep(1)
-                                st.rerun() # Rafraîchit pour montrer l'heure dans la métrique
+                                st.rerun()
                                 
+                        # --- BOUTON FIN ---
                         with b_out:
                             if st.button("🛑 FIN", use_container_width=True, disabled=not en_service):
                                 h_fin = now_ch.strftime("%d/%m/%Y %H:%M:%S")
-                                new_row = pd.DataFrame([{"Nom": agent_identifie, "Action": "OUT", "Job": job_actuel, "Début": "", "Fin": h_fin}])
+                                # ICI : On marque "À valider" pour que ça apparaisse dans ton onglet Admin
+                                new_row = pd.DataFrame([{"Nom": agent_identifie, "Action": "OUT", "Job": job_actuel, "Début": "", "Fin": h_fin, "Statut": "À valider"}])
                                 cloud_conn.update(worksheet="Pointage", data=pd.concat([df_pnt, new_row], ignore_index=True))
                                 
-                                # POUR EVITER L'ERREUR : On ne touche pas à session_state ici directement
-                                st.success("Service terminé !")
+                                st.success("Service terminé ! En attente de validation Staff.")
                                 st.balloons()
                                 time.sleep(1)
                                 st.rerun()
                 else:
                     st.error("Code incorrect.")
-
         # 1. PANEL D'ALERTE : FACTURES IMPAYÉES
         df_all_f = cloud_conn.read(worksheet="Factures").fillna("")
         alertes = []
