@@ -1281,29 +1281,36 @@ if st.session_state.user_auth == "Staff":
     with tabs[2]:
         st.markdown('<div class="header-box"><h2>🛠️ ADMINISTRATION</h2></div>', unsafe_allow_html=True)
         
-        # --- SECTION A : VALIDATION DES SERVICES ---
+        # --- SECTION A : VALIDATION DES SERVICES (FEUILLE CLOCK) ---
         st.subheader("🛡️ Validation des Pointages")
         try:
-            df_admin = cloud_conn.read(worksheet="Pointage", ttl=0)
+            # Lecture de la nouvelle feuille
+            df_admin = cloud_conn.read(worksheet="Clock", ttl=0)
             df_admin.columns = df_admin.columns.str.strip()
-            if "Statut" not in df_admin.columns:
-                df_admin["Statut"] = ""
-
-            attente = df_admin[df_admin["Statut"] == "À valider"]
+            
+            # Filtrage des sessions terminées qui attendent une validation
+            attente = df_admin[df_admin["statut"] == "à valider"]
+            
             if not attente.empty:
                 for i, row in attente.iterrows():
                     with st.container(border=True):
                         c1, c2 = st.columns([3, 1])
-                        c1.write(f"**Agent :** {row['Nom']} | **Job :** {row['Job']} | **Fin :** {row['Fin']}")
+                        # Affichage clair du début et de la fin sur la même ligne
+                        c1.write(f"**Agent :** {row['nom']} | **Job :** {row['job']}")
+                        c1.caption(f"🕒 Durée : du {row['début']} au {row['fin']}")
+                        
                         v_col, r_col = c2.columns(2)
                         if v_col.button("✔️", key=f"v_{i}", type="primary"):
-                            df_admin.at[i, "Statut"] = "Validé"
-                            cloud_conn.update(worksheet="Pointage", data=df_admin)
-                            st.rerun()
+                            df_admin.at[i, "statut"] = "Validé"
+                            cloud_conn.update(worksheet="Clock", data=df_admin)
+                            st.success(f"Validé pour {row['nom']}")
+                            time.sleep(0.5); st.rerun()
+                            
                         if r_col.button("❌", key=f"r_{i}"):
-                            df_admin.at[i, "Statut"] = "Refusé"
-                            cloud_conn.update(worksheet="Pointage", data=df_admin)
-                            st.rerun()
+                            df_admin.at[i, "statut"] = "Refusé"
+                            cloud_conn.update(worksheet="Clock", data=df_admin)
+                            st.error(f"Refusé pour {row['nom']}")
+                            time.sleep(0.5); st.rerun()
             else:
                 st.info("⛱️ Aucun service en attente de validation.")
         except Exception as e:
@@ -1311,33 +1318,22 @@ if st.session_state.user_auth == "Staff":
 
         st.divider()
 
-# --- SECTION B : CALCULATEUR D'HEURES (LOGIQUE SCAN GLOBALE) ---
+        # --- SECTION B : CALCULATEUR D'HEURES (LOGIQUE MONO-LIGNE) ---
         st.subheader("📊 Cumul des Heures par Agent")
         liste_agents = sorted(df_b["Nom Roblox"].unique().tolist())
         agent_cible = st.selectbox("Choisir un agent pour voir son total :", liste_agents, key="calc_hours")
         
         if agent_cible:
-            # On récupère tous les logs validés de l'agent
-            user_data_h = df_admin[(df_admin["Nom"] == agent_cible) & (df_admin["Statut"] == "Validé")].copy()
+            # On récupère les lignes validées de l'agent sur la feuille Clock
+            user_data_h = df_admin[(df_admin["nom"] == agent_cible) & (df_admin["statut"] == "Validé")].copy()
             total_min = 0
             
-            # On boucle sur chaque sortie (OUT)
-            outs_v = user_data_h[user_data_h["Action"] == "OUT"]
-            for _, row_out in outs_v.iterrows():
+            for _, row in user_data_h.iterrows():
                 try:
-                    time_out = datetime.strptime(row_out["Fin"], "%d/%m/%Y %H:%M:%S")
-                    # On cherche le IN le plus proche AVANT ce OUT
-                    ins_v = user_data_h[(user_data_h["Action"] == "IN") & (user_data_h["Job"] == row_out["Job"])]
-                    
-                    match_in = None
-                    for _, row_in in ins_v.iterrows():
-                        time_in = datetime.strptime(row_in["Début"], "%d/%m/%Y %H:%M:%S")
-                        if time_in < time_out:
-                            if match_in is None or time_in > match_in:
-                                match_in = time_in
-                    
-                    if match_in:
-                        total_min += (time_out - match_in).total_seconds() / 60
+                    # Calcul direct : Fin - Début sur la même ligne
+                    t1 = datetime.strptime(str(row["début"]), "%d/%m/%Y %H:%M:%S")
+                    t2 = datetime.strptime(str(row["fin"]), "%d/%m/%Y %H:%M:%S")
+                    total_min += (t2 - t1).total_seconds() / 60
                 except: continue
             
             h_disp, m_disp = int(total_min // 60), int(total_min % 60)
@@ -1377,7 +1373,7 @@ if st.session_state.user_auth == "Staff":
                     st.success(f"✅ Dossier créé pour {new_name} (Solde: 15k | Date: {today_str})")
                     st.cache_data.clear(); time.sleep(1); st.rerun()
 
-        # --- SECTION 2 : TERMINAL DE PAIE (LOGIQUE SCAN & PRORATA 20H) ---
+        # --- SECTION 2 : TERMINAL DE PAIE (LOGIQUE SIMPLIFIÉE FEUILLE CLOCK) ---
         st.divider()
         st.markdown("### 🧧 Terminal de Paie Nationale")
         
@@ -1394,23 +1390,18 @@ if st.session_state.user_auth == "Staff":
                 PRIME_BASE = {"Agent RCT": 2000, "Averis": 2000, "Police": 3000, "Staff": 4000, "Service Public": 1000}
                 
                 min_rct, min_police = 0, 0
-                user_logs = df_admin[(df_admin["Nom"] == target_paie) & (df_admin["Statut"] == "Validé")].copy()
+                # On utilise df_admin qui contient déjà les données de la feuille Clock
+                user_logs = df_admin[(df_admin["nom"] == target_paie) & (df_admin["statut"] == "Validé")]
                 
-                # Calcul précis des minutes par métier
-                for _, row_out in user_logs[user_logs["Action"] == "OUT"].iterrows():
+                # Calcul des minutes (Logiciel Mono-ligne)
+                for _, row in user_logs.iterrows():
                     try:
-                        time_out = datetime.strptime(row_out["Fin"], "%d/%m/%Y %H:%M:%S")
-                        ins = user_logs[(user_logs["Action"] == "IN") & (user_logs["Job"] == row_out["Job"])]
-                        match_in = None
-                        for _, row_in in ins.iterrows():
-                            time_in = datetime.strptime(row_in["Début"], "%d/%m/%Y %H:%M:%S")
-                            if time_in < time_out:
-                                if match_in is None or time_in > match_in: match_in = time_in
+                        t1 = datetime.strptime(str(row["début"]), "%d/%m/%Y %H:%M:%S")
+                        t2 = datetime.strptime(str(row["fin"]), "%d/%m/%Y %H:%M:%S")
+                        diff = (t2 - t1).total_seconds() / 60
                         
-                        if match_in:
-                            diff = (time_out - match_in).total_seconds() / 60
-                            if "RCT" in str(row_out["Job"]).upper(): min_rct += diff
-                            elif "POL" in str(row_out["Job"]).upper(): min_police += diff
+                        if "RCT" in str(row["job"]).upper(): min_rct += diff
+                        elif "POL" in str(row["job"]).upper(): min_police += diff
                     except: continue
 
                 primes_detail = []
@@ -1452,18 +1443,15 @@ if st.session_state.user_auth == "Staff":
                 net_final = (15000 + total_primes_metier + gain_temps_total) - (v_rct + v_ave + v_std + taxe_jc)
                 solde_apres = solde_actuel + net_final
 
-                # Affichage Fiche de Paie (abrégé pour le code)
                 st.markdown(f"#### 📊 Fiche : {target_paie} | Net : {int(net_final)}$")
                 
                 if st.button(f"🧧 CONFIRMER LE VERSEMENT", use_container_width=True, type="primary"):
                     def cl(v): return float(str(v).replace('$', '').replace(',', '').strip())
                     
-                    # Transfert Patron RCT (une10000)
                     idx_r = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
                     gain_rct_total = (int(2000 * min(min_rct/1200, 1)) if "Agent RCT" in u_jobs else 0) + (min_rct * 10)
                     df_b.at[idx_r, "Solde"] = cl(df_b.at[idx_r, "Solde"]) - gain_rct_total + v_rct
                     
-                    # Transfert Patron Averis (Moune2010)
                     idx_m = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
                     p_ave = 2000 if "Averis" in u_jobs else 0
                     df_b.at[idx_m, "Solde"] = cl(df_b.at[idx_m, "Solde"]) - p_ave + v_ave
