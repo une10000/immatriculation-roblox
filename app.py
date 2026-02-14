@@ -921,7 +921,7 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                 job_actuel = st.selectbox("🎭 Service", ["POLSTA", "Averis"], key="pnt_job_staff") if st.session_state.user_auth == "Staff" else "RCT"
             
             if agent_code_saisi:
-                # Nettoyage et identification
+                # Identification de l'agent
                 df_b.columns = df_b.columns.str.strip()
                 res_agent = df_b[df_b["Code"].astype(str).str.contains(agent_code_saisi.strip())]
                 
@@ -929,74 +929,75 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                     agent_identifie = res_agent.iloc[0]["Nom Roblox"]
                     now_ch = datetime.now(timezone(timedelta(hours=1)))
                     
-                    # Lecture des logs de pointage
-                    df_pnt = cloud_conn.read(worksheet="Pointage")
-                    df_pnt.columns = df_pnt.columns.str.strip()
+                    # 1. Lecture sécurisée du Sheets
+                    try:
+                        df_pnt = cloud_conn.read(worksheet="Pointage")
+                        df_pnt.columns = df_pnt.columns.str.strip()
+                    except:
+                        # Si l'onglet est vide ou buggé, on initialise proprement
+                        df_pnt = pd.DataFrame(columns=["Nom", "Action", "Job", "Début", "Fin"])
+
+                    # 2. Filtrage pour l'agent actuel
                     user_logs = df_pnt[df_pnt["Nom"] == agent_identifie]
                     
-                    # Logique d'état du service
                     en_service = False
                     start_disp = "--:--"
                     
                     if not user_logs.empty:
-                        last_action = user_logs.iloc[-1]["Action"]
-                        en_service = (last_action == "IN")
+                        # On regarde la DERNIÈRE ligne de cet agent
+                        derniere_ligne = user_logs.iloc[-1]
+                        en_service = (derniere_ligne["Action"] == "IN")
                         
                         if en_service:
-                            # On récupère la valeur de la colonne "Début" de la dernière ligne
-                            val_debut = str(user_logs.iloc[-1]["Début"])
-                            # On extrait HH:MM (si le format est DD/MM/YYYY HH:MM:SS)
+                            # On récupère l'heure de début enregistrée
+                            val_debut = str(derniere_ligne["Début"])
                             if " " in val_debut:
-                                start_disp = val_debut.split(" ")[1][:5]
+                                start_disp = val_debut.split(" ")[1][:5] # Extrait HH:MM
                             else:
                                 start_disp = val_debut[:5]
 
                     with col_infos:
-                        c1, c2 = st.columns(2)
+                        c1, c2, c3 = st.columns(3)
                         c1.metric("🕒 Zurich", now_ch.strftime("%H:%M"))
-                        c2.metric("🎬 Début", start_disp) # Affiche l'heure de pointage réelle
+                        c2.metric("🎬 Début", start_disp) # ICI : l'heure s'affiche enfin
+                        c3.metric("🏁 Fin", "--:--")
                         
                         st.write(f"Agent : **{agent_identifie}** " + ("(🟢 EN SERVICE)" if en_service else "(🔴 HORS SERVICE)"))
                         
                         b_in, b_out = st.columns(2)
+                        
+                        # BOUTON DÉBUT
                         with b_in:
                             if st.button("✅ DÉBUT", use_container_width=True, type="primary", disabled=en_service):
-                                try:
-                                    new_row = pd.DataFrame([{
-                                        "Nom": agent_identifie, 
-                                        "Action": "IN", 
-                                        "Job": job_actuel, 
-                                        "Début": now_ch.strftime("%d/%m/%Y %H:%M:%S"), 
-                                        "Fin": ""
-                                    }])
-                                    cloud_conn.update(worksheet="Pointage", data=pd.concat([df_pnt, new_row], ignore_index=True))
-                                    st.success("Service démarré !")
-                                    time.sleep(1)
-                                    st.rerun()
-                                except:
-                                    st.error("Erreur de connexion Sheets.")
-
+                                new_row = pd.DataFrame([{
+                                    "Nom": agent_identifie, 
+                                    "Action": "IN", 
+                                    "Job": job_actuel, 
+                                    "Début": now_ch.strftime("%d/%m/%Y %H:%M:%S"), 
+                                    "Fin": ""
+                                }])
+                                cloud_conn.update(worksheet="Pointage", data=pd.concat([df_pnt, new_row], ignore_index=True))
+                                st.success("Service démarré !")
+                                time.sleep(1) # <--- N'oublie pas 'import time' en haut du fichier !
+                                st.rerun()
+                                
+                        # BOUTON FIN
                         with b_out:
                             if st.button("🛑 FIN", use_container_width=True, disabled=not en_service):
-                                try:
-                                    new_row = pd.DataFrame([{
-                                        "Nom": agent_identifie, 
-                                        "Action": "OUT", 
-                                        "Job": job_actuel, 
-                                        "Début": "", 
-                                        "Fin": now_ch.strftime("%d/%m/%Y %H:%M:%S")
-                                    }])
-                                    cloud_conn.update(worksheet="Pointage", data=pd.concat([df_pnt, new_row], ignore_index=True))
-                                    st.session_state.pnt_compact_auth = "" # Déconnexion auto
-                                    st.balloons()
-                                    time.sleep(2)
-                                    st.rerun()
-                                except:
-                                    st.error("Erreur de clôture.")
+                                new_row = pd.DataFrame([{
+                                    "Nom": agent_identifie, 
+                                    "Action": "OUT", 
+                                    "Job": job_actuel, 
+                                    "Début": "", 
+                                    "Fin": now_ch.strftime("%d/%m/%Y %H:%M:%S")
+                                }])
+                                cloud_conn.update(worksheet="Pointage", data=pd.concat([df_pnt, new_row], ignore_index=True))
+                                st.session_state.pnt_compact_auth = "" # Déconnexion
+                                st.balloons()
+                                time.sleep(2)
+                                st.rerun()
                 else:
                     st.error("Code incorrect.")
-
-        st.divider()
         # 1. PANEL D'ALERTE : FACTURES IMPAYÉES
         df_all_f = cloud_conn.read(worksheet="Factures").fillna("")
         alertes = []
