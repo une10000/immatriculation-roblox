@@ -464,7 +464,7 @@ with st.container():
         # --- AFFICHAGE DU DOSSIER ---
         col1, col2, col3 = st.columns(3)
 
-# --- COLONNE 1 : POINTS & PERMIS ---
+        # --- COLONNE 1 : POINTS & PERMIS ---
         with col1:
             p_data = df_p[df_p["Nom Roblox"] == target]
             if not p_data.empty:
@@ -473,7 +473,6 @@ with st.container():
                 except:
                     pts_val = 0
                 
-                # On crée les sous-colonnes pour l'esthétique (le petit bouclier à droite)
                 c_pts, c_v, c_motif_p = st.columns([3, 0.5, 2])
                 
                 with c_pts:
@@ -481,7 +480,6 @@ with st.container():
                     status_color = "green" if pts_val > 0 else "red"
                     st.markdown(f"Statut : <b style='color:{status_color};'>{'VALIDE' if pts_val > 0 else 'SUSPENDU'}</b>", unsafe_allow_html=True)
                     
-                    # Bouton d'action (uniquement si suspendu et Staff)
                     if st.session_state.user_auth in ["Staff", "Admin"] and pts_val <= 0:
                         st.write("") 
                         if st.button("🔓 Rendre son permis", key=f"restore_{target}", use_container_width=True, type="primary"):
@@ -492,7 +490,6 @@ with st.container():
                                 if target_str in df_p["Nom Roblox"].values:
                                     df_p.loc[df_p["Nom Roblox"] == target_str, "PTS"] = 25
                                     cloud_conn.update(worksheet=nom_feuille, data=df_p)
-                                    
                                     st.success(f"✅ Permis rendu !")
                                     st.cache_data.clear()
                                     st.rerun()
@@ -502,125 +499,121 @@ with st.container():
                                 st.error(f"Erreur : {e}")
 
                 with c_motif_p:
-                    # Le petit bouclier décoratif
                     st.markdown('<div style="opacity: 0.15; font-size: 40px; text-align: right; padding-top:10px;">🛡️</div>', unsafe_allow_html=True)
             else:
                 st.info("Aucun permis trouvé.")
-# --- COLONNE 2 : BANQUE & EMPLOI ---
-with col2:
-    b_data = df_b[df_b["Nom Roblox"] == target]
-    if not b_data.empty:
-        # Affichage du solde et métier
-        st.metric("SOLDE BANCAIRE", f"{b_data.iloc[0]['Solde']}$")
-        current_jobs_raw = str(b_data.iloc[0]['Emploiement'])
-        st.write(f"🏢 Métier : **{current_jobs_raw}**")
 
-        # --- MODULE DE CALCUL DE PAIE DÉTAILLÉ ---
-        with st.expander("💳 Détails de ma prochaine paie"):
-            # 1. RÉCUPÉRATION DES MINUTES DE SERVICE (CORRECTION NAMEERROR)
-            min_rct, min_police = 0, 0
-            # On filtre d'abord par nom, puis par statut pour éviter les erreurs de syntaxe complexe
-            user_logs = df_admin[df_admin["nom"] == target]
-            user_logs = user_logs[user_logs["statut"] == "Validé"]
-            
-            for _, row in user_logs.iterrows():
-                try:
-                    t1 = datetime.strptime(str(row["début"]), "%d/%m/%Y %H:%M:%S")
-                    t2 = datetime.strptime(str(row["fin"]), "%d/%m/%Y %H:%M:%S")
-                    diff = (t2 - t1).total_seconds() / 60
-                    job_name = str(row["job"]).upper()
-                    if "RCT" in job_name: min_rct += diff
-                    elif "POL" in job_name: min_police += diff
-                except: continue
+        # --- COLONNE 2 : BANQUE & EMPLOI ---
+        with col2:
+            b_data = df_b[df_b["Nom Roblox"] == target]
+            if not b_data.empty:
+                st.metric("SOLDE BANCAIRE", f"{b_data.iloc[0]['Solde']}$")
+                current_jobs_raw = str(b_data.iloc[0]['Emploiement'])
+                st.write(f"🏢 Métier : **{current_jobs_raw}**")
 
-            user_jobs_list = [j.strip().lower() for j in current_jobs_raw.split("/")]
-            details_html = ""
-            primes_total = 0
-            TEMPS_REQUIS = 1200 # 20h
-
-            # --- CALCUL DES REVENUS ---
-            if "police" in user_jobs_list:
-                p_calc = int(3000 * min(min_police / TEMPS_REQUIS, 1.0))
-                primes_total += p_calc
-                details_html += f'<div style="display: flex; justify-content: space-between; color: #3498db;"><span>Salaire Police ({int(min_police)} min) :</span><b>+{p_calc}$</b></div>'
-            
-            if "agent rct" in user_jobs_list:
-                p_calc = int(2000 * min(min_rct / TEMPS_REQUIS, 1.0))
-                primes_total += p_calc
-                details_html += f'<div style="display: flex; justify-content: space-between; color: #2ecc71;"><span>Salaire RCT ({int(min_rct)} min) :</span><b>+{p_calc}$</b></div>'
-
-            RECOMPENSES_FIXES = {"averis": 2000, "staff": 4000, "service public": 1000}
-            for job, montant in RECOMPENSES_FIXES.items():
-                if job in user_jobs_list:
-                    primes_total += montant
-                    details_html += f'<div style="display: flex; justify-content: space-between;"><span>Prime {job.title()} :</span><b>+{montant}$</b></div>'
-
-            # --- CALCUL DES TAXES & ASSURANCES (CORRECTION TRIO 200$) ---
-            mes_v = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
-            c_rct = len(mes_v[mes_v["Assurance"].str.contains("RCT", na=False, case=False)])
-            c_ave = len(mes_v[mes_v["Assurance"].str.contains("AVERIS", na=False, case=False)])
-            c_std = len(mes_v) - c_rct - c_ave
-            
-            # Application de la remise Trio RCT (Fixée à 200$ total)
-            taxe_rct = 200 if c_rct >= 3 else (c_rct * 150)
-            taxe_ave = c_ave * 130
-            taxe_std = c_std * 150
-            
-            try:
-                date_arr = pd.to_datetime(b_data.iloc[0]["Date d'arrivée"], dayfirst=True)
-                est_jc = (datetime.now() - date_arr).days < 30
-            except: est_jc = False
-            taxe_jc = (len(mes_v) * 50) if est_jc else 0
-            
-            total_prelevements = taxe_rct + taxe_ave + taxe_std + taxe_jc
-
-            # --- CALCUL FINAL ---
-            est_brut = 15000 + primes_total
-            est_net = est_brut - total_prelevements
-
-            # --- AFFICHAGE ---
-            offre_badge = '<span style="color: #00FF00; font-size: 0.8em;"> [TRIO RCT ✅]</span>' if c_rct >= 3 else ""
-            
-            st.markdown(f"""
-            <div style="background-color: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px; border: 1px solid #444;">
-                <div style="display: flex; justify-content: space-between;"><span>Base Civile :</span><b>+15,000$</b></div>
-                <hr style="margin: 8px 0; border-top: 1px dashed #555;">
-                {details_html if details_html else '<div style="color: #888; font-style: italic; font-size: 0.9em;">Aucune prime de service détectée</div>'}
-                <hr style="margin: 8px 0; border-top: 1px dashed #555;">
-                <div style="display: flex; justify-content: space-between; color: #ff4b4b;">
-                    <span>Assurances {offre_badge} :</span><b>-{int(taxe_rct + taxe_ave + taxe_std)}$</b>
-                </div>
-                {f'<div style="display: flex; justify-content: space-between; color: #e67e22; font-size: 0.9em;"><span>Taxe JC :</span><b>-{taxe_jc}$</b></div>' if taxe_jc > 0 else ""}
-                <hr style="margin: 10px 0; border-top: 2px solid #555;">
-                <div style="display: flex; justify-content: space-between; font-size: 1.2em; color: #00FF00;">
-                    <b>ESTIMATION NET :</b><b>{int(est_net)}$</b>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-
-        # --- PARTIE STAFF (ALIGNEMENT CORRIGÉ) ---
-        if st.session_state.user_auth in ["Staff", "Admin"]:
-            st.write("---")
-            if st.button("✏️ Modifier le métier", key=f"edit_job_{target}", use_container_width=True):
-                st.session_state[f"show_editor_{target}"] = not st.session_state.get(f"show_editor_{target}", False)
-            
-            if st.session_state.get(f"show_editor_{target}", False):
-                with st.container(border=True):
-                    options_jobs = ["Sans-Emploi", "Agent RCT", "Averis", "Police", "Staff", "Service Public", "Entreprise Privée"]
-                    current_list = [j.strip() for j in current_jobs_raw.split("/") if j.strip() in options_jobs]
-                    new_jobs = st.multiselect("Sélection :", options=options_jobs, default=current_list)
+                with st.expander("💳 Détails de ma prochaine paie"):
+                    # 1. RÉCUPÉRATION DES MINUTES (CORRECTION NAMEERROR)
+                    min_rct, min_police = 0, 0
+                    user_logs = df_admin[df_admin["nom"] == target]
+                    user_logs = user_logs[user_logs["statut"] == "Validé"]
                     
-                    if st.button("💾 Sauver", key=f"save_j_{target}", type="primary", use_container_width=True):
-                        idx = df_b[df_b["Nom Roblox"] == target].index[0]
-                        df_b.at[idx, "Emploiement"] = " / ".join(new_jobs) if new_jobs else "Sans-Emploi"
-                        cloud_conn.update(worksheet="Banque", data=df_b)
-                        st.success("Métier mis à jour !")
-                        st.session_state[f"show_editor_{target}"] = False
-                        st.cache_data.clear()
-                        st.rerun()
+                    for _, row in user_logs.iterrows():
+                        try:
+                            t1 = datetime.strptime(str(row["début"]), "%d/%m/%Y %H:%M:%S")
+                            t2 = datetime.strptime(str(row["fin"]), "%d/%m/%Y %H:%M:%S")
+                            diff = (t2 - t1).total_seconds() / 60
+                            job_name = str(row["job"]).upper()
+                            if "RCT" in job_name: min_rct += diff
+                            elif "POL" in job_name: min_police += diff
+                        except: continue
 
-        st.caption(f"📅 Arrivée : {b_data.iloc[0].get('Date d\'arrivée', 'Non spécifiée')}")
-# --- COLONNE 3 : ARCHIVES ---
+                    user_jobs_list = [j.strip().lower() for j in current_jobs_raw.split("/")]
+                    details_html = ""
+                    primes_total = 0
+                    TEMPS_REQUIS = 1200 # 20h
+
+                    # --- CALCUL DES REVENUS ---
+                    if "police" in user_jobs_list:
+                        p_calc = int(3000 * min(min_police / TEMPS_REQUIS, 1.0))
+                        primes_total += p_calc
+                        details_html += f'<div style="display: flex; justify-content: space-between; color: #3498db;"><span>Salaire Police ({int(min_police)} min) :</span><b>+{p_calc}$</b></div>'
+                    
+                    if "agent rct" in user_jobs_list:
+                        p_calc = int(2000 * min(min_rct / TEMPS_REQUIS, 1.0))
+                        primes_total += p_calc
+                        details_html += f'<div style="display: flex; justify-content: space-between; color: #2ecc71;"><span>Salaire RCT ({int(min_rct)} min) :</span><b>+{p_calc}$</b></div>'
+
+                    RECOMPENSES_FIXES = {"averis": 2000, "staff": 4000, "service public": 1000}
+                    for job, montant in RECOMPENSES_FIXES.items():
+                        if job in user_jobs_list:
+                            primes_total += montant
+                            details_html += f'<div style="display: flex; justify-content: space-between;"><span>Prime {job.title()} :</span><b>+{montant}$</b></div>'
+
+                    # --- CALCUL DES TAXES (CORRECTION TRIO 200$) ---
+                    mes_v = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
+                    c_rct = len(mes_v[mes_v["Assurance"].str.contains("RCT", na=False, case=False)])
+                    c_ave = len(mes_v[mes_v["Assurance"].str.contains("AVERIS", na=False, case=False)])
+                    c_std = len(mes_v) - c_rct - c_ave
+                    
+                    taxe_rct = 200 if c_rct >= 3 else (c_rct * 150)
+                    taxe_ave = c_ave * 130
+                    taxe_std = c_std * 150
+                    
+                    try:
+                        date_arr = pd.to_datetime(b_data.iloc[0]["Date d'arrivée"], dayfirst=True)
+                        est_jc = (datetime.now() - date_arr).days < 30
+                    except: est_jc = False
+                    taxe_jc = (len(mes_v) * 50) if est_jc else 0
+                    
+                    total_prelevements = taxe_rct + taxe_ave + taxe_std + taxe_jc
+
+                    # --- CALCUL FINAL (BASE 15K) ---
+                    est_brut = 15000 + primes_total
+                    est_net = est_brut - total_prelevements
+
+                    offre_badge = '<span style="color: #00FF00; font-size: 0.8em;"> [TRIO RCT ✅]</span>' if c_rct >= 3 else ""
+                    
+                    st.markdown(f"""
+                    <div style="background-color: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px; border: 1px solid #444;">
+                        <div style="display: flex; justify-content: space-between;"><span>Base Civile :</span><b>+15,000$</b></div>
+                        <hr style="margin: 8px 0; border-top: 1px dashed #555;">
+                        {details_html if details_html else '<div style="color: #888; font-style: italic; font-size: 0.9em;">Aucune prime de service détectée</div>'}
+                        <hr style="margin: 8px 0; border-top: 1px dashed #555;">
+                        <div style="display: flex; justify-content: space-between; color: #ff4b4b;">
+                            <span>Assurances {offre_badge} :</span><b>-{int(taxe_rct + taxe_ave + taxe_std)}$</b>
+                        </div>
+                        {f'<div style="display: flex; justify-content: space-between; color: #e67e22; font-size: 0.9em;"><span>Taxe JC :</span><b>-{taxe_jc}$</b></div>' if taxe_jc > 0 else ""}
+                        <hr style="margin: 10px 0; border-top: 2px solid #555;">
+                        <div style="display: flex; justify-content: space-between; font-size: 1.2em; color: #00FF00;">
+                            <b>ESTIMATION NET :</b><b>{int(est_net)}$</b>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+            # --- PARTIE STAFF (ALIGNEMENT CORRIGÉ) ---
+            if st.session_state.user_auth in ["Staff", "Admin"]:
+                st.write("---")
+                if st.button("✏️ Modifier le métier", key=f"edit_job_{target}", use_container_width=True):
+                    st.session_state[f"show_editor_{target}"] = not st.session_state.get(f"show_editor_{target}", False)
+                
+                if st.session_state.get(f"show_editor_{target}", False):
+                    with st.container(border=True):
+                        options_jobs = ["Sans-Emploi", "Agent RCT", "Averis", "Police", "Staff", "Service Public", "Entreprise Privée"]
+                        current_list = [j.strip() for j in current_jobs_raw.split("/") if j.strip() in options_jobs]
+                        new_jobs = st.multiselect("Sélection :", options=options_jobs, default=current_list)
+                        
+                        if st.button("💾 Sauver", key=f"save_j_{target}", type="primary", use_container_width=True):
+                            idx = df_b[df_b["Nom Roblox"] == target].index[0]
+                            df_b.at[idx, "Emploiement"] = " / ".join(new_jobs) if new_jobs else "Sans-Emploi"
+                            cloud_conn.update(worksheet="Banque", data=df_b)
+                            st.success("Métier mis à jour !")
+                            st.session_state[f"show_editor_{target}"] = False
+                            st.cache_data.clear()
+                            st.rerun()
+
+            st.caption(f"📅 Arrivée : {b_data.iloc[0].get('Date d\'arrivée', 'Non spécifiée')}")
+
+        # --- COLONNE 3 : ARCHIVES ---
         with col3:
             st.markdown("### 📁 ARCHIVES")
             try:
@@ -631,7 +624,6 @@ with col2:
                     st.info(f"📄 {len(historique)} réglée(s)")
                     with st.expander("👁️ Historique"):
                         for _, f in historique.iterrows():
-                            # Option de remboursement pour Staff/Admin
                             if st.session_state.user_auth in ["Staff", "Admin"]:
                                 if st.button(f"🔄 Rembourser #{f['ID']}", key=f"refund_{f['ID']}", use_container_width=True):
                                     try:
@@ -645,7 +637,6 @@ with col2:
                                         st.rerun()
                                     except: st.error("Échec remboursement.")
                             
-                            # Affichage de l'archive avec l'agent signataire
                             agent_info = f.get('Agent_Signataire', 'Non spécifié')
                             st.markdown(f"""
                             <div style="border: 1px solid #000; padding: 10px; background: #f9f9f9; color: black; margin-bottom: 8px; border-left: 5px solid green;">
