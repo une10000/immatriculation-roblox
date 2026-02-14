@@ -1259,72 +1259,60 @@ else:
 # --- ONGLET 3 : ADMINISTRATION (STAFF ONLY) ---
 if st.session_state.user_auth == "Staff":
     with tabs[2]:
-        st.markdown('<div class="header-box"><h2>🛠️ PANNEAU D\'ADMINISTRATION High-Sec</h2></div>', unsafe_allow_html=True)
-        
-        # --- SOUS-SECTION : VALIDATION DES HEURES ---
-        st.subheader("🕒 Suivi des Temps de Service")
+        st.markdown('<div class="header-box"><h2>🛠️ VALIDATION DES SERVICES</h2></div>', unsafe_allow_html=True)
         
         try:
-            # Lecture des logs de pointage
-            df_admin_pnt = cloud_conn.read(worksheet="Pointage")
+            # 1. Lecture fraîche du Sheets pour voir les pointages
+            # On utilise ttl=0 pour être sûr de voir les demandes instantanément
+            df_admin_pnt = cloud_conn.read(worksheet="Pointage", ttl=0)
+            df_admin_pnt.columns = df_admin_pnt.columns.str.strip()
             
-            if not df_admin_pnt.empty:
-                # 1. Filtre par agent pour plus de clarté
-                liste_agents = ["Tous"] + sorted(df_admin_pnt["Nom"].unique().tolist())
-                agent_filtre = st.selectbox("Filtrer par agent :", liste_agents)
+            # 2. On filtre uniquement ceux qui sont "À valider" 
+            # (Ceux qui ont cliqué sur FIN)
+            a_valider = df_admin_pnt[df_admin_pnt["Statut"] == "À valider"].copy()
+            
+            if not a_valider.empty:
+                st.write(f"### ⏳ {len(a_valider)} service(s) en attente de validation")
                 
-                df_view = df_admin_pnt if agent_filtre == "Tous" else df_admin_pnt[df_admin_pnt["Nom"] == agent_filtre]
-                
-                # 2. Affichage du tableau brut
-                st.write("### 📜 Logs récents")
-                st.dataframe(df_view.tail(15), use_container_width=True)
-                
-                # 3. Système de calcul "Magique" pour une10000
-                st.divider()
-                st.write("### 📊 Calculateur de Paie")
-                
-                if agent_filtre != "Tous":
-                    # On convertit l'horodatage en format date utilisable par Python
-                    df_view['Horodatage'] = pd.to_datetime(df_view['Horodatage'], format='%d/%m/%Y %H:%M:%S')
-                    
-                    total_minutes = 0
-                    # On boucle pour trouver les paires IN/OUT
-                    for i in range(len(df_view)-1):
-                        row_in = df_view.iloc[i]
-                        row_out = df_view.iloc[i+1]
+                for i, row in a_valider.iterrows():
+                    # Création d'une carte pour chaque demande
+                    with st.container(border=True):
+                        col_info, col_actions = st.columns([3, 2])
                         
-                        if row_in['Action'] == "IN" and row_out['Action'] == "OUT":
-                            duree = (row_out['Horodatage'] - row_in['Horodatage']).total_seconds() / 60
-                            total_minutes += duree
-                    
-                    heures = int(total_minutes // 60)
-                    minutes = int(total_minutes % 60)
-                    
-                    # Affichage du résultat pour une10000
-                    col1, col2 = st.columns(2)
-                    col1.metric(f"Temps total pour {agent_filtre}", f"{heures}h {minutes}min")
-                    
-                    # Option de "Nettoyage" (pour confirmer que c'est payé)
-                    if st.button(f"✅ Marquer la semaine de {agent_filtre} comme payée"):
-                        st.warning("Cette fonction pourrait archiver les logs vers un autre onglet (à configurer).")
-                else:
-                    st.info("Sélectionnez un agent spécifique pour calculer son temps de travail total.")
+                        with col_info:
+                            st.markdown(f"**Agent :** {row['Nom']}")
+                            st.markdown(f"**Service :** {row['Job']}")
+                            st.caption(f"Fin de service enregistrée à : {row['Fin']}")
+                        
+                        with col_actions:
+                            st.write("") # Espace
+                            btn_v, btn_r = st.columns(2)
+                            
+                            # BOUTON CONFIRMER
+                            if btn_v.button("✔️", key=f"v_{i}", help="Confirmer le service", type="primary", use_container_width=True):
+                                df_admin_pnt.at[i, "Statut"] = "Validé"
+                                cloud_conn.update(worksheet="Pointage", data=df_admin_pnt)
+                                st.success(f"Service de {row['Nom']} validé !")
+                                time.sleep(1)
+                                st.rerun()
+                                
+                            # BOUTON REFUSER
+                            if btn_r.button("❌", key=f"r_{i}", help="Refuser le service", use_container_width=True):
+                                df_admin_pnt.at[i, "Statut"] = "Refusé"
+                                cloud_conn.update(worksheet="Pointage", data=df_admin_pnt)
+                                st.error(f"Service de {row['Nom']} refusé.")
+                                time.sleep(1)
+                                st.rerun()
             else:
-                st.info("Aucun log de pointage trouvé.")
+                st.info("⛱️ Aucun service en attente de validation pour le moment.")
                 
+            # Optionnel : Afficher un petit historique des 5 derniers validés en dessous
+            with st.expander("📜 Voir les derniers services traités"):
+                historique = df_admin_pnt[df_admin_pnt["Statut"].isin(["Validé", "Refusé"])].tail(10)
+                st.table(historique[["Nom", "Job", "Fin", "Statut"]])
+
         except Exception as e:
-            st.error(f"Erreur lors de la lecture des pointages : {e}")
-
-        # --- SOUS-SECTION : GESTION DES FACTURES ---
-        st.divider()
-        st.subheader("📑 Historique Global des Factures")
-        try:
-            # On s'assure que df_all_f existe (chargé au début du script normalement)
-            df_all_f.columns = df_all_f.columns.str.strip()
-            st.dataframe(df_all_f[df_all_f["Statut"] == "EN ATTENTE"], use_container_width=True)
-        except:
-            st.write("Aucune facture en attente ou erreur de chargement.")
-
+            st.error(f"Erreur lors de l'accès aux pointages : {e}")
         # --- SECTION 1 : CRÉATION DE PROFIL ---
         st.divider()
         st.markdown("### 👤 Création de Dossier Citoyen")
