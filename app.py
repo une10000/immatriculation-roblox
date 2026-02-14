@@ -1497,8 +1497,14 @@ if st.session_state.get("user_auth") == "Staff":
             # 1. Analyse du dossier & Heures
             user_data = df_b[df_b["Nom Roblox"] == target_paie]
             user_jobs_list = [j.strip() for j in str(user_data["Emploiement"].values[0]).split("/")] if not user_data.empty else []
-            solde_actuel = float(str(user_data["Solde"].values[0]).replace('$', '').replace(',', ''))
             
+            # Sécurité Solde
+            try:
+                solde_actuel = float(str(user_data["Solde"].values[0]).replace('$', '').replace(',', ''))
+            except:
+                solde_actuel = 0
+            
+            # Calcul des minutes validées
             min_rct, min_police = 0, 0
             user_logs = df_admin[(df_admin["nom"] == target_paie) & (df_admin["statut"] == "Validé")]
             for _, row in user_logs.iterrows():
@@ -1510,10 +1516,10 @@ if st.session_state.get("user_auth") == "Staff":
                     elif "POL" in str(row["job"]).upper(): min_police += diff
                 except: continue
 
-            # 2. Salaire et Primes (Logique Prorata Fixée)
+            # 2. Salaire et Primes (Logique Prorata 20h)
             primes_detail_list = []
             calcul_primes = 0
-            TEMPS_REQUIS = 1200 # 20h
+            TEMPS_REQUIS = 1200 # 20h en minutes
 
             for job in user_jobs_list:
                 if job == "Police":
@@ -1536,7 +1542,7 @@ if st.session_state.get("user_auth") == "Staff":
 
             total_brut = 15000 + calcul_primes
             
-            # 3. Assurances & Taxes
+            # 3. Assurances (OFFRE TRIO : 200$ au lieu de 300$)
             mes_vehicules = df_i[df_i["Nom d'utilisateur ROBLOX"] == target_paie]
             nb_vehicules = len(mes_vehicules)
             count_rct, argent_pour_averis, argent_standard = 0, 0, 0
@@ -1547,9 +1553,15 @@ if st.session_state.get("user_auth") == "Staff":
                 elif "AVERIS" in choix: argent_pour_averis += 130
                 else: argent_standard += 150
             
-            argent_pour_rct = 300 if count_rct >= 3 else count_rct * 150
-            label_rct_display = "Part RCT (Offre Trio 🎁)" if count_rct >= 3 else "Part RCT"
+            # Application de la réduction Trio RCT
+            if count_rct >= 3:
+                argent_pour_rct = 200 
+                label_rct_display = "Part RCT (Offre Trio 🎁)"
+            else:
+                argent_pour_rct = count_rct * 150
+                label_rct_display = "Part RCT"
 
+            # 4. Taxes Jeune Conducteur
             try:
                 date_arr = pd.to_datetime(user_data["Date d'arrivée"].values[0], dayfirst=True)
                 est_jc = (datetime.now() - date_arr).days < 30
@@ -1560,7 +1572,7 @@ if st.session_state.get("user_auth") == "Staff":
             total_net = total_brut - total_prelevement
             solde_final = solde_actuel + total_net
 
-            # --- AFFICHAGE STYLE CLONE ---
+            # --- AFFICHAGE ---
             st.markdown(f"#### 📊 Fiche de Paie : {target_paie}")
             col_rev1, col_rev2 = st.columns(2)
 
@@ -1585,7 +1597,6 @@ if st.session_state.get("user_auth") == "Staff":
             c1, c2, c3, c4 = st.columns(4)
             c1.metric("Solde Actuel", f"{int(solde_actuel)}$")
             
-            # Points Permis
             pts = 25
             try: pts = int(float(str(df_p[df_p["Nom Roblox"] == target_paie]["PTS"].values[0]).replace(',', '.')))
             except: pass
@@ -1594,14 +1605,14 @@ if st.session_state.get("user_auth") == "Staff":
             c3.metric("Net à Verser", f"+{int(total_net)}$", delta=f"-{int(total_prelevement)}$", delta_color="inverse")
             c4.metric("Solde Final", f"{int(solde_final)}$", delta=f"+{int(total_net)}$")
 
-            # --- BOUTON DE VALIDATION (LOGIQUE FIXÉE) ---
+            # --- BOUTON DE VALIDATION ---
             if st.button(f"🧧 CONFIRMER LE VERSEMENT POUR {target_paie.upper()}", use_container_width=True, type="primary"):
                 try:
                     with st.spinner("Mise à jour des comptes..."):
                         def clean(v): return float(str(v).replace('$', '').replace(',', '').strip())
 
                         # A. Transferts Patrons
-                        # RCT -> une10000 (Soustrait le salaire payé à l'employé, ajoute la taxe d'assurance reçue)
+                        # RCT -> une10000
                         idx_rct_boss = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
                         gain_rct_agent = int(2000 * min(min_rct/1200, 1)) if "Agent RCT" in user_jobs_list else 0
                         df_b.at[idx_rct_boss, "Solde"] = clean(df_b.at[idx_rct_boss, "Solde"]) - gain_rct_agent + argent_pour_rct
@@ -1619,10 +1630,10 @@ if st.session_state.get("user_auth") == "Staff":
                         try: df_p.loc[df_p["Nom Roblox"] == target_paie, "PTS"] = 25
                         except: pass
 
-                        # Marquer comme Payé
+                        # Marquer les logs comme payés pour ne pas les compter 2 fois
                         df_admin.loc[(df_admin["nom"] == target_paie) & (df_admin["statut"] == "Validé"), "statut"] = "Payé"
 
-                        # Push Google Sheets
+                        # Push Final
                         cloud_conn.update(worksheet="Banque", data=df_b)
                         cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i)
                         cloud_conn.update(worksheet="Clock", data=df_admin)
@@ -1632,7 +1643,7 @@ if st.session_state.get("user_auth") == "Staff":
                         st.balloons()
                         st.cache_data.clear(); time.sleep(1); st.rerun()
                 except Exception as e:
-                    st.error(f"⚠️ Erreur technique : {e}")
+                    st.error(f"⚠️ Erreur : {e}")
         # --- SECTION 3 : LOGS ET STATISTIQUES (UNIQUEMENT EN ADMIN AUSSI) ---
         st.divider()
         col_admin_left, col_admin_right = st.columns(2)
