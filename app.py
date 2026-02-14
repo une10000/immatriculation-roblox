@@ -506,30 +506,54 @@ with st.container():
                     st.markdown('<div style="opacity: 0.15; font-size: 40px; text-align: right; padding-top:10px;">🛡️</div>', unsafe_allow_html=True)
             else:
                 st.info("Aucun permis trouvé.")
-        # --- COLONNE 2 : BANQUE & EMPLOI ---
+# --- COLONNE 2 : BANQUE & EMPLOI ---
         with col2:
             b_data = df_b[df_b["Nom Roblox"] == target]
             if not b_data.empty:
                 st.metric("SOLDE BANCAIRE", f"{b_data.iloc[0]['Solde']}$")
                 current_jobs_raw = str(b_data.iloc[0]['Emploiement'])
                 st.write(f"🏢 Métier : **{current_jobs_raw}**")
-                
-                if st.session_state.user_auth in ["Staff", "Admin"]:
-                    if st.button("✏️ Modifier le métier", key=f"edit_job_{target}", use_container_width=True):
-                        st.session_state[f"show_editor_{target}"] = not st.session_state.get(f"show_editor_{target}", False)
-                    
-                    if st.session_state.get(f"show_editor_{target}", False):
-                        with st.container(border=True):
-                            options_jobs = ["Sans-Emploi", "Agent RCT", "Averis", "Police", "Staff", "Service Public", "Entreprise Privée"]
-                            new_jobs = st.multiselect("Sélection :", options=options_jobs, default=[j.strip() for j in current_jobs_raw.split("/") if j.strip() in options_jobs])
-                            if st.button("💾 Sauver", key=f"save_j_{target}", type="primary"):
-                                df_b.at[df_b[df_b["Nom Roblox"] == target].index[0], "Emploiement"] = " / ".join(new_jobs) if new_jobs else "Sans-Emploi"
-                                cloud_conn.update(worksheet="Banque", data=df_b)
-                                st.session_state[f"show_editor_{target}"] = False
-                                st.cache_data.clear()
-                                st.rerun()
-                st.caption(f"📅 Arrivée : {b_data.iloc[0].get('Date d\'arrivée', 'Non spécifiée')}")
 
+                # --- NOUVEAU : ESTIMATION DE SALAIRE POUR LE CITOYEN ---
+                with st.expander("💳 Détails de ma prochaine paie"):
+                    # 1. Calcul rapide des primes (Même logique que le terminal)
+                    user_jobs_list = [j.strip() for j in current_jobs_raw.split("/")]
+                    PRIME_JOB = {"Agent RCT": 2000, "Averis": 2000, "Police": 3000, "Staff": 4000, "Service Public": 1000}
+                    
+                    est_calcul_primes = 0
+                    for job in user_jobs_list:
+                        est_calcul_primes += PRIME_JOB.get(job, 0)
+                    
+                    est_brut = 15000 + est_calcul_primes
+                    
+                    # 2. Calcul des taxes véhicules (Scan rapide)
+                    mes_v = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
+                    nb_v = len(mes_v)
+                    c_rct = len(mes_v[mes_v["Assurance"].str.contains("RCT", na=False, case=False)])
+                    c_ave = len(mes_v[mes_v["Assurance"].str.contains("AVERIS", na=False, case=False)])
+                    c_std = nb_v - c_rct - c_ave
+                    
+                    est_taxe_v = (300 if c_rct >= 3 else c_rct * 150) + (c_ave * 130) + (c_std * 150)
+                    
+                    # 3. Affichage clair
+                    st.markdown(f"""
+                    <div style="background-color: rgba(255,255,255,0.05); padding: 10px; border-radius: 5px; font-size: 0.9em;">
+                        <b>Revenus prévus :</b><br>
+                        • Base Civile : +15,000$<br>
+                        • Primes Métiers : +{est_calcul_primes}$<br>
+                        <hr style="margin: 5px 0; border-top: 1px dashed #555;">
+                        <b>Retenues prévues :</b><br>
+                        • Assurances : -{est_taxe_v}$<br>
+                        <hr style="margin: 5px 0;">
+                        <b style="color: #00FF00;">ESTIMATION NET : {est_brut - est_taxe_v}$</b>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    st.caption("⚠️ Hors bonus de temps et amendes éventuelles.")
+                
+                # --- FIN DE L'AJOUT ---
+
+                if st.session_state.user_auth in ["Staff", "Admin"]:
+                    # ... (Ton code existant pour modifier le métier)
 # --- COLONNE 3 : ARCHIVES ---
         with col3:
             st.markdown("### 📁 ARCHIVES")
