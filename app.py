@@ -1361,8 +1361,8 @@ if st.session_state.user_auth == "Staff":
                 u_jobs = [j.strip() for j in str(user_paie_data["Emploiement"].values[0]).split("/")]
                 solde_actuel = float(str(user_paie_data["Solde"].values[0]).replace('$', '').replace(',', ''))
                 
-                # --- CONFIGURATION ---
-                TEMPS_REQUIS = 60  # Minutes pour avoir 100% de la prime fixe
+                # --- CONFIGURATION (PRORATA SUR 20 HEURES) ---
+                TEMPS_REQUIS_MIN = 1200  # 20h * 60 min
                 PRIME_BASE = {"Agent RCT": 2000, "Averis": 2000, "Police": 3000, "Staff": 4000, "Service Public": 1000}
                 
                 # --- CALCUL DU TEMPS PAR MÉTIER ---
@@ -1390,20 +1390,21 @@ if st.session_state.user_auth == "Staff":
                 for job in u_jobs:
                     p_max = PRIME_BASE.get(job, 0)
                     if job == "Agent RCT":
-                        pct = min(min_rct / TEMPS_REQUIS, 1.0) # Prorata selon temps
+                        pct = min(min_rct / TEMPS_REQUIS_MIN, 1.0) # Basé sur 20h
                         p_calculee = int(p_max * pct)
                         total_primes_metier += p_calculee
                         h, m = int(min_rct // 60), int(min_rct % 60)
                         primes_detail.append(f"• **Agent RCT** ({h}h {m}min) : +{p_calculee + int(min_rct * 10)}$")
                     
                     elif job == "Police":
-                        pct = min(min_police / TEMPS_REQUIS, 1.0)
+                        pct = min(min_police / TEMPS_REQUIS_MIN, 1.0) # Basé sur 20h
                         p_calculee = int(p_max * pct)
                         total_primes_metier += p_calculee
                         h, m = int(min_police // 60), int(min_police % 60)
                         primes_detail.append(f"• **Police** ({h}h {m}min) : +{p_calculee + int(min_police * 10)}$")
                     
                     elif p_max > 0:
+                        # Pour les autres jobs (Staff...), prime complète car pas de pointage logs
                         primes_detail.append(f"• **{job}** : +{p_max}$")
                         total_primes_metier += p_max
 
@@ -1457,24 +1458,22 @@ if st.session_state.user_auth == "Staff":
                 if st.button(f"🧧 CONFIRMER LE VERSEMENT POUR {target_paie}", use_container_width=True, type="primary"):
                     def cl(v): return float(str(v).replace('$', '').replace(',', '').strip())
                     
-                    # Transfert Patron RCT (une10000) : Prime proratisée + 10$/min
+                    # Déduction Patron RCT (une10000) : Prorata 20h inclus
                     idx_r = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
-                    p_rct_p = int(2000 * min(min_rct/60, 1)) if "Agent RCT" in u_jobs else 0
+                    p_rct_p = int(2000 * min(min_rct/TEMPS_REQUIS_MIN, 1)) if "Agent RCT" in u_jobs else 0
                     gain_total_rct = p_rct_p + (min_rct * 10)
                     df_b.at[idx_r, "Solde"] = cl(df_b.at[idx_r, "Solde"]) - gain_total_rct + v_rct
                     
-                    # Transfert Patron Averis (Moune2010)
+                    # Déduction Patron Averis (Moune2010)
                     idx_m = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
                     p_ave = 2000 if "Averis" in u_jobs else 0
                     df_b.at[idx_m, "Solde"] = cl(df_b.at[idx_m, "Solde"]) - p_ave + v_ave
                     
-                    # Crédit Citoyen
+                    # Crédit Citoyen & Update
                     df_b.loc[df_b["Nom Roblox"] == target_paie, "Solde"] = solde_apres
-                    
-                    # Mise à jour des bases
                     cloud_conn.update(worksheet="Banque", data=df_b)
                     
-                    st.success(f"✅ Paie envoyée au prorata pour {target_paie} !")
+                    st.success(f"✅ Paie envoyée (Objectif 20h respecté) pour {target_paie} !")
                     st.cache_data.clear(); time.sleep(1); st.rerun()
         # --- SECTION 3 : LOGS ET STATISTIQUES (UNIQUEMENT EN ADMIN AUSSI) ---
         st.divider()
