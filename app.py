@@ -914,51 +914,57 @@ with tabs[0]:
 # --- ONGLET 2 : SERVICES AGENT (FACTURES / POINTS / CONSULTATION) ---
 if st.session_state.user_auth in ["RCT", "Staff"]:
     with tabs[1]:
-        st.markdown("### 🕒 POINTAGE ET SERVICES")
-        
-        # 1. Identification obligatoire pour accéder au pointage
+        # --- BLOC DE POINTAGE COMPACT ---
         with st.container(border=True):
-            agent_code_saisi = st.text_input("🔑 Entrez votre CODE AGENT pour pointer :", type="password", key="pnt_code_auth")
+            col_code, col_infos = st.columns([1, 2])
+            
+            with col_code:
+                agent_code_saisi = st.text_input("🔑 Code Agent", type="password", key="pnt_compact_auth")
             
             agent_identifie = None
             if agent_code_saisi:
-                # Le "Bulldozer" pour nettoyer les codes
+                # Identification (Le Bulldozer)
                 df_b.columns = df_b.columns.str.strip()
                 def clean_code(x): return str(x).strip().split('.')[0]
                 df_b["Code_Clean"] = df_b["Code"].apply(clean_code)
-                
                 res_agent = df_b[df_b["Code_Clean"] == agent_code_saisi.strip()]
+                
                 if not res_agent.empty:
                     agent_identifie = res_agent.iloc[0]["Nom Roblox"]
-                    st.success(f"Agent identifié : **{agent_identifie}**")
                     
-                    # --- BOUTONS DE POINTAGE ---
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        if st.button("✅ DÉBUT DE SERVICE", use_container_width=True, type="primary"):
-                            try:
-                                df_pnt = cloud_conn.read(worksheet="Pointage")
-                                new_log = pd.DataFrame([{"Nom": agent_identifie, "Action": "IN", "Horodatage": datetime.now().strftime("%d/%m/%Y %H:%M:%S")}])
-                                cloud_conn.update(worksheet="Pointage", data=pd.concat([df_pnt, new_log], ignore_index=True))
-                                st.toast("Service démarré !")
-                            except: st.error("L'onglet 'Pointage' est introuvable sur Sheets.")
+                    # Récupération des dernières heures (optionnel, pour l'affichage)
+                    now_time = datetime.now().strftime("%H:%M")
                     
-                    with c2:
-                        if st.button("🛑 FIN DE SERVICE", use_container_width=True):
-                            try:
-                                df_pnt = cloud_conn.read(worksheet="Pointage")
-                                new_log = pd.DataFrame([{"Nom": agent_identifie, "Action": "OUT", "Horodatage": datetime.now().strftime("%d/%m/%Y %H:%M:%S")}])
-                                cloud_conn.update(worksheet="Pointage", data=pd.concat([df_pnt, new_log], ignore_index=True))
-                                st.toast("Service terminé !")
-                            except: st.error("L'onglet 'Pointage' est introuvable sur Sheets.")
+                    with col_infos:
+                        # Affichage sur une seule ligne : Heure actuelle | Début | Fin
+                        c1, c2, c3 = st.columns(3)
+                        c1.metric("🕒 Actuelle", now_time)
+                        
+                        # Boutons d'action rapides
+                        st.write(f"Agent : **{agent_identifie}**")
+                        btn_in, btn_out = st.columns(2)
+                        with btn_in:
+                            if st.button("✅ DÉBUT", use_container_width=True, type="primary"):
+                                try:
+                                    df_pnt = cloud_conn.read(worksheet="Pointage")
+                                    new_log = pd.DataFrame([{"Nom": agent_identifie, "Action": "IN", "Horodatage": datetime.now().strftime("%d/%m/%Y %H:%M:%S")}])
+                                    cloud_conn.update(worksheet="Pointage", data=pd.concat([df_pnt, new_log], ignore_index=True))
+                                    st.toast("Service démarré !")
+                                except: st.error("Onglet 'Pointage' manquant.")
+                        
+                        with btn_out:
+                            if st.button("🛑 FIN", use_container_width=True):
+                                try:
+                                    df_pnt = cloud_conn.read(worksheet="Pointage")
+                                    new_log = pd.DataFrame([{"Nom": agent_identifie, "Action": "OUT", "Horodatage": datetime.now().strftime("%d/%m/%Y %H:%M:%S")}])
+                                    cloud_conn.update(worksheet="Pointage", data=pd.concat([df_pnt, new_log], ignore_index=True))
+                                    st.toast("Service terminé !")
+                                except: st.error("Onglet 'Pointage' manquant.")
                 else:
-                    st.error("❌ Code inconnu.")
+                    st.error("Code inconnu")
 
         st.divider()
-
-        # 2. La suite de ton code (Facturation, etc.)
-        # Tu peux mettre tes sélecteurs de citoyens et tes colonnes ici
-        st.info("Utilisez la barre de recherche en haut ou passez à la suite de l'intervention.")
+        # Suite de ton code (Facturation...)
         # 1. PANEL D'ALERTE : FACTURES IMPAYÉES
         df_all_f = cloud_conn.read(worksheet="Factures").fillna("")
         alertes = []
