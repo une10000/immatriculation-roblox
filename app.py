@@ -998,29 +998,34 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                                 except Exception as e:
                                     st.error("Erreur de synchronisation Sheets.")
                         
-                        # --- BOUTON FIN ---
+# --- BOUTON FIN ---
                         with btn_out:
                             if st.button("🛑 FIN", use_container_width=True, disabled=not en_service):
                                 try:
-                                    df_pnt = cloud_conn.read(worksheet="Pointage")
-                                    new_log = pd.DataFrame([{
-                                        "Nom": agent_identifie,
-                                        "Service": "",
-                                        "Action": "OUT",
-                                        "Horodotage": "",
-                                        "Job": job_actuel,
-                                        "Horodatage": now_ch.strftime("%d/%m/%Y %H:%M:%S")
-                                    }])
-                                    df_updated = pd.concat([df_pnt, new_log], ignore_index=True)
-                                    cloud_conn.update(worksheet="Pointage", data=df_updated)
-                                    st.toast("Service terminé !")
+                                    with st.spinner("Enregistrement de la fin de service..."):
+                                        df_pnt = cloud_conn.read(worksheet="Pointage")
+                                        new_log = pd.DataFrame([{
+                                            "Nom": agent_identifie,
+                                            "Service": "",
+                                            "Action": "OUT",
+                                            "Horodotage": "", # On garde ta colonne avec la faute "o"
+                                            "Job": job_actuel,
+                                            "Horodatage": now_ch.strftime("%d/%m/%Y %H:%M:%S")
+                                        }])
+                                        df_updated = pd.concat([df_pnt, new_log], ignore_index=True)
+                                        cloud_conn.update(worksheet="Pointage", data=df_updated)
+                                    
+                                    # Message de confirmation visuel
+                                    st.success(f"✅ Service terminé ! À bientôt {agent_identifie}.")
+                                    st.balloons()
+                                    
+                                    # Petite pause pour laisser lire, puis refresh (remise à zéro)
+                                    import time
+                                    time.sleep(2)
                                     st.rerun()
+                                    
                                 except Exception as e:
                                     st.error("Erreur de synchronisation Sheets.")
-                else:
-                    st.error("Code agent incorrect.")
-
-        st.divider()
         # 1. PANEL D'ALERTE : FACTURES IMPAYÉES
         df_all_f = cloud_conn.read(worksheet="Factures").fillna("")
         alertes = []
