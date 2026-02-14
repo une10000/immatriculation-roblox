@@ -928,20 +928,17 @@ with tabs[1]:
             with c_auth:
                 agent_code_saisi = st.text_input("🔑 Code Agent", type="password", key="main_agent_auth")
             
-            # Initialisation des variables pour tout l'onglet
             agent_identifie = None
             en_service = False
             
             if agent_code_saisi:
                 df_b.columns = df_b.columns.str.strip()
-                # Nettoyage du code pour éviter les erreurs de format (ex: 1234.0)
                 df_b["Code_Clean"] = df_b["Code"].astype(str).apply(lambda x: x.strip().split('.')[0])
                 res_agent = df_b[df_b["Code_Clean"] == agent_code_saisi.strip()]
                 
                 if not res_agent.empty:
                     agent_identifie = res_agent.iloc[0]["Nom Roblox"]
                     
-                    # Lecture de la feuille Clock
                     try:
                         df_clock = cloud_conn.read(worksheet="Clock", ttl=0).fillna("")
                         df_clock.columns = df_clock.columns.str.strip().str.lower()
@@ -971,7 +968,7 @@ with tabs[1]:
                 else:
                     st.error("❌ Code Agent Invalide")
 
-# --- 2. RECHERCHE & MANDATS ---
+        # --- 2. RECHERCHE & MANDATS --- (BIEN ALIGNÉ ICI)
         st.markdown("### 🔍 MANDATS & RECHERCHE")
         col_m1, col_m2 = st.columns([2, 1])
         
@@ -990,19 +987,18 @@ with tabs[1]:
                 else: 
                     st.success("✅ Aucun mandat actif.")
 
-        # ICI : col_m2 doit être aligné sur col_m1 (même niveau de retrait)
         with col_m2:
             with st.container(border=True):
                 p_search = st.text_input("🔦 Scanner Plaque", key="plate_ui").upper()
                 if p_search:
                     m = df_i[df_i["Numéro de la plaque"] == p_search]
                     if not m.empty:
-                        # Correction "d'utilisateur" pour éviter le code bleu
                         nom_proprio = m.iloc[0]["Nom d'utilisateur ROBLOX"]
                         modele_vhc = m.iloc[0]["Marque du véhicule"]
                         st.info(f"**Proprio:** {nom_proprio}\n\n**Modèle:** {modele_vhc}")
                     else: 
                         st.error("Plaque inconnue")
+
         # --- 3. INTERVENTION SUR CITOYEN ---
         st.divider()
         if target == "---":
