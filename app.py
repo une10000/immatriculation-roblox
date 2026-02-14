@@ -971,7 +971,7 @@ with tabs[1]:
                 else:
                     st.error("❌ Code Agent Invalide")
 
-        # --- 2. RECHERCHE & MANDATS ---
+# --- 2. RECHERCHE & MANDATS ---
         st.markdown("### 🔍 MANDATS & RECHERCHE")
         col_m1, col_m2 = st.columns([2, 1])
         
@@ -1085,17 +1085,16 @@ with tabs[1]:
                 except: pass
 
     else: st.error("Accès non autorisé.")
+
 # ======================================================================================
-# 5. ONGLET ADMINISTRATION (CORRIGÉ)
+# 5. ONGLET ADMINISTRATION
 # ======================================================================================
-# ON NE RENTRE ICI QUE SI ON EST STAFF, SINON ON N'ESSAIE MÊME PAS D'OUVRIR TABS[2]
 if st.session_state.user_auth == "Staff":
     with tabs[2]:
         st.markdown('<div class="header-box"><h2>🛠️ ADMINISTRATION GÉNÉRALE</h2></div>', unsafe_allow_html=True)
         
         # --- SECTION 1 : VALIDATION DES SERVICES ---
         st.subheader("🛡️ Validation des Pointages")
-        # ... (tout le reste de ton code d'admin reste identique ici) ...
         try:
             df_admin_clock = cloud_conn.read(worksheet="Clock", ttl=0)
             df_admin_clock.columns = df_admin_clock.columns.str.strip()
@@ -1146,7 +1145,7 @@ if st.session_state.user_auth == "Staff":
                         jobs_string = " / ".join(new_jobs) if new_jobs else "Sans-Emploi"
                         
                         # Banque (Solde 15k auto + Date d'arrivée auto)
-                        new_bank_row = pd.DataFrame([{"Nom Roblox": new_name, "Nom Discord": new_discord, "Solde": 15000, "Emploiement": jobs_string, "Date d'arrivée": today_str}])
+                        new_bank_row = pd.DataFrame([{"Nom Roblox": new_name, "Nom Discord": new_discord, "Solde": 15000, "Emploiement": jobs_string, "Date d'arrivée": today_str, "Statut": "RAS", "Motif Recherche": ""}])
                         df_b = pd.concat([df_b, new_bank_row], ignore_index=True)
                         cloud_conn.update(worksheet="Banque", data=df_b)
 
@@ -1155,14 +1154,13 @@ if st.session_state.user_auth == "Staff":
                         df_p = pd.concat([df_p, new_pts_row], ignore_index=True)
                         cloud_conn.update(worksheet="Points Permis", data=df_p)
 
-                        # Logs (Sans inclure le code)
+                        # Logs (Civils : on ne met pas le code)
                         if "record_log" in globals():
                             record_log(st.session_state.user_auth, f"Profil créé : {new_name}")
                         
                         st.success(f"✅ Dossier créé pour {new_name} (15,000$ versés)")
                         st.cache_data.clear()
-                        time.sleep(1)
-                        st.rerun()
+                        time.sleep(1); st.rerun()
 
         # --- SECTION 3 : ANALYSE DU TEMPS ET PRÉPARATION PAIE ---
         st.divider()
@@ -1211,7 +1209,6 @@ if st.session_state.user_auth == "Staff":
                     user_jobs_list = [j.strip() for j in str(user_data["Emploiement"].values[0]).split("/")]
                     solde_actuel = float(str(user_data["Solde"].values[0]).replace('$', '').replace(',', ''))
                     
-                    # 2. Calcul des Primes et Bonus (Staff/Averis inclus)
                     primes_detail_list = []
                     calcul_primes = 0
                     
@@ -1234,9 +1231,9 @@ if st.session_state.user_auth == "Staff":
                             primes_detail_list.append(f"• **Prime Service Public** : +1,000$")
                         calcul_primes += m_p
                     
-                    total_brut = 15000 + calcul_primes # Salaire de base fixe à 15k
+                    total_brut = 15000 + calcul_primes 
                     
-                    # 3. Assurances
+                    # Assurances
                     mes_vehicules = df_i[df_i["Nom d'utilisateur ROBLOX"] == target_paie]
                     nb_vehicules = len(mes_vehicules)
                     count_rct, v_av, v_std = 0, 0, 0
@@ -1248,13 +1245,13 @@ if st.session_state.user_auth == "Staff":
                         else: v_std += 150
                     
                     if count_rct >= 3:
-                        argent_pour_rct = 200 # Offre Trio
+                        argent_pour_rct = 200 
                         label_rct = "Part RCT (Offre Trio 🎁)"
                     else:
                         argent_pour_rct = count_rct * 150
                         label_rct = "Part RCT"
 
-                    # 4. Taxes Jeune Conducteur
+                    # Jeune Conducteur
                     try:
                         date_arr = pd.to_datetime(str(user_data["Date d'arrivée"].values[0]), dayfirst=True)
                         anciennete = (datetime.now() - date_arr).days
@@ -1267,7 +1264,6 @@ if st.session_state.user_auth == "Staff":
                     total_net = total_brut - total_prelevement
                     solde_final = solde_actuel + total_net
 
-                    # Affichage de la Fiche de Paie
                     st.markdown(f"#### 📊 Fiche de Paie : {target_paie}")
                     col_rev1, col_rev2 = st.columns(2)
                     with col_rev1:
@@ -1287,7 +1283,6 @@ if st.session_state.user_auth == "Staff":
                     c1, c2, c3, c4 = st.columns(4)
                     c1.metric("Solde Actuel", f"{solde_actuel:,}$")
                     
-                    # Points Permis (Récupération auto à 25)
                     pts_actuels = 25
                     try:
                         pts_row = df_p[df_p["Nom Roblox"] == target_paie]
@@ -1297,72 +1292,51 @@ if st.session_state.user_auth == "Staff":
                     c2.metric("Points Permis", "25/25", delta=f"+{diff_pts} récup." if diff_pts > 0 else None)
                     c3.metric("Net à Verser", f"+{int(total_net):,}$", delta=f"-{total_prelevement}$ Taxes", delta_color="inverse")
                     c4.metric("Solde Final", f"{int(solde_final):,}$")
-# --- VALIDATION DU VERSEMENT ---
-                if st.button(f"🧧 VALIDER LE VERSEMENT POUR {target_paie.upper()}", use_container_width=True, type="primary"):
-                    try:
-                        def clean_v(val): return float(str(val).replace('$', '').replace(',', '').strip())
-                        
-                        # 1. Récupération des index (Sécurité)
+
+                    if st.button(f"🧧 VALIDER LE VERSEMENT POUR {target_paie.upper()}", use_container_width=True, type="primary"):
                         try:
+                            def clean_v(val): return float(str(val).replace('$', '').replace(',', '').strip())
                             idx_r = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
-                            idx_m = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0] # L'argent d'Averis va ici
+                            idx_m = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0] # Argent Averis ici
                             idx_ben = df_b[df_b["Nom Roblox"] == target_paie].index[0]
-                        except IndexError:
-                            st.error("❌ Erreur : Compte une10000, Moune2010 ou bénéficiaire introuvable dans la Banque.")
-                            st.stop()
 
-                        # 2. Transfert des parts assurances (RCT et Averis)
-                        df_b.at[idx_r, "Solde"] = clean_v(df_b.at[idx_r, "Solde"]) + argent_pour_rct
-                        df_b.at[idx_m, "Solde"] = clean_v(df_b.at[idx_m, "Solde"]) + v_av
-                        
-                        # 3. Versement au citoyen (Solde final incluant Bonus Staff/Heures)
-                        df_b.at[idx_ben, "Solde"] = solde_final 
-                        
-                        # 4. Mise à jour des documents annexes
-                        # Marquer assurances comme payées
-                        mask_u = df_i["Nom d'utilisateur ROBLOX"] == target_paie
-                        df_i.loc[mask_u, "Assurance"] = df_i.loc[mask_u, "Assurance"].apply(lambda x: f"✅ {str(x).replace('✅','')}")
-                        
-                        # Marquer heures comme payées dans Clock
-                        df_clock.loc[(df_clock["nom"] == target_paie) & (df_clock["statut"] == "Validé"), "statut"] = "Payé"
-                        
-                        # 5. Remise à 25 points automatique
-                        try:
-                            idx_p = df_p[df_p["Nom Roblox"] == target_paie].index[0]
-                            df_p.at[idx_p, "PTS"] = 25
-                            cloud_conn.update(worksheet="Points Permis", data=df_p)
-                        except: 
-                            pass # Pas de dossier permis, on ignore
+                            df_b.at[idx_r, "Solde"] = clean_v(df_b.at[idx_r, "Solde"]) + argent_pour_rct
+                            df_b.at[idx_m, "Solde"] = clean_v(df_b.at[idx_m, "Solde"]) + v_av
+                            df_b.at[idx_ben, "Solde"] = solde_final 
+                            
+                            mask_u = df_i["Nom d'utilisateur ROBLOX"] == target_paie
+                            df_i.loc[mask_u, "Assurance"] = df_i.loc[mask_u, "Assurance"].apply(lambda x: f"✅ {str(x).replace('✅','')}")
+                            df_clock.loc[(df_clock["nom"] == target_paie) & (df_clock["statut"] == "Validé"), "statut"] = "Payé"
+                            
+                            try:
+                                idx_p = df_p[df_p["Nom Roblox"] == target_paie].index[0]
+                                df_p.at[idx_p, "PTS"] = 25
+                                cloud_conn.update(worksheet="Points Permis", data=df_p)
+                            except: pass
 
-                        # 6. Push final vers Google Sheets
-                        cloud_conn.update(worksheet="Banque", data=df_b)
-                        cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i)
-                        cloud_conn.update(worksheet="Clock", data=df_clock)
-                        
-                        st.success(f"✅ Paie de {target_paie} effectuée !"); st.balloons()
-                        st.cache_data.clear()
-                        time.sleep(1)
-                        st.rerun()
-                        
-                    except Exception as e: 
-                        st.error(f"Erreur Terminal : {e}")
+                            cloud_conn.update(worksheet="Banque", data=df_b)
+                            cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i)
+                            cloud_conn.update(worksheet="Clock", data=df_clock)
+                            
+                            st.success(f"✅ Paie de {target_paie} effectuée !"); st.balloons()
+                            st.cache_data.clear()
+                            time.sleep(1); st.rerun()
+                        except Exception as e: st.error(f"Erreur Terminal : {e}")
 
         # --- SECTION 5 : LOGS ET STATISTIQUES ---
         st.divider()
         col_admin_left, col_admin_right = st.columns(2)
         
         with col_admin_left:
-            st.markdown("### 📜 Journaux d'Audit (Sans Code)")
+            st.markdown("### 📜 Journaux d'Audit (Civils)")
             with st.container(border=True):
                 if "audit_logs" in st.session_state and st.session_state.audit_logs:
-                    # Affichage propre pour les civils (uniquement le texte des logs)
                     log_text = "\n".join(list(reversed(st.session_state.audit_logs)))
-                    st.code(log_text, language="bash")
+                    st.code(log_text, language="bash") # Affichage texte seul, pas de code Python
                     if st.button("🗑️ EFFACER LES LOGS", use_container_width=True):
                         st.session_state.audit_logs = []
                         st.rerun()
-                else: 
-                    st.info("Aucune activité enregistrée.")
+                else: st.info("Aucune activité enregistrée.")
 
         with col_admin_right:
             st.markdown("### 📊 État du Système")
