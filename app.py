@@ -1375,8 +1375,8 @@ with tabs[2]:
 
         st.divider()
 
-        # --- SECTION 2 : CUMUL DES HEURES (CONSULTATION) ---
-        st.subheader("📊 Cumul des Heures de Service")
+# --- SECTION 2 : CUMUL DES HEURES & ARGENT (VERSION CORRIGÉE) ---
+        st.subheader("📊 Analyse du Temps & Primes de Service")
         if 'df_clock' not in locals():
             try: df_clock = cloud_conn.read(worksheet="Clock")
             except: df_clock = pd.DataFrame()
@@ -1394,13 +1394,23 @@ with tabs[2]:
                     elif "POL" in str(r["job"]).upper(): m_pol += diff
                 except: continue
 
+            # CALCUL DE L'ARGENT (Prorata 1200 min = 20h)
+            T_LIMITE = 1200
+            argent_pol = int(3000 * min(m_pol/T_LIMITE, 1.0))
+            argent_rct = int(2000 * min(m_rct/T_LIMITE, 1.0))
+
             c1, c2, c3 = st.columns(3)
-            c1.metric("Minutes RCT", f"{int(m_rct)}m")
-            c2.metric("Minutes Police", f"{int(m_pol)}m")
-            c3.metric("Total Semaine", f"{int(m_rct + m_pol)}m")
+            with c1:
+                st.metric("Temps Police", f"{int(m_pol)} min")
+                st.caption(f"💰 Prime : {argent_pol}$")
+            with c2:
+                st.metric("Temps RCT", f"{int(m_rct)} min")
+                st.caption(f"💰 Prime : {argent_rct}$")
+            with c3:
+                st.metric("Total Primes", f"{argent_pol + argent_rct}$")
+                st.caption("Hors bonus fixes (Staff/Averis)")
 
         st.divider()
-
 # --- SECTION 3 : TERMINAL DE PAIEMENT NATIONAL (CORRIGÉ) ---
         st.subheader("🧧 Terminal de Paiement National")
         with st.container(border=True):
