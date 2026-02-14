@@ -1264,10 +1264,16 @@ if st.session_state.user_auth == "Staff":
         # --- SECTION A : VALIDATION DES SERVICES ---
         st.subheader("🛡️ Validation des Pointages")
         try:
+            # Lecture avec ttl=0 pour voir les modifs instantanément
             df_admin = cloud_conn.read(worksheet="Pointage", ttl=0)
             df_admin.columns = df_admin.columns.str.strip()
             
-            # On affiche uniquement les demandes en attente
+            # Vérification de sécurité pour la colonne Statut
+            if "Statut" not in df_admin.columns:
+                st.warning("⚠️ La colonne 'Statut' est manquante dans Google Sheets. Création en cours...")
+                df_admin["Statut"] = ""
+
+            # On filtre uniquement les demandes "À valider"
             attente = df_admin[df_admin["Statut"] == "À valider"]
             
             if not attente.empty:
@@ -1277,7 +1283,7 @@ if st.session_state.user_auth == "Staff":
                         c1.write(f"**Agent :** {row['Nom']} | **Job :** {row['Job']} | **Fin :** {row['Fin']}")
                         
                         v_col, r_col = c2.columns(2)
-                        if v_col.button("✔️", key=f"v_{i}"):
+                        if v_col.button("✔️", key=f"v_{i}", type="primary"):
                             df_admin.at[i, "Statut"] = "Validé"
                             cloud_conn.update(worksheet="Pointage", data=df_admin)
                             st.rerun()
@@ -1286,47 +1292,51 @@ if st.session_state.user_auth == "Staff":
                             cloud_conn.update(worksheet="Pointage", data=df_admin)
                             st.rerun()
             else:
-                st.info("Aucun service en attente.")
+                st.info("⛱️ Aucun service en attente de validation.")
         except Exception as e:
-            st.error(f"Erreur Validation : {e}")
+            st.error(f"Erreur lors de l'accès aux pointages : {e}")
 
         st.divider()
 
         # --- SECTION B : CALCULATEUR D'HEURES TOTALES ---
         st.subheader("📊 Cumul des Heures par Agent")
         
-        # On récupère la liste des agents qui ont des codes (df_b vient de ton onglet database)
+        # On récupère la liste des agents depuis df_b (ta database)
         liste_agents = sorted(df_b["Nom Roblox"].unique().tolist())
         agent_cible = st.selectbox("Choisir un agent pour voir son total :", liste_agents)
         
         if agent_cible:
-            # On filtre les logs VALIDÉS pour cet agent
-            logs_valides = df_admin[(df_admin["Nom"] == agent_cible) & (df_admin["Statut"] == "Validé")]
+            # Filtrage des logs pour cet agent spécifique
+            user_data = df_admin[df_admin["Nom"] == agent_cible]
             
             total_minutes = 0
             
-            # On parcourt le tableau pour calculer la durée entre chaque IN et le OUT suivant
-            for i in range(len(df_admin) - 1):
-                row_actuelle = df_admin.iloc[i]
-                row_suivante = df_admin.iloc[i+1]
-                
-                if row_actuelle["Nom"] == agent_cible and row_actuelle["Action"] == "IN":
-                    if row_suivante["Nom"] == agent_cible and row_suivante["Action"] == "OUT" and row_suivante["Statut"] == "Validé":
-                        try:
-                            # Conversion des textes en vraies dates pour le calcul
-                            t1 = datetime.strptime(row_actuelle["Début"], "%d/%m/%Y %H:%M:%S")
-                            t2 = datetime.strptime(row_suivante["Fin"], "%d/%m/%Y %H:%M:%S")
+            # Calcul des heures uniquement pour les paires IN/OUT validées
+            # On cherche les lignes 'OUT' qui sont 'Validé'
+            outs_valides = user_data[(user_data["Action"] == "OUT") & (user_data["Statut"] == "Validé")]
+            
+            if not outs_valides.empty:
+                for idx_out, row_out in outs_valides.iterrows():
+                    # Pour chaque OUT, on cherche le IN juste avant dans le tableau global
+                    # On cherche dans le tableau complet la ligne IN précédente
+                    try:
+                        # On récupère l'index du IN (normalement juste au dessus dans le Sheets)
+                        row_in = df_admin.iloc[idx_out - 1]
+                        
+                        if row_in["Action"] == "IN" and row_in["Nom"] == agent_cible:
+                            t1 = datetime.strptime(row_in["Début"], "%d/%m/%Y %H:%M:%S")
+                            t2 = datetime.strptime(row_out["Fin"], "%d/%m/%Y %H:%M:%S")
                             diff = (t2 - t1).total_seconds() / 60
                             total_minutes += diff
-                        except:
-                            continue
+                    except:
+                        continue
             
             heures = int(total_minutes // 60)
             minutes = int(total_minutes % 60)
             
-            st.metric(f"Temps de service total (Validé)", f"{heures}h {minutes}min")
-            if total_minutes > 0:
-                st.write(f"💰 Estimation paie : **{int(total_minutes * 10)} $** (base 10$/min)") # Exemple de calcul
+            col1, col2 = st.columns(2)
+            col1.metric(f"Temps validé pour {agent_cible}", f"{heures}h {minutes}min")
+            col2.metric("Paie Estimée", f"{int(total_minutes * 10)} $") # 10$/min par défaut
         # --- SECTION 1 : CRÉATION DE PROFIL ---
         st.divider()
         st.markdown("### 👤 Création de Dossier Citoyen")
