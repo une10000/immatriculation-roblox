@@ -1043,39 +1043,44 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
         st.divider()
 
 # ======================================================================================
-# 4. SYSTÈME DE SAISIE ET CONSULTATION (SÉCURISÉ PAR CODE UNIQUE)
+# 4. SYSTÈME DE SAISIE ET CONSULTATION (SÉCURISÉ ET ANTI-CRASH)
 # ======================================================================================
 st.markdown("### 🎯 INTERVENTION ET FACTURATION")
 
 if target == "---":
     st.warning("⚠️ Sélectionnez un citoyen en haut de la page.")
 else:
+    # Nettoyage automatique des noms de colonnes pour éviter l'erreur KeyError
+    df_b.columns = df_b.columns.str.strip() 
+
     col_saisie, col_facture, col_vehicules = st.columns([1.1, 1, 0.9])
 
     with col_saisie:
         with st.container(border=True):
             st.markdown("#### 📝 Saisie")
             
-            # --- AUTHENTIFICATION PAR CODE UNIQUEMENT ---
+            # --- AUTHENTIFICATION ---
             agent_code_saisi = st.text_input("🔑 Entrez votre CODE AGENT :", type="password", key="auth_agent_code")
             
-            # On cherche l'agent correspondant au code dans la base
             agent_identifie = None
-            if agent_code_saisi:
-                # On s'assure que les codes sont comparés en texte
-                df_b["Code"] = df_b["Code"].astype(str).str.strip()
+            
+            # Vérification sécurisée de l'existence de la colonne
+            if "Code" not in df_b.columns:
+                st.error("❌ Erreur : Colonne 'Code' introuvable dans Sheets. Vérifie le nom en cellule I1.")
+            elif agent_code_saisi:
+                # On compare les codes en texte pur sans espaces
+                df_b["Code"] = df_b["Code"].fillna("").astype(str).str.strip()
                 res_agent = df_b[df_b["Code"] == agent_code_saisi.strip()]
                 
                 if not res_agent.empty:
                     agent_identifie = res_agent.iloc[0]["Nom Roblox"]
-                    service_agent = res_agent.iloc[0]["Emploiement"]
-                    st.success(f"Agent identifié : **{agent_identifie}** ({service_agent})")
+                    st.success(f"Agent : **{agent_identifie}** ✅")
                 else:
                     st.error("❌ Code inconnu")
 
             st.divider()
 
-            # --- PARAMÈTRES DE LA FACTURE ---
+            # --- RÉGLAGES FACTURE ---
             if st.session_state.user_auth == "Staff":
                 f_emetteur = st.selectbox("Entité Émettrice", ["POLSTA", "Averis"], key="v_emetteur_final")
             else:
@@ -1083,24 +1088,22 @@ else:
                 st.info("Émetteur : RCT")
 
             f_val = st.number_input("Montant ($)", min_value=0, step=50, key="v_val_final")
-            
             can_pull_points = (st.session_state.user_auth == "Staff" and f_emetteur == "POLSTA")
             f_pts = st.number_input("Points à retirer", 0, 12, 0, key="v_pts_final", disabled=not can_pull_points)
-            
             f_motif = st.text_input("Motif", key="v_mot_final")
             
             target_veh = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
             v_list = ["AUCUN / PIÉTON"] + target_veh["Numéro de la plaque"].tolist()
             f_plate = st.selectbox("Véhicule concerné", v_list, key="v_plate_final")
 
-            # --- BOUTON D'ENVOI ---
+            # --- ENVOI ---
             if st.button("🚨 ENVOYER FACTURE", use_container_width=True, type="primary"):
                 if not agent_identifie:
-                    st.error("Code agent valide requis.")
+                    st.error("Code agent requis.")
                 elif not f_motif:
                     st.error("Motif obligatoire.")
                 else:
-                    # Retrait des points
+                    # Gestion des points
                     if f_pts > 0 and can_pull_points:
                         try:
                             idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
@@ -1108,13 +1111,13 @@ else:
                             cloud_conn.update(worksheet="Points Permis", data=df_p)
                         except: pass
 
-                    # Enregistrement
+                    # Enregistrement Facture
                     import random
                     new_row = {
                         "ID": random.randint(1000, 9999), 
                         "Cible": target,
                         "Emetteur_Service": f_emetteur,
-                        "Agent_Signataire": agent_identifie, # Trouvé grâce au code !
+                        "Agent_Signataire": agent_identifie,
                         "Montant": f_val,
                         "Points": f_pts if can_pull_points else 0, 
                         "Motif": f"{f_motif} [{f_plate}]", 
@@ -1124,10 +1127,9 @@ else:
                     df_f_updated = pd.concat([df_all_f, pd.DataFrame([new_row])], ignore_index=True)
                     cloud_conn.update(worksheet="Factures", data=df_f_updated)
                     
-                    st.success(f"✅ Facture envoyée par {agent_identifie} !")
+                    st.success("✅ Facture envoyée !")
                     st.cache_data.clear()
                     st.rerun()
-
     with col_facture:
         st.markdown("#### 📄 Aperçu")
         header_ticket = "FACTURE AVERIS" if f_emetteur == "Averis" else "FACTURE OFFICIELLE"
