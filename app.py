@@ -1479,59 +1479,72 @@ if st.session_state.user_auth == "Staff":
                     c2.metric("Points Permis", "25/25", delta=f"+{diff_pts} récup." if diff_pts > 0 else None)
                     c3.metric("Net à Verser", f"+{int(total_net):,}$", delta=f"-{total_prelevement}$ Taxes", delta_color="inverse")
                     c4.metric("Solde Final", f"{int(solde_final):,}$")
-
-                    if st.button(f"🧧 VALIDER LE VERSEMENT POUR {target_paie.upper()}", use_container_width=True, type="primary"):
+# --- VALIDATION DU VERSEMENT ---
+                if st.button(f"🧧 VALIDER LE VERSEMENT POUR {target_paie.upper()}", use_container_width=True, type="primary"):
+                    try:
+                        def clean_v(val): return float(str(val).replace('$', '').replace(',', '').strip())
+                        
+                        # 1. Récupération des index (Sécurité)
                         try:
-                            def clean_v(val): return float(str(val).replace('$', '').replace(',', '').strip())
-                            
-                            # Transfert des parts assurances
                             idx_r = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
-                            idx_m = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0] # Averis va ici
-                            
-                            df_b.at[idx_r, "Solde"] = clean_v(df_b.at[idx_r, "Solde"]) + argent_pour_rct
-                            df_b.at[idx_m, "Solde"] = clean_v(df_b.at[idx_m, "Solde"]) + v_av
-                            
-                            # Versement au citoyen
+                            idx_m = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0] # L'argent d'Averis va ici
                             idx_ben = df_b[df_b["Nom Roblox"] == target_paie].index[0]
-                            df_b.at[idx_ben, "Solde"] = solde_final 
-                            
-                            # Marquer assurances comme payées
-                            mask_u = df_i["Nom d'utilisateur ROBLOX"] == target_paie
-                            df_i.loc[mask_u, "Assurance"] = df_i.loc[mask_u, "Assurance"].apply(lambda x: f"✅ {str(x).replace('✅','')}")
-                            
-                            # Marquer heures comme payées
-                            df_clock.loc[(df_clock["nom"] == target_paie) & (df_clock["statut"] == "Validé"), "statut"] = "Payé"
-                            
-                            # Remise à 25 points
-                            try:
-                                idx_p = df_p[df_p["Nom Roblox"] == target_paie].index[0]
-                                df_p.at[idx_p, "PTS"] = 25
-                                cloud_conn.update(worksheet="Points Permis", data=df_p)
-                            except: pass
+                        except IndexError:
+                            st.error("❌ Erreur : Compte une10000, Moune2010 ou bénéficiaire introuvable dans la Banque.")
+                            st.stop()
 
-                            # Mise à jour globale
-                            cloud_conn.update(worksheet="Banque", data=df_b)
-                            cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i)
-                            cloud_conn.update(worksheet="Clock", data=df_clock)
-                            
-                            st.success("✅ Paie effectuée avec succès !"); st.balloons()
-                            st.cache_data.clear(); time.sleep(1); st.rerun()
-                        except Exception as e: st.error(f"Erreur Terminal : {e}")
+                        # 2. Transfert des parts assurances (RCT et Averis)
+                        df_b.at[idx_r, "Solde"] = clean_v(df_b.at[idx_r, "Solde"]) + argent_pour_rct
+                        df_b.at[idx_m, "Solde"] = clean_v(df_b.at[idx_m, "Solde"]) + v_av
+                        
+                        # 3. Versement au citoyen (Solde final incluant Bonus Staff/Heures)
+                        df_b.at[idx_ben, "Solde"] = solde_final 
+                        
+                        # 4. Mise à jour des documents annexes
+                        # Marquer assurances comme payées
+                        mask_u = df_i["Nom d'utilisateur ROBLOX"] == target_paie
+                        df_i.loc[mask_u, "Assurance"] = df_i.loc[mask_u, "Assurance"].apply(lambda x: f"✅ {str(x).replace('✅','')}")
+                        
+                        # Marquer heures comme payées dans Clock
+                        df_clock.loc[(df_clock["nom"] == target_paie) & (df_clock["statut"] == "Validé"), "statut"] = "Payé"
+                        
+                        # 5. Remise à 25 points automatique
+                        try:
+                            idx_p = df_p[df_p["Nom Roblox"] == target_paie].index[0]
+                            df_p.at[idx_p, "PTS"] = 25
+                            cloud_conn.update(worksheet="Points Permis", data=df_p)
+                        except: 
+                            pass # Pas de dossier permis, on ignore
+
+                        # 6. Push final vers Google Sheets
+                        cloud_conn.update(worksheet="Banque", data=df_b)
+                        cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i)
+                        cloud_conn.update(worksheet="Clock", data=df_clock)
+                        
+                        st.success(f"✅ Paie de {target_paie} effectuée !"); st.balloons()
+                        st.cache_data.clear()
+                        time.sleep(1)
+                        st.rerun()
+                        
+                    except Exception as e: 
+                        st.error(f"Erreur Terminal : {e}")
 
         # --- SECTION 5 : LOGS ET STATISTIQUES ---
         st.divider()
         col_admin_left, col_admin_right = st.columns(2)
+        
         with col_admin_left:
             st.markdown("### 📜 Journaux d'Audit (Sans Code)")
             with st.container(border=True):
                 if "audit_logs" in st.session_state and st.session_state.audit_logs:
-                    # On affiche les logs sans modification (la fonction record_log doit être gérée)
+                    # Affichage propre pour les civils (uniquement le texte des logs)
                     log_text = "\n".join(list(reversed(st.session_state.audit_logs)))
                     st.code(log_text, language="bash")
                     if st.button("🗑️ EFFACER LES LOGS", use_container_width=True):
                         st.session_state.audit_logs = []
                         st.rerun()
-                else: st.info("Aucune activité enregistrée.")
+                else: 
+                    st.info("Aucune activité enregistrée.")
 
         with col_admin_right:
             st.markdown("### 📊 État du Système")
@@ -1542,6 +1555,7 @@ if st.session_state.user_auth == "Staff":
                     st.cache_data.clear()
                     st.rerun()
     else:
+        # Fin du bloc if access_staff
         st.error("Accès non autorisé. Réservé au Staff.")
 # ======================================================================================
 # 8. PIED DE PAGE
