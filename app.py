@@ -1387,85 +1387,79 @@ if st.session_state.user_auth == "Staff":
             st.error(f"Erreur Pointages : {e}")
 
         st.divider()
-# --- SECTION B : CALCULATEUR D'HEURES (LOGIQUE CLOCK) ---
+# --- SECTION B : CALCULATEUR D'HEURES (LOGIQUE 20H = PAYE) ---
 st.subheader("📊 Cumul des Heures par Agent")
 
 liste_agents = sorted(df_b["Nom Roblox"].unique().tolist())
 agent_cible = st.selectbox("Choisir un agent :", liste_agents, key="calc_hours")
 
 if agent_cible:
-    # 1. On filtre df_admin pour n'avoir QUE cet agent et QUE le statut Validé
+    # 1. Extraction des données de la feuille Clock (Sessions Validées uniquement)
     user_data_h = df_admin[(df_admin["nom"] == agent_cible) & (df_admin["statut"] == "Validé")].copy()
     
-    # --- IMPORTANT : ON RÉINITIALISE TOUT ICI ---
+    # RÉINITIALISATION TOTALE (pour éviter les gains fantômes)
     total_min_global = 0
-    total_argent_global = 0
-    stats_par_job = {} # Dictionnaire vide pour ne pas hériter des anciens calculs
+    total_argent_horaire = 0
+    stats_par_job = {} 
 
-    # 2. On boucle sur les lignes de la feuille Clock
     for _, row in user_data_h.iterrows():
         try:
-            # Calcul du temps de la session
             t1 = datetime.strptime(str(row["début"]), "%d/%m/%Y %H:%M:%S")
             t2 = datetime.strptime(str(row["fin"]), "%d/%m/%Y %H:%M:%S")
-            diff_minutes = (t2 - t1).total_seconds() / 60
+            mins = (t2 - t1).total_seconds() / 60
             
-            if diff_minutes < 0: continue # Sécurité si fin avant début
+            if mins <= 0: continue
 
-            # On récupère le job PRÉCIS de la ligne
             job_ligne = str(row["job"]).upper().strip()
             
-            # --- DÉFINITION STRICTE DES TAUX ---
+            # --- CALCUL DU TAUX (Basé sur 20h de quota) ---
             taux_minute = 0
             if "POLSTA" in job_ligne or "POLICE" in job_ligne:
-                taux_minute = 30
+                # 3000$ / 1200 min = 2.5$/min
+                taux_minute = 2.5 
             elif "RCT" in job_ligne:
-                taux_minute = 20
+                # 2000$ / 1200 min = 1.666...$/min
+                taux_minute = 2000 / 1200 
             
-            # Calcul de l'argent pour CETTE ligne uniquement
-            gain_ligne = diff_minutes * taux_minute
+            gain_session = mins * taux_minute
             
-            # Cumul dans les totaux
-            total_min_global += diff_minutes
-            total_argent_global += gain_ligne
+            # Cumul
+            total_min_global += mins
+            total_argent_horaire += gain_session
             
-            # Enregistrement dans le dictionnaire pour l'affichage détaillé
             if job_ligne not in stats_par_job:
                 stats_par_job[job_ligne] = {"temps": 0, "argent": 0}
-            
-            stats_par_job[job_ligne]["temps"] += diff_minutes
-            stats_par_job[job_ligne]["argent"] += gain_ligne
-            
-        except Exception as e:
-            continue # Si une ligne est mal remplie, on l'ignore proprement
+            stats_par_job[job_ligne]["temps"] += mins
+            stats_par_job[job_ligne]["argent"] += gain_session
+        except: continue
 
-    # --- 3. AFFICHAGE ALIGNÉ ET PROPRE ---
-    if total_min_global > 0:
-        h_disp, m_disp = int(total_min_global // 60), int(total_min_global % 60)
-        
-        col1, col2 = st.columns(2)
-        col1.metric("Temps Total Validé", f"{h_disp}h {m_disp}min")
-        col2.metric("Total à Verser", f"{int(total_argent_global)}$")
+    # 2. Récupération des Primes Fixes (Staff / Averis) dans la feuille Banque
+    agent_info = df_b[df_b["Nom Roblox"] == agent_cible]
+    metiers_banque = str(agent_info.iloc[0]['Emploiement']).lower() if not agent_info.empty else ""
+    
+    prime_fixe_total = 0
+    if "staff" in metiers_banque: prime_fixe_total += 4000
+    if "averis" in metiers_banque: prime_fixe_total += 2000
 
-        st.write("---")
-        st.write("**Détail par service (Feuille Clock) :**")
+    # 3. AFFICHAGE ALIGNÉ
+    h_disp, m_disp = int(total_min_global // 60), int(total_min_global % 60)
+    
+    c1, c2 = st.columns(2)
+    c1.metric("Temps de Service Total", f"{h_disp}h {m_disp}min")
+    # Le total inclut l'horaire cumulé + les primes fixes
+    c2.metric("Total à Verser", f"{int(total_argent_horaire + prime_fixe_total)}$")
 
-        for job, data in stats_par_job.items():
-            # Si l'argent est 0, c'est que le job n'est pas reconnu (ex: "Civil"), on peut choisir de ne pas l'afficher
-            if data["argent"] > 0:
-                color = "#3498db" if "POL" in job else "#2ecc71"
-                h_j, m_j = int(data['temps'] // 60), int(data['temps'] % 60)
-                
-                st.markdown(f"""
-                    <div style="display: flex; justify-content: space-between; background: rgba(255,255,255,0.05); 
-                                padding: 8px 15px; border-radius: 5px; border-left: 5px solid {color}; margin-bottom: 5px;">
-                        <b style="color:{color};">{job}</b>
-                        <span>{h_j}h {m_j}min</span>
-                        <b>{int(data['argent'])}$</b>
-                    </div>
-                """, unsafe_allow_html=True)
-    else:
-        st.warning(f"Aucune minute de service validée trouvée pour **{agent_cible}**.")
+    st.write("---")
+    # Détail des heures (Clock)
+    for job, data in stats_par_job.items():
+        st.write(f"⏳ **{job}** : {int(data['temps'])} min travaillées → **{int(data['argent'])}$**")
+    
+    # Détail des Primes (Banque)
+    if "staff" in metiers_banque: st.write("⭐ **Prime Staff** : +4000$ (Fixe)")
+    if "averis" in metiers_banque: st.write("🛡️ **Prime Averis** : +2000$ (Fixe)")
+
+    if total_min_global == 0 and prime_fixe_total == 0:
+        st.warning("Aucune activité et aucune prime pour cet agent.")
         # --- SECTION 1 : CRÉATION DE PROFIL (15k + DATE AUTO) ---
         st.divider()
         st.markdown("### 👤 Création de Dossier Citoyen")
