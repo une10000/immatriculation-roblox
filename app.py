@@ -1401,17 +1401,16 @@ with tabs[2]:
 
         st.divider()
 
-        # --- SECTION 3 : TERMINAL DE PAIEMENT NATIONAL (COMPLET) ---
+# --- SECTION 3 : TERMINAL DE PAIEMENT NATIONAL (BLOC À REMPLACER) ---
         st.subheader("🧧 Terminal de Paiement National")
         with st.container(border=True):
-            target_paie = st.selectbox("Bénéficiaire du virement :", liste_citoyens, key="admin_pay_terminal")
+            target_paie = st.selectbox("Bénéficiaire du virement :", liste_c, key="term_final")
             
             if target_paie:
-                # 1. Calcul des Primes & Bonus
-                u_data = df_b[df_b["Nom Roblox"] == target_paie]
-                u_jobs = [j.strip() for j in str(u_data["Emploiement"].values[0]).split("/")]
+                # 1. Calcul des Primes & Bonus Staff/Averis
+                u_row = df_b[df_b["Nom Roblox"] == target_paie]
+                u_jobs = [j.strip() for j in str(u_row["Emploiement"].values[0]).split("/")]
                 s_primes, T_LIMITE = 0, 1200
-                
                 for j in u_jobs:
                     if j == "Police": s_primes += int(3000 * min(m_pol/T_LIMITE, 1.0))
                     elif j == "Agent RCT": s_primes += int(2000 * min(m_rct/T_LIMITE, 1.0))
@@ -1430,44 +1429,60 @@ with tabs[2]:
                 p_rct = 200 if c_rct >= 3 else (c_rct * 150)
                 
                 t_brut = 15000 + s_primes
-                t_taxes = p_rct + v_av + v_std
-                t_net = t_brut - t_taxes
+                t_taxe = p_rct + v_av + v_std
+                t_net = t_brut - t_taxe
 
-                col_a, col_b = st.columns(2)
-                with col_a:
-                    st.write("**💰 REVENUS**")
-                    st.write("Base : 15,000$")
-                    st.write(f"Bonus/Primes : +{s_primes:,}$")
-                with col_b:
-                    st.write("**📉 DÉDUCTIONS**")
-                    st.write(f"Assurances : -{t_taxes:,}$")
-                
-                st.markdown(f"### NET À VERSER : {int(t_net):,}$")
+                # --- AFFICHAGE REÇU ESTHÉTIQUE ---
+                st.markdown(f"""
+                <div style="background-color:#1e1e1e; padding:20px; border-radius:10px; border-left: 5px solid #ff4b4b; font-family: 'Courier New', Courier, monospace;">
+                    <h2 style="color:white; margin:0; text-align:center;">📜 REÇU DE PAIE NATIONAL</h2>
+                    <p style="color:#888; text-align:center; font-size:0.8em;">Généré le {datetime.now().strftime('%d/%m/%Y à %H:%M')}</p>
+                    <hr style="border-color:#333;">
+                    <table style="width:100%; color:white;">
+                        <tr><td><b>BÉNÉFICIAIRE</b></td><td style="text-align:right;">{target_paie.upper()}</td></tr>
+                        <tr><td colspan="2"><hr style="border-color:#333;"></td></tr>
+                        <tr><td>Salaire de Base</td><td style="text-align:right;">+ 15,000$</td></tr>
+                        <tr><td>Primes de Service / Staff</td><td style="text-align:right;">+ {s_primes:,}$</td></tr>
+                        <tr style="color:#ff6b6b;"><td>Taxes & Assurances (Déduit)</td><td style="text-align:right;">- {t_taxe:,}$</td></tr>
+                        <tr><td colspan="2"><hr style="border-color:#333;"></td></tr>
+                        <tr style="font-size:1.6em; font-weight:bold; color:#2ecc71;">
+                            <td>TOTAL NET</td>
+                            <td style="text-align:right;">{int(t_net):,}$</td>
+                        </tr>
+                    </table>
+                    <p style="color:#555; font-size:0.7em; margin-top:15px; text-align:center;">L'argent des assurances est automatiquement redirigé vers Moune2010 et une10000.</p>
+                </div>
+                """, unsafe_allow_html=True)
+                st.write("")
 
-                if st.button(f"🚀 EXÉCUTER LE VIREMENT POUR {target_paie.upper()}", use_container_width=True, type="primary"):
+                if st.button(f"💸 EXÉCUTER LE VIREMENT NATIONAL", use_container_width=True, type="primary"):
                     try:
-                        idx_rct = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
-                        idx_av = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
-                        df_b.at[idx_rct, "Solde"] = float(df_b.at[idx_rct, "Solde"]) + p_rct
-                        df_b.at[idx_av, "Solde"] = float(df_b.at[idx_av, "Solde"]) + v_av
+                        # Redirection vers Patrons (Règles mémorisées)
+                        idx_r = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
+                        idx_a = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
+                        df_b.at[idx_r, "Solde"] = float(df_b.at[idx_r, "Solde"]) + p_rct
+                        df_b.at[idx_a, "Solde"] = float(df_b.at[idx_a, "Solde"]) + v_av
                         
-                        idx_target = df_b[df_b["Nom Roblox"] == target_paie].index[0]
-                        df_b.at[idx_target, "Solde"] = float(df_b.at[idx_target, "Solde"]) + t_net
+                        # Crédit Agent
+                        idx_t = df_b[df_b["Nom Roblox"] == target_paie].index[0]
+                        df_b.at[idx_t, "Solde"] = float(df_b.at[idx_t, "Solde"]) + t_net
                         
+                        # Reset Heures (Validé -> Payé) et Assurances (-> ✅ Payée)
                         df_clock.loc[(df_clock["nom"] == target_paie) & (df_clock["statut"] == "Validé"), "statut"] = "Payé"
-                        df_i.loc[df_i["Nom d'utilisateur ROBLOX"] == target_paie, "Assurance"] = \
-                            df_i.loc[df_i["Nom d'utilisateur ROBLOX"] == target_paie, "Assurance"].apply(lambda x: f"✅ {str(x).replace('✅','')}")
+                        df_i.loc[df_i["Nom d'utilisateur ROBLOX"] == target_paie, "Assurance"] = "✅ Payée"
                         
+                        # Mise à jour Sheets
                         cloud_conn.update(worksheet="Banque", data=df_b)
                         cloud_conn.update(worksheet="Clock", data=df_clock)
                         cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i)
                         
-                        st.session_state.audit_logs.append(f"[{datetime.now().strftime('%H:%M')}] PAYE : {target_paie} ({int(t_net)}$)")
-                        st.success("Paie versée !"); st.balloons(); st.cache_data.clear(); time.sleep(1); st.rerun()
-                    except Exception as e: st.error(f"Erreur : {e}")
-
-        st.divider()
-
+                        # Journal d'audit
+                        if "audit_logs" not in st.session_state: st.session_state.audit_logs = []
+                        st.session_state.audit_logs.append(f"[{datetime.now().strftime('%H:%M')}] VIREMENT : {target_paie} (+{int(t_net)}$)")
+                        
+                        st.success(f"✅ Virement national effectué pour {target_paie} !"); st.balloons()
+                        st.cache_data.clear(); time.sleep(1); st.rerun()
+                    except Exception as e: st.error(f"Erreur Terminal : {e}")
         # --- SECTION 4 : JOURNAUX D'AUDIT & STATISTIQUES ---
         col_end_1, col_end_2 = st.columns([2, 1])
 
