@@ -455,7 +455,7 @@ with st.container():
                 job_raw = str(citoyen_info.iloc[0]['Emploiement'])
                 st.write(f"🏢 Métier : **{job_raw}**")
 
-# --- CALCULATEUR DE PAIE (DESIGN AMÉLIORÉ) ---
+# --- CALCULATEUR DE PAIE (VERSION STAFF & PRIMES) ---
                 with st.expander("💳 Détails de ma prochaine paie", expanded=False):
                     # 1. Calcul des minutes (via Logs)
                     m_pol, m_rct = 0, 0
@@ -469,13 +469,18 @@ with st.container():
                             elif "RCT" in str(r["job"]).upper(): m_rct += diff
                     except: pass
 
-                    # 2. Calcul des montants
-                    # Primes (Prorata 20h = 1200 min)
+                    # 2. Détection des Primes
                     ratio_pol = min(m_pol/1200, 1.0)
                     ratio_rct = min(m_rct/1200, 1.0)
                     
                     p_pol = int(3000 * ratio_pol) if "police" in job_raw.lower() else 0
                     p_rct = int(2000 * ratio_rct) if "agent rct" in job_raw.lower() else 0
+                    
+                    # Prime Staff (Automatique si le job contient "Staff")
+                    p_staff = 4000 if "staff" in job_raw.lower() else 0
+                    
+                    # Prime Exceptionnelle (Exemple : Bonus événement ou autre)
+                    p_extra = 0 # À modifier manuellement ou via une autre colonne si besoin
                     
                     # Taxes Véhicules (Trio RCT)
                     mes_v = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
@@ -483,15 +488,17 @@ with st.container():
                     is_trio = count_rct >= 3
                     taxe_v = 200 if is_trio else (len(mes_v) * 150)
 
-                    net = 15000 + p_pol + p_rct - taxe_v
+                    net = 15000 + p_pol + p_rct + p_staff + p_extra - taxe_v
 
                     # 3. Affichage visuel
                     c_cred, c_deb = st.columns(2)
                     
-                    # COLONNE CRÉDITS (VERT)
                     with c_cred:
                         st.markdown("<div style='color: #4CAF50; font-weight:bold; margin-bottom:5px;'>📥 REVENUS</div>", unsafe_allow_html=True)
                         st.markdown(f"➕ **Base Civile** : `15,000$`")
+                        
+                        if p_staff > 0:
+                            st.markdown(f"⭐ **Prime Staff** : `{p_staff}$`")
                         
                         if "police" in job_raw.lower():
                             st.markdown(f"👮 **Prime Police** : `{p_pol}$`")
@@ -500,29 +507,25 @@ with st.container():
                         if "agent rct" in job_raw.lower():
                             st.markdown(f"☢️ **Prime RCT** : `{p_rct}$`")
                             st.progress(ratio_rct, text=f"{int(m_rct/60)}h / 20h")
+                            
+                        if p_extra > 0:
+                            st.markdown(f"🎁 **Bonus** : `{p_extra}$`")
 
-                    # COLONNE DÉBITS (ROUGE)
                     with c_deb:
                         st.markdown("<div style='color: #E53935; font-weight:bold; margin-bottom:5px;'>📤 DÉPENSES</div>", unsafe_allow_html=True)
-                        
                         if len(mes_v) > 0:
-                            if is_trio:
-                                st.markdown(f"🚗 **Assurances** : `200$`")
-                                st.caption(f"✅ Offre Trio RCT active ({len(mes_v)} véhicules)")
-                            else:
-                                st.markdown(f"🚗 **Assurances** : `{taxe_v}$`")
-                                st.caption(f"{len(mes_v)} véhicule(s) x 150$")
+                            label_taxe = "Offre Trio RCT ✅" if is_trio else f"{len(mes_v)} véhicule(s)"
+                            st.markdown(f"🚗 **Assurances** : `{taxe_v}$`")
+                            st.caption(label_taxe)
                         else:
                             st.markdown("🚗 **Assurances** : `0$`")
-                            st.caption("Aucun véhicule enregistré")
 
                     st.markdown("---")
                     
-                    # RÉSULTAT FINAL
                     st.markdown(f"""
                         <div style="background-color: #1E1E1E; padding: 15px; border-radius: 8px; border-left: 5px solid #4CAF50; display: flex; justify-content: space-between; align-items: center;">
-                            <span style="font-size: 1.1em; color: #bbb;">NET À PERCEVOIR</span>
-                            <span style="font-size: 1.5em; font-weight: bold; color: #fff;">{int(net):,}$</span>
+                            <span style="font-size: 1.1em; color: #bbb;">NET ESTIMÉ</span>
+                            <span style="font-size: 1.5em; font-weight: bold; color: #fff;">{int(net):,}$$</span>
                         </div>
                     """, unsafe_allow_html=True)
                 # --- MODIFICATION MÉTIER (STAFF) ---
