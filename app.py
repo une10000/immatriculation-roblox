@@ -1185,26 +1185,38 @@ else:
                             cloud_conn.update(worksheet="Points Permis", data=df_p)
                         except: pass
 
-                    # Enregistrement Facture
+# --- ENREGISTREMENT FACTURE ---
                     import random
+                    
+                    # Vérification de l'agent (sécurité)
+                    nom_agent = agent_identifie if agent_identifie else "Inconnu"
+                    
                     new_row = {
                         "ID": random.randint(1000, 9999), 
                         "Cible": target,
                         "Emetteur_Service": f_emetteur,
-                        "Agent_Signataire": agent_identifie,
+                        "Agent_Signataire": nom_agent, # Enregistre ton code (RCT-01, etc.)
                         "Montant": f_val,
                         "Points": f_pts if can_pull_points else 0, 
                         "Motif": f"{f_motif} [{f_plate}]", 
                         "Statut": "EN ATTENTE",
+                        "Date_Emission": now_ch.strftime("%d/%m/%Y %H:%M:%S"), # Date précise d'envoi
                         "Date_Limite": (now_ch + timedelta(hours=24)).strftime("%d/%m/%Y %H:%M:%S")
                     }
+                    
+                    # Fusion avec les données existantes
                     df_f_updated = pd.concat([df_all_f, pd.DataFrame([new_row])], ignore_index=True)
+                    
+                    # Envoi vers Google Sheets
                     cloud_conn.update(worksheet="Factures", data=df_f_updated)
                     
-                    st.success("✅ Facture envoyée !")
+                    # Feedback visuel pour l'agent
+                    st.success(f"✅ Facture envoyée avec succès par l'agent {nom_agent} !")
+                    
+                    # Nettoyage et rafraîchissement
                     st.cache_data.clear()
+                    time.sleep(1) # Petit délai pour laisser l'agent voir le message
                     st.rerun()
-
     with col_facture:
         st.markdown("#### 📄 Aperçu")
         header_ticket = "FACTURE AVERIS" if f_emetteur == "Averis" else "FACTURE OFFICIELLE"
