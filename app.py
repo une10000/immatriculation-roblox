@@ -987,17 +987,22 @@ with tabs[1]:
                             df_b.at[idx, "Statut"], df_b.at[idx, "Motif Recherche"] = "RAS", ""
                             cloud_conn.update(worksheet="Banque", data=df_b)
                             st.rerun()
-                else: st.success("✅ Aucun mandat actif.")
+                else: 
+                    st.success("✅ Aucun mandat actif.")
 
+        # ICI : col_m2 doit être aligné sur col_m1 (même niveau de retrait)
         with col_m2:
             with st.container(border=True):
                 p_search = st.text_input("🔦 Scanner Plaque", key="plate_ui").upper()
                 if p_search:
                     m = df_i[df_i["Numéro de la plaque"] == p_search]
                     if not m.empty:
-                        st.info(f"**Proprio:** {m.iloc[0]['Nom d'utilisateur ROBLOX']}\n\n**Modèle:** {m.iloc[0]['Marque du véhicule']}")
-                    else: st.error("Plaque inconnue")
-
+                        # Correction "d'utilisateur" pour éviter le code bleu
+                        nom_proprio = m.iloc[0]["Nom d'utilisateur ROBLOX"]
+                        modele_vhc = m.iloc[0]["Marque du véhicule"]
+                        st.info(f"**Proprio:** {nom_proprio}\n\n**Modèle:** {modele_vhc}")
+                    else: 
+                        st.error("Plaque inconnue")
         # --- 3. INTERVENTION SUR CITOYEN ---
         st.divider()
         if target == "---":
