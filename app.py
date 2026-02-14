@@ -517,9 +517,11 @@ with col2:
 
         # --- MODULE DE CALCUL DE PAIE DÉTAILLÉ ---
         with st.expander("💳 Détails de ma prochaine paie"):
-            # 1. RÉCUPÉRATION DES MINUTES DE SERVICE
+            # 1. RÉCUPÉRATION DES MINUTES DE SERVICE (CORRECTION NAMEERROR)
             min_rct, min_police = 0, 0
-            user_logs = df_admin[(df_admin["nom"] == target) & (df_admin["statut"] == "Validé")]
+            # On filtre d'abord par nom, puis par statut pour éviter les erreurs de syntaxe complexe
+            user_logs = df_admin[df_admin["nom"] == target]
+            user_logs = user_logs[user_logs["statut"] == "Validé"]
             
             for _, row in user_logs.iterrows():
                 try:
@@ -553,12 +555,13 @@ with col2:
                     primes_total += montant
                     details_html += f'<div style="display: flex; justify-content: space-between;"><span>Prime {job.title()} :</span><b>+{montant}$</b></div>'
 
-            # --- CALCUL DES TAXES & ASSURANCES (OFFRE TRIO 200$) ---
+            # --- CALCUL DES TAXES & ASSURANCES (CORRECTION TRIO 200$) ---
             mes_v = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
             c_rct = len(mes_v[mes_v["Assurance"].str.contains("RCT", na=False, case=False)])
             c_ave = len(mes_v[mes_v["Assurance"].str.contains("AVERIS", na=False, case=False)])
             c_std = len(mes_v) - c_rct - c_ave
             
+            # Application de la remise Trio RCT (Fixée à 200$ total)
             taxe_rct = 200 if c_rct >= 3 else (c_rct * 150)
             taxe_ave = c_ave * 130
             taxe_std = c_std * 150
@@ -575,9 +578,8 @@ with col2:
             est_brut = 15000 + primes_total
             est_net = est_brut - total_prelevements
 
-            # --- AFFICHAGE HTML ---
+            # --- AFFICHAGE ---
             offre_badge = '<span style="color: #00FF00; font-size: 0.8em;"> [TRIO RCT ✅]</span>' if c_rct >= 3 else ""
-            jc_info = f'<div style="display: flex; justify-content: space-between; color: #e67e22; font-size: 0.9em;"><span>Taxe Jeune Conducteur :</span><b>-{taxe_jc}$</b></div>' if taxe_jc > 0 else ""
             
             st.markdown(f"""
             <div style="background-color: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px; border: 1px solid #444;">
@@ -588,7 +590,7 @@ with col2:
                 <div style="display: flex; justify-content: space-between; color: #ff4b4b;">
                     <span>Assurances {offre_badge} :</span><b>-{int(taxe_rct + taxe_ave + taxe_std)}$</b>
                 </div>
-                {jc_info}
+                {f'<div style="display: flex; justify-content: space-between; color: #e67e22; font-size: 0.9em;"><span>Taxe JC :</span><b>-{taxe_jc}$</b></div>' if taxe_jc > 0 else ""}
                 <hr style="margin: 10px 0; border-top: 2px solid #555;">
                 <div style="display: flex; justify-content: space-between; font-size: 1.2em; color: #00FF00;">
                     <b>ESTIMATION NET :</b><b>{int(est_net)}$</b>
@@ -596,7 +598,7 @@ with col2:
             </div>
             """, unsafe_allow_html=True)
 
-        # --- PARTIE STAFF (A l'extérieur de l'expander mais dans col2) ---
+        # --- PARTIE STAFF (ALIGNEMENT CORRIGÉ) ---
         if st.session_state.user_auth in ["Staff", "Admin"]:
             st.write("---")
             if st.button("✏️ Modifier le métier", key=f"edit_job_{target}", use_container_width=True):
@@ -617,7 +619,6 @@ with col2:
                         st.cache_data.clear()
                         st.rerun()
 
-        # Date d'arrivée en bas de colonne
         st.caption(f"📅 Arrivée : {b_data.iloc[0].get('Date d\'arrivée', 'Non spécifiée')}")
 # --- COLONNE 3 : ARCHIVES ---
         with col3:
