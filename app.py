@@ -995,7 +995,7 @@ with tabs[1]:
                 if p_search:
                     m = df_i[df_i["Numéro de la plaque"] == p_search]
                     if not m.empty:
-                        st.info(f"**Proprio:** {m.iloc[0][\"Nom d'utilisateur ROBLOX\"]}\n\n**Modèle:** {m.iloc[0]['Marque du véhicule']}")
+                        st.info(f"**Proprio:** {m.iloc[0]['Nom d'utilisateur ROBLOX']}\n\n**Modèle:** {m.iloc[0]['Marque du véhicule']}")
                     else: st.error("Plaque inconnue")
 
         # --- 3. INTERVENTION SUR CITOYEN ---
