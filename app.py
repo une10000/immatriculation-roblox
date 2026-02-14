@@ -926,7 +926,7 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                 if st.session_state.user_auth == "Staff":
                     job_actuel = st.selectbox("🎭 Service", ["POLSTA", "Averis"], key="pnt_job_staff")
                 else:
-                    job_actuel = "RCT" # Par défaut pour les RCT
+                    job_actuel = "RCT"
             
             agent_identifie = None
             if agent_code_saisi:
@@ -953,10 +953,12 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                         if not user_logs.empty:
                             last_action = user_logs.iloc[-1]["Action"]
                             en_service = (last_action == "IN")
+                            
+                            # Correction extraction heure
                             last_in = user_logs[user_logs["Action"] == "IN"].tail(1)
                             last_out = user_logs[user_logs["Action"] == "OUT"].tail(1)
-                            if not last_in.empty: start_display = last_in.iloc[0]["Horodatage"].split(" ")[1][:5]
-                            if not last_out.empty: end_display = last_out.iloc[0]["Horodatage"].split(" ")[1][:5]
+                            if not last_in.empty: start_display = str(last_in.iloc[0]["Horodatage"]).split(" ")[1][:5]
+                            if not last_out.empty: end_display = str(last_out.iloc[0]["Horodatage"]).split(" ")[1][:5]
                     except: pass
 
                     with col_infos:
@@ -972,25 +974,31 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                             if st.button("✅ DÉBUT", use_container_width=True, type="primary", disabled=en_service):
                                 try:
                                     df_pnt = cloud_conn.read(worksheet="Pointage")
+                                    # --- ALIGNEMENT COLONNES SHEETS ---
+                                    # Ordre selon ta photo : Nom, Service, Action, Horodotage, Job, Horodatage
                                     new_log = pd.DataFrame([{
-                                        "Nom": agent_identifie, 
-                                        "Action": "IN", 
-                                        "Job": job_actuel, # <--- ON ENREGISTRE LE JOB ICI
-                                        "Horodatage": now_ch.strftime("%d/%m/%Y %H:%M:%S")
+                                        "Nom": agent_identifie,
+                                        "Service": "",        # Col B
+                                        "Action": "IN",       # Col C
+                                        "Horodotage": "",    # Col D (avec la faute de frappe du Sheets)
+                                        "Job": job_actuel,    # Col E
+                                        "Horodatage": now_ch.strftime("%d/%m/%Y %H:%M:%S") # Col F
                                     }])
                                     cloud_conn.update(worksheet="Pointage", data=pd.concat([df_pnt, new_log], ignore_index=True))
                                     st.toast(f"Service {job_actuel} démarré !")
                                     st.rerun()
-                                except: st.error("Erreur Sheets.")
+                                except Exception as e: 
+                                    st.error(f"Erreur Sheets : Vérifie tes colonnes.")
                         
                         with btn_out:
                             if st.button("🛑 FIN", use_container_width=True, disabled=not en_service):
                                 try:
                                     df_pnt = cloud_conn.read(worksheet="Pointage")
-                                    # On garde le job dans le log de sortie pour faciliter les calculs de durée
                                     new_log = pd.DataFrame([{
-                                        "Nom": agent_identifie, 
-                                        "Action": "OUT", 
+                                        "Nom": agent_identifie,
+                                        "Service": "",
+                                        "Action": "OUT",
+                                        "Horodotage": "",
                                         "Job": job_actuel,
                                         "Horodatage": now_ch.strftime("%d/%m/%Y %H:%M:%S")
                                     }])
