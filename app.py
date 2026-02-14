@@ -1123,7 +1123,7 @@ st.markdown("### 🎯 INTERVENTION ET FACTURATION")
 if target == "---":
     st.warning("⚠️ Sélectionnez un citoyen en haut de la page.")
 else:
-    # Nettoyage automatique des noms de colonnes pour éviter l'erreur KeyError
+    # Nettoyage automatique des noms de colonnes
     df_b.columns = df_b.columns.str.strip() 
 
     col_saisie, col_facture, col_vehicules = st.columns([1.1, 1, 0.9])
@@ -1132,7 +1132,7 @@ else:
         with st.container(border=True):
             st.markdown("#### 📝 Saisie")
             
-# --- AUTHENTIFICATION (VERSION FORCEE) ---
+            # --- AUTHENTIFICATION (VERSION FORCEE) ---
             agent_code_saisi = st.text_input("🔑 Entrez votre CODE AGENT :", type="password", key="auth_agent_code")
             
             agent_identifie = None
@@ -1140,24 +1140,19 @@ else:
             if "Code" not in df_b.columns:
                 st.error("❌ La colonne 'Code' n'est pas détectée. (Vérifie l'onglet Banque)")
             elif agent_code_saisi:
-                # LA MAGIE : On nettoie le code de la base pour virer les .0 et les espaces
                 def clean_code(x):
-                    txt = str(x).strip().split('.')[0] # On garde que ce qu'il y a avant le point
-                    return txt
+                    return str(x).strip().split('.')[0]
 
                 df_b["Code_Clean"] = df_b["Code"].apply(clean_code)
                 saisie_propre = str(agent_code_saisi).strip()
-                
                 res_agent = df_b[df_b["Code_Clean"] == saisie_propre]
                 
                 if not res_agent.empty:
                     agent_identifie = res_agent.iloc[0]["Nom Roblox"]
                     st.success(f"Agent : **{agent_identifie}** ✅")
                 else:
-                    # Petit debug discret pour t'aider à voir ce que l'IA lit
-                    codes_dispo = df_b["Code_Clean"].unique().tolist()
                     st.error(f"❌ Code inconnu.")
-                    # st.write(f"DEBUG - Codes lus : {codes_dispo}") # Enlève le '#' au début de cette ligne si ça rate encore pour voir la liste
+
             # --- RÉGLAGES FACTURE ---
             if st.session_state.user_auth == "Staff":
                 f_emetteur = st.selectbox("Entité Émettrice", ["POLSTA", "Averis"], key="v_emetteur_final")
@@ -1181,6 +1176,10 @@ else:
                 elif not f_motif:
                     st.error("Motif obligatoire.")
                 else:
+                    # HEURE ZURICH POUR L'ENREGISTREMENT
+                    tz_ch = timezone(timedelta(hours=1))
+                    now_ch = datetime.now(tz_ch)
+
                     # Gestion des points
                     if f_pts > 0 and can_pull_points:
                         try:
@@ -1200,7 +1199,7 @@ else:
                         "Points": f_pts if can_pull_points else 0, 
                         "Motif": f"{f_motif} [{f_plate}]", 
                         "Statut": "EN ATTENTE",
-                        "Date_Limite": (datetime.now() + timedelta(hours=24)).strftime("%d/%m/%Y %H:%M:%S")
+                        "Date_Limite": (now_ch + timedelta(hours=24)).strftime("%d/%m/%Y %H:%M:%S")
                     }
                     df_f_updated = pd.concat([df_all_f, pd.DataFrame([new_row])], ignore_index=True)
                     cloud_conn.update(worksheet="Factures", data=df_f_updated)
@@ -1208,17 +1207,22 @@ else:
                     st.success("✅ Facture envoyée !")
                     st.cache_data.clear()
                     st.rerun()
+
     with col_facture:
         st.markdown("#### 📄 Aperçu")
         header_ticket = "FACTURE AVERIS" if f_emetteur == "Averis" else "FACTURE OFFICIELLE"
         nom_signature = agent_identifie if agent_identifie else "..."
+        # HEURE ZURICH POUR L'APERCU
+        tz_ch = timezone(timedelta(hours=1))
+        date_apercu = datetime.now(tz_ch).strftime('%d/%m/%Y')
+        
         st.markdown(f"""
         <div style="border: 2px solid black; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; line-height: 1.2;">
             <center><b>{header_ticket}</b><br><small>RÉPUBLIQUE DE RENSSERLAER</small></center>
             <hr style="border-top: 1px solid #ccc; margin: 10px 0;">
             <b>SIGNATURE :</b> {nom_signature.upper()}<br>
             <b>SERVICE   :</b> {f_emetteur.upper()}<br>
-            <b>DATE      :</b> {datetime.now().strftime('%d/%m/%Y')}<br>
+            <b>DATE      :</b> {date_apercu}<br>
             <b>CITOYEN   :</b> {target}<br>
             <b>MONTANT   :</b> {f_val}$
             <hr style="border-top: 1px solid #ccc; margin: 10px 0;">
@@ -1229,36 +1233,33 @@ else:
         </div>
         """, unsafe_allow_html=True)
 
-with col_vehicules:
-                st.markdown("#### 🚗 Véhicules")
-                if not target_veh.empty:
-                    for _, veh in target_veh.iterrows():
-                        assu_v = str(veh['Assurance']).upper()
-                        
-                        # --- LOGIQUE UNIVERSELLE (Visible par POLSTA, RCT et Averis) ---
-                        if "RCT" in assu_v:
-                            col_v, txt_v = "green", "✅ ASSURÉ RCT"
-                        elif "AVERIS" in assu_v:
-                            col_v, txt_v = "#E67E22", "⚠️ ASSURÉ AVERIS"
-                        else:
-                            # Si c'est vide ou autre chose, c'est un danger
-                            col_v, txt_v = "#d32f2f", "🚨 DANGER : NON-ASSURÉ"
-
-                        # --- AFFICHAGE DU TITRE ---
-                        st.markdown(f"""
-                        <div style="border: 2px solid black; padding: 10px; background: white; color: black; font-family: 'Courier New', monospace; margin-bottom: 10px; font-size: 0.8em;">
-                            <center><b>TITRE DE CIRCULATION</b></center>
-                            <hr style="border-top: 1px solid #ccc; margin: 5px 0;">
-                            <b>MODÈLE :</b> {veh['Marque du véhicule']}<br>
-                            <b>PLAQUE :</b> <span style="border: 1px solid black; padding: 0 2px;">{veh['Numéro de la plaque']}</span><br>
-                            <hr style="border-top: 1px solid #ccc; margin: 5px 0;">
-                            <div style="text-align: center; color: {col_v}; font-weight: bold;">
-                                {txt_v}
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
+    with col_vehicules:
+        st.markdown("#### 🚗 Véhicules")
+        if not target_veh.empty:
+            for _, veh in target_veh.iterrows():
+                assu_v = str(veh['Assurance']).upper()
+                
+                if "RCT" in assu_v:
+                    col_v, txt_v = "green", "✅ ASSURÉ RCT"
+                elif "AVERIS" in assu_v:
+                    col_v, txt_v = "#E67E22", "⚠️ ASSURÉ AVERIS"
                 else:
-                    st.info("Aucun véhicule.")
+                    col_v, txt_v = "#d32f2f", "🚨 DANGER : NON-ASSURÉ"
+
+                st.markdown(f"""
+                <div style="border: 2px solid black; padding: 10px; background: white; color: black; font-family: 'Courier New', monospace; margin-bottom: 10px; font-size: 0.8em;">
+                    <center><b>TITRE DE CIRCULATION</b></center>
+                    <hr style="border-top: 1px solid #ccc; margin: 5px 0;">
+                    <b>MODÈLE :</b> {veh['Marque du véhicule']}<br>
+                    <b>PLAQUE :</b> <span style="border: 1px solid black; padding: 0 2px;">{veh['Numéro de la plaque']}</span><br>
+                    <hr style="border-top: 1px solid #ccc; margin: 5px 0;">
+                    <div style="text-align: center; color: {col_v}; font-weight: bold;">
+                        {txt_v}
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+        else:
+            st.info("Aucun véhicule.")
 # --- ONGLET 3 : ADMINISTRATION (STAFF ONLY) ---
 if st.session_state.user_auth == "Staff":
     with tabs[2]:
