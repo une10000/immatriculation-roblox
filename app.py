@@ -514,63 +514,75 @@ with st.container():
                 current_jobs_raw = str(b_data.iloc[0]['Emploiement'])
                 st.write(f"🏢 Métier : **{current_jobs_raw}**")
 
-# --- NOUVEAU : ESTIMATION DE SALAIRE DYNAMIQUE ---
+# --- MODULE DE CALCUL DE PAIE DÉTAILLÉ ---
                 with st.expander("💳 Détails de ma prochaine paie"):
-                    # 1. RÉCUPÉRATION DU TEMPS DE SERVICE (Activité réelle)
-                    # On suppose que la colonne 'Temps de Service' contient des minutes dans df_b
+                    # 1. RÉCUPÉRATION DES DONNÉES
                     mins_travaillees = b_data.iloc[0].get('Temps de Service', 0)
                     try: mins_travaillees = float(mins_travaillees)
                     except: mins_travaillees = 0
-
-                    # Calcul du gain d'activité : 100$ toutes les 10 minutes (ajustable)
-                    gain_activite = (mins_travaillees / 10) * 100 
                     
-                    # 2. CALCUL DES PRIMES MÉTIERS
                     user_jobs_list = [j.strip().lower() for j in current_jobs_raw.split("/")]
-                    RECOMPENSES = {
-                        "agent rct": 2000, 
+                    
+                    # 2. INITIALISATION DES COMPTEURS
+                    salaire_horaire_total = 0
+                    primes_fixes_total = 0
+                    details_html = ""
+
+                    # --- CAS A : MÉTIERS À L'HEURE (Police / RCT) ---
+                    # Exemple : 1800$/heure pour Police, 1200$/heure pour RCT
+                    if "police" in user_jobs_list:
+                        gain = (mins_travaillees / 60) * 1800
+                        salaire_horaire_total += gain
+                        details_html += f'<div style="display: flex; justify-content: space-between; color: #3498db;"><span>Salaire Police ({int(mins_travaillees)} min) :</span><b>+{int(gain)}$</b></div>'
+                    
+                    if "agent rct" in user_jobs_list:
+                        gain = (mins_travaillees / 60) * 1200
+                        salaire_horaire_total += gain
+                        details_html += f'<div style="display: flex; justify-content: space-between; color: #2ecc71;"><span>Salaire RCT ({int(mins_travaillees)} min) :</span><b>+{int(gain)}$</b></div>'
+
+                    # --- CAS B : MÉTIERS À PRIME FIXE ---
+                    RECOMPENSES_FIXES = {
                         "averis": 2000, 
-                        "police": 3000, 
                         "staff": 4000, 
                         "service public": 1000
                     }
-                    est_calcul_primes = sum(RECOMPENSES.get(job, 0) for job in user_jobs_list)
-                    
-                    # 3. CALCUL DES TAXES VÉHICULES (Logique Trio RCT Corrigée)
+                    for job, montant in RECOMPENSES_FIXES.items():
+                        if job in user_jobs_list:
+                            primes_fixes_total += montant
+                            details_html += f'<div style="display: flex; justify-content: space-between;"><span>Prime {job.title()} :</span><b>+{montant}$</b></div>'
+
+                    # 3. CALCUL DES TAXES (TRIO RCT)
                     mes_v = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
                     c_rct = len(mes_v[mes_v["Assurance"].str.contains("RCT", na=False, case=False)])
                     c_ave = len(mes_v[mes_v["Assurance"].str.contains("AVERIS", na=False, case=False)])
                     c_std = len(mes_v) - c_rct - c_ave
-
-                    # Application stricte des tarifs
+                    
                     taxe_rct = 300 if c_rct >= 3 else (c_rct * 150)
                     taxe_ave = c_ave * 130
                     taxe_std = c_std * 150
                     est_taxe_v = taxe_rct + taxe_ave + taxe_std
 
-                    # TOTAL BRUT (Base 15k + Métier + Travail)
-                    est_brut = 15000 + est_calcul_primes + gain_activite
-                    
-                    # 4. AFFICHAGE STYLISÉ
-                    offre_trio_badge = '<span style="color: #00FF00; font-size: 0.8em;"> [OFFRE TRIO ✅]</span>' if c_rct >= 3 else ""
+                    # TOTAL FINAL
+                    est_brut = 15000 + salaire_horaire_total + primes_fixes_total
+                    est_net = est_brut - est_taxe_v
+
+                    # 4. AFFICHAGE FINAL
+                    offre_badge = '<span style="color: #00FF00; font-size: 0.8em;"> [TRIO RCT ✅]</span>' if c_rct >= 3 else ""
                     
                     st.markdown(f"""
                     <div style="background-color: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; border: 1px solid #444;">
                         <div style="display: flex; justify-content: space-between;"><span>Base Civile :</span><b>+15,000$</b></div>
-                        <div style="display: flex; justify-content: space-between; color: #a29bfe;">
-                            <span>Activité ({int(mins_travaillees)} min) :</span><b>+{int(gain_activite)}$</b>
-                        </div>
-                        <div style="display: flex; justify-content: space-between;"><span>Primes Métier :</span><b>+{est_calcul_primes}$</b></div>
+                        <hr style="margin: 8px 0; border-top: 1px dashed #555;">
+                        {details_html}
                         <div style="display: flex; justify-content: space-between; color: #ff4b4b;">
-                            <span>Taxes Véhicules {offre_trio_badge} :</span><b>-{int(est_taxe_v)}$</b>
+                            <span>Taxes Véhicules {offre_badge} :</span><b>-{int(est_taxe_v)}$</b>
                         </div>
                         <hr style="margin: 8px 0; border-top: 1px solid #555;">
                         <div style="display: flex; justify-content: space-between; font-size: 1.1em; color: #00FF00;">
-                            <b>ESTIMATION NET :</b><b>{int(est_brut - est_taxe_v)}$</b>
+                            <b>ESTIMATION NET :</b><b>{int(est_net)}$</b>
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
-                    st.caption("⚠️ Cette estimation n'inclut pas les amendes en attente.")
                 # --- PARTIE STAFF (Modification Métier) ---
                 if st.session_state.user_auth in ["Staff", "Admin"]:
                     if st.button("✏️ Modifier le métier", key=f"edit_job_{target}", use_container_width=True):
