@@ -1288,6 +1288,66 @@ if st.session_state.user_auth == "Staff":
     with tabs[2]:
         st.markdown('<div class="header-box"><h2>🛠️ PANNEAU D\'ADMINISTRATION High-Sec</h2></div>', unsafe_allow_html=True)
         
+        # --- SOUS-SECTION : VALIDATION DES HEURES ---
+        st.subheader("🕒 Suivi des Temps de Service")
+        
+        try:
+            # Lecture des logs de pointage
+            df_admin_pnt = cloud_conn.read(worksheet="Pointage")
+            
+            if not df_admin_pnt.empty:
+                # 1. Filtre par agent pour plus de clarté
+                liste_agents = ["Tous"] + sorted(df_admin_pnt["Nom"].unique().tolist())
+                agent_filtre = st.selectbox("Filtrer par agent :", liste_agents)
+                
+                df_view = df_admin_pnt if agent_filtre == "Tous" else df_admin_pnt[df_admin_pnt["Nom"] == agent_filtre]
+                
+                # 2. Affichage du tableau brut
+                st.write("### 📜 Logs récents")
+                st.dataframe(df_view.tail(15), use_container_width=True)
+                
+                # 3. Système de calcul "Magique" pour une10000
+                st.divider()
+                st.write("### 📊 Calculateur de Paie")
+                
+                if agent_filtre != "Tous":
+                    # On convertit l'horodatage en format date utilisable par Python
+                    df_view['Horodatage'] = pd.to_datetime(df_view['Horodatage'], format='%d/%m/%Y %H:%M:%S')
+                    
+                    total_minutes = 0
+                    # On boucle pour trouver les paires IN/OUT
+                    for i in range(len(df_view)-1):
+                        row_in = df_view.iloc[i]
+                        row_out = df_view.iloc[i+1]
+                        
+                        if row_in['Action'] == "IN" and row_out['Action'] == "OUT":
+                            duree = (row_out['Horodatage'] - row_in['Horodatage']).total_seconds() / 60
+                            total_minutes += duree
+                    
+                    heures = int(total_minutes // 60)
+                    minutes = int(total_minutes % 60)
+                    
+                    # Affichage du résultat pour une10000
+                    col1, col2 = st.columns(2)
+                    col1.metric(f"Temps total pour {agent_filtre}", f"{heures}h {minutes}min")
+                    
+                    # Option de "Nettoyage" (pour confirmer que c'est payé)
+                    if st.button(f"✅ Marquer la semaine de {agent_filtre} comme payée"):
+                        st.warning("Cette fonction pourrait archiver les logs vers un autre onglet (à configurer).")
+                else:
+                    st.info("Sélectionnez un agent spécifique pour calculer son temps de travail total.")
+            else:
+                st.info("Aucun log de pointage trouvé.")
+                
+        except Exception as e:
+            st.error(f"Erreur lors de la lecture des pointages : {e}")
+
+        # --- SOUS-SECTION : GESTION DES FACTURES ---
+        st.divider()
+        st.subheader("📑 Historique Global des Factures")
+        # Ici on peut remettre un aperçu de toutes les factures "EN ATTENTE"
+        df_all_f.columns = df_all_f.columns.str.strip()
+        st.dataframe(df_all_f[df_all_f["Statut"] == "EN ATTENTE"], use_container_width=True)
         # --- SECTION 1 : CRÉATION DE PROFIL ---
         st.markdown("### 👤 Création de Dossier Citoyen")
         with st.container(border=True):
