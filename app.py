@@ -930,7 +930,7 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
             
             agent_identifie = None
             if agent_code_saisi:
-                # Identification (Le Bulldozer)
+                # Nettoyage et identification
                 df_b.columns = df_b.columns.str.strip()
                 def clean_code(x): return str(x).strip().split('.')[0]
                 df_b["Code_Clean"] = df_b["Code"].apply(clean_code)
@@ -939,26 +939,32 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                 if not res_agent.empty:
                     agent_identifie = res_agent.iloc[0]["Nom Roblox"]
                     
-                    # --- RÉGLAGE HEURE ZURICH (UTC+1) ---
+                    # --- RÉGLAGE HEURE ZURICH ---
                     tz_ch = timezone(timedelta(hours=1)) 
                     now_ch = datetime.now(tz_ch)
                     h_actuelle = now_ch.strftime("%H:%M") 
                     
-                    # Vérification du statut de service
+                    # Vérification du statut
                     start_display, end_display = "--:--", "--:--"
                     en_service = False
                     try:
                         df_pnt_check = cloud_conn.read(worksheet="Pointage")
+                        df_pnt_check.columns = df_pnt_check.columns.str.strip()
                         user_logs = df_pnt_check[df_pnt_check["Nom"] == agent_identifie]
+                        
                         if not user_logs.empty:
                             last_action = user_logs.iloc[-1]["Action"]
                             en_service = (last_action == "IN")
                             
-                            # Correction extraction heure
                             last_in = user_logs[user_logs["Action"] == "IN"].tail(1)
                             last_out = user_logs[user_logs["Action"] == "OUT"].tail(1)
-                            if not last_in.empty: start_display = str(last_in.iloc[0]["Horodatage"]).split(" ")[1][:5]
-                            if not last_out.empty: end_display = str(last_out.iloc[0]["Horodatage"]).split(" ")[1][:5]
+                            
+                            if not last_in.empty: 
+                                val_in = str(last_in.iloc[0]["Horodatage"])
+                                start_display = val_in.split(" ")[1][:5] if " " in val_in else val_in[:5]
+                            if not last_out.empty: 
+                                val_out = str(last_out.iloc[0]["Horodatage"])
+                                end_display = val_out.split(" ")[1][:5] if " " in val_out else val_out[:5]
                     except: pass
 
                     with col_infos:
@@ -970,26 +976,29 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                         st.write(f"Agent : **{agent_identifie}** " + (f"(🟢 EN SERVICE - {job_actuel})" if en_service else "(🔴 HORS SERVICE)"))
                         
                         btn_in, btn_out = st.columns(2)
+                        
+                        # --- BOUTON DÉBUT ---
                         with btn_in:
                             if st.button("✅ DÉBUT", use_container_width=True, type="primary", disabled=en_service):
                                 try:
                                     df_pnt = cloud_conn.read(worksheet="Pointage")
-                                    # --- ALIGNEMENT COLONNES SHEETS ---
-                                    # Ordre selon ta photo : Nom, Service, Action, Horodotage, Job, Horodatage
                                     new_log = pd.DataFrame([{
                                         "Nom": agent_identifie,
-                                        "Service": "",        # Col B
-                                        "Action": "IN",       # Col C
-                                        "Horodotage": "",    # Col D (avec la faute de frappe du Sheets)
-                                        "Job": job_actuel,    # Col E
-                                        "Horodatage": now_ch.strftime("%d/%m/%Y %H:%M:%S") # Col F
+                                        "Service": "",
+                                        "Action": "IN",
+                                        "Horodotage": "", # Maintien de la colonne avec faute
+                                        "Job": job_actuel,
+                                        "Horodatage": now_ch.strftime("%d/%m/%Y %H:%M:%S")
                                     }])
-                                    cloud_conn.update(worksheet="Pointage", data=pd.concat([df_pnt, new_log], ignore_index=True))
+                                    # Fusion forcée pour respecter l'ordre des colonnes du Sheets
+                                    df_updated = pd.concat([df_pnt, new_log], ignore_index=True)
+                                    cloud_conn.update(worksheet="Pointage", data=df_updated)
                                     st.toast(f"Service {job_actuel} démarré !")
                                     st.rerun()
-                                except Exception as e: 
-                                    st.error(f"Erreur Sheets : Vérifie tes colonnes.")
+                                except Exception as e:
+                                    st.error("Erreur de synchronisation Sheets.")
                         
+                        # --- BOUTON FIN ---
                         with btn_out:
                             if st.button("🛑 FIN", use_container_width=True, disabled=not en_service):
                                 try:
@@ -1002,12 +1011,14 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                                         "Job": job_actuel,
                                         "Horodatage": now_ch.strftime("%d/%m/%Y %H:%M:%S")
                                     }])
-                                    cloud_conn.update(worksheet="Pointage", data=pd.concat([df_pnt, new_log], ignore_index=True))
+                                    df_updated = pd.concat([df_pnt, new_log], ignore_index=True)
+                                    cloud_conn.update(worksheet="Pointage", data=df_updated)
                                     st.toast("Service terminé !")
                                     st.rerun()
-                                except: st.error("Erreur Sheets.")
+                                except Exception as e:
+                                    st.error("Erreur de synchronisation Sheets.")
                 else:
-                    st.error("Code inconnu")
+                    st.error("Code agent incorrect.")
 
         st.divider()
         # 1. PANEL D'ALERTE : FACTURES IMPAYÉES
