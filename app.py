@@ -1387,110 +1387,80 @@ if st.session_state.user_auth == "Staff":
             st.error(f"Erreur Pointages : {e}")
 
         st.divider()
-# --- SECTION B : CALCULATEUR D'HEURES (LOGIQUE 20H = PAYE) ---
+# --- SECTION B : CALCULATEUR D'HEURES (INTERFACE PAIE NATIONALE) ---
 st.subheader("📊 Cumul des Heures par Agent")
 
 liste_agents = sorted(df_b["Nom Roblox"].unique().tolist())
 agent_cible = st.selectbox("Choisir un agent :", liste_agents, key="calc_hours")
 
 if agent_cible:
-    # 1. Extraction des données de la feuille Clock (Sessions Validées uniquement)
+    # 1. Extraction des données Clock (df_admin)
     user_data_h = df_admin[(df_admin["nom"] == agent_cible) & (df_admin["statut"] == "Validé")].copy()
     
-    # RÉINITIALISATION TOTALE (pour éviter les gains fantômes)
     total_min_global = 0
     total_argent_horaire = 0
-    stats_par_job = {} 
+    details_metiers_html = ""
 
+    # RÉINITIALISATION ET CALCUL
     for _, row in user_data_h.iterrows():
         try:
             t1 = datetime.strptime(str(row["début"]), "%d/%m/%Y %H:%M:%S")
             t2 = datetime.strptime(str(row["fin"]), "%d/%m/%Y %H:%M:%S")
             mins = (t2 - t1).total_seconds() / 60
-            
             if mins <= 0: continue
 
             job_ligne = str(row["job"]).upper().strip()
             
-            # --- CALCUL DU TAUX (Basé sur 20h de quota) ---
-            taux_minute = 0
-            if "POLSTA" in job_ligne or "POLICE" in job_ligne:
-                # 3000$ / 1200 min = 2.5$/min
-                taux_minute = 2.5 
-            elif "RCT" in job_ligne:
-                # 2000$ / 1200 min = 1.666...$/min
-                taux_minute = 2000 / 1200 
+            # --- LOGIQUE PRORATA 20H (1200 MIN) ---
+            taux = 0
+            if "POL" in job_ligne: taux = 2.5      # 3000$ / 1200 min
+            elif "RCT" in job_ligne: taux = 1.66  # 2000$ / 1200 min
             
-            gain_session = mins * taux_minute
-            
-            # Cumul
             total_min_global += mins
-            total_argent_horaire += gain_session
-            
-            if job_ligne not in stats_par_job:
-                stats_par_job[job_ligne] = {"temps": 0, "argent": 0}
-            stats_par_job[job_ligne]["temps"] += mins
-            stats_par_job[job_ligne]["argent"] += gain_session
+            total_argent_horaire += (mins * taux)
         except: continue
 
-    # 2. Récupération des Primes Fixes (Staff / Averis) dans la feuille Banque
+    # 2. Primes Fixes (df_b)
     agent_info = df_b[df_b["Nom Roblox"] == agent_cible]
     metiers_banque = str(agent_info.iloc[0]['Emploiement']).lower() if not agent_info.empty else ""
     
-    prime_fixe_total = 0
-    if "staff" in metiers_banque: prime_fixe_total += 4000
-    if "averis" in metiers_banque: prime_fixe_total += 2000
+    p_staff = 4000 if "staff" in metiers_banque else 0
+    p_averis = 2000 if "averis" in metiers_banque else 0
 
-    # 3. AFFICHAGE ALIGNÉ
+    # 3. INTERFACE STYLE "PAIE NATIONALE"
     h_disp, m_disp = int(total_min_global // 60), int(total_min_global % 60)
-    
-    c1, c2 = st.columns(2)
-    c1.metric("Temps de Service Total", f"{h_disp}h {m_disp}min")
-    # Le total inclut l'horaire cumulé + les primes fixes
-    c2.metric("Total à Verser", f"{int(total_argent_horaire + prime_fixe_total)}$")
+    total_final = total_argent_horaire + p_staff + p_averis
 
-    st.write("---")
-    # Détail des heures (Clock)
-    for job, data in stats_par_job.items():
-        st.write(f"⏳ **{job}** : {int(data['temps'])} min travaillées → **{int(data['argent'])}$**")
-    
-    # Détail des Primes (Banque)
-    if "staff" in metiers_banque: st.write("⭐ **Prime Staff** : +4000$ (Fixe)")
-    if "averis" in metiers_banque: st.write("🛡️ **Prime Averis** : +2000$ (Fixe)")
+    st.markdown(f"""
+    <div style="background-color: #1e1e1e; padding: 20px; border-radius: 10px; border: 1px solid #333;">
+        <div style="text-align: center; border-bottom: 1px solid #444; padding-bottom: 10px; margin-bottom: 15px;">
+            <h3 style="margin:0; color: #f1c40f;">RÉCAPITULATIF DE SERVICE</h3>
+            <span style="color: #888;">Agent : {agent_cible}</span>
+        </div>
+        
+        <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+            <span>⏱️ Temps Total Validé</span>
+            <b style="color: #f1c40f;">{h_disp}h {m_disp}min</b>
+        </div>
 
-    if total_min_global == 0 and prime_fixe_total == 0:
-        st.warning("Aucune activité et aucune prime pour cet agent.")
-        # --- SECTION 1 : CRÉATION DE PROFIL (15k + DATE AUTO) ---
-        st.divider()
-        st.markdown("### 👤 Création de Dossier Citoyen")
-        with st.container(border=True):
-            c1, c2 = st.columns(2)
-            with c1:
-                new_name = st.text_input("Nom d'utilisateur ROBLOX", key="create_name")
-                new_discord = st.text_input("Utilisateur Discord", key="create_discord")
-            with c2:
-                job_list = ["Sans-Emploi", "Agent RCT", "Averis", "Police", "Staff", "Entreprise Privée", "Service Public"]
-                new_jobs = st.multiselect("Emploiement(s)", job_list, default=["Sans-Emploi"], key="create_jobs")
-                new_pts = st.slider("Points Permis (Départ)", 0, 25, 25)
+        <div style="background: rgba(255,255,255,0.03); padding: 10px; border-radius: 5px; margin-bottom: 15px;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.9em; margin-bottom: 5px;">
+                <span>💼 Salaire Horaire (Prorata 20h)</span>
+                <b>+{int(total_argent_horaire)}$</b>
+            </div>
+            {"<div style='display: flex; justify-content: space-between; font-size: 0.9em; margin-bottom: 5px;'><span>⭐ Prime Staff</span><b>+4000$</b></div>" if p_staff > 0 else ""}
+            {"<div style='display: flex; justify-content: space-between; font-size: 0.9em;'><span>🛡️ Prime Averis</span><b>+2000$</b></div>" if p_averis > 0 else ""}
+        </div>
 
-            if st.button("🆕 GÉNÉRER LE DOSSIER", use_container_width=True, type="primary"):
-                if new_name and new_name not in df_b["Nom Roblox"].values:
-                    from datetime import datetime, timezone, timedelta
-                    tz_ch = timezone(timedelta(hours=1))
-                    today_str = datetime.now(tz_ch).strftime("%d/%m/%Y")
-                    
-                    # 1. Banque (Solde de départ : 15,000$)
-                    new_bank = pd.DataFrame([{"Nom Roblox": new_name, "Nom Discord": new_discord, "Solde": 15000, "Emploiement": " / ".join(new_jobs), "Date d'arrivée": today_str}])
-                    df_b = pd.concat([df_b, new_bank], ignore_index=True)
-                    cloud_conn.update(worksheet="Banque", data=df_b)
-                    
-                    # 2. Permis
-                    new_p = pd.DataFrame([{"Nom Roblox": new_name, "PTS": new_pts, "Validité": "OUI" if new_pts > 0 else "NON"}])
-                    df_p = pd.concat([df_p, new_p], ignore_index=True)
-                    cloud_conn.update(worksheet="Points Permis", data=df_p)
-                    
-                    st.success(f"✅ Dossier créé pour {new_name} (Solde: 15k | Date: {today_str})")
-                    st.cache_data.clear(); time.sleep(1); st.rerun()
+        <div style="background: #2ecc71; color: black; padding: 12px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center;">
+            <b style="font-size: 1.1em;">TOTAL À VERSER</b>
+            <b style="font-size: 1.4em;">{int(total_final)}$</b>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    if total_final == 0:
+        st.warning("Aucune activité enregistrée pour cet agent.")
 # --- SECTION 2 : SYSTÈME DE PAIE & ASSURANCES AUTOMATIQUES ---
 
 if st.session_state.get("user_auth") == "Staff":
