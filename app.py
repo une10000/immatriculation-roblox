@@ -1124,7 +1124,6 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
                     st.error(f"❌ Plaque {plate_srv} inconnue.")
 
         st.divider()
-
 # ======================================================================================
 # 4. SYSTÈME DE SAISIE ET CONSULTATION (COMPLET ET SÉCURISÉ)
 # ======================================================================================
@@ -1219,7 +1218,7 @@ with tabs[1]: # Onglet Services Agents
                             time.sleep(1)
                             st.rerun()
 
-            # --- COLONNE 2 : APERÇU ---
+            # --- COLONNE 2 : APERÇU ET HISTORIQUE ---
             with col_facture:
                 st.markdown("#### 📄 Aperçu")
                 header_ticket = "FACTURE AVERIS" if f_emetteur == "Averis" else "FACTURE OFFICIELLE"
@@ -1242,6 +1241,20 @@ with tabs[1]: # Onglet Services Agents
                 </div>
                 """, unsafe_allow_html=True)
 
+                st.divider()
+                st.markdown("#### 📜 Historique Factures")
+                # Filtrage des factures pour le citoyen sélectionné
+                if not df_all_f.empty:
+                    hist_f = df_all_f[df_all_f["Cible"] == target].sort_index(ascending=False)
+                    if not hist_f.empty:
+                        st.dataframe(
+                            hist_f[["Date_Emission", "Emetteur", "Montant", "Statut"]], 
+                            hide_index=True, 
+                            use_container_width=True
+                        )
+                    else:
+                        st.info("Aucun antécédent pour ce citoyen.")
+
             # --- COLONNE 3 : VÉHICULES ---
             with col_vehicules:
                 st.markdown("#### 🚗 Véhicules")
@@ -1263,7 +1276,7 @@ with tabs[1]: # Onglet Services Agents
                 else:
                     st.info("Aucun véhicule.")
     else:
-        pass # Sortie silencieuse pour les civils
+        pass
 # --- ONGLET 3 : ADMINISTRATION (STAFF ONLY) ---
 if st.session_state.user_auth == "Staff":
     with tabs[2]:
