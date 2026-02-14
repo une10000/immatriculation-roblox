@@ -1387,79 +1387,89 @@ if st.session_state.user_auth == "Staff":
             st.error(f"Erreur Pointages : {e}")
 
         st.divider()
-# --- SECTION B : CALCULATEUR D'HEURES (INTERFACE RECAP) ---
+# --- SECTION B : CALCULATEUR D'HEURES (LOOK TERMINAL DE PAIE) ---
 st.subheader("📊 Cumul des Heures par Agent")
 
 liste_agents = sorted(df_b["Nom Roblox"].unique().tolist())
 agent_cible = st.selectbox("Choisir un agent :", liste_agents, key="calc_hours")
 
 if agent_cible:
-    # 1. Extraction des données Clock (Sessions Validées uniquement)
-    user_data_h = df_admin[(df_admin["nom"] == agent_cible) & (df_admin["statut"] == "Validé")].copy()
+    # 1. Extraction des données (Logique Simplifiée)
+    min_rct, min_police = 0, 0
+    user_logs = df_admin[(df_admin["nom"] == agent_cible) & (df_admin["statut"] == "Validé")]
     
-    total_min_global = 0
-    total_police, total_rct = 0, 0
-    argent_police, argent_rct = 0, 0
-
-    # RÉINITIALISATION ET CALCUL
-    for _, row in user_data_h.iterrows():
+    for _, row in user_logs.iterrows():
         try:
             t1 = datetime.strptime(str(row["début"]), "%d/%m/%Y %H:%M:%S")
             t2 = datetime.strptime(str(row["fin"]), "%d/%m/%Y %H:%M:%S")
-            mins = (t2 - t1).total_seconds() / 60
-            if mins <= 0: continue
-
-            job_ligne = str(row["job"]).upper().strip()
-            
-            if "POL" in job_ligne:
-                total_police += mins
-                argent_police += (mins * 2.5) # Prorata 3000$ / 20h
-            elif "RCT" in job_ligne:
-                total_rct += mins
-                argent_rct += (mins * 1.66) # Prorata 2000$ / 20h
-            
-            total_min_global += mins
+            diff = (t2 - t1).total_seconds() / 60
+            if "RCT" in str(row["job"]).upper(): min_rct += diff
+            elif "POL" in str(row["job"]).upper(): min_police += diff
         except: continue
 
-    # 2. Primes Fixes (Extraites de la feuille Banque)
-    agent_info = df_b[df_b["Nom Roblox"] == agent_cible]
-    metiers_banque = str(agent_info.iloc[0]['Emploiement']).lower() if not agent_info.empty else ""
-    p_staff = 4000 if "staff" in metiers_banque else 0
-    p_averis = 2000 if "averis" in metiers_banque else 0
+    # Analyse des métiers pour les primes
+    user_data = df_b[df_b["Nom Roblox"] == agent_cible]
+    user_jobs_list = [j.strip() for j in str(user_data["Emploiement"].values[0]).split("/")] if not user_data.empty else []
+    
+    # Primes (Même barème visuel)
+    primes_detail_list = []
+    calcul_primes = 0
+    PRIME_JOB = {"Agent RCT": 2000, "Averis": 2000, "Police": 3000, "Staff": 4000, "Service Public": 1000}
+    
+    for job in user_jobs_list:
+        p_max = PRIME_JOB.get(job, 0)
+        if p_max > 0:
+            if job == "Agent RCT" and min_rct > 0:
+                p_calc = int(p_max * min(min_rct/1200, 1.0))
+                primes_detail_list.append(f"• **Bonus RCT** : +{p_calc}$ (Prorata)")
+                calcul_primes += p_calc
+            elif job == "Police" and min_police > 0:
+                p_calc = int(p_max * min(min_police/1200, 1.0))
+                primes_detail_list.append(f"• **Prime Police** : +{p_calc}$")
+                calcul_primes += p_calc
+            elif job not in ["Agent RCT", "Police"]:
+                primes_detail_list.append(f"• **{job}** : +{p_max}$")
+                calcul_primes += p_max
 
-    # 3. INTERFACE VISUELLE RENDUE
-    h_disp, m_disp = int(total_min_global // 60), int(total_min_global % 60)
-    total_argent_service = argent_police + argent_rct
-    total_final = total_argent_service + p_staff + p_averis
+    total_brut = 15000 + calcul_primes
 
-    st.markdown(f"""
-    <div style="background-color: #1e1e1e; padding: 20px; border-radius: 10px; border: 1px solid #333; color: white; font-family: sans-serif;">
-        <div style="text-align: center; border-bottom: 1px solid #444; padding-bottom: 10px; margin-bottom: 15px;">
-            <h3 style="margin:0; color: #f1c40f;">RÉCAPITULATIF DE SERVICE</h3>
-            <span style="color: #888;">Agent : {agent_cible}</span>
-        </div>
+    # --- 2. INTERFACE (CLONE DU TERMINAL DE PAIE) ---
+    st.markdown(f"#### 📊 Fiche de Paie Estimée : {agent_cible}")
+    
+    # Utilisation du container avec bordure comme dans le terminal
+    with st.container(border=True):
+        col_rev1, col_rev2 = st.columns(2)
+
+        with col_rev1:
+            with st.container(border=True):
+                st.write("**💰 REVENUS (BRUT)**")
+                st.write(f"• Salaire de Base : 15,000$")
+                if primes_detail_list:
+                    for p in primes_detail_list: st.write(p)
+                st.markdown(f"**TOTAL BRUT : {int(total_brut)}$**")
+
+        with col_rev2:
+            with st.container(border=True):
+                st.write("**📉 INFOS SERVICE**")
+                st.write(f"• Temps Police : {int(min_police)} min")
+                st.write(f"• Temps RCT : {int(min_rct)} min")
+                st.write(f"• Statut : 🟢 En attente")
+                st.markdown(f"**CUMUL TEMPS : {int(min_police + min_rct)} min**")
+
+        st.divider()
         
-        <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
-            <span>⏱️ Temps Total Validé</span>
-            <b style="color: #f1c40f; font-size: 1.1em;">{h_disp}h {m_disp}min</b>
-        </div>
+        # Section des Metrics en bas (Clone exact des colonnes)
+        c1, c2, c3 = st.columns(3)
+        
+        # Solde actuel récupéré pour le visuel
+        solde_actuel = float(str(user_data["Solde"].values[0]).replace('$', '').replace(',', '')) if not user_data.empty else 0
+        
+        c1.metric("Solde Actuel", f"{int(solde_actuel)}$")
+        c2.metric("Gain Estimé", f"+{int(total_brut - 15000)}$", delta="Hors fixe 15k")
+        c3.metric("Total à Verser", f"{int(total_brut)}$", delta=f"+{int(total_brut)}$")
 
-        <div style="background: rgba(255,255,255,0.03); padding: 12px; border-radius: 8px; margin-bottom: 20px;">
-            {"<div style='display:flex; justify-content:space-between; margin-bottom:5px;'><span>🚔 Service Police</span><b>+" + str(int(argent_police)) + "$</b></div>" if argent_police > 0 else ""}
-            {"<div style='display:flex; justify-content:space-between; margin-bottom:5px;'><span>🛡️ Service RCT</span><b>+" + str(int(argent_rct)) + "$</b></div>" if argent_rct > 0 else ""}
-            {"<div style='display:flex; justify-content:space-between; margin-bottom:5px;'><span>⭐ Prime Staff</span><b>+4000$</b></div>" if p_staff > 0 else ""}
-            {"<div style='display:flex; justify-content:space-between;'><span>🎖️ Prime Averis</span><b>+2000$</b></div>" if p_averis > 0 else ""}
-        </div>
-
-        <div style="background: #2ecc71; color: black; padding: 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
-            <b style="font-size: 1.1em;">CUMUL ESTIMÉ</b>
-            <b style="font-size: 1.6em;">{int(total_final)}$</b>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    if total_final == 0:
-        st.warning("Aucune donnée de service trouvée pour cet agent.")
+    if total_brut == 15000 and (min_police + min_rct) == 0:
+        st.info("ℹ️ Cet agent n'a pas encore de temps de service validé cette semaine.")
 # --- SECTION 2 : SYSTÈME DE PAIE & ASSURANCES AUTOMATIQUES ---
 
 if st.session_state.get("user_auth") == "Staff":
