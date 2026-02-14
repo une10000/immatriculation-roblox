@@ -1305,102 +1305,119 @@ if st.session_state.user_auth == "Staff":
             st.error(f"Erreur Pointages : {e}")
 
         st.divider()
+# ======================================================================================
 # --- SECTION B : CUMUL DES HEURES (LOOK TERMINAL DE PAIE) ---
+# ======================================================================================
 st.subheader("📊 Cumul des Heures par Agent")
 
-# Initialisation des données
-liste_agents = sorted(df_b["Nom Roblox"].unique().tolist()) if not df_b.empty else []
-agent_cible = st.selectbox("Choisir un agent :", liste_agents, key="calc_hours_final")
+# Vérification de l'existence de df_admin pour éviter le NameError
+if 'df_admin' not in locals() and 'df_admin' not in globals():
+    st.error("⚠️ La base de données des services (df_admin) n'est pas chargée.")
+else:
+    # Initialisation des données
+    liste_agents = sorted(df_b["Nom Roblox"].unique().tolist()) if not df_b.empty else []
+    agent_cible = st.selectbox("Choisir un agent :", liste_agents, key="calc_hours_final")
 
-if agent_cible:
-    # 1. Extraction des minutes validées depuis df_admin
-    min_rct, min_police = 0, 0
-    user_logs = df_admin[(df_admin["nom"] == agent_cible) & (df_admin["statut"] == "Validé")]
-    
-    for _, row in user_logs.iterrows():
-        try:
-            t1 = datetime.strptime(str(row["début"]), "%d/%m/%Y %H:%M:%S")
-            t2 = datetime.strptime(str(row["fin"]), "%d/%m/%Y %H:%M:%S")
-            diff = (t2 - t1).total_seconds() / 60
-            job_name = str(row["job"]).upper()
-            if "RCT" in job_name: min_rct += diff
-            elif "POL" in job_name: min_police += diff
-        except: continue
-
-    # 2. Analyse du profil (Métiers et Solde)
-    user_data = df_b[df_b["Nom Roblox"] == agent_cible]
-    user_jobs_list = [j.strip() for j in str(user_data["Emploiement"].values[0]).split("/")] if not user_data.empty else []
-    
-    primes_detail_list = []
-    calcul_primes = 0
-    TEMPS_REQUIS = 1200 # 20 heures
-
-    # Logique de calcul par Grade
-    for job in user_jobs_list:
-        if job == "Police":
-            p_calc = int(3000 * min(min_police / TEMPS_REQUIS, 1.0))
-            primes_detail_list.append(f"• **Service Police** : +{p_calc}$ (Prorata)")
-            calcul_primes += p_calc
+    if agent_cible:
+        # 1. Extraction des minutes validées depuis df_admin
+        min_rct, min_police = 0, 0
+        # Filtrage sécurisé
+        user_logs = df_admin[(df_admin["nom"] == agent_cible) & (df_admin["statut"] == "Validé")]
         
-        elif job == "Agent RCT":
-            p_calc = int(2000 * min(min_rct / TEMPS_REQUIS, 1.0))
-            primes_detail_list.append(f"• **Service RCT** : +{p_calc}$ (Prorata)")
-            calcul_primes += p_calc
+        for _, row in user_logs.iterrows():
+            try:
+                # Gestion des formats de date
+                fmt = "%d/%m/%Y %H:%M:%S"
+                t1 = datetime.strptime(str(row["début"]), fmt)
+                t2 = datetime.strptime(str(row["fin"]), fmt)
+                diff = (t2 - t1).total_seconds() / 60
+                
+                job_name = str(row["job"]).upper()
+                if "RCT" in job_name: 
+                    min_rct += diff
+                elif "POL" in job_name: 
+                    min_police += diff
+            except: 
+                continue
+
+        # 2. Analyse du profil (Métiers et Primes)
+        user_data = df_b[df_b["Nom Roblox"] == agent_cible]
+        # Extraction propre de la liste des jobs
+        raw_jobs = str(user_data["Emploiement"].values[0]) if not user_data.empty else ""
+        user_jobs_list = [j.strip() for j in raw_jobs.split("/")] if raw_jobs else []
         
-        elif job == "Staff":
-            primes_detail_list.append(f"• **Prime Staff** : +4000$")
-            calcul_primes += 4000
+        primes_detail_list = []
+        calcul_primes = 0
+        TEMPS_REQUIS = 1200 # 20 heures
+
+        # Logique de calcul des bonus et primes
+        for job in user_jobs_list:
+            if job == "Police":
+                p_calc = int(3000 * min(min_police / TEMPS_REQUIS, 1.0))
+                primes_detail_list.append(f"• **Service Police** : +{p_calc}$ (Prorata)")
+                calcul_primes += p_calc
             
-        elif job == "Averis":
-            primes_detail_list.append(f"• **Prime Averis** : +2000$")
-            calcul_primes += 2000
+            elif job == "Agent RCT":
+                p_calc = int(2000 * min(min_rct / TEMPS_REQUIS, 1.0))
+                primes_detail_list.append(f"• **Service RCT** : +{p_calc}$ (Prorata)")
+                calcul_primes += p_calc
+            
+            elif job == "Staff":
+                primes_detail_list.append(f"• **Prime Staff** : +4000$")
+                calcul_primes += 4000
+                
+            elif job == "Averis":
+                primes_detail_list.append(f"• **Prime Averis** : +2000$")
+                calcul_primes += 2000
 
-        elif job == "Service Public":
-            primes_detail_list.append(f"• **Service Public** : +1000$")
-            calcul_primes += 1000
+            elif job == "Service Public":
+                primes_detail_list.append(f"• **Service Public** : +1000$")
+                calcul_primes += 1000
 
-    # Total incluant le salaire de départ de 15k
-    total_brut = 15000 + calcul_primes
+        # Salaire de départ mémorisé : 15,000$
+        salaire_base = 15000 
+        total_brut = salaire_base + calcul_primes
 
-    # 3. Rendu de l'Interface (Style Terminal)
-    st.markdown(f"#### 📊 Fiche de Paie Estimée : {agent_cible}")
-    
-    with st.container(border=True):
-        col_rev1, col_rev2 = st.columns(2)
-
-        with col_rev1:
-            with st.container(border=True):
-                st.write("**💰 REVENUS (BRUT)**")
-                st.write(f"• Salaire de Base : 15,000$")
-                # Affichage des primes (même si 0$ pour RCT/Police)
-                for p in primes_detail_list: 
-                    st.write(p)
-                st.markdown(f"**TOTAL BRUT : {int(total_brut)}$**")
-
-        with col_rev2:
-            with st.container(border=True):
-                st.write("**📉 INFOS SERVICE**")
-                st.write(f"• Temps Police : {int(min_police)} min / 1200")
-                st.write(f"• Temps RCT : {int(min_rct)} min / 1200")
-                st.write(f"• Statut : 🟢 En attente")
-                st.markdown(f"**CUMUL TOTAL : {int(min_police + min_rct)} min**")
-
-        st.divider()
+        # 3. Rendu de l'Interface
+        st.markdown(f"#### 📊 Fiche de Paie Estimée : {agent_cible}")
         
-        c1, c2 = st.columns(2)
-        
-        # Récupération propre du solde actuel
-        try:
-            val_solde = str(user_data["Solde"].values[0]).replace('$', '').replace(',', '')
-            solde_actuel = float(val_solde)
-        except:
-            solde_actuel = 0
-        
-        c1.metric("Solde Actuel", f"{int(solde_actuel)}$")
-        c2.metric("Gain Estimé (Total)", f"+{int(total_brut)}$", delta=f"+{int(calcul_primes)}$ Primes")
+        with st.container(border=True):
+            col_rev1, col_rev2 = st.columns(2)
 
-    if total_brut == 15000 and (min_police + min_rct) == 0:
-        st.info("ℹ️ Aucun service enregistré pour cet agent cette semaine.")
+            with col_rev1:
+                with st.container(border=True):
+                    st.write("**💰 REVENUS (BRUT)**")
+                    st.write(f"• Salaire de Base : {salaire_base:,}$")
+                    for p in primes_detail_list: 
+                        st.write(p)
+                    st.markdown(f"---")
+                    st.markdown(f"### TOTAL BRUT : {int(total_brut):,}$")
+
+            with col_rev2:
+                with st.container(border=True):
+                    st.write("**📉 INFOS SERVICE**")
+                    st.write(f"• Temps Police : {int(min_police)} min / 1200")
+                    st.write(f"• Temps RCT : {int(min_rct)} min / 1200")
+                    st.write(f"• Statut Paie : 🟢 Prêt")
+                    st.markdown(f"---")
+                    st.markdown(f"**CUMUL TOTAL : {int(min_police + min_rct)} min**")
+
+            st.divider()
+            
+            c1, c2 = st.columns(2)
+            
+            # Récupération propre du solde actuel en banque
+            try:
+                val_solde = str(user_data["Solde"].values[0]).replace('$', '').replace(',', '').strip()
+                solde_actuel = float(val_solde)
+            except:
+                solde_actuel = 0
+            
+            c1.metric("Solde Actuel en Banque", f"{int(solde_actuel):,}$")
+            c2.metric("Gain de la Semaine", f"+{int(total_brut):,}$", delta=f"{int(calcul_primes):,}$ Primes")
+
+        if total_brut == salaire_base and (min_police + min_rct) == 0:
+            st.info("ℹ️ Aucun service enregistré. Seul le salaire de base est affiché.")
 # --- SECTION 2 : SYSTÈME DE PAIE & ASSURANCES AUTOMATIQUES ---
 
 if st.session_state.get("user_auth") == "Staff":
