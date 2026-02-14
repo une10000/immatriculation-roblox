@@ -510,11 +510,12 @@ with st.container():
 with col2:
     b_data = df_b[df_b["Nom Roblox"] == target]
     if not b_data.empty:
+        # Affichage du solde et métier
         st.metric("SOLDE BANCAIRE", f"{b_data.iloc[0]['Solde']}$")
         current_jobs_raw = str(b_data.iloc[0]['Emploiement'])
         st.write(f"🏢 Métier : **{current_jobs_raw}**")
 
-        # --- MODULE DE CALCUL DE PAIE DÉTAILLÉ (SYNCHRONISÉ DANS COL2) ---
+        # --- MODULE DE CALCUL DE PAIE DÉTAILLÉ ---
         with st.expander("💳 Détails de ma prochaine paie"):
             # 1. RÉCUPÉRATION DES MINUTES DE SERVICE
             min_rct, min_police = 0, 0
@@ -574,7 +575,7 @@ with col2:
             est_brut = 15000 + primes_total
             est_net = est_brut - total_prelevements
 
-            # --- AFFICHAGE ---
+            # --- AFFICHAGE HTML ---
             offre_badge = '<span style="color: #00FF00; font-size: 0.8em;"> [TRIO RCT ✅]</span>' if c_rct >= 3 else ""
             jc_info = f'<div style="display: flex; justify-content: space-between; color: #e67e22; font-size: 0.9em;"><span>Taxe Jeune Conducteur :</span><b>-{taxe_jc}$</b></div>' if taxe_jc > 0 else ""
             
@@ -594,23 +595,30 @@ with col2:
                 </div>
             </div>
             """, unsafe_allow_html=True)
-                # --- PARTIE STAFF (Modification Métier) ---
-                if st.session_state.user_auth in ["Staff", "Admin"]:
-                    if st.button("✏️ Modifier le métier", key=f"edit_job_{target}", use_container_width=True):
-                        st.session_state[f"show_editor_{target}"] = not st.session_state.get(f"show_editor_{target}", False)
-                    
-                    if st.session_state.get(f"show_editor_{target}", False):
-                        with st.container(border=True):
-                            options_jobs = ["Sans-Emploi", "Agent RCT", "Averis", "Police", "Staff", "Service Public", "Entreprise Privée"]
-                            new_jobs = st.multiselect("Sélection :", options=options_jobs, default=[j.strip() for j in current_jobs_raw.split("/") if j.strip() in options_jobs])
-                            if st.button("💾 Sauver", key=f"save_j_{target}", type="primary"):
-                                df_b.at[df_b[df_b["Nom Roblox"] == target].index[0], "Emploiement"] = " / ".join(new_jobs) if new_jobs else "Sans-Emploi"
-                                cloud_conn.update(worksheet="Banque", data=df_b)
-                                st.session_state[f"show_editor_{target}"] = False
-                                st.cache_data.clear()
-                                st.rerun()
 
-                st.caption(f"📅 Arrivée : {b_data.iloc[0].get('Date d\'arrivée', 'Non spécifiée')}")
+        # --- PARTIE STAFF (A l'extérieur de l'expander mais dans col2) ---
+        if st.session_state.user_auth in ["Staff", "Admin"]:
+            st.write("---")
+            if st.button("✏️ Modifier le métier", key=f"edit_job_{target}", use_container_width=True):
+                st.session_state[f"show_editor_{target}"] = not st.session_state.get(f"show_editor_{target}", False)
+            
+            if st.session_state.get(f"show_editor_{target}", False):
+                with st.container(border=True):
+                    options_jobs = ["Sans-Emploi", "Agent RCT", "Averis", "Police", "Staff", "Service Public", "Entreprise Privée"]
+                    current_list = [j.strip() for j in current_jobs_raw.split("/") if j.strip() in options_jobs]
+                    new_jobs = st.multiselect("Sélection :", options=options_jobs, default=current_list)
+                    
+                    if st.button("💾 Sauver", key=f"save_j_{target}", type="primary", use_container_width=True):
+                        idx = df_b[df_b["Nom Roblox"] == target].index[0]
+                        df_b.at[idx, "Emploiement"] = " / ".join(new_jobs) if new_jobs else "Sans-Emploi"
+                        cloud_conn.update(worksheet="Banque", data=df_b)
+                        st.success("Métier mis à jour !")
+                        st.session_state[f"show_editor_{target}"] = False
+                        st.cache_data.clear()
+                        st.rerun()
+
+        # Date d'arrivée en bas de colonne
+        st.caption(f"📅 Arrivée : {b_data.iloc[0].get('Date d\'arrivée', 'Non spécifiée')}")
 # --- COLONNE 3 : ARCHIVES ---
         with col3:
             st.markdown("### 📁 ARCHIVES")
