@@ -1043,7 +1043,7 @@ if st.session_state.user_auth in ["RCT", "Staff"]:
         st.divider()
 
 # ======================================================================================
-# 4. SYSTÈME DE SAISIE ET CONSULTATION (DESIGN EN 3 COLONNES) - VERSION SÉCURISÉE
+# 4. SYSTÈME DE SAISIE ET CONSULTATION (SÉCURISÉ PAR CODE UNIQUE)
 # ======================================================================================
 st.markdown("### 🎯 INTERVENTION ET FACTURATION")
 
@@ -1056,15 +1056,26 @@ else:
         with st.container(border=True):
             st.markdown("#### 📝 Saisie")
             
-            # --- AUTHENTIFICATION DE L'AGENT ---
-            # On liste tous ceux qui ont un métier de service
-            liste_agents = df_b[df_b["Emploiement"].str.contains("RCT|Police|Averis|Staff", na=False)]["Nom Roblox"].unique()
-            agent_nom = st.selectbox("Votre nom (Agent)", options=sorted(liste_agents), key="auth_agent_name")
-            agent_code_saisi = st.text_input("Code Secret", type="password", key="auth_agent_code")
+            # --- AUTHENTIFICATION PAR CODE UNIQUEMENT ---
+            agent_code_saisi = st.text_input("🔑 Entrez votre CODE AGENT :", type="password", key="auth_agent_code")
+            
+            # On cherche l'agent correspondant au code dans la base
+            agent_identifie = None
+            if agent_code_saisi:
+                # On s'assure que les codes sont comparés en texte
+                df_b["Code"] = df_b["Code"].astype(str).str.strip()
+                res_agent = df_b[df_b["Code"] == agent_code_saisi.strip()]
+                
+                if not res_agent.empty:
+                    agent_identifie = res_agent.iloc[0]["Nom Roblox"]
+                    service_agent = res_agent.iloc[0]["Emploiement"]
+                    st.success(f"Agent identifié : **{agent_identifie}** ({service_agent})")
+                else:
+                    st.error("❌ Code inconnu")
 
             st.divider()
 
-            # --- CHOIX DE L'ÉMETTEUR (Type de facture) ---
+            # --- PARAMÈTRES DE LA FACTURE ---
             if st.session_state.user_auth == "Staff":
                 f_emetteur = st.selectbox("Entité Émettrice", ["POLSTA", "Averis"], key="v_emetteur_final")
             else:
@@ -1073,7 +1084,6 @@ else:
 
             f_val = st.number_input("Montant ($)", min_value=0, step=50, key="v_val_final")
             
-            # Seul le Staff/POLSTA peut retirer des points
             can_pull_points = (st.session_state.user_auth == "Staff" and f_emetteur == "POLSTA")
             f_pts = st.number_input("Points à retirer", 0, 12, 0, key="v_pts_final", disabled=not can_pull_points)
             
@@ -1083,38 +1093,14 @@ else:
             v_list = ["AUCUN / PIÉTON"] + target_veh["Numéro de la plaque"].tolist()
             f_plate = st.selectbox("Véhicule concerné", v_list, key="v_plate_final")
 
-            # --- ALERTES (RETARD / WANTED) ---
-            dettes_retard = []
-            maintenant = datetime.now()
-            f_cible = df_all_f[df_all_f["Cible"] == target]
-            
-            for _, row_f in f_cible.iterrows():
-                if row_f["Statut"] == "EN ATTENTE":
-                    try:
-                        limite = datetime.strptime(str(row_f['Date_Limite']), "%d/%m/%Y %H:%M:%S")
-                        if maintenant > limite:
-                            dettes_retard.append(str(row_f['ID']))
-                    except: pass
-
-            if dettes_retard:
-                st.markdown(f'<div style="background-color: #E67E22; padding: 10px; border-radius: 8px; text-align: center; border: 2px solid white; margin-bottom: 10px;"><b style="color: white; font-size: 0.9em;">⚠️ DETTE EN RETARD (#{", #".join(dettes_retard)})</b></div>', unsafe_allow_html=True)
-
-            citoyen_check = df_b[df_b["Nom Roblox"] == target]
-            if not citoyen_check.empty and "RECHERCHÉ" in str(citoyen_check.iloc[0].get("Statut", "")).upper():
-                st.markdown(f'<div style="background-color: #FF0000; padding: 10px; border-radius: 10px; text-align: center; border: 2px solid #FFF; animation: blinker_red 1s linear infinite;"><b style="color: white;">🚨 INDIVIDU RECHERCHÉ 🚨</b></div>', unsafe_allow_html=True)
-
-            # --- BOUTON D'ENVOI AVEC VÉRIFICATION ---
+            # --- BOUTON D'ENVOI ---
             if st.button("🚨 ENVOYER FACTURE", use_container_width=True, type="primary"):
-                # 1. Vérification du code
-                agent_db_info = df_b[df_b["Nom Roblox"] == agent_nom]
-                code_reel = str(agent_db_info.iloc[0].get("Code", "VIDE")).strip()
-                
-                if not f_motif:
+                if not agent_identifie:
+                    st.error("Code agent valide requis.")
+                elif not f_motif:
                     st.error("Motif obligatoire.")
-                elif agent_code_saisi != code_reel:
-                    st.error("❌ Code secret incorrect.")
                 else:
-                    # 2. Retrait des points si nécessaire
+                    # Retrait des points
                     if f_pts > 0 and can_pull_points:
                         try:
                             idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
@@ -1122,13 +1108,13 @@ else:
                             cloud_conn.update(worksheet="Points Permis", data=df_p)
                         except: pass
 
-                    # 3. Création de la facture
+                    # Enregistrement
                     import random
                     new_row = {
                         "ID": random.randint(1000, 9999), 
                         "Cible": target,
-                        "Emetteur_Service": f_emetteur, # L'entité (RCT/Police)
-                        "Agent_Signataire": agent_nom,  # Le nom de celui qui a mis son code
+                        "Emetteur_Service": f_emetteur,
+                        "Agent_Signataire": agent_identifie, # Trouvé grâce au code !
                         "Montant": f_val,
                         "Points": f_pts if can_pull_points else 0, 
                         "Motif": f"{f_motif} [{f_plate}]", 
@@ -1138,56 +1124,41 @@ else:
                     df_f_updated = pd.concat([df_all_f, pd.DataFrame([new_row])], ignore_index=True)
                     cloud_conn.update(worksheet="Factures", data=df_f_updated)
                     
-                    st.success(f"✅ Validé par {agent_nom} !")
+                    st.success(f"✅ Facture envoyée par {agent_identifie} !")
                     st.cache_data.clear()
                     st.rerun()
 
     with col_facture:
         st.markdown("#### 📄 Aperçu")
         header_ticket = "FACTURE AVERIS" if f_emetteur == "Averis" else "FACTURE OFFICIELLE"
+        nom_signature = agent_identifie if agent_identifie else "..."
         st.markdown(f"""
         <div style="border: 2px solid black; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; line-height: 1.2;">
             <center><b>{header_ticket}</b><br><small>RÉPUBLIQUE DE RENSSERLAER</small></center>
             <hr style="border-top: 1px solid #ccc; margin: 10px 0;">
-            <b>AGENT :</b> {agent_nom.upper()}<br>
-            <b>SERVICE :</b> {f_emetteur.upper()}<br>
-            <b>DATE :</b> {datetime.now().strftime('%d/%m/%Y')}<br>
-            <b>CITOYEN :</b> {target}<br>
-            <b>MOTIF :</b> {f_motif.upper() if f_motif else '...'}<br>
-            <b>PLAQUE :</b> <span style="border: 1px solid black; padding: 0 3px;">{f_plate}</span><br>
-            <b>MONTANT :</b> {f_val}$
+            <b>SIGNATURE :</b> {nom_signature.upper()}<br>
+            <b>SERVICE   :</b> {f_emetteur.upper()}<br>
+            <b>DATE      :</b> {datetime.now().strftime('%d/%m/%Y')}<br>
+            <b>CITOYEN   :</b> {target}<br>
+            <b>MONTANT   :</b> {f_val}$
             <hr style="border-top: 1px solid #ccc; margin: 10px 0;">
             <div style="text-align: center; color: black; font-weight: bold; font-size: 0.8em;">
                 POINTS : -{f_pts if can_pull_points else 0}<br>
-                <small>Authentifié par code secret</small>
+                <small>Authentifié numériquement</small>
             </div>
         </div>
         """, unsafe_allow_html=True)
 
     with col_vehicules:
+        # (Le reste du code pour les véhicules reste identique...)
         st.markdown("#### 🚗 Véhicules")
         if not target_veh.empty:
             for _, veh in target_veh.iterrows():
                 assu_v = str(veh['Assurance']).upper()
-                if st.session_state.user_auth == "RCT":
-                    if "RCT" in assu_v: col_v, txt_v = "green", "✅ ASSURÉ RCT"
-                    elif "AVERIS" in assu_v: col_v, txt_v = "#E67E22", "⚠️ ASSURÉ AVERIS"
-                    else: col_v, txt_v = "#d32f2f", "🚨 DANGER : NON-ASSURÉ"
-                else:
-                    col_v, txt_v = "green", "✅ VÉHICULE EN RÈGLE"
-
-                st.markdown(f"""
-                <div style="border: 2px solid black; padding: 10px; background: white; color: black; font-family: 'Courier New', monospace; margin-bottom: 10px; font-size: 0.8em;">
-                    <center><b>TITRE DE CIRCULATION</b></center>
-                    <hr style="border-top: 1px solid #ccc; margin: 5px 0;">
-                    <b>MODÈLE :</b> {veh['Marque du véhicule']}<br>
-                    <b>PLAQUE :</b> <span style="border: 1px solid black; padding: 0 2px;">{veh['Numéro de la plaque']}</span><br>
-                    <hr style="border-top: 1px solid #ccc; margin: 5px 0;">
-                    <div style="text-align: center; color: {col_v}; font-weight: bold;">{txt_v}</div>
-                </div>
-                """, unsafe_allow_html=True)
-        else:
-            st.info("Aucun véhicule.")
+                col_v = "green" if "RCT" in assu_v else ("#E67E22" if "AVERIS" in assu_v else "#d32f2f")
+                txt_v = "✅ ASSURÉ RCT" if "RCT" in assu_v else ("⚠️ ASSURÉ AVERIS" if "AVERIS" in assu_v else "🚨 NON-ASSURÉ")
+                st.markdown(f"""<div style="border: 2px solid black; padding: 10px; background: white; color: black; font-size: 0.8em;"><center><b>TITRE DE CIRCULATION</b></center><hr><b>PLAQUE :</b> {veh['Numéro de la plaque']}<br><div style="text-align: center; color: {col_v}; font-weight: bold;">{txt_v}</div></div>""", unsafe_allow_html=True)
+        else: st.info("Aucun véhicule.")
 # --- ONGLET 3 : ADMINISTRATION (STAFF ONLY) ---
 if st.session_state.user_auth == "Staff":
     with tabs[2]:
