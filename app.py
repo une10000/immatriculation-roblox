@@ -1005,68 +1005,97 @@ with tabs[1]:
             st.warning("⚠️ Sélectionnez un citoyen en haut de la page.")
         else:
             st.markdown(f"### ⚡ INTERVENTION : {target.upper()}")
-            col_form, col_ticket, col_db = st.columns([1.2, 1, 1])
+            
+            # Vérification de l'identité de l'agent via le code saisi au début de l'onglet
+            # agent_identifie est défini dans la section 1 (Authentification & Pointage)
+            if not agent_identifie:
+                st.error("🔒 **Accès bloqué :** Veuillez saisir votre **Code Agent** dans le module de pointage en haut pour intervenir.")
+            else:
+                col_form, col_ticket, col_db = st.columns([1.2, 1, 1])
 
-            # FORMULAIRE
-            with col_form:
-                with st.container(border=True):
-                    f_em = st.selectbox("Émetteur", ["POLSTA", "Averis", "RCT"], key="em_ui") if st.session_state.user_auth == "Staff" else "RCT"
-                    f_val = st.number_input("Amende ($)", 0, 100000, 500, step=100)
-                    can_pts = (st.session_state.user_auth == "Staff" and f_em == "POLSTA")
-                    f_pts = st.slider("Retrait de points", 0, 12, 0, disabled=not can_pts)
-                    f_mot = st.text_area("Motif détaillé", key="mot_ui")
+                # FORMULAIRE
+                with col_form:
+                    with st.container(border=True):
+                        # Choix de l'émetteur selon le grade
+                        if st.session_state.user_auth == "Staff":
+                            f_em = st.selectbox("Émetteur", ["POLSTA", "Averis", "RCT"], key="em_ui")
+                        else:
+                            f_em = "RCT"
+                            st.info("Émetteur : RCT (Défaut)")
+
+                        f_val = st.number_input("Amende ($)", 0, 100000, 500, step=100)
+                        
+                        # Seul le Staff en mode POLSTA peut retirer des points
+                        can_pts = (st.session_state.user_auth == "Staff" and f_em == "POLSTA")
+                        f_pts = st.slider("Retrait de points", 0, 12, 0, disabled=not can_pts)
+                        
+                        f_mot = st.text_area("Motif détaillé", key="mot_ui")
+                        
+                        # Récupération des plaques du citoyen ciblé
+                        t_veh = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
+                        f_plaq = st.selectbox("Véhicule lié", ["AUCUN"] + t_veh["Numéro de la plaque"].tolist())
+
+                        if st.button("🚨 VALIDER L'INTERVENTION", use_container_width=True, type="primary"):
+                            if f_mot:
+                                with st.spinner("Transmission au central..."):
+                                    import random
+                                    df_all_f = cloud_conn.read(worksheet="Factures").fillna("")
+                                    
+                                    new_f = {
+                                        "ID": random.randint(10000, 99999),
+                                        "Cible": target,
+                                        "Emetteur": f_em,
+                                        "Agent_Signataire": agent_identifie, # Utilise le nom lié au Code Staff
+                                        "Montant": f_val,
+                                        "Points": f_pts if can_pts else 0,
+                                        "Motif": f"{f_mot} [{f_plaq}]",
+                                        "Statut": "EN ATTENTE",
+                                        "Date_Emission": datetime.now().strftime("%d/%m/%Y %H:%M"),
+                                        "Date_Limite": (datetime.now() + timedelta(hours=24)).strftime("%d/%m/%Y %H:%M")
+                                    }
+                                    
+                                    # Déduction immédiate des points si autorisé
+                                    if f_pts > 0 and can_pts:
+                                        try:
+                                            idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
+                                            current_pts = int(df_p.at[idx_p, "PTS"])
+                                            df_p.at[idx_p, "PTS"] = max(0, current_pts - f_pts)
+                                            cloud_conn.update(worksheet="Points Permis", data=df_p)
+                                        except: pass
+                                    
+                                    # Enregistrement de la facture
+                                    cloud_conn.update(worksheet="Factures", data=pd.concat([df_all_f, pd.DataFrame([new_f])], ignore_index=True))
+                                    
+                                    # Log d'audit
+                                    if "record_log" in globals():
+                                        record_log(f_em, f"Intervention sur {target} par {agent_identifie} ({f_val}$)")
+                                    
+                                    st.success(f"✅ Intervention enregistrée par l'agent {agent_identifie}")
+                                    time.sleep(1)
+                                    st.rerun()
+                            else:
+                                st.error("❌ Le motif est obligatoire.")
+
+                # TICKET VISUEL (Aperçu temps réel)
+                with col_ticket:
+                    pts_t = "N/A"
+                    try: pts_t = df_p[df_p["Nom Roblox"] == target].iloc[0]["PTS"]
+                    except: pass
                     
-                    t_veh = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
-                    f_plaq = st.selectbox("Véhicule", ["AUCUN"] + t_veh["Numéro de la plaque"].tolist())
-
-                    if st.button("🚨 VALIDER L'INTERVENTION", use_container_width=True, type="primary"):
-                        if agent_identifie and f_mot:
-                            import random
-                            df_all_f = cloud_conn.read(worksheet="Factures").fillna("")
-                            
-                            new_f = {
-                                "ID": random.randint(10000, 99999),
-                                "Cible": target,
-                                "Emetteur": f_em,
-                                "Agent_Signataire": agent_identifie,
-                                "Montant": f_val,
-                                "Points": f_pts if can_pts else 0,
-                                "Motif": f"{f_mot} [{f_plaq}]",
-                                "Statut": "EN ATTENTE",
-                                "Date_Emission": datetime.now().strftime("%d/%m/%Y %H:%M"),
-                                "Date_Limite": (datetime.now() + timedelta(hours=24)).strftime("%d/%m/%Y %H:%M")
-                            }
-                            
-                            if f_pts > 0 and can_pts:
-                                try:
-                                    idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
-                                    df_p.at[idx_p, "PTS"] = max(0, int(df_p.at[idx_p, "PTS"]) - f_pts)
-                                    cloud_conn.update(worksheet="Points Permis", data=df_p)
-                                except: pass
-                            
-                            cloud_conn.update(worksheet="Factures", data=pd.concat([df_all_f, pd.DataFrame([new_f])], ignore_index=True))
-                            st.success("Enregistré !"); time.sleep(1); st.rerun()
-                        else: st.error("L'agent doit être identifié (Code en haut).")
-
-            # TICKET VISUEL
-            with col_ticket:
-                pts_t = "N/A"
-                try: pts_t = df_p[df_p["Nom Roblox"] == target].iloc[0]["PTS"]
-                except: pass
-                
-                st.markdown(f"""
-                <div style="background:white; padding:15px; border:2px solid black; color:black; font-family:monospace; line-height:1;">
-                    <center><b>REPRÉSENTANT DE LA LOI</b><br>---</center><br>
-                    AGENT: {agent_identifie if agent_identifie else '???'}<br>
-                    CIBLE: {target}<br>
-                    DATE: {datetime.now().strftime('%d/%m/%Y')}<br><br>
-                    <b>AMENDE: {f_val}$</b><br>
-                    <b>POINTS: -{f_pts}</b><br><hr>
-                    MOTIF: {f_mot[:50]}...<br><hr>
-                    <center><small>RESTANT: {pts_t} PTS</small></center>
-                </div>
-                """, unsafe_allow_html=True)
-
+                    st.markdown(f"""
+                    <div style="background:white; padding:15px; border:2px solid black; color:black; font-family:monospace; line-height:1.2; border-radius:5px;">
+                        <center><b style="font-size:14px;">📜 PROCÈS-VERBAL</b><br>
+                        <small>SERVICE DES CONTRAVENTIONS</small></center><br>
+                        <b>AGENT :</b> {agent_identifie}<br>
+                        <b>CONTREVENANT :</b> {target}<br>
+                        <b>UNITÉ :</b> {f_em}<br>
+                        <b>DATE :</b> {datetime.now().strftime('%d/%m/%Y')}<br><hr>
+                        <b style="color:red;">AMENDE : {f_val}$</b><br>
+                        <b style="color:red;">POINTS : -{f_pts}</b><br><hr>
+                        <b>MOTIF :</b><br>{f_mot if f_mot else '...'}<br><hr>
+                        <center><small>SOLDE PERMIS ACTUEL : {pts_t} PTS</small></center>
+                    </div>
+                    """, unsafe_allow_html=True)
             # VÉHICULES & HISTORIQUE
             with col_db:
                 st.markdown("🚗 **GARAGE DU CITOYEN**")
