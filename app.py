@@ -600,7 +600,7 @@ if not mes_factures.empty:
             timer_info = "⌛ Délai : 24 heures"; t_color = "#555"
 
         # 2. IDENTIFICATION ÉMETTEUR
-        emetteur_label = str(fac.get('Emetteur_Service', fac.get('Emetteur', 'INCONNU')))
+        emetteur_label = str(fac.get('Emetteur', fac.get('Emetteur', 'INCONNU')))
         if "POL" in emetteur_label.upper(): prefix_name = "POLICE NATIONALE"
         elif "AVERIS" in emetteur_label.upper(): prefix_name = "SERVICES AVERIS"
         else: prefix_name = "RÉSEAU RCT"
@@ -1193,7 +1193,7 @@ else:
                     new_row = {
                         "ID": random.randint(1000, 9999), 
                         "Cible": target,
-                        "Emetteur_Service": f_emetteur,
+                        "Emetteur": f_emetteur,
                         "Agent_Signataire": nom_agent, # Enregistre ton code (RCT-01, etc.)
                         "Montant": f_val,
                         "Points": f_pts if can_pull_points else 0, 
