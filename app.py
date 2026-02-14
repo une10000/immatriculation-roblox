@@ -1547,29 +1547,33 @@ if st.session_state.get("user_auth") == "Staff":
                     
                     st.success("✅ Virement effectué !"); st.balloons(); st.cache_data.clear(); time.sleep(1); st.rerun()
                 except Exception as e: st.error(f"Erreur : {e}")
-        # --- SECTION 4 : JOURNAUX D'AUDIT & STATISTIQUES ---
-        col_end_1, col_end_2 = st.columns([2, 1])
-
-        with col_end_1:
-            st.subheader("📜 Journaux d'Audit Staff")
+        # --- SECTION 3 : LOGS ET STATISTIQUES ---
+        st.divider()
+        col_admin_left, col_admin_right = st.columns(2)
+        
+        with col_admin_left:
+            st.markdown("### 📜 Journaux d'Audit")
             with st.container(border=True):
                 if "audit_logs" in st.session_state and st.session_state.audit_logs:
-                    st.code("\n".join(list(reversed(st.session_state.audit_logs))), language="bash")
-                    if st.button("🗑️ Vider les logs"): st.session_state.audit_logs = []; st.rerun()
-                else: st.info("Aucun log.")
+                    log_text = "\n".join(list(reversed(st.session_state.audit_logs)))
+                    st.code(log_text, language="bash")
+                    if st.button("🗑️ EFFACER LES LOGS", use_container_width=True):
+                        st.session_state.audit_logs = []
+                        st.rerun()
+                else:
+                    st.info("Aucune activité enregistrée.")
 
-        with col_end_2:
-            st.subheader("📊 État du Système")
+        with col_admin_right:
+            st.markdown("### 📊 État du Système")
             with st.container(border=True):
-                st.write(f"👥 Citoyens : **{len(df_b)}**")
-                st.write(f"🚗 Véhicules : **{len(df_i)}**")
-                st.write(f"📋 Logs d'heures : **{len(df_clock)}**")
+                st.success(f"👥 Citoyens enregistrés : {len(df_b)}")
+                st.info(f"🚗 Véhicules en base : {len(df_i)}")
+                st.warning(f"🪪 Permis actifs : {len(df_p)}")
                 st.divider()
-                if st.button("♻️ FORCER SYNCHRO", use_container_width=True):
-                    st.cache_data.clear(); st.rerun()
+                if st.button("♻️ FORCER LA SYNCHRO", use_container_width=True):
+                    st.cache_data.clear()
+                    st.rerun()
 
-    else:
-        st.warning("🔒 Accès Administration : Staff uniquement.")
 # ======================================================================================
 # 8. PIED DE PAGE
 # ======================================================================================
