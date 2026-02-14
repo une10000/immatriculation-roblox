@@ -1259,60 +1259,74 @@ else:
 # --- ONGLET 3 : ADMINISTRATION (STAFF ONLY) ---
 if st.session_state.user_auth == "Staff":
     with tabs[2]:
-        st.markdown('<div class="header-box"><h2>🛠️ VALIDATION DES SERVICES</h2></div>', unsafe_allow_html=True)
+        st.markdown('<div class="header-box"><h2>🛠️ ADMINISTRATION</h2></div>', unsafe_allow_html=True)
         
+        # --- SECTION A : VALIDATION DES SERVICES ---
+        st.subheader("🛡️ Validation des Pointages")
         try:
-            # 1. Lecture fraîche du Sheets pour voir les pointages
-            # On utilise ttl=0 pour être sûr de voir les demandes instantanément
-            df_admin_pnt = cloud_conn.read(worksheet="Pointage", ttl=0)
-            df_admin_pnt.columns = df_admin_pnt.columns.str.strip()
+            df_admin = cloud_conn.read(worksheet="Pointage", ttl=0)
+            df_admin.columns = df_admin.columns.str.strip()
             
-            # 2. On filtre uniquement ceux qui sont "À valider" 
-            # (Ceux qui ont cliqué sur FIN)
-            a_valider = df_admin_pnt[df_admin_pnt["Statut"] == "À valider"].copy()
+            # On affiche uniquement les demandes en attente
+            attente = df_admin[df_admin["Statut"] == "À valider"]
             
-            if not a_valider.empty:
-                st.write(f"### ⏳ {len(a_valider)} service(s) en attente de validation")
-                
-                for i, row in a_valider.iterrows():
-                    # Création d'une carte pour chaque demande
+            if not attente.empty:
+                for i, row in attente.iterrows():
                     with st.container(border=True):
-                        col_info, col_actions = st.columns([3, 2])
+                        c1, c2 = st.columns([3, 1])
+                        c1.write(f"**Agent :** {row['Nom']} | **Job :** {row['Job']} | **Fin :** {row['Fin']}")
                         
-                        with col_info:
-                            st.markdown(f"**Agent :** {row['Nom']}")
-                            st.markdown(f"**Service :** {row['Job']}")
-                            st.caption(f"Fin de service enregistrée à : {row['Fin']}")
-                        
-                        with col_actions:
-                            st.write("") # Espace
-                            btn_v, btn_r = st.columns(2)
-                            
-                            # BOUTON CONFIRMER
-                            if btn_v.button("✔️", key=f"v_{i}", help="Confirmer le service", type="primary", use_container_width=True):
-                                df_admin_pnt.at[i, "Statut"] = "Validé"
-                                cloud_conn.update(worksheet="Pointage", data=df_admin_pnt)
-                                st.success(f"Service de {row['Nom']} validé !")
-                                time.sleep(1)
-                                st.rerun()
-                                
-                            # BOUTON REFUSER
-                            if btn_r.button("❌", key=f"r_{i}", help="Refuser le service", use_container_width=True):
-                                df_admin_pnt.at[i, "Statut"] = "Refusé"
-                                cloud_conn.update(worksheet="Pointage", data=df_admin_pnt)
-                                st.error(f"Service de {row['Nom']} refusé.")
-                                time.sleep(1)
-                                st.rerun()
+                        v_col, r_col = c2.columns(2)
+                        if v_col.button("✔️", key=f"v_{i}"):
+                            df_admin.at[i, "Statut"] = "Validé"
+                            cloud_conn.update(worksheet="Pointage", data=df_admin)
+                            st.rerun()
+                        if r_col.button("❌", key=f"r_{i}"):
+                            df_admin.at[i, "Statut"] = "Refusé"
+                            cloud_conn.update(worksheet="Pointage", data=df_admin)
+                            st.rerun()
             else:
-                st.info("⛱️ Aucun service en attente de validation pour le moment.")
-                
-            # Optionnel : Afficher un petit historique des 5 derniers validés en dessous
-            with st.expander("📜 Voir les derniers services traités"):
-                historique = df_admin_pnt[df_admin_pnt["Statut"].isin(["Validé", "Refusé"])].tail(10)
-                st.table(historique[["Nom", "Job", "Fin", "Statut"]])
-
+                st.info("Aucun service en attente.")
         except Exception as e:
-            st.error(f"Erreur lors de l'accès aux pointages : {e}")
+            st.error(f"Erreur Validation : {e}")
+
+        st.divider()
+
+        # --- SECTION B : CALCULATEUR D'HEURES TOTALES ---
+        st.subheader("📊 Cumul des Heures par Agent")
+        
+        # On récupère la liste des agents qui ont des codes (df_b vient de ton onglet database)
+        liste_agents = sorted(df_b["Nom Roblox"].unique().tolist())
+        agent_cible = st.selectbox("Choisir un agent pour voir son total :", liste_agents)
+        
+        if agent_cible:
+            # On filtre les logs VALIDÉS pour cet agent
+            logs_valides = df_admin[(df_admin["Nom"] == agent_cible) & (df_admin["Statut"] == "Validé")]
+            
+            total_minutes = 0
+            
+            # On parcourt le tableau pour calculer la durée entre chaque IN et le OUT suivant
+            for i in range(len(df_admin) - 1):
+                row_actuelle = df_admin.iloc[i]
+                row_suivante = df_admin.iloc[i+1]
+                
+                if row_actuelle["Nom"] == agent_cible and row_actuelle["Action"] == "IN":
+                    if row_suivante["Nom"] == agent_cible and row_suivante["Action"] == "OUT" and row_suivante["Statut"] == "Validé":
+                        try:
+                            # Conversion des textes en vraies dates pour le calcul
+                            t1 = datetime.strptime(row_actuelle["Début"], "%d/%m/%Y %H:%M:%S")
+                            t2 = datetime.strptime(row_suivante["Fin"], "%d/%m/%Y %H:%M:%S")
+                            diff = (t2 - t1).total_seconds() / 60
+                            total_minutes += diff
+                        except:
+                            continue
+            
+            heures = int(total_minutes // 60)
+            minutes = int(total_minutes % 60)
+            
+            st.metric(f"Temps de service total (Validé)", f"{heures}h {minutes}min")
+            if total_minutes > 0:
+                st.write(f"💰 Estimation paie : **{int(total_minutes * 10)} $** (base 10$/min)") # Exemple de calcul
         # --- SECTION 1 : CRÉATION DE PROFIL ---
         st.divider()
         st.markdown("### 👤 Création de Dossier Citoyen")
