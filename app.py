@@ -1479,15 +1479,12 @@ with tabs[2]:
                         if cout_rct > 0: add_money("une10000", cout_rct)
                         if cout_averis > 0: add_money("Moune2010", cout_averis)
                         
-                        # C. Reset Points & Validation Immatriculations
-                        # On remet les points à 25
+# C. Reset Points & Validation Immatriculations
                         if target_paie in df_p["Nom Roblox"].values:
                             idx_p = df_p[df_p["Nom Roblox"] == target_paie].index[0]
                             df_p.at[idx_p, "PTS"] = 25
                         
-                        # On marque les véhicules comme payés (visuel check)
-                        # (Optionnel selon tes besoins, ici on laisse tel quel ou on ajoute un flag)
-# D. Archivage des heures
+                        # D. Archivage des heures
                         for idx_log in logs_user.index:
                             df_admin_clock.at[idx_log, "statut"] = "Payé"
                         
@@ -1496,7 +1493,7 @@ with tabs[2]:
                         cloud_conn.update(worksheet="Points Permis", data=df_p)
                         cloud_conn.update(worksheet="Clock", data=df_admin_clock)
                         
-                        # AJOUT AU LOG (Avant le rerun pour que ce soit enregistré)
+                        # AJOUT AU LOG (Avant le rerun)
                         if "audit_logs" not in st.session_state:
                             st.session_state.audit_logs = []
                         st.session_state.audit_logs.append(f"Paie effectuée pour {target_paie} ({total_net:,.0f}$)")
@@ -1504,6 +1501,7 @@ with tabs[2]:
                         st.success("✅ Virement effectué, patrons payés et compteurs remis à zéro !")
                         time.sleep(2)
                         st.rerun()
+
                 except Exception as e:
                     st.error(f"⚠️ Erreur : {e}")
 
