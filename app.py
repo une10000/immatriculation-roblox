@@ -940,86 +940,82 @@ with tabs[0]:
         </div>
         """
         st.components.v1.html(ticket_html, height=500)
-# ======================================================================================
-# --- ONGLET 2 : SERVICES AGENTS (VERSION COMPLÈTE & DÉTAILLÉE) ---
-# ======================================================================================
 # --- ONGLET 2 : SERVICES AGENTS ---
-if len(tabs) > 1: # On vérifie si l'onglet a été créé (RCT ou Staff)
+if len(tabs) > 1:
     with tabs[1]:
-        # On peut garder ta sécurité supplémentaire par précaution
         roles_autorises = ["RCT", "Averis", "Police", "Staff"]
         if any(r in st.session_state.user_auth for r in roles_autorises):
             
-# ======================================================================================
-        # --- 1. AUTHENTIFICATION & POINTAGE ---
-        # ======================================================================================
-        with st.container(border=True):
-            c_auth, c_stats = st.columns([1, 2.5])
-            
-            with c_auth:
-                agent_code_saisi = st.text_input("🔑 Code Agent", type="password", key="main_agent_auth")
-            
-            agent_identifie = None
-            en_service = False
-            
-            if agent_code_saisi:
-                df_b.columns = df_b.columns.str.strip()
-                df_b["Code_Clean"] = df_b["Code"].astype(str).apply(lambda x: x.strip().split('.')[0])
-                res_agent = df_b[df_b["Code_Clean"] == agent_code_saisi.strip()]
+            # --- 1. AUTHENTIFICATION & POINTAGE ---
+            with st.container(border=True):
+                c_auth, c_stats = st.columns([1, 2.5])
                 
-                if not res_agent.empty:
-                    agent_identifie = res_agent.iloc[0]["Nom Roblox"]
+                with c_auth:
+                    agent_code_saisi = st.text_input("🔑 Code Agent", type="password", key="main_agent_auth")
+                
+                agent_identifie = None
+                en_service = False
+                
+                if agent_code_saisi:
+                    # Nettoyage des données
+                    df_b.columns = df_b.columns.str.strip()
+                    df_b["Code_Clean"] = df_b["Code"].astype(str).apply(lambda x: x.strip().split('.')[0])
+                    res_agent = df_b[df_b["Code_Clean"] == agent_code_saisi.strip()]
                     
-                    df_clock = cloud_conn.read(worksheet="Clock", ttl=0).fillna("")
-                    df_clock.columns = df_clock.columns.str.strip().str.lower()
-                    session_active = df_clock[(df_clock["nom"] == agent_identifie) & (df_clock["statut"] == "en cours")]
-                    en_service = not session_active.empty
-
-                    with c_stats:
-                        st.markdown(f"### 🎖️ Agent : {agent_identifie}")
-                        h_actuelle = datetime.now(timezone(timedelta(hours=1))).strftime("%H:%M")
-                        m_actuelle, m_debut, m_fin = st.columns(3)
-                        m_actuelle.metric("Heure Actuelle", h_actuelle)
+                    if not res_agent.empty:
+                        agent_identifie = res_agent.iloc[0]["Nom Roblox"]
                         
-                        if en_service:
-                            h_deb_brute = session_active.iloc[-1]['début']
-                            h_deb_clean = h_deb_brute.split(' ')[1][:5] if ' ' in h_deb_brute else h_deb_brute[:5]
-                            m_debut.metric("Heure de Début", h_deb_clean)
-                            try:
-                                diff = datetime.now(timezone(timedelta(hours=1))) - datetime.strptime(h_deb_brute, "%d/%m/%Y %H:%M:%S").replace(tzinfo=timezone(timedelta(hours=1)))
-                                duree_min = int(diff.total_seconds() / 60)
-                                m_fin.metric("Temps de Service", f"{duree_min} min")
-                            except:
-                                m_fin.metric("Temps de Service", "Calcul...")
+                        # Lecture Clock
+                        df_clock = cloud_conn.read(worksheet="Clock", ttl=0).fillna("")
+                        df_clock.columns = df_clock.columns.str.strip().str.lower()
+                        session_active = df_clock[(df_clock["nom"] == agent_identifie) & (df_clock["statut"] == "en cours")]
+                        en_service = not session_active.empty
+
+                        with c_stats:
+                            st.markdown(f"### 🎖️ Agent : {agent_identifie}")
+                            h_actuelle = datetime.now(timezone(timedelta(hours=1))).strftime("%H:%M")
+                            m_actuelle, m_debut, m_fin = st.columns(3)
+                            m_actuelle.metric("Heure Actuelle", h_actuelle)
+                            
+                            if en_service:
+                                h_deb_brute = session_active.iloc[-1]['début']
+                                h_deb_clean = h_deb_brute.split(' ')[1][:5] if ' ' in h_deb_brute else h_deb_brute[:5]
+                                m_debut.metric("Heure de Début", h_deb_clean)
+                                try:
+                                    diff = datetime.now(timezone(timedelta(hours=1))) - datetime.strptime(h_deb_brute, "%d/%m/%Y %H:%M:%S").replace(tzinfo=timezone(timedelta(hours=1)))
+                                    duree_min = int(diff.total_seconds() / 60)
+                                    m_fin.metric("Temps de Service", f"{duree_min} min")
+                                except:
+                                    m_fin.metric("Temps de Service", "Calcul...")
+                            else:
+                                m_debut.metric("Heure de Début", "--:--")
+                                m_fin.metric("Temps de Service", "0 min")
+
+                        st.divider()
+
+                        # --- LOGIQUE DE JOB AUTO ---
+                        job_auto = "POLSTA" if st.session_state.user_auth == "Staff" else "RCT"
+                        if "Averis" in st.session_state.user_auth: job_auto = "Averis"
+                        
+                        if not en_service:
+                            st.info(f"💡 **Information :** Vous êtes connecté en tant que **{job_auto}**.")
+                            if st.button(f"▶️ DÉBUT DE SERVICE ({job_auto})", use_container_width=True, type="primary"):
+                                h_deb = datetime.now(timezone(timedelta(hours=1))).strftime("%d/%m/%Y %H:%M:%S")
+                                new_row = pd.DataFrame([{"nom": agent_identifie, "action": "SERVICE", "job": job_auto, "début": h_deb, "fin": "", "statut": "en cours"}])
+                                cloud_conn.update(worksheet="Clock", data=pd.concat([df_clock, new_row], ignore_index=True))
+                                st.rerun()
                         else:
-                            m_debut.metric("Heure de Début", "--:--")
-                            m_fin.metric("Temps de Service", "0 min")
-
-                    st.divider()
-
-                    # --- LOGIQUE DE JOB AUTO ---
-                    job_auto = "POLSTA" if st.session_state.user_auth == "Staff" else "RCT"
-                    if "Averis" in st.session_state.user_auth: job_auto = "Averis"
-                    
-                    if not en_service:
-                        st.info(f"💡 **Information :** Vous êtes connecté en tant que **{job_auto}**. Cliquez sur le bouton pour débuter votre service.")
-                        if st.button(f"▶️ DÉBUT DE SERVICE ({job_auto})", use_container_width=True, type="primary"):
-                            h_deb = datetime.now(timezone(timedelta(hours=1))).strftime("%d/%m/%Y %H:%M:%S")
-                            new_row = pd.DataFrame([{"nom": agent_identifie, "action": "SERVICE", "job": job_auto, "début": h_deb, "fin": "", "statut": "en cours"}])
-                            cloud_conn.update(worksheet="Clock", data=pd.concat([df_clock, new_row], ignore_index=True))
-                            st.rerun()
+                            st.warning(f"🚨 **Information :** Session **{job_auto}** en cours.")
+                            if st.button(f"⏹️ FIN DE SERVICE ({job_auto})", use_container_width=True):
+                                h_fin = datetime.now(timezone(timedelta(hours=1))).strftime("%d/%m/%Y %H:%M:%S")
+                                df_clock.at[session_active.index[-1], "fin"] = h_fin
+                                df_clock.at[session_active.index[-1], "statut"] = "à valider"
+                                cloud_conn.update(worksheet="Clock", data=df_clock)
+                                st.success(f"✅ Session {job_auto} enregistrée !")
+                                time.sleep(1)
+                                st.rerun()
                     else:
-                        st.warning(f"🚨 **Information :** Session **{job_auto}** en cours. N'oubliez pas de terminer votre service pour valider vos minutes.")
-                        if st.button(f"⏹️ FIN DE SERVICE ({job_auto})", use_container_width=True):
-                            h_fin = datetime.now(timezone(timedelta(hours=1))).strftime("%d/%m/%Y %H:%M:%S")
-                            df_clock.at[session_active.index[-1], "fin"] = h_fin
-                            df_clock.at[session_active.index[-1], "statut"] = "à valider"
-                            cloud_conn.update(worksheet="Clock", data=df_clock)
-                            st.success(f"✅ Session {job_auto} enregistrée !")
-                            time.sleep(1)
-                            st.rerun()
-                else:
-                    st.error("❌ Code Agent Invalide")
+                        st.error("❌ Code Agent Invalide")
         # --- 2. RECHERCHE & MANDATS ---
         st.markdown("### 🔍 MANDATS & RECHERCHE")
         
