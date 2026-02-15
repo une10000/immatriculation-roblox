@@ -917,16 +917,11 @@ with tabs[0]:
         """
         st.components.v1.html(ticket_html, height=500)
 # ======================================================================================
-# --- ONGLET 2 : SERVICES AGENTS (TERMINAL UNIFIÉ) ---
-# ======================================================================================
-# ======================================================================================
-# --- ONGLET 2 : SERVICES AGENTS (TERMINAL UNIFIÉ) ---
-# ======================================================================================
-# --- ONGLET 2 : SERVICES AGENTS (MODULE COMPLET AVEC HORLOGE) ---
+# --- ONGLET 2 : SERVICES AGENTS (MODULE ÉPURÉ) ---
 # ======================================================================================
 with tabs[1]:
     if st.session_state.user_auth in ["RCT", "Staff"]:
-        # --- 1. AUTHENTIFICATION & POINTAGE TEMPS RÉEL ---
+        # --- 1. AUTHENTIFICATION & POINTAGE HORAIRE ---
         with st.container(border=True):
             c_auth, c_stats = st.columns([1, 2])
             
@@ -944,54 +939,56 @@ with tabs[1]:
                 if not res_agent.empty:
                     agent_identifie = res_agent.iloc[0]["Nom Roblox"]
                     
-                    # Lecture des pointages
+                    # Lecture des données de pointage
                     df_clock = cloud_conn.read(worksheet="Clock", ttl=0).fillna("")
                     df_clock.columns = df_clock.columns.str.strip().str.lower()
                     session_active = df_clock[(df_clock["nom"] == agent_identifie) & (df_clock["statut"] == "en cours")]
                     en_service = not session_active.empty
 
-                    # --- AFFICHAGE DES HEURES (Le "Truc" que tu préférais) ---
+                    # --- AFFICHAGE DES MÉTRIQUES (Début, Fin/Actuelle, Temps) ---
                     with c_stats:
                         h_actuelle = datetime.now(timezone(timedelta(hours=1))).strftime("%H:%M:%S")
-                        
                         m1, m2, m3 = st.columns(3)
+                        
                         if en_service:
-                            h_debut_brute = session_active.iloc[-1]['début']
-                            # Extraction de l'heure pour l'affichage court
-                            h_debut_clean = h_debut_brute.split(' ')[1] if ' ' in h_debut_brute else h_debut_brute
+                            h_deb_brute = session_active.iloc[-1]['début']
+                            h_deb_clean = h_deb_brute.split(' ')[1] if ' ' in h_deb_brute else h_deb_brute
                             
-                            m1.metric("Début", h_debut_clean)
+                            m1.metric("Début", h_deb_clean)
                             m2.metric("Heure Actuelle", h_actuelle)
-                            # Calcul simple de durée
                             try:
-                                diff = datetime.now(timezone(timedelta(hours=1))) - datetime.strptime(h_debut_brute, "%d/%m/%Y %H:%M:%S").replace(tzinfo=timezone(timedelta(hours=1)))
+                                diff = datetime.now(timezone(timedelta(hours=1))) - datetime.strptime(h_deb_brute, "%d/%m/%Y %H:%M:%S").replace(tzinfo=timezone(timedelta(hours=1)))
                                 duree_min = int(diff.total_seconds() / 60)
-                                m3.metric("Durée", f"{duree_min} min")
-                            except: m3.metric("Durée", "calcul...")
+                                m3.metric("Temps Écoulé", f"{duree_min} min")
+                            except: m3.metric("Temps Écoulé", "...")
                         else:
                             m1.metric("Début", "--:--")
                             m2.metric("Heure Actuelle", h_actuelle)
-                            m3.metric("Statut", "OFF")
+                            m3.metric("Fin", "--:--")
 
-                    # --- ACTIONS ---
                     st.divider()
+
+                    # --- GESTION DU JOB & BOUTONS ---
+                    # Attribution automatique du Job
+                    job_auto = "POLSTA" if st.session_state.user_auth == "Staff" else "RCT"
+                    
                     if not en_service:
-                        c1, c2, c3 = st.columns([1, 1, 1])
-                        list_jobs = ["POLSTA", "RCT"] if st.session_state.user_auth == "Staff" else ["RCT"]
-                        s_job = c1.selectbox("Unité", list_jobs)
-                        s_act = c2.selectbox("Mission", ["PATROUILLE", "FORMATION", "OPÉ_SPÉ"])
-                        
-                        if c3.button("▶️ PRENDRE SERVICE", use_container_width=True, type="primary"):
+                        st.info(f"Prêt à prendre votre service en tant que **{job_auto}** ?")
+                        if st.button(f"▶️ PRENDRE SERVICE ({job_auto})", use_container_width=True, type="primary"):
                             h_deb = datetime.now(timezone(timedelta(hours=1))).strftime("%d/%m/%Y %H:%M:%S")
-                            new_row = pd.DataFrame([{"nom": agent_identifie, "action": s_act, "job": s_job, "début": h_deb, "fin": "", "statut": "en cours"}])
+                            # "action" est mis par défaut sur SERVICE pour simplifier
+                            new_row = pd.DataFrame([{"nom": agent_identifie, "action": "SERVICE", "job": job_auto, "début": h_deb, "fin": "", "statut": "en cours"}])
                             cloud_conn.update(worksheet="Clock", data=pd.concat([df_clock, new_row], ignore_index=True))
                             st.rerun()
                     else:
-                        if st.button(f"⏹️ FINIR LA SESSION ({agent_identifie})", use_container_width=True):
+                        st.warning(f"Session en cours : **{job_auto}**")
+                        if st.button(f"⏹️ FINIR LA SESSION ET ENVOYER EN VALIDATION", use_container_width=True):
                             h_fin = datetime.now(timezone(timedelta(hours=1))).strftime("%d/%m/%Y %H:%M:%S")
                             df_clock.at[session_active.index[-1], "fin"] = h_fin
                             df_clock.at[session_active.index[-1], "statut"] = "à valider"
                             cloud_conn.update(worksheet="Clock", data=df_clock)
+                            st.success("Session envoyée pour validation !")
+                            time.sleep(1)
                             st.rerun()
                 else:
                     st.error("❌ Code Agent Invalide")
