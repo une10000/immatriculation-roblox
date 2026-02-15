@@ -943,14 +943,17 @@ with tabs[0]:
 # ======================================================================================
 # --- ONGLET 2 : SERVICES AGENTS (VERSION COMPLÈTE & DÉTAILLÉE) ---
 # ======================================================================================
-with tabs[1]:
-    # Vérification : Seuls ces rôles voient l'onglet
-    roles_autorises = ["RCT", "Averis", "Police", "Staff"]
-    if any(r in st.session_state.user_auth for r in roles_autorises):
-        
-        # --- 1. AUTHENTIFICATION & POINTAGE ---
-        with st.container(border=True):
-            c_auth, c_stats = st.columns([1, 2.5])
+# --- ONGLET 2 : SERVICES AGENTS ---
+if len(tabs) > 1: # On vérifie si l'onglet a été créé (RCT ou Staff)
+    with tabs[1]:
+        # On peut garder ta sécurité supplémentaire par précaution
+        roles_autorises = ["RCT", "Averis", "Police", "Staff"]
+        if any(r in st.session_state.user_auth for r in roles_autorises):
+            
+            # --- 1. AUTHENTIFICATION & POINTAGE ---
+            with st.container(border=True):
+                c_auth, c_stats = st.columns([1, 2.5])
+                # ... la suite de ton code
             
             with c_auth:
                 agent_code_saisi = st.text_input("🔑 Code Agent", type="password", key="main_agent_auth")
@@ -1230,12 +1233,16 @@ with tabs[1]:
 # ======================================================================================
 # --- ONGLET 3 : ADMINISTRATION (STAFF UNIQUEMENT) ---
 # ======================================================================================
-with tabs[2]:
-    # SÉCURITÉ : Vérification du grade Staff
-    if st.session_state.user_auth == "Staff":
-        st.markdown("## 🛠️ ADMINISTRATION GÉNÉRALE")
-        st.info("Espace réservé à la gestion nationale, validation des services et paies.")
 
+# On vérifie qu'il y a bien au moins 3 onglets créés (index 0, 1, 2)
+if len(tabs) > 2:
+    with tabs[2]:
+        # Sécurité supplémentaire
+        if st.session_state.user_auth == "Staff":
+            st.markdown("## 🛠️ ADMINISTRATION GÉNÉRALE")
+            st.info("Espace réservé à la gestion nationale, validation des services et paies.")
+            
+            # --- Ton code de gestion ici ---
         # --- A. MODULE DE VALIDATION DES HEURES (CLOCK) ---
         st.divider()
         st.subheader("🛡️ Validation des Services")
