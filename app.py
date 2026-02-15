@@ -1101,44 +1101,38 @@ with tabs[1]:
                         st.info(f"👤 **Proprio :** {nom_proprio}\n\n🚘 **Modèle :** {modele_vhc}")
                     else: 
                         st.error("❌ Plaque inconnue")
-        # --- 3. INTERVENTION SUR CITOYEN ---
+# --- 3. INTERVENTION SUR CITOYEN ---
         st.divider()
         if target == "---":
             st.warning("⚠️ Sélectionnez un citoyen en haut de la page.")
         else:
-            st.markdown(f"### ⚡ INTERVENTION : {target.upper()}")
-            
-            # Vérification de l'identité de l'agent via le code saisi au début de l'onglet
-            # agent_identifie est défini dans la section 1 (Authentification & Pointage)
+            # Sécurité : On vérifie si l'agent est bien identifié par son code
             if not agent_identifie:
                 st.error("🔒 **Accès bloqué :** Veuillez saisir votre **Code Agent** dans le module de pointage en haut pour intervenir.")
             else:
-                col_form, col_ticket, col_db = st.columns([1.2, 1, 1])
+                st.markdown(f"### ⚡ INTERVENTION : {target.upper()}")
+                col_form, col_facture, col_vehicules = st.columns([1.2, 1, 1])
 
-                # FORMULAIRE
+                # --- COLONNE 1 : FORMULAIRE ---
                 with col_form:
                     with st.container(border=True):
                         # Choix de l'émetteur selon le grade
-                        if st.session_state.user_auth == "Staff":
-                            f_em = st.selectbox("Émetteur", ["POLSTA", "Averis", "RCT"], key="em_ui")
-                        else:
-                            f_em = "RCT"
-                            st.info("Émetteur : RCT (Défaut)")
-
+                        f_emetteur = st.selectbox("Émetteur", ["POLSTA", "Averis", "RCT"], key="em_ui") if st.session_state.user_auth == "Staff" else "RCT"
+                        
                         f_val = st.number_input("Amende ($)", 0, 100000, 500, step=100)
                         
                         # Seul le Staff en mode POLSTA peut retirer des points
-                        can_pts = (st.session_state.user_auth == "Staff" and f_em == "POLSTA")
-                        f_pts = st.slider("Retrait de points", 0, 12, 0, disabled=not can_pts)
+                        can_pull_points = (st.session_state.user_auth == "Staff" and f_emetteur == "POLSTA")
+                        f_pts = st.slider("Retrait de points", 0, 12, 0, disabled=not can_pull_points)
                         
-                        f_mot = st.text_area("Motif détaillé", key="mot_ui")
+                        f_motif = st.text_area("Motif détaillé", key="mot_ui", placeholder="Décrivez l'infraction...")
                         
-                        # Récupération des plaques du citoyen ciblé
-                        t_veh = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
-                        f_plaq = st.selectbox("Véhicule lié", ["AUCUN"] + t_veh["Numéro de la plaque"].tolist())
+                        # Récupération des véhicules pour la plaque
+                        target_veh = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
+                        f_plate = st.selectbox("Véhicule lié", ["AUCUN"] + target_veh["Numéro de la plaque"].tolist())
 
                         if st.button("🚨 VALIDER L'INTERVENTION", use_container_width=True, type="primary"):
-                            if f_mot:
+                            if f_motif:
                                 with st.spinner("Transmission au central..."):
                                     import random
                                     df_all_f = cloud_conn.read(worksheet="Factures").fillna("")
@@ -1146,78 +1140,85 @@ with tabs[1]:
                                     new_f = {
                                         "ID": random.randint(10000, 99999),
                                         "Cible": target,
-                                        "Emetteur": f_em,
-                                        "Agent_Signataire": agent_identifie, # Utilise le nom lié au Code Staff
+                                        "Emetteur": f_emetteur,
+                                        "Agent_Signataire": agent_identifie, # Nom lié au Code Staff
                                         "Montant": f_val,
-                                        "Points": f_pts if can_pts else 0,
-                                        "Motif": f"{f_mot} [{f_plaq}]",
+                                        "Points": f_pts if can_pull_points else 0,
+                                        "Motif": f"{f_motif} [{f_plate}]",
                                         "Statut": "EN ATTENTE",
                                         "Date_Emission": datetime.now().strftime("%d/%m/%Y %H:%M"),
                                         "Date_Limite": (datetime.now() + timedelta(hours=24)).strftime("%d/%m/%Y %H:%M")
                                     }
                                     
-                                    # Déduction immédiate des points si autorisé
-                                    if f_pts > 0 and can_pts:
+                                    # Déduction des points
+                                    if f_pts > 0 and can_pull_points:
                                         try:
                                             idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
-                                            current_pts = int(df_p.at[idx_p, "PTS"])
-                                            df_p.at[idx_p, "PTS"] = max(0, current_pts - f_pts)
+                                            df_p.at[idx_p, "PTS"] = max(0, int(df_p.at[idx_p, "PTS"]) - f_pts)
                                             cloud_conn.update(worksheet="Points Permis", data=df_p)
                                         except: pass
                                     
-                                    # Enregistrement de la facture
                                     cloud_conn.update(worksheet="Factures", data=pd.concat([df_all_f, pd.DataFrame([new_f])], ignore_index=True))
-                                    
-                                    # Log d'audit
-                                    if "record_log" in globals():
-                                        record_log(f_em, f"Intervention sur {target} par {agent_identifie} ({f_val}$)")
-                                    
-                                    st.success(f"✅ Intervention enregistrée par l'agent {agent_identifie}")
+                                    st.success(f"✅ PV enregistré par {agent_identifie}")
                                     time.sleep(1)
                                     st.rerun()
                             else:
                                 st.error("❌ Le motif est obligatoire.")
 
-                # TICKET VISUEL (Aperçu temps réel)
-                with col_ticket:
-                    pts_t = "N/A"
-                    try: pts_t = df_p[df_p["Nom Roblox"] == target].iloc[0]["PTS"]
-                    except: pass
-                    
+                # --- COLONNE 2 : TICKET (AU MILIEU) ---
+                with col_facture:
+                    st.markdown("#### 📄 Aperçu")
+                    header_ticket = "FACTURE AVERIS" if f_emetteur == "Averis" else "FACTURE OFFICIELLE"
                     st.markdown(f"""
-                    <div style="background:white; padding:15px; border:2px solid black; color:black; font-family:monospace; line-height:1.2; border-radius:5px;">
-                        <center><b style="font-size:14px;">📜 PROCÈS-VERBAL</b><br>
-                        <small>SERVICE DES CONTRAVENTIONS</small></center><br>
-                        <b>AGENT :</b> {agent_identifie}<br>
-                        <b>CONTREVENANT :</b> {target}<br>
-                        <b>UNITÉ :</b> {f_em}<br>
-                        <b>DATE :</b> {datetime.now().strftime('%d/%m/%Y')}<br><hr>
-                        <b style="color:red;">AMENDE : {f_val}$</b><br>
-                        <b style="color:red;">POINTS : -{f_pts}</b><br><hr>
-                        <b>MOTIF :</b><br>{f_mot if f_mot else '...'}<br><hr>
-                        <center><small>SOLDE PERMIS ACTUEL : {pts_t} PTS</small></center>
+                    <div style="border: 2px solid black; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; line-height: 1.2; box-shadow: 4px 4px 0px #888;">
+                        <center><b>{header_ticket}</b><br><small>RÉPUBLIQUE DE RENSSERLAER</small></center>
+                        <hr style="border-top: 1px dashed black; margin: 10px 0;">
+                        <b>SIGNATAIRE :</b> {agent_identifie.upper()}<br>
+                        <b>ÉMETTEUR   :</b> {f_emetteur.upper()}<br>
+                        <b>DATE      :</b> {datetime.now().strftime('%d/%m/%Y')}<br>
+                        <b>NOM       :</b> {target}<br>
+                        <b>MOTIF     :</b> {f_motif.upper() if f_motif else '...'}<br>
+                        <b>PLAQUE    :</b> <span style="border: 1px solid black; padding: 0 3px;">{f_plate}</span><br>
+                        <b>MONTANT   :</b> {f_val}$
+                        <hr style="border-top: 1px dashed black; margin: 10px 0;">
+                        <div style="text-align: center; color: black; font-weight: bold; font-size: 0.9em;">
+                            POINTS : -{f_pts if can_pull_points else 0}<br>
+                            <small>Document généré par terminal</small>
+                        </div>
                     </div>
                     """, unsafe_allow_html=True)
-            # VÉHICULES & HISTORIQUE
-            with col_db:
-                st.markdown("🚗 **GARAGE DU CITOYEN**")
-                if not t_veh.empty:
-                    for _, v in t_veh.iterrows():
-                        a_stat = str(v['Assurance']).upper()
-                        clr = "#27ae60" if "RCT" in a_stat else "#e74c3c"
-                        st.markdown(f"""<div style="border-left:4px solid {clr}; padding:5px; margin-bottom:5px; background:#262730;">
-                        <b>{v['Numéro de la plaque']}</b> ({v['Marque du véhicule']})<br>
-                        <small>Assu: {a_stat}</small></div>""", unsafe_allow_html=True)
-                
-                st.markdown("🕒 **DERNIERS FAITS**")
-                try:
-                    df_all_f = cloud_conn.read(worksheet="Factures").fillna("")
-                    for _, h in df_all_f[df_all_f["Cible"] == target].tail(2).iterrows():
-                        st.caption(f"• {h['Date_Emission']} : {h['Montant']}$ ({h['Statut']})")
-                except: pass
 
-    else: st.error("Accès non autorisé.")
+                # --- COLONNE 3 : VÉHICULES (À DROITE) ---
+                with col_vehicules:
+                    st.markdown("#### 🚗 Véhicules")
+                    if not target_veh.empty:
+                        for _, veh in target_veh.iterrows():
+                            assu_v = str(veh['Assurance']).upper()
+                            
+                            # Logique de couleur Assurance
+                            if "RCT" in assu_v:
+                                col_v, txt_v = "#27ae60", "✅ ASSURÉ RCT"
+                            elif "AVERIS" in assu_v:
+                                col_v, txt_v = "#E67E22", "⚠️ ASSURÉ AVERIS"
+                            elif "OUI" in assu_v or "✅" in assu_v:
+                                col_v, txt_v = "#27ae60", "✅ VÉHICULE EN RÈGLE"
+                            else:
+                                col_v, txt_v = "#d32f2f", "🚨 DANGER : NON-ASSURÉ"
 
+                            st.markdown(f"""
+                            <div style="border: 2px solid black; padding: 10px; background: white; color: black; font-family: 'Courier New', monospace; margin-bottom: 10px; font-size: 0.85em;">
+                                <center><b>TITRE DE CIRCULATION</b></center>
+                                <hr style="border-top: 1px solid #ccc; margin: 5px 0;">
+                                <b>MODÈLE :</b> {veh['Marque du véhicule']}<br>
+                                <b>PLAQUE :</b> <span style="border: 1px solid black; padding: 0 2px;">{veh['Numéro de la plaque']}</span><br>
+                                <hr style="border-top: 1px solid #ccc; margin: 5px 0;">
+                                <div style="text-align: center; color: {col_v}; font-weight: bold;">
+                                    {txt_v}
+                                </div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                    else:
+                        st.info("Aucun véhicule enregistré.")
 # ======================================================================================
 # 5. ONGLET ADMINISTRATION
 # ======================================================================================
