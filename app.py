@@ -1050,7 +1050,7 @@ if len(tabs) > 1:
                         with st.container(border=True):
                             c1_r, c2_r = st.columns([3, 1])
                             c1_r.warning(f"🚨 **{crim['Nom Roblox']}**\n\n**Motif :** {crim.get('Motif Recherche', 'N/A')}")
-                            if c2_r.button("Libérer", key=f"rel_{crim['Nom Roblox']}", use_container_width=True):
+                            if c2_r.button("A été interpellé", key=f"rel_{crim['Nom Roblox']}", use_container_width=True):
                                 idx = df_b[df_b["Nom Roblox"] == crim["Nom Roblox"]].index[0]
                                 df_b.at[idx, "Statut"], df_b.at[idx, "Motif Recherche"] = "RAS", ""
                                 cloud_conn.update(worksheet="Banque", data=df_b)
