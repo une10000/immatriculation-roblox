@@ -463,19 +463,18 @@ with st.container():
         
         # --- D. DOSSIER DÉTAILLÉ (3 COLONNES) ---
         col1, col2, col3 = st.columns(3)
-
 # ---------------- COLONNE 1 : POINTS & PERMIS ----------------
         with col1:
             p_data = df_p[df_p["Nom Roblox"] == target]
             if not p_data.empty:
                 pts = int(p_data.iloc[0]["PTS"])
                 
-                # --- FILIGRANE EMPILÉ (Style Capture) ---
+                # --- FILIGRANE EMPILÉ GRAND ET DISCRET ---
                 st.markdown("""
                     <div style="position: relative; height: 0px;">
-                        <div style="position: absolute; right: 5px; top: -10px; font-size: 14px; 
-                                    line-height: 1.2; font-weight: bold; color: rgba(0,0,0,0.15); 
-                                    transform: rotate(-10deg); text-align: center; pointer-events: none;">
+                        <div style="position: absolute; right: -5px; top: -10px; font-size: 22px; 
+                                    line-height: 1.1; font-weight: 900; color: rgba(0,0,0,0.06); 
+                                    transform: rotate(-15deg); text-align: center; pointer-events: none; z-index: 0;">
                             🚙<br>🪪<br>PERMIS<br>OFFICIEL
                         </div>
                     </div>
@@ -498,12 +497,12 @@ with st.container():
         # ---------------- COLONNE 2 : BANQUE & PAIE ----------------
         with col2:
             if not citoyen_info.empty:
-                # --- FILIGRANE EMPILÉ (Style Capture) ---
+                # --- FILIGRANE EMPILÉ GRAND ET DISCRET ---
                 st.markdown("""
                     <div style="position: relative; height: 0px;">
-                        <div style="position: absolute; right: 5px; top: -10px; font-size: 14px; 
-                                    line-height: 1.2; font-weight: bold; color: rgba(0,0,0,0.15); 
-                                    transform: rotate(-10deg); text-align: center; pointer-events: none;">
+                        <div style="position: absolute; right: -5px; top: -10px; font-size: 22px; 
+                                    line-height: 1.1; font-weight: 900; color: rgba(0,0,0,0.06); 
+                                    transform: rotate(-15deg); text-align: center; pointer-events: none; z-index: 0;">
                             💳<br>💵<br>DOSSIER<br>BANCAIRE
                         </div>
                     </div>
