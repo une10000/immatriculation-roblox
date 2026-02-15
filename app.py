@@ -470,13 +470,13 @@ with st.container():
             if not p_data.empty:
                 pts = int(p_data.iloc[0]["PTS"])
                 
-                # Filigrane ultra-discret à droite
+                # Filigrane discret en haut à droite (Style Capture 2)
                 st.markdown("""
-                    <style>
-                    .wm-p { position: absolute; right: -20px; top: 10px; font-size: 16px; 
-                            color: rgba(0,0,0,0.1); transform: rotate(-10deg); font-weight: bold; }
-                    </style>
-                    <div class="wm-p">🚙 PERMIS OFFICIEL 🪪</div>
+                    <div style="position: relative;">
+                        <div style="position: absolute; right: -10px; top: -15px; transform: rotate(-10deg); opacity: 0.15; font-size: 14px; font-weight: bold; pointer-events: none;">
+                            🚙 PERMIS OFFICIEL 🪪
+                        </div>
+                    </div>
                 """, unsafe_allow_html=True)
 
                 st.metric("POINTS PERMIS", f"{pts}/25")
@@ -496,13 +496,13 @@ with st.container():
         # ---------------- COLONNE 2 : BANQUE & PAIE ----------------
         with col2:
             if not citoyen_info.empty:
-                # Filigrane ultra-discret à droite
+                # Filigrane discret en haut à droite (Style Capture 2)
                 st.markdown("""
-                    <style>
-                    .wm-b { position: absolute; right: -20px; top: 10px; font-size: 16px; 
-                            color: rgba(0,0,0,0.1); transform: rotate(-10deg); font-weight: bold; }
-                    </style>
-                    <div class="wm-b">💳 DOSSIER BANCAIRE 💵</div>
+                    <div style="position: relative;">
+                        <div style="position: absolute; right: -10px; top: -15px; transform: rotate(-10deg); opacity: 0.15; font-size: 14px; font-weight: bold; pointer-events: none;">
+                            💳 DOSSIER BANCAIRE 💵
+                        </div>
+                    </div>
                 """, unsafe_allow_html=True)
 
                 st.metric("SOLDE BANCAIRE", f"{citoyen_info.iloc[0]['Solde']}$")
