@@ -1016,43 +1016,72 @@ if len(tabs) > 1:
                                 st.rerun()
                     else:
                         st.error("❌ Code Agent Invalide")
-        # --- 2. RECHERCHE & MANDATS ---
+# --- 2. RECHERCHE & MANDATS ---
         st.markdown("### 🔍 MANDATS & RECHERCHE")
         
         with st.container(border=True):
-            st.markdown("#### 📝 Lancer un Mandat d'Arrêt")
+            st.markdown("#### 📝 Lancer une Alerte (Citoyen ou Véhicule)")
             c1, c2, c3 = st.columns([1.5, 2, 1])
+            
             with c1:
                 liste_citoyens = sorted(df_b["Nom Roblox"].unique().tolist())
-                cible_mandat = st.selectbox("Suspect", ["---"] + liste_citoyens, key="mandat_cible")
+                # Ajout d'une option pour les véhicules non répertoriés
+                cible_mandat = st.selectbox("Cible", ["---"] + liste_citoyens + ["VÉHICULE INCONNU / AUTRE"], key="mandat_cible")
+                
+                if cible_mandat == "VÉHICULE INCONNU / AUTRE":
+                    cible_custom = st.text_input("Précision (Modèle/Plaque)", key="mandat_custom")
+            
             with c2:
-                motif_mandat = st.text_input("Motif de recherche", placeholder="Ex: Braquage...", key="mandat_motif")
+                motif_mandat = st.text_input("Motif de recherche", placeholder="Ex: Braquage, Délit de fuite...", key="mandat_motif")
+                # Système d'upload d'image
+                photo_mandat = st.file_uploader("📸 Photo du véhicule/suspect", type=["png", "jpg", "jpeg"])
+            
             with c3:
                 st.write(" ")
+                st.write(" ")
                 if st.button("🚨 LANCER L'ALERTE", use_container_width=True, type="primary"):
-                    if cible_mandat != "---" and motif_mandat:
-                        idx = df_b[df_b["Nom Roblox"] == cible_mandat].index[0]
-                        df_b.at[idx, "Statut"] = "RECHERCHÉ"
-                        df_b.at[idx, "Motif Recherche"] = motif_mandat
-                        cloud_conn.update(worksheet="Banque", data=df_b)
-                        st.success(f"Mandat lancé contre {cible_mandat} !")
-                        time.sleep(1); st.rerun()
+                    if (cible_mandat != "---") and motif_mandat:
+                        # Si c'est un citoyen de la base de données
+                        if cible_mandat in df_b["Nom Roblox"].values:
+                            idx = df_b[df_b["Nom Roblox"] == cible_mandat].index[0]
+                            df_b.at[idx, "Statut"] = "RECHERCHÉ"
+                            df_b.at[idx, "Motif Recherche"] = motif_mandat
+                            cloud_conn.update(worksheet="Banque", data=df_b)
+                        
+                        # Stockage temporaire de l'image en session pour l'affichage immédiat
+                        nom_final = cible_custom if cible_mandat == "VÉHICULE INCONNU / AUTRE" else cible_mandat
+                        if photo_mandat:
+                            st.session_state[f"img_{nom_final}"] = photo_mandat
+                            
+                        st.success(f"Alerte lancée pour {nom_final} !")
+                        time.sleep(1)
+                        st.rerun()
                     else:
                         st.error("Champs requis !")
 
         col_m1, col_m2 = st.columns([2, 1])
+        
         with col_m1:
             with st.container(border=True):
                 st.markdown("#### 📢 Alertes Actives")
                 recherches = df_b[df_b["Statut"].str.upper().str.contains("RECHERCHÉ", na=False)]
+                
                 if not recherches.empty:
                     for _, crim in recherches.iterrows():
                         with st.container(border=True):
                             c1_r, c2_r = st.columns([3, 1])
-                            c1_r.warning(f"🚨 **{crim['Nom Roblox']}**\n\n**Motif :** {crim.get('Motif Recherche', 'N/A')}")
+                            with c1_r:
+                                st.warning(f"🚨 **{crim['Nom Roblox']}**")
+                                st.write(f"**Motif :** {crim.get('Motif Recherche', 'N/A')}")
+                                # Affichage de l'image si elle existe en session
+                                if f"img_{crim['Nom Roblox']}" in st.session_state:
+                                    st.image(st.session_state[f"img_{crim['Nom Roblox']}"], width=250)
+                            
                             if c2_r.button("Libérer", key=f"rel_{crim['Nom Roblox']}", use_container_width=True):
                                 idx = df_b[df_b["Nom Roblox"] == crim["Nom Roblox"]].index[0]
                                 df_b.at[idx, "Statut"], df_b.at[idx, "Motif Recherche"] = "RAS", ""
+                                if f"img_{crim['Nom Roblox']}" in st.session_state:
+                                    del st.session_state[f"img_{crim['Nom Roblox']}"]
                                 cloud_conn.update(worksheet="Banque", data=df_b)
                                 st.rerun()
                 else: 
@@ -1071,7 +1100,6 @@ if len(tabs) > 1:
                         st.info(f"👤 **Proprio :** {nom_proprio}\n\n🚘 **Modèle :** {m.iloc[0]['Marque du véhicule']}")
                     else: 
                         st.error("❌ Plaque inconnue")
-
         # --- 3. INTERVENTION SUR CITOYEN (BLOC COMPLET) ---
         st.divider()
         if target == "---":
