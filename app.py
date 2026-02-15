@@ -917,13 +917,13 @@ with tabs[0]:
         """
         st.components.v1.html(ticket_html, height=500)
 # ======================================================================================
-# --- ONGLET 2 : SERVICES AGENTS (MODULE ÉPURÉ) ---
+# --- ONGLET 2 : SERVICES AGENTS (MODULE RÉORGANISÉ) ---
 # ======================================================================================
 with tabs[1]:
     if st.session_state.user_auth in ["RCT", "Staff"]:
-        # --- 1. AUTHENTIFICATION & POINTAGE HORAIRE ---
+        # --- 1. AUTHENTIFICATION & POINTAGE ---
         with st.container(border=True):
-            c_auth, c_stats = st.columns([1, 2])
+            c_auth, c_stats = st.columns([1, 2.5])
             
             with c_auth:
                 agent_code_saisi = st.text_input("🔑 Code Agent", type="password", key="main_agent_auth")
@@ -932,6 +932,7 @@ with tabs[1]:
             en_service = False
             
             if agent_code_saisi:
+                # Nettoyage et vérification du code
                 df_b.columns = df_b.columns.str.strip()
                 df_b["Code_Clean"] = df_b["Code"].astype(str).apply(lambda x: x.strip().split('.')[0])
                 res_agent = df_b[df_b["Code_Clean"] == agent_code_saisi.strip()]
@@ -945,49 +946,52 @@ with tabs[1]:
                     session_active = df_clock[(df_clock["nom"] == agent_identifie) & (df_clock["statut"] == "en cours")]
                     en_service = not session_active.empty
 
-                    # --- AFFICHAGE DES MÉTRIQUES (Début, Fin/Actuelle, Temps) ---
+                    # --- ZONE STATISTIQUES (Nom + Heures) ---
                     with c_stats:
-                        h_actuelle = datetime.now(timezone(timedelta(hours=1))).strftime("%H:%M:%S")
-                        m1, m2, m3 = st.columns(3)
+                        st.markdown(f"### 🎖️ Agent : {agent_identifie}")
+                        
+                        h_actuelle = datetime.now(timezone(timedelta(hours=1))).strftime("%H:%M")
+                        m_gauche, m_milieu, m_droite = st.columns(3)
+                        
+                        # Colonne GAUCHE : Heure Actuelle
+                        m_gauche.metric("Heure Actuelle", h_actuelle)
                         
                         if en_service:
                             h_deb_brute = session_active.iloc[-1]['début']
-                            h_deb_clean = h_deb_brute.split(' ')[1] if ' ' in h_deb_brute else h_deb_brute
+                            h_deb_clean = h_deb_brute.split(' ')[1][:5] if ' ' in h_deb_brute else h_deb_brute[:5]
                             
-                            m1.metric("Début", h_deb_clean)
-                            m2.metric("Heure Actuelle", h_actuelle)
+                            # Colonne MILIEU : Début
+                            m_milieu.metric("Début Service", h_deb_clean)
+                            
+                            # Colonne DROITE : Durée (remplace la fin car on est en cours)
                             try:
                                 diff = datetime.now(timezone(timedelta(hours=1))) - datetime.strptime(h_deb_brute, "%d/%m/%Y %H:%M:%S").replace(tzinfo=timezone(timedelta(hours=1)))
                                 duree_min = int(diff.total_seconds() / 60)
-                                m3.metric("Temps Écoulé", f"{duree_min} min")
-                            except: m3.metric("Temps Écoulé", "...")
+                                m_droite.metric("Temps (min)", f"{duree_min}'")
+                            except:
+                                m_droite.metric("Fin", "En cours...")
                         else:
-                            m1.metric("Début", "--:--")
-                            m2.metric("Heure Actuelle", h_actuelle)
-                            m3.metric("Fin", "--:--")
+                            m_milieu.metric("Début Service", "--:--")
+                            m_droite.metric("Fin Service", "--:--")
 
                     st.divider()
 
-                    # --- GESTION DU JOB & BOUTONS ---
-                    # Attribution automatique du Job
+                    # --- BOUTONS D'ACTION ---
                     job_auto = "POLSTA" if st.session_state.user_auth == "Staff" else "RCT"
                     
                     if not en_service:
-                        st.info(f"Prêt à prendre votre service en tant que **{job_auto}** ?")
                         if st.button(f"▶️ PRENDRE SERVICE ({job_auto})", use_container_width=True, type="primary"):
                             h_deb = datetime.now(timezone(timedelta(hours=1))).strftime("%d/%m/%Y %H:%M:%S")
-                            # "action" est mis par défaut sur SERVICE pour simplifier
                             new_row = pd.DataFrame([{"nom": agent_identifie, "action": "SERVICE", "job": job_auto, "début": h_deb, "fin": "", "statut": "en cours"}])
                             cloud_conn.update(worksheet="Clock", data=pd.concat([df_clock, new_row], ignore_index=True))
                             st.rerun()
                     else:
-                        st.warning(f"Session en cours : **{job_auto}**")
-                        if st.button(f"⏹️ FINIR LA SESSION ET ENVOYER EN VALIDATION", use_container_width=True):
+                        if st.button(f"⏹️ TERMINER SERVICE ({job_auto})", use_container_width=True):
                             h_fin = datetime.now(timezone(timedelta(hours=1))).strftime("%d/%m/%Y %H:%M:%S")
                             df_clock.at[session_active.index[-1], "fin"] = h_fin
                             df_clock.at[session_active.index[-1], "statut"] = "à valider"
                             cloud_conn.update(worksheet="Clock", data=df_clock)
-                            st.success("Session envoyée pour validation !")
+                            st.success("Session transmise !")
                             time.sleep(1)
                             st.rerun()
                 else:
