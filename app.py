@@ -374,49 +374,37 @@ with st.container():
         citoyen_info = df_b[df_b["Nom Roblox"] == target]
         
 # --- B. ALERTES AUTOMATIQUES ---
-# 1. Alerte Mandat (Rouge Flashy)
-if not citoyen_info.empty and "RECHERCHÉ" in str(citoyen_info.iloc[0].get("Statut", "")).upper():
-    motif_critique = citoyen_info.iloc[0].get("Motif Recherche", "Non spécifié")
-    
-    # On vérifie si une photo existe pour cet individu
-    photo_key = f"img_{target}"
-    html_photo = ""
-    if photo_key in st.session_state:
-        # On ne peut pas mettre st.image() direct dans du HTML, donc on prépare l'affichage
-        html_photo = f'<div style="margin-top:20px; border: 3px solid white; border-radius: 10px; overflow: hidden; display: inline-block;">'
-        st.session_state["tmp_img"] = st.session_state[photo_key] # Petit fix pour l'affichage
-    
-    st.markdown(f"""
-        <style>
-        @keyframes blink {{
-            0% {{ opacity: 1; border-color: #ff0000; box-shadow: 0 0 10px #ff0000; }}
-            50% {{ opacity: 0.7; border-color: #ffffff; box-shadow: 0 0 30px #ff0000; }}
-            100% {{ opacity: 1; border-color: #ff0000; box-shadow: 0 0 10px #ff0000; }}
-        }}
-        .critical-alert {{
-            background-color: #900000;
-            padding: 30px;
-            border-radius: 15px;
-            border: 8px solid #ff0000;
-            color: white;
-            text-align: center;
-            margin-bottom: 20px;
-            animation: blink 1s infinite;
-            font-family: 'Arial Black', sans-serif;
-        }}
-        </style>
-        <div class="critical-alert">
-            <h1 style="margin:0; font-size: 40px; color: white; text-shadow: 2px 2px #000000;">🚨 ALERTE INTERPOL : RECHERCHÉ 🚨</h1>
-            <p style="font-size: 25px; margin-top: 10px;">L'individu <b>{target.upper()}</b> est sous mandat d'arrêt immédiat !</p>
-            <div style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 5px; margin-top: 10px;">
-                <b style="font-size: 20px;">MOTIF : {motif_critique}</b>
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
+        # 1. Alerte Mandat (Rouge Flashy)
+        if not citoyen_info.empty and "RECHERCHÉ" in str(citoyen_info.iloc[0].get("Statut", "")).upper():
+            motif_critique = citoyen_info.iloc[0].get("Motif Recherche", "Non spécifié")
+            st.markdown(f"""
+                <style>
+                @keyframes blink {{
+                    0% {{ opacity: 1; border-color: #ff0000; box-shadow: 0 0 10px #ff0000; }}
+                    50% {{ opacity: 0.7; border-color: #ffffff; box-shadow: 0 0 30px #ff0000; }}
+                    100% {{ opacity: 1; border-color: #ff0000; box-shadow: 0 0 10px #ff0000; }}
+                }}
+                .critical-alert {{
+                    background-color: #900000;
+                    padding: 30px;
+                    border-radius: 15px;
+                    border: 8px solid #ff0000;
+                    color: white;
+                    text-align: center;
+                    margin-bottom: 20px;
+                    animation: blink 1s infinite;
+                    font-family: 'Arial Black', sans-serif;
+                }}
+                </style>
+                <div class="critical-alert">
+                    <h1 style="margin:0; font-size: 40px; color: white; text-shadow: 2px 2px #000000;">🚨 ALERTE INTERPOL : RECHERCHÉ 🚨</h1>
+                    <p style="font-size: 25px; margin-top: 10px;">L'individu <b>{target.upper()}</b> est sous mandat d'arrêt immédiat !</p>
+                    <div style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 5px; margin-top: 10px;">
+                        <b style="font-size: 20px;">MOTIF : {motif_critique}</b>
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
 
-    # Si la photo existe, on l'affiche juste en dessous du texte mais dans l'alerte
-    if photo_key in st.session_state:
-        st.image(st.session_state[photo_key], use_container_width=True)
         # 2. Alerte Permis Invalide (Orange Flashy)
         # Tu peux aussi l'ajouter si tu veux que ce soit aussi visible
         try:
@@ -1028,88 +1016,62 @@ if len(tabs) > 1:
                                 st.rerun()
                     else:
                         st.error("❌ Code Agent Invalide")
-# --- 2. RECHERCHE & MANDATS ---
-st.markdown("### 🔍 MANDATS & RECHERCHE")
-
-with st.container(border=True):
-    st.markdown("#### 📝 Lancer une Alerte (Citoyen ou Véhicule)")
-    c1, c2, c3 = st.columns([1.5, 2, 1])
-    
-    with c1:
-        liste_citoyens = sorted(df_b["Nom Roblox"].unique().tolist())
-        cible_mandat = st.selectbox("Cible", ["---"] + liste_citoyens + ["VÉHICULE INCONNU / AUTRE"], key="mandat_cible")
+        # --- 2. RECHERCHE & MANDATS ---
+        st.markdown("### 🔍 MANDATS & RECHERCHE")
         
-        if cible_mandat == "VÉHICULE INCONNU / AUTRE":
-            cible_custom = st.text_input("Précision (Modèle/Plaque)", key="mandat_custom")
-    
-    with c2:
-        motif_mandat = st.text_input("Motif de recherche", placeholder="Ex: Braquage, Délit de fuite...", key="mandat_motif")
-        photo_mandat = st.file_uploader("📸 Photo du véhicule/suspect", type=["png", "jpg", "jpeg"])
-    
-    with c3:
-        st.write(" ")
-        st.write(" ")
-        if st.button("🚨 LANCER L'ALERTE", use_container_width=True, type="primary"):
-            if (cible_mandat != "---") and motif_mandat:
-                nom_final = cible_custom if cible_mandat == "VÉHICULE INCONNU / AUTRE" else cible_mandat
-                
-                # Si c'est un citoyen (présent dans la base de données)
-                if cible_mandat in df_b["Nom Roblox"].values:
-                    idx = df_b[df_b["Nom Roblox"] == cible_mandat].index[0]
-                    df_b.at[idx, "Statut"] = "RECHERCHÉ"
-                    df_b.at[idx, "Motif Recherche"] = motif_mandat
-                    cloud_conn.update(worksheet="Banque", data=df_b)
-                
-                # Gestion de la photo en session pour ce nom
-                if photo_mandat:
-                    st.session_state[f"img_{nom_final}"] = photo_mandat
-                    
-                st.success(f"Alerte lancée pour {nom_final} !")
-                time.sleep(1)
-                st.rerun()
-            else:
-                st.error("Champs requis !")
-
-col_m1, col_m2 = st.columns([2, 1])
-
-with col_m1:
-    with st.container(border=True):
-        st.markdown("#### 📢 Alertes Actives")
-        recherches = df_b[df_b["Statut"].str.upper().str.contains("RECHERCHÉ", na=False)]
-        
-        if not recherches.empty:
-            for _, crim in recherches.iterrows():
-                with st.container(border=True):
-                    c1_r, c2_r = st.columns([3, 1])
-                    with c1_r:
-                        st.warning(f"🚨 **{crim['Nom Roblox']}**")
-                        st.write(f"**Motif :** {crim.get('Motif Recherche', 'N/A')}")
-                        if f"img_{crim['Nom Roblox']}" in st.session_state:
-                            st.image(st.session_state[f"img_{crim['Nom Roblox']}"], width=250)
-                    
-                    if c2_r.button("Libérer", key=f"rel_{crim['Nom Roblox']}", use_container_width=True):
-                        idx = df_b[df_b["Nom Roblox"] == crim["Nom Roblox"]].index[0]
-                        df_b.at[idx, "Statut"], df_b.at[idx, "Motif Recherche"] = "RAS", ""
-                        if f"img_{crim['Nom Roblox']}" in st.session_state:
-                            del st.session_state[f"img_{crim['Nom Roblox']}"]
+        with st.container(border=True):
+            st.markdown("#### 📝 Lancer un Mandat d'Arrêt")
+            c1, c2, c3 = st.columns([1.5, 2, 1])
+            with c1:
+                liste_citoyens = sorted(df_b["Nom Roblox"].unique().tolist())
+                cible_mandat = st.selectbox("Suspect", ["---"] + liste_citoyens, key="mandat_cible")
+            with c2:
+                motif_mandat = st.text_input("Motif de recherche", placeholder="Ex: Braquage...", key="mandat_motif")
+            with c3:
+                st.write(" ")
+                if st.button("🚨 LANCER L'ALERTE", use_container_width=True, type="primary"):
+                    if cible_mandat != "---" and motif_mandat:
+                        idx = df_b[df_b["Nom Roblox"] == cible_mandat].index[0]
+                        df_b.at[idx, "Statut"] = "RECHERCHÉ"
+                        df_b.at[idx, "Motif Recherche"] = motif_mandat
                         cloud_conn.update(worksheet="Banque", data=df_b)
-                        st.rerun()
-        else: 
-            st.success("✅ Aucun mandat actif.")
+                        st.success(f"Mandat lancé contre {cible_mandat} !")
+                        time.sleep(1); st.rerun()
+                    else:
+                        st.error("Champs requis !")
 
-with col_m2:
-    with st.container(border=True):
-        st.markdown("#### 🔦 Scanner Plaque")
-        p_search = st.text_input("Saisir plaque", key="plate_ui").upper().strip()
-        if p_search:
-            m = df_i[df_i["Numéro de la plaque"].astype(str).str.contains(p_search, na=False)]
-            if not m.empty:
-                nom_proprio = m.iloc[0]["Nom d'utilisateur ROBLOX"]
-                is_wanted = not df_b[(df_b["Nom Roblox"] == nom_proprio) & (df_b["Statut"] == "RECHERCHÉ")].empty
-                if is_wanted: st.error(f"⚠️ **PROPRIO RECHERCHÉ**")
-                st.info(f"👤 **Proprio :** {nom_proprio}\n\n🚘 **Modèle :** {m.iloc[0]['Marque du véhicule']}")
-            else: 
-                st.error("❌ Plaque inconnue")
+        col_m1, col_m2 = st.columns([2, 1])
+        with col_m1:
+            with st.container(border=True):
+                st.markdown("#### 📢 Alertes Actives")
+                recherches = df_b[df_b["Statut"].str.upper().str.contains("RECHERCHÉ", na=False)]
+                if not recherches.empty:
+                    for _, crim in recherches.iterrows():
+                        with st.container(border=True):
+                            c1_r, c2_r = st.columns([3, 1])
+                            c1_r.warning(f"🚨 **{crim['Nom Roblox']}**\n\n**Motif :** {crim.get('Motif Recherche', 'N/A')}")
+                            if c2_r.button("Libérer", key=f"rel_{crim['Nom Roblox']}", use_container_width=True):
+                                idx = df_b[df_b["Nom Roblox"] == crim["Nom Roblox"]].index[0]
+                                df_b.at[idx, "Statut"], df_b.at[idx, "Motif Recherche"] = "RAS", ""
+                                cloud_conn.update(worksheet="Banque", data=df_b)
+                                st.rerun()
+                else: 
+                    st.success("✅ Aucun mandat actif.")
+
+        with col_m2:
+            with st.container(border=True):
+                st.markdown("#### 🔦 Scanner Plaque")
+                p_search = st.text_input("Saisir plaque", key="plate_ui").upper().strip()
+                if p_search:
+                    m = df_i[df_i["Numéro de la plaque"].astype(str).str.contains(p_search, na=False)]
+                    if not m.empty:
+                        nom_proprio = m.iloc[0]["Nom d'utilisateur ROBLOX"]
+                        is_wanted = not df_b[(df_b["Nom Roblox"] == nom_proprio) & (df_b["Statut"] == "RECHERCHÉ")].empty
+                        if is_wanted: st.error(f"⚠️ **PROPRIO RECHERCHÉ**")
+                        st.info(f"👤 **Proprio :** {nom_proprio}\n\n🚘 **Modèle :** {m.iloc[0]['Marque du véhicule']}")
+                    else: 
+                        st.error("❌ Plaque inconnue")
+
         # --- 3. INTERVENTION SUR CITOYEN (BLOC COMPLET) ---
         st.divider()
         if target == "---":
@@ -1178,7 +1140,7 @@ with col_m2:
                             else:
                                 st.error("❌ Le motif est obligatoire.")
 
-# Alertes de vigilance sous le formulaire
+                    # Alertes de vigilance sous le formulaire
                     # On récupère les infos du citoyen sélectionné
                     citoyen_info = df_b[df_b["Nom Roblox"] == target]
                     is_wanted = "RECHERCHÉ" in str(citoyen_info.iloc[0].get("Statut", "")).upper() if not citoyen_info.empty else False
@@ -1198,13 +1160,9 @@ with col_m2:
                     
                     if is_wanted:
                         st.markdown(f'<div class="alert-mandat">🚨 <b>INDIVIDU RECHERCHÉ</b> 🚨<br>{motif_recherche.upper()}</div>', unsafe_allow_html=True)
-                        
-                        # Affichage de la photo si elle a été enregistrée en session
-                        if f"img_{target}" in st.session_state:
-                            st.image(st.session_state[f"img_{target}"], use_container_width=True)
-
                     if total_dette > 0:
                         st.markdown(f'<div class="alert-dette">⚠️ FACTURES IMPAYÉES : {total_dette}$</div>', unsafe_allow_html=True)
+
                 # --- COLONNE 2 : APERÇU DE LA FACTURE (STYLE TICKET) ---
                 with col_facture:
                     st.markdown("#### 📄 Aperçu")
