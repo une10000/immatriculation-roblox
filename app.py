@@ -373,16 +373,50 @@ with st.container():
         # --- RÉCUPÉRATION DES DONNÉES GLOBALES ---
         citoyen_info = df_b[df_b["Nom Roblox"] == target]
         
-        # --- B. ALERTES AUTOMATIQUES ---
-        # 1. Alerte Mandat (Rouge)
+# --- B. ALERTES AUTOMATIQUES ---
+        # 1. Alerte Mandat (Rouge Flashy)
         if not citoyen_info.empty and "RECHERCHÉ" in str(citoyen_info.iloc[0].get("Statut", "")).upper():
+            motif_critique = citoyen_info.iloc[0].get("Motif Recherche", "Non spécifié")
             st.markdown(f"""
-                <div style="background-color: #d32f2f; padding: 20px; border-radius: 10px; border: 4px solid #ff0000; color: white; text-align: center; margin-bottom: 10px;">
-                    <h2 style="margin:0; color: white;">🚨 SIGNALEMENT : INDIVIDU RECHERCHÉ 🚨</h2>
-                    <p>L'individu <b>{target}</b> fait l'objet d'un mandat d'arrêt actif.</p>
+                <style>
+                @keyframes blink {{
+                    0% {{ opacity: 1; border-color: #ff0000; box-shadow: 0 0 10px #ff0000; }}
+                    50% {{ opacity: 0.7; border-color: #ffffff; box-shadow: 0 0 30px #ff0000; }}
+                    100% {{ opacity: 1; border-color: #ff0000; box-shadow: 0 0 10px #ff0000; }}
+                }}
+                .critical-alert {{
+                    background-color: #900000;
+                    padding: 30px;
+                    border-radius: 15px;
+                    border: 8px solid #ff0000;
+                    color: white;
+                    text-align: center;
+                    margin-bottom: 20px;
+                    animation: blink 1s infinite;
+                    font-family: 'Arial Black', sans-serif;
+                }}
+                </style>
+                <div class="critical-alert">
+                    <h1 style="margin:0; font-size: 40px; color: white; text-shadow: 2px 2px #000000;">🚨 ALERTE INTERPOL : RECHERCHÉ 🚨</h1>
+                    <p style="font-size: 25px; margin-top: 10px;">L'individu <b>{target.upper()}</b> est sous mandat d'arrêt immédiat !</p>
+                    <div style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 5px; margin-top: 10px;">
+                        <b style="font-size: 20px;">MOTIF : {motif_critique}</b>
+                    </div>
                 </div>
             """, unsafe_allow_html=True)
 
+        # 2. Alerte Permis Invalide (Orange Flashy)
+        # Tu peux aussi l'ajouter si tu veux que ce soit aussi visible
+        try:
+            pts_permis = df_p[df_p["Nom Roblox"] == target].iloc[0]["PTS"]
+            if pts_permis <= 0:
+                st.markdown(f"""
+                    <div style="background-color: #ff9800; padding: 20px; border-radius: 10px; border: 4px solid #fb8c00; color: black; text-align: center; margin-bottom: 10px;">
+                        <h2 style="margin:0;">⚠️ PERMIS RÉVOQUÉ (0 PTS) ⚠️</h2>
+                        <p style="font-size: 18px;">L'individu <b>{target}</b> circule sans points valides.</p>
+                    </div>
+                """, unsafe_allow_html=True)
+        except: pass
         # 2. Alerte Dette en retard (Orange)
         maintenant = datetime.now()
         try:
