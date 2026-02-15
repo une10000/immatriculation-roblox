@@ -1113,19 +1113,68 @@ if len(tabs) > 1:
                     else: 
                         st.error("❌ Plaque inconnue")
 
-        # --- 3. INTERVENTION SUR CITOYEN (BLOC COMPLET) ---
+# --- 3. INTERVENTION SUR CITOYEN (BLOC COMPLET) ---
         st.divider()
         if target == "---":
             st.warning("⚠️ Sélectionnez un citoyen en haut de la page pour ouvrir le module d'intervention.")
         else:
             # Sécurité : On vérifie si l'agent est bien identifié par son code
             if not agent_identifie:
-                # S'il n'est pas identifié, on ne montre RIEN ou juste un message simple
                 st.info("🔒 Veuillez pointer votre code agent ci-dessus pour accéder à la facturation.")
             else:
                 st.markdown(f"### ⚡ INTERVENTION : {target.upper()}")
+                
+                # --- Création des colonnes d'action ---
                 col_form, col_facture, col_vehicules = st.columns([1.2, 1, 1])
+                
+                # (Ici tes codes pour col_form, col_facture et col_vehicules...)
 
+                # ======================================================================================
+                # --- SECTION : SERVICES AGENT (Recherche par Facture / Référence) ---
+                # ======================================================================================
+                st.markdown("---")
+                st.markdown("#### 📑 Recherche Rapide de Facture")
+
+                with st.container(border=True):
+                    col_search1, col_search2 = st.columns([2, 1])
+                    
+                    with col_search1:
+                        # Recherche hybride Nom ou Référence
+                        search_query = st.text_input("🔍 Rechercher (Nom ou N° Référence) :", key="search_facture")
+                    
+                    with col_search2:
+                        filter_status = st.selectbox("État :", ["Toutes", "En attente", "Payée"], key="filter_fact_status")
+
+                    if search_query:
+                        # Filtrage par Nom OU par Référence (conversion en string pour éviter les erreurs)
+                        mask = (
+                            df_f["Nom Roblox"].str.contains(search_query, case=False, na=False) | 
+                            df_f["Référence"].astype(str).str.contains(search_query, case=False, na=False)
+                        )
+                        
+                        results = df_f[mask]
+
+                        if filter_status != "Toutes":
+                            results = results[results["Statut"] == filter_status]
+
+                        if not results.empty:
+                            st.dataframe(results[["Référence", "Nom Roblox", "Montant", "Raison", "Statut"]], use_container_width=True)
+                            
+                            # Sélection précise par référence pour action rapide
+                            selected_ref = st.selectbox("Sélectionner une référence pour action :", results["Référence"].tolist(), key="select_ref_action")
+                            
+                            if st.button(f"✅ Régulariser la facture {selected_ref}", use_container_width=True):
+                                try:
+                                    idx = df_f[df_f["Référence"] == selected_ref].index[0]
+                                    df_f.at[idx, "Statut"] = "Payée"
+                                    cloud_conn.update(worksheet="Factures", data=df_f)
+                                    st.success(f"Facture {selected_ref} marquée comme PAYÉE.")
+                                    time.sleep(1)
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"Erreur lors de la mise à jour : {e}")
+                        else:
+                            st.warning("Aucune facture trouvée pour cette recherche.")
                 # --- COLONNE 1 : FORMULAIRE D'ACTION ---
                 with col_form:
                     with st.container(border=True):
