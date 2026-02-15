@@ -1115,7 +1115,7 @@ with tabs[1]:
 # --- COLONNE 1 : FORMULAIRE ---
                 with col_form:
                     with st.container(border=True):
-                        # Choix de l'émetteur selon le grade avec info visuelle pour RCT
+                        # Choix de l'émetteur selon le grade
                         if st.session_state.user_auth == "Staff":
                             f_emetteur = st.selectbox("Émetteur", ["POLSTA", "Averis", "RCT"], key="em_ui")
                         else:
@@ -1124,27 +1124,25 @@ with tabs[1]:
                         
                         f_val = st.number_input("Amende ($)", 0, 100000, 500, step=100)
                         
-                        # Seul le Staff en mode POLSTA peut retirer des points
                         can_pull_points = (st.session_state.user_auth == "Staff" and f_emetteur == "POLSTA")
                         f_pts = st.slider("Retrait de points", 0, 12, 0, disabled=not can_pull_points)
                         
                         f_motif = st.text_area("Motif détaillé", key="mot_ui", placeholder="Décrivez l'infraction...")
                         
-                        # Récupération des véhicules pour la plaque
                         target_veh = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
                         f_plate = st.selectbox("Véhicule lié", ["AUCUN"] + target_veh["Numéro de la plaque"].tolist())
                         
+                        # Bouton d'envoi
                         if st.button("🚨 ENVOYER FACTURE", use_container_width=True, type="primary"):
                             if f_motif:
                                 with st.spinner("Transmission au central..."):
                                     import random
                                     df_all_f = cloud_conn.read(worksheet="Factures").fillna("")
-                                    
                                     new_f = {
                                         "ID": random.randint(10000, 99999),
                                         "Cible": target,
                                         "Emetteur": f_emetteur,
-                                        "Agent_Signataire": agent_identifie, # Nom lié au Code Staff
+                                        "Agent_Signataire": agent_identifie,
                                         "Montant": f_val,
                                         "Points": f_pts if can_pull_points else 0,
                                         "Motif": f"{f_motif} [{f_plate}]",
@@ -1152,22 +1150,53 @@ with tabs[1]:
                                         "Date_Emission": datetime.now().strftime("%d/%m/%Y %H:%M"),
                                         "Date_Limite": (datetime.now() + timedelta(hours=24)).strftime("%d/%m/%Y %H:%M")
                                     }
-                                    
-                                    # Déduction des points
                                     if f_pts > 0 and can_pull_points:
                                         try:
                                             idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
                                             df_p.at[idx_p, "PTS"] = max(0, int(df_p.at[idx_p, "PTS"]) - f_pts)
                                             cloud_conn.update(worksheet="Points Permis", data=df_p)
                                         except: pass
-                                    
                                     cloud_conn.update(worksheet="Factures", data=pd.concat([df_all_f, pd.DataFrame([new_f])], ignore_index=True))
                                     st.success(f"✅ PV enregistré par {agent_identifie}")
-                                    time.sleep(1)
-                                    st.rerun()
+                                    time.sleep(1); st.rerun()
                             else:
                                 st.error("❌ Le motif est obligatoire.")
 
+                        # --- ALERTES DE VIGILANCE (Impayés & Mandats) ---
+                        st.markdown("---")
+                        # Check Impayés
+                        df_check_f = cloud_conn.read(worksheet="Factures").fillna("")
+                        has_debts = not df_check_f[(df_check_f["Cible"] == target) & (df_check_f["Statut"] == "EN ATTENTE")].empty
+                        # Check Recherche
+                        is_wanted = "RECHERCHÉ" in str(citoyen_info.iloc[0].get("Statut", "")).upper() if not citoyen_info.empty else False
+
+                        if has_debts or is_wanted:
+                            msg = "⚠️ ATTENTION : "
+                            if is_wanted: msg += "INDIVIDU RECHERCHÉ ! "
+                            if has_debts: msg += "FACTURES IMPAYÉES !"
+                            
+                            st.markdown(f"""
+                                <style>
+                                @keyframes pulse_red {{
+                                    0% {{ background-color: #d32f2f; box-shadow: 0 0 0 0px rgba(211, 47, 47, 0.7); }}
+                                    50% {{ background-color: #ff5252; box-shadow: 0 0 0 15px rgba(211, 47, 47, 0); }}
+                                    100% {{ background-color: #d32f2f; box-shadow: 0 0 0 0px rgba(211, 47, 47, 0); }}
+                                }}
+                                .alert-box {{
+                                    animation: pulse_red 1.5s infinite;
+                                    color: white;
+                                    padding: 15px;
+                                    border-radius: 8px;
+                                    text-align: center;
+                                    font-weight: bold;
+                                    font-size: 1.1em;
+                                    border: 2px solid white;
+                                }}
+                                </style>
+                                <div class="alert-box">
+                                    {msg}
+                                </div>
+                            """, unsafe_allow_html=True)
                 # --- COLONNE 2 : TICKET (AU MILIEU) ---
                 with col_facture:
                     st.markdown("#### 📄 Aperçu")
