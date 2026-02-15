@@ -466,31 +466,35 @@ with st.container():
 
 # ---------------- COLONNE 1 : POINTS & PERMIS ----------------
         with col1:
-            p_data = df_p[df_p["Nom Roblox"] == target]
-            if not p_data.empty:
-                pts = int(p_data.iloc[0]["PTS"])
-                
-                # --- FILIGRANE PERMIS ---
-                st.markdown("""
-                    <style>
-                    .watermark-permis {
-                        position: absolute;
-                        top: 50%;
-                        left: 50%;
-                        transform: translate(-50%, -50%) rotate(-25deg);
-                        font-size: 35px;
-                        color: rgba(0, 0, 0, 0.07); /* Très léger */
-                        font-weight: bold;
-                        z-index: 0;
-                        white-space: nowrap;
-                        pointer-events: none;
-                        text-align: center;
-                    }
-                    </style>
-                    <div class="watermark-permis">🚙 🪪 PERMIS OFFICIEL 🪪 🚙</div>
-                """, unsafe_allow_html=True)
+            # On crée un conteneur pour isoler le style
+            with st.container():
+                p_data = df_p[df_p["Nom Roblox"] == target]
+                if not p_data.empty:
+                    pts = int(p_data.iloc[0]["PTS"])
+                    
+                    # --- FILIGRANE DISCRET ---
+                    st.markdown("""
+                        <style>
+                        .watermark-p {
+                            position: absolute;
+                            right: 10px;
+                            top: 40px;
+                            font-size: 22px;
+                            font-weight: 900;
+                            color: rgba(0, 0, 0, 0.05); /* Ultra transparent */
+                            transform: rotate(-15deg);
+                            pointer-events: none;
+                            white-space: nowrap;
+                            z-index: 0;
+                        }
+                        </style>
+                        <div class="watermark-p">🚙 PERMIS OFFICIEL 🪪</div>
+                    """, unsafe_allow_html=True)
 
-                st.metric("POINTS PERMIS", f"{pts}/25")
+                    st.metric("POINTS PERMIS", f"{pts}/25")
+                    color = "green" if pts > 0 else "red"
+                    st.markdown(f"Statut : <b style='color:{color};'>{'VALIDE' if pts > 0 else 'SUSPENDU'}</b>", unsafe_allow_html=True)
+                    # ... reste du code reset ...
                 color = "green" if pts > 0 else "red"
                 st.markdown(f"Statut : <b style='color:{color};'>{'VALIDE' if pts > 0 else 'SUSPENDU'}</b>", unsafe_allow_html=True)
                 
@@ -507,27 +511,27 @@ with st.container():
 # ---------------- COLONNE 2 : BANQUE & PAIE ----------------
         with col2:
             if not citoyen_info.empty:
-                # --- FILIGRANE BANQUE ---
+                # --- FILIGRANE DISCRET ---
                 st.markdown("""
                     <style>
-                    .watermark-banque {
+                    .watermark-b {
                         position: absolute;
-                        top: 50%;
-                        left: 50%;
-                        transform: translate(-50%, -50%) rotate(-15deg);
-                        font-size: 35px;
-                        color: rgba(0, 0, 0, 0.07);
-                        font-weight: bold;
-                        z-index: 0;
-                        white-space: nowrap;
+                        right: 10px;
+                        top: 40px;
+                        font-size: 22px;
+                        font-weight: 900;
+                        color: rgba(0, 0, 0, 0.05);
+                        transform: rotate(-15deg);
                         pointer-events: none;
-                        text-align: center;
+                        white-space: nowrap;
+                        z-index: 0;
                     }
                     </style>
-                    <div class="watermark-banque">💳 💵 DOSSIER BANCAIRE 💵 💳</div>
+                    <div class="watermark-b">💳 DOSSIER BANCAIRE 💵</div>
                 """, unsafe_allow_html=True)
 
                 st.metric("SOLDE BANCAIRE", f"{citoyen_info.iloc[0]['Solde']}$")
+                # ... reste du code paie ...
                 # ... (le reste de ton code pour le métier et la paie)
                 job_raw = str(citoyen_info.iloc[0]['Emploiement'])
                 st.write(f"🏢 Métier : **{job_raw}**")
