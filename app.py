@@ -470,10 +470,11 @@ with st.container():
             if not p_data.empty:
                 pts = int(p_data.iloc[0]["PTS"])
                 
-                # Filigrane discret en haut à droite (Style Capture 2)
+                # Filigrane discret (Style Badge Officiel)
                 st.markdown("""
-                    <div style="position: relative;">
-                        <div style="position: absolute; right: -10px; top: -15px; transform: rotate(-10deg); opacity: 0.15; font-size: 14px; font-weight: bold; pointer-events: none;">
+                    <div style="position: relative; height: 0px; top: -10px; right: -10px;">
+                        <div style="position: absolute; right: 0; font-size: 12px; font-weight: bold; 
+                                    color: rgba(0,0,0,0.2); transform: rotate(-10deg); white-space: nowrap;">
                             🚙 PERMIS OFFICIEL 🪪
                         </div>
                     </div>
@@ -490,16 +491,17 @@ with st.container():
                         st.success("Permis rendu !")
                         time.sleep(1)
                         st.rerun()
-            else: 
+            else:
                 st.info("Aucun permis trouvé.")
 
         # ---------------- COLONNE 2 : BANQUE & PAIE ----------------
         with col2:
             if not citoyen_info.empty:
-                # Filigrane discret en haut à droite (Style Capture 2)
+                # Filigrane discret (Style Badge Officiel)
                 st.markdown("""
-                    <div style="position: relative;">
-                        <div style="position: absolute; right: -10px; top: -15px; transform: rotate(-10deg); opacity: 0.15; font-size: 14px; font-weight: bold; pointer-events: none;">
+                    <div style="position: relative; height: 0px; top: -10px; right: -10px;">
+                        <div style="position: absolute; right: 0; font-size: 12px; font-weight: bold; 
+                                    color: rgba(0,0,0,0.2); transform: rotate(-10deg); white-space: nowrap;">
                             💳 DOSSIER BANCAIRE 💵
                         </div>
                     </div>
