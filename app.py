@@ -614,10 +614,10 @@ with st.container():
 # ======================================================================================
 # 7. LOGIQUE DES ONGLETS (CORRIGÉE)
 # ======================================================================================
+
 # ======================================================================================
 # NOUVEAU : SYSTÈME DE PAIEMENT DES FACTURES (STYLE TICKET)
 # ======================================================================================
-# --- SYSTÈME DE PAIEMENT DES FACTURES (STYLE TICKET) ---
 df_all_f = cloud_conn.read(worksheet="Factures").fillna("")
 mes_factures = df_all_f[(df_all_f["Cible"] == target) & (df_all_f["Statut"] == "EN ATTENTE")]
 
@@ -641,7 +641,7 @@ if not mes_factures.empty:
             timer_info = "⌛ Délai : 24 heures"; t_color = "#555"
 
         # 2. IDENTIFICATION ÉMETTEUR
-        emetteur_label = str(fac.get('Emetteur', fac.get('Emetteur', 'INCONNU')))
+        emetteur_label = str(fac.get('Emetteur', 'INCONNU'))
         if "POL" in emetteur_label.upper(): prefix_name = "POLICE NATIONALE"
         elif "AVERIS" in emetteur_label.upper(): prefix_name = "SERVICES AVERIS"
         else: prefix_name = "RÉSEAU RCT"
@@ -680,11 +680,12 @@ if not mes_factures.empty:
                 if solde_actuel >= montant_facture:
                     df_b.at[idx_b, "Solde"] = solde_actuel - montant_facture
                     
-                    # Redirection des fonds (Patrons)
+                    # --- REDIRECTION DES FONDS ---
                     if "RCT" in emetteur_label.upper():
                         idx_p = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
                         df_b.at[idx_p, "Solde"] = float(str(df_b.at[idx_p, "Solde"]).replace('$', '')) + montant_facture
                     elif "AVERIS" in emetteur_label.upper():
+                        # Argent envoyé à Moune2010 pour Averis
                         idx_p = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
                         df_b.at[idx_p, "Solde"] = float(str(df_b.at[idx_p, "Solde"]).replace('$', '')) + montant_facture
                     
@@ -699,45 +700,40 @@ if not mes_factures.empty:
                     st.error("❌ Solde insuffisant.")
             except Exception as e:
                 st.error(f"Erreur paiement : {e}")
-# 4. BOUTON ANNULER (Staff/Admin) avec remise des points
-        if st.session_state.user_auth in ["Staff", "Admin", "POLSTA"]: # J'ai ajouté POLSTA au cas où
+
+        # 5. BOUTON ANNULER (Staff/Admin)
+        if st.session_state.user_auth in ["Staff", "Admin", "POLSTA"]:
             if st.button(f"🗑️ ANNULER LA FACTURE #{fac['ID']}", key=f"admin_del_{fac['ID']}", use_container_width=True):
                 try:
-                    with st.spinner("Annulation et restitution des points..."):
-                        # 1. On récupère les données fraîches
+                    with st.spinner("Annulation..."):
                         df_f_sync = cloud_conn.read(worksheet="Factures")
                         df_p_sync = cloud_conn.read(worksheet="Points Permis")
                         
-                        # 2. On récupère le nombre de points sur la facture
                         pts_a_rendre = fac.get('Points', 0)
                         
-                        # 3. Logique de restitution des points
                         if pts_a_rendre and str(pts_a_rendre).isdigit() and int(pts_a_rendre) > 0:
                             try:
                                 idx_p = df_p_sync[df_p_sync["Nom Roblox"] == fac["Cible"]].index[0]
                                 current_pts = int(df_p_sync.at[idx_p, "PTS"])
                                 df_p_sync.at[idx_p, "PTS"] = min(12, current_pts + int(pts_a_rendre))
                                 cloud_conn.update(worksheet="Points Permis", data=df_p_sync)
-                                st.info(f"🔄 {pts_a_rendre} points restitués au civil.")
-                            except Exception as e_pts:
-                                st.error(f"Erreur restitution points : {e_pts}")
+                                st.info(f"🔄 {pts_a_rendre} points restitués.")
+                            except: pass
 
-                        # 4. On change le statut de la facture en ANNULÉ
                         df_f_sync.loc[df_f_sync["ID"] == fac["ID"], "Statut"] = "ANNULÉ"
-                        
-                        # 5. Sauvegarde de la facture
                         cloud_conn.update(worksheet="Factures", data=df_f_sync)
 
-                        # --- LA MODIFICATION DU LOG ICI ---
                         qui_annule = st.session_state.get('staff_name', 'Agent Staff')
-                        record_log(qui_annule, f"Rembourser la facture #{fac['ID']} de {fac['Cible']}")
+                        record_log(qui_annule, f"Annulation facture #{fac['ID']} de {fac['Cible']}")
                         
                         st.warning(f"Facture #{fac['ID']} annulée.")
                         st.cache_data.clear()
                         st.rerun()
                 except Exception as e:
                     st.error(f"Erreur annulation : {e}")
-        st.write("---")
+
+st.write("---")
+
 # --- SECTION VÉHICULES UNIFORMISÉE ---
 st.write("### 🚗 VÉHICULES ENREGISTRÉS")
 v_data = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
@@ -746,12 +742,10 @@ if not v_data.empty:
     v_cols = st.columns(3)
     for i, (_, veh) in enumerate(v_data.iterrows()):
         with v_cols[i % 3]:
-            # --- RÉCUPÉRATION TECHNIQUE DE LA DATE ---
-            date_val = veh.get('Horodateur', 'N/A')
-            # On retire le [:10] qui coupait l'heure
-            date_display = str(date_val) if date_val != 'N/A' else "Non spécifiée"
+            # --- RÉCUPÉRATION TECHNIQUE DE LA DATE (SANS COUPURE) ---
+            date_display = str(veh.get('Horodateur', 'Non spécifiée'))
 
-            # --- LOGIQUE DE SÉCURITÉ RCT ---
+            # --- LOGIQUE DE SÉCURITÉ ---
             assu = str(veh.get('Assurance', '')).upper()
             role = st.session_state.user_auth
             
@@ -769,7 +763,7 @@ if not v_data.empty:
                     color = "#d32f2f"
                     status_txt = "🚨 DANGER : NON-ASSURÉ"
 
-            # --- TON DESIGN D'ORIGINE ---
+            # --- DESIGN TITRE DE CIRCULATION ---
             st.markdown(f"""
             <div style="border: 2px solid black; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; line-height: 1.2;">
                 <center><b>TITRE DE CIRCULATION</b><br><small>RÉPUBLIQUE DE RENSSERLAER</small></center>
@@ -853,9 +847,8 @@ with tabs[0]:
 
             total_bill = taxe_gouv + taxe_assu + val_taxe_jeune
             
-# --- BOUTON DE VALIDATION (LOGIQUE RÉELLE) ---
+            # --- BOUTON DE VALIDATION (LOGIQUE RÉELLE) ---
             if st.button(f"S'ACQUITTER DE {total_bill}$ ET ENREGISTRER", use_container_width=True, key="btn_pay_final", type="primary"):
-                # Vérification que le formulaire n'est pas vide
                 if f_owner == "---" or not f_model or not f_plate or not f_code:
                     st.error("⚠️ Formulaire incomplet ! Remplis tous les champs.")
                 else:
@@ -871,7 +864,7 @@ with tabs[0]:
                                 # 2. Retrait de l'argent
                                 df_b.at[idx_user, "Solde"] = solde_actuel - total_bill
                                 
-                                # 3. Création de la ligne (CORRIGÉE POUR TON SHEETS)
+                                # 3. Création de la ligne
                                 nouvelle_immat = {
                                     "Horodateur": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
                                     "Nom d'utilisateur ROBLOX": f_owner,
@@ -889,9 +882,8 @@ with tabs[0]:
                                 cloud_conn.update(worksheet="Banque", data=df_b)
                                 cloud_conn.update(worksheet="Copie de Immatriculations", data=new_df_i)
                                 
-                                # 5. Effet de fête et Confirmation
-                                st.balloons() # 🎈
-                                
+                                # 5. Confirmation
+                                st.balloons()
                                 st.success(f"""
                                 ### ✅ IMMATRICULATION RÉUSSIE !
                                 ---
@@ -903,17 +895,14 @@ with tabs[0]:
                                 *Le titre de circulation a été enregistré dans la base nationale.*
                                 """)
                                 
-                                import time
                                 time.sleep(3)
-                                
-                                # Rafraîchissement
                                 st.cache_data.clear()
                                 st.rerun()
                                 
                     except Exception as e:
                         st.error(f"⚠️ Erreur de connexion au Sheets : {e}")
+
     with col_t:
-        # Titre de droite aligné sur le titre de gauche
         st.markdown("### 🖼️ Aperçu du Titre")
         
         # Préparation des variables de l'aperçu
@@ -988,17 +977,14 @@ with tabs[1]:
                         h_actuelle = datetime.now(timezone(timedelta(hours=1))).strftime("%H:%M")
                         m_actuelle, m_debut, m_fin = st.columns(3)
                         
-                        # 1. Heure Actuelle (À GAUCHE)
+                        # 1. Heure Actuelle
                         m_actuelle.metric("Heure Actuelle", h_actuelle)
                         
                         if en_service:
                             h_deb_brute = session_active.iloc[-1]['début']
                             h_deb_clean = h_deb_brute.split(' ')[1][:5] if ' ' in h_deb_brute else h_deb_brute[:5]
-                            
-                            # 2. Début (AU MILIEU)
                             m_debut.metric("Heure de Début", h_deb_clean)
                             
-                            # 3. Fin / Durée (À DROITE)
                             try:
                                 diff = datetime.now(timezone(timedelta(hours=1))) - datetime.strptime(h_deb_brute, "%d/%m/%Y %H:%M:%S").replace(tzinfo=timezone(timedelta(hours=1)))
                                 duree_min = int(diff.total_seconds() / 60)
@@ -1015,18 +1001,14 @@ with tabs[1]:
                     job_auto = "POLSTA" if st.session_state.user_auth == "Staff" else "RCT"
                     
                     if not en_service:
-                        # Texte d'information Hors-Service
-                        st.info(f"💡 **Information :** Vous êtes actuellement **Hors-Service**. Pour commencer à comptabiliser votre temps de paie et accéder aux outils d'intervention, veuillez cliquer sur le bouton **Début de Service** ci-dessous.")
-                        
+                        st.info(f"💡 **Information :** Vous êtes actuellement **Hors-Service**. Pour comptabiliser votre paie et accéder aux outils, cliquez sur **Début de Service**.")
                         if st.button(f"▶️ DÉBUT DE SERVICE ({job_auto})", use_container_width=True, type="primary"):
                             h_deb = datetime.now(timezone(timedelta(hours=1))).strftime("%d/%m/%Y %H:%M:%S")
                             new_row = pd.DataFrame([{"nom": agent_identifie, "action": "SERVICE", "job": job_auto, "début": h_deb, "fin": "", "statut": "en cours"}])
                             cloud_conn.update(worksheet="Clock", data=pd.concat([df_clock, new_row], ignore_index=True))
                             st.rerun()
                     else:
-                        # Texte d'information En-Service
-                        st.warning(f"🚨 **Information :** Vous êtes en service actif (**{job_auto}**). N'oubliez pas de cliquer sur **Fin de Service** avant de quitter pour que vos minutes soient bien enregistrées dans la base de données des paies.")
-                        
+                        st.warning(f"🚨 **Information :** Vous êtes en service actif (**{job_auto}**). N'oubliez pas de pointer la fin de service avant de partir.")
                         if st.button(f"⏹️ FIN DE SERVICE ({job_auto})", use_container_width=True):
                             h_fin = datetime.now(timezone(timedelta(hours=1))).strftime("%d/%m/%Y %H:%M:%S")
                             df_clock.at[session_active.index[-1], "fin"] = h_fin
@@ -1037,21 +1019,20 @@ with tabs[1]:
                             st.rerun()
                 else:
                     st.error("❌ Code Agent Invalide")
-# --- 2. RECHERCHE & MANDATS ---
+
+        # --- 2. RECHERCHE & MANDATS ---
         st.markdown("### 🔍 MANDATS & RECHERCHE")
         
-        # Formulaire pour créer un nouveau mandat (Ajouté)
         with st.container(border=True):
             st.markdown("#### 📝 Lancer un Mandat d'Arrêt")
             c1, c2, c3 = st.columns([1.5, 2, 1])
-            
             with c1:
                 liste_citoyens = sorted(df_b["Nom Roblox"].unique().tolist())
                 cible_mandat = st.selectbox("Suspect", ["---"] + liste_citoyens, key="mandat_cible")
             with c2:
-                motif_mandat = st.text_input("Motif de recherche", placeholder="Ex: Refus d'obtempérer, Braquage...", key="mandat_motif")
+                motif_mandat = st.text_input("Motif de recherche", placeholder="Ex: Braquage...", key="mandat_motif")
             with c3:
-                st.write(" ") # Alignement
+                st.write(" ")
                 if st.button("🚨 LANCER L'ALERTE", use_container_width=True, type="primary"):
                     if cible_mandat != "---" and motif_mandat:
                         idx = df_b[df_b["Nom Roblox"] == cible_mandat].index[0]
@@ -1061,11 +1042,9 @@ with tabs[1]:
                         st.success(f"Mandat lancé contre {cible_mandat} !")
                         time.sleep(1); st.rerun()
                     else:
-                        st.error("Sélectionnez un nom et un motif.")
+                        st.error("Champs requis !")
 
-        # Affichage des mandats et Scanner
         col_m1, col_m2 = st.columns([2, 1])
-        
         with col_m1:
             with st.container(border=True):
                 st.markdown("#### 📢 Alertes Actives")
@@ -1073,15 +1052,15 @@ with tabs[1]:
                 if not recherches.empty:
                     for _, crim in recherches.iterrows():
                         with st.container(border=True):
-                            c1, c2 = st.columns([3, 1])
-                            c1.warning(f"🚨 **{crim['Nom Roblox']}**\n\n**Motif :** {crim.get('Motif Recherche', 'N/A')}")
-                            if c2.button("Libérer", key=f"rel_{crim['Nom Roblox']}", use_container_width=True):
+                            c1_r, c2_r = st.columns([3, 1])
+                            c1_r.warning(f"🚨 **{crim['Nom Roblox']}**\n\n**Motif :** {crim.get('Motif Recherche', 'N/A')}")
+                            if c2_r.button("Libérer", key=f"rel_{crim['Nom Roblox']}", use_container_width=True):
                                 idx = df_b[df_b["Nom Roblox"] == crim["Nom Roblox"]].index[0]
                                 df_b.at[idx, "Statut"], df_b.at[idx, "Motif Recherche"] = "RAS", ""
                                 cloud_conn.update(worksheet="Banque", data=df_b)
                                 st.rerun()
                 else: 
-                    st.success("✅ Aucun mandat actif sur le territoire.")
+                    st.success("✅ Aucun mandat actif.")
 
         with col_m2:
             with st.container(border=True):
@@ -1091,198 +1070,152 @@ with tabs[1]:
                     m = df_i[df_i["Numéro de la plaque"].astype(str).str.contains(p_search, na=False)]
                     if not m.empty:
                         nom_proprio = m.iloc[0]["Nom d'utilisateur ROBLOX"]
-                        modele_vhc = m.iloc[0]["Marque du véhicule"]
-                        
-                        # Vérifier si le proprio est recherché
                         is_wanted = not df_b[(df_b["Nom Roblox"] == nom_proprio) & (df_b["Statut"] == "RECHERCHÉ")].empty
-                        
-                        if is_wanted:
-                            st.error(f"⚠️ **ATTENTION : PROPRIO RECHERCHÉ**")
-                        
-                        st.info(f"👤 **Proprio :** {nom_proprio}\n\n🚘 **Modèle :** {modele_vhc}")
+                        if is_wanted: st.error(f"⚠️ **PROPRIO RECHERCHÉ**")
+                        st.info(f"👤 **Proprio :** {nom_proprio}\n\n🚘 **Modèle :** {m.iloc[0]['Marque du véhicule']}")
                     else: 
                         st.error("❌ Plaque inconnue")
-# --- 3. INTERVENTION SUR CITOYEN ---
-        st.divider()
-        if target == "---":
-            st.warning("⚠️ Sélectionnez un citoyen en haut de la page.")
-        else:
-            # Sécurité : On vérifie si l'agent est bien identifié par son code
-            if not agent_identifie:
-                st.error("🔒 **Accès bloqué :** Veuillez saisir votre **Code Agent** dans le module de pointage en haut pour intervenir.")
-            else:
-                st.markdown(f"### ⚡ INTERVENTION : {target.upper()}")
-                col_form, col_facture, col_vehicules = st.columns([1.2, 1, 1])
-# --- COLONNE 1 : FORMULAIRE ---
-                with col_form:
-                    with st.container(border=True):
-                        # Choix de l'émetteur selon le grade
-                        if st.session_state.user_auth == "Staff":
-                            f_emetteur = st.selectbox("Émetteur", ["POLSTA", "Averis", "RCT"], key="em_ui")
-                        else:
-                            f_emetteur = "RCT"
-                            st.info(f"🏢 **Émetteur :** {f_emetteur}")
-                        
-                        f_val = st.number_input("Amende ($)", 0, 100000, 500, step=100)
-                        
-                        can_pull_points = (st.session_state.user_auth == "Staff" and f_emetteur == "POLSTA")
-                        f_pts = st.slider("Retrait de points", 0, 12, 0, disabled=not can_pull_points)
-                        
-                        f_motif = st.text_area("Motif détaillé", key="mot_ui", placeholder="Décrivez l'infraction...")
-                        
-                        target_veh = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
-                        f_plate = st.selectbox("Véhicule lié", ["AUCUN"] + target_veh["Numéro de la plaque"].tolist())
-                        
-                        # Bouton d'envoi
-                        if st.button("🚨 ENVOYER FACTURE", use_container_width=True, type="primary"):
-                            if f_motif:
-                                with st.spinner("Transmission au central..."):
-                                    import random
-                                    df_all_f = cloud_conn.read(worksheet="Factures").fillna("")
-                                    new_f = {
-                                        "ID": random.randint(10000, 99999),
-                                        "Cible": target,
-                                        "Emetteur": f_emetteur,
-                                        "Agent_Signataire": agent_identifie,
-                                        "Montant": f_val,
-                                        "Points": f_pts if can_pull_points else 0,
-                                        "Motif": f"{f_motif} [{f_plate}]",
-                                        "Statut": "EN ATTENTE",
-                                        "Date_Emission": datetime.now().strftime("%d/%m/%Y %H:%M"),
-                                        "Date_Limite": (datetime.now() + timedelta(hours=24)).strftime("%d/%m/%Y %H:%M")
-                                    }
-                                    if f_pts > 0 and can_pull_points:
-                                        try:
-                                            idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
-                                            df_p.at[idx_p, "PTS"] = max(0, int(df_p.at[idx_p, "PTS"]) - f_pts)
-                                            cloud_conn.update(worksheet="Points Permis", data=df_p)
-                                        except: pass
-                                    cloud_conn.update(worksheet="Factures", data=pd.concat([df_all_f, pd.DataFrame([new_f])], ignore_index=True))
-                                    st.success(f"✅ PV enregistré par {agent_identifie}")
-                                    time.sleep(1); st.rerun()
-                            else:
-                                st.error("❌ Le motif est obligatoire.")
 
-# --- ALERTES DE VIGILANCE (JUSTE EN DESSOUS DU BOUTON) ---
-                        st.markdown("<br>", unsafe_allow_html=True)
-                        
-                        # 1. LOGIQUE DE DÉTECTION
-                        # Check Recherche & Motif
-                        is_wanted = "RECHERCHÉ" in str(citoyen_info.iloc[0].get("Statut", "")).upper() if not citoyen_info.empty else False
-                        motif_recherche = citoyen_info.iloc[0].get("Motif Recherche", "Non spécifié") if is_wanted else ""
-                        
-                        # Check Impayés
-                        df_check_f = cloud_conn.read(worksheet="Factures").fillna("")
-                        impayes = df_check_f[(df_check_f["Cible"] == target) & (df_check_f["Statut"] == "EN ATTENTE")]
-                        has_debts = not impayes.empty
-                        total_dette = impayes["Montant"].astype(int).sum() if has_debts else 0
+# --- 3. INTERVENTION SUR CITOYEN (BLOC COMPLET) ---
+st.divider()
+if target == "---":
+    st.warning("⚠️ Sélectionnez un citoyen en haut de la page pour ouvrir le module d'intervention.")
+else:
+    # Sécurité : On vérifie si l'agent est bien identifié par son code
+    if not agent_identifie:
+        st.error("🔒 **Accès bloqué :** Veuillez saisir votre **Code Agent** dans le module de pointage en haut pour intervenir.")
+    else:
+        st.markdown(f"### ⚡ INTERVENTION : {target.upper()}")
+        col_form, col_facture, col_vehicules = st.columns([1.2, 1, 1])
 
-                        # 2. AFFICHAGE DES BLOCS
-                        # STYLE CSS POUR LES ANIMATIONS
-                        st.markdown("""
-                            <style>
-                            @keyframes pulse-red {
-                                0% { box-shadow: 0 0 0 0px rgba(211, 47, 47, 0.7); border-color: #ffffff; }
-                                50% { box-shadow: 0 0 0 15px rgba(211, 47, 47, 0); border-color: #ff0000; }
-                                100% { box-shadow: 0 0 0 0px rgba(211, 47, 47, 0); border-color: #ffffff; }
+        # --- COLONNE 1 : FORMULAIRE D'ACTION ---
+        with col_form:
+            with st.container(border=True):
+                # Choix de l'émetteur selon le grade
+                if st.session_state.user_auth == "Staff":
+                    f_emetteur = st.selectbox("Émetteur", ["POLSTA", "Averis", "RCT"], key="em_ui")
+                else:
+                    f_emetteur = "RCT"
+                    st.info(f"🏢 **Émetteur :** {f_emetteur}")
+                
+                f_val = st.number_input("Amende ($)", 0, 100000, 500, step=100)
+                
+                can_pull_points = (st.session_state.user_auth == "Staff" and f_emetteur == "POLSTA")
+                f_pts = st.slider("Retrait de points", 0, 12, 0, disabled=not can_pull_points)
+                
+                f_motif = st.text_area("Motif détaillé", key="mot_ui", placeholder="Décrivez l'infraction...")
+                
+                target_veh = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
+                f_plate = st.selectbox("Véhicule lié", ["AUCUN"] + target_veh["Numéro de la plaque"].tolist())
+                
+                # Bouton d'envoi
+                if st.button("🚨 ENVOYER FACTURE", use_container_width=True, type="primary"):
+                    if f_motif:
+                        with st.spinner("Transmission au central..."):
+                            import random
+                            df_all_f = cloud_conn.read(worksheet="Factures").fillna("")
+                            new_f = {
+                                "ID": random.randint(10000, 99999),
+                                "Cible": target,
+                                "Emetteur": f_emetteur,
+                                "Agent_Signataire": agent_identifie,
+                                "Montant": f_val,
+                                "Points": f_pts if can_pull_points else 0,
+                                "Motif": f"{f_motif} [{f_plate}]",
+                                "Statut": "EN ATTENTE",
+                                "Date_Emission": datetime.now().strftime("%d/%m/%Y %H:%M"),
+                                "Date_Limite": (datetime.now() + timedelta(hours=24)).strftime("%d/%m/%Y %H:%M")
                             }
-                            @keyframes pulse-orange {
-                                0% { background-color: #e67e22; }
-                                50% { background-color: #f39c12; }
-                                100% { background-color: #e67e22; }
-                            }
-                            .alert-mandat {
-                                background-color: #d32f2f;
-                                color: white;
-                                padding: 15px;
-                                border-radius: 10px;
-                                border: 3px solid white;
-                                text-align: center;
-                                animation: pulse-red 1s infinite;
-                                margin-bottom: 10px;
-                            }
-                            .alert-dette {
-                                background-color: #e67e22;
-                                color: white;
-                                padding: 10px;
-                                border-radius: 10px;
-                                text-align: center;
-                                animation: pulse-orange 2s infinite;
-                                font-weight: bold;
-                            }
-                            </style>
-                        """, unsafe_allow_html=True)
+                            # Logique de retrait de points si applicable
+                            if f_pts > 0 and can_pull_points:
+                                try:
+                                    idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
+                                    df_p.at[idx_p, "PTS"] = max(0, int(df_p.at[idx_p, "PTS"]) - f_pts)
+                                    cloud_conn.update(worksheet="Points Permis", data=df_p)
+                                except: pass
+                                
+                            cloud_conn.update(worksheet="Factures", data=pd.concat([df_all_f, pd.DataFrame([new_f])], ignore_index=True))
+                            st.success(f"✅ PV enregistré par {agent_identifie}")
+                            time.sleep(1); st.rerun()
+                    else:
+                        st.error("❌ Le motif est obligatoire.")
 
-                        # Bloc Mandat (Rouge)
-                        if is_wanted:
-                            st.markdown(f"""
-                                <div class="alert-mandat">
-                                    <h3 style="margin:0; color:white;">🚨 INDIVIDU RECHERCHÉ 🚨</h3>
-                                    <p style="margin:5px 0 0 0; font-size:14px;"><b>MOTIF :</b> {motif_recherche.upper()}</p>
-                                </div>
-                            """, unsafe_allow_html=True)
+            # Alertes de vigilance sous le formulaire
+            is_wanted = "RECHERCHÉ" in str(citoyen_info.iloc[0].get("Statut", "")).upper() if not citoyen_info.empty else False
+            motif_recherche = citoyen_info.iloc[0].get("Motif Recherche", "Non spécifié") if is_wanted else ""
+            
+            df_check_f = cloud_conn.read(worksheet="Factures").fillna("")
+            impayes = df_check_f[(df_check_f["Cible"] == target) & (df_check_f["Statut"] == "EN ATTENTE")]
+            total_dette = impayes["Montant"].astype(int).sum() if not impayes.empty else 0
 
-                        # Bloc Dette (Orange)
-                        if has_debts:
-                            st.markdown(f"""
-                                <div class="alert-dette">
-                                    ⚠️ FACTURES IMPAYÉES : {total_dette}$
-                                </div>
-                            """, unsafe_allow_html=True)
-                # --- COLONNE 2 : TICKET (AU MILIEU) ---
-                with col_facture:
-                    st.markdown("#### 📄 Aperçu")
-                    header_ticket = "FACTURE AVERIS" if f_emetteur == "Averis" else "FACTURE OFFICIELLE"
+            st.markdown("""
+                <style>
+                @keyframes pulse-red { 0% { box-shadow: 0 0 0 0px rgba(211, 47, 47, 0.7); border-color:white; } 50% { box-shadow: 0 0 0 15px rgba(211, 47, 47, 0); border-color:red; } 100% { box-shadow: 0 0 0 0px rgba(211, 47, 47, 0); border-color:white; } }
+                .alert-mandat { background-color: #d32f2f; color: white; padding: 15px; border-radius: 10px; border: 2px solid white; animation: pulse-red 1s infinite; text-align: center; margin-top:10px; }
+                .alert-dette { background-color: #e67e22; color: white; padding: 10px; border-radius: 10px; text-align: center; font-weight: bold; margin-top:5px; }
+                </style>
+            """, unsafe_allow_html=True)
+            
+            if is_wanted:
+                st.markdown(f'<div class="alert-mandat">🚨 <b>INDIVIDU RECHERCHÉ</b> 🚨<br>{motif_recherche.upper()}</div>', unsafe_allow_html=True)
+            if total_dette > 0:
+                st.markdown(f'<div class="alert-dette">⚠️ FACTURES IMPAYÉES : {total_dette}$</div>', unsafe_allow_html=True)
+
+        # --- COLONNE 2 : APERÇU DE LA FACTURE (STYLE TICKET) ---
+        with col_facture:
+            st.markdown("#### 📄 Aperçu")
+            header_ticket = "FACTURE AVERIS" if f_emetteur == "Averis" else "FACTURE OFFICIELLE"
+            
+            st.markdown(f"""
+            <div style="border: 2px solid black; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; line-height: 1.2; box-shadow: 4px 4px 0px #888;">
+                <center><b>{header_ticket}</b><br><small>RÉPUBLIQUE DE RENSSERLAER</small></center>
+                <hr style="border-top: 1px dashed black; margin: 10px 0;">
+                <b>SIGNATAIRE :</b> {agent_identifie.upper()}<br>
+                <b>ÉMETTEUR   :</b> {f_emetteur.upper()}<br>
+                <b>DATE       :</b> {datetime.now().strftime('%d/%m/%Y %H:%M')}<br>
+                <b>NOM        :</b> {target}<br>
+                <b>MOTIF      :</b> {f_motif.upper() if f_motif else '...'}<br>
+                <b>PLAQUE     :</b> <span style="border: 1px solid black; padding: 0 3px;">{f_plate}</span><br>
+                <b>MONTANT    :</b> {f_val}$
+                <hr style="border-top: 1px dashed black; margin: 10px 0;">
+                <div style="text-align: center; font-weight: bold;">
+                    POINTS : -{f_pts if can_pull_points else 0}<br>
+                    <small>Document certifié conforme</small>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        # --- COLONNE 3 : VÉHICULES DU CITOYEN ---
+        with col_vehicules:
+            st.markdown("#### 🚗 Véhicules")
+            if not target_veh.empty:
+                for _, veh in target_veh.iterrows():
+                    assu_v = str(veh['Assurance']).upper()
+                    
+                    # Logique de couleur Assurance
+                    if "RCT" in assu_v:
+                        col_v, txt_v = "#27ae60", "✅ ASSURÉ RCT"
+                    elif "AVERIS" in assu_v:
+                        col_v, txt_v = "#E67E22", "⚠️ ASSURÉ AVERIS"
+                    elif any(word in assu_v for word in ["OUI", "✅"]):
+                        col_v, txt_v = "#27ae60", "✅ VÉHICULE EN RÈGLE"
+                    else:
+                        col_v, txt_v = "#d32f2f", "🚨 NON-ASSURÉ"
+
                     st.markdown(f"""
-                    <div style="border: 2px solid black; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; line-height: 1.2; box-shadow: 4px 4px 0px #888;">
-                        <center><b>{header_ticket}</b><br><small>RÉPUBLIQUE DE RENSSERLAER</small></center>
-                        <hr style="border-top: 1px dashed black; margin: 10px 0;">
-                        <b>SIGNATAIRE :</b> {agent_identifie.upper()}<br>
-                        <b>ÉMETTEUR   :</b> {f_emetteur.upper()}<br>
-                        <b>DATE      :</b> {datetime.now().strftime('%d/%m/%Y')}<br>
-                        <b>NOM       :</b> {target}<br>
-                        <b>MOTIF     :</b> {f_motif.upper() if f_motif else '...'}<br>
-                        <b>PLAQUE    :</b> <span style="border: 1px solid black; padding: 0 3px;">{f_plate}</span><br>
-                        <b>MONTANT   :</b> {f_val}$
-                        <hr style="border-top: 1px dashed black; margin: 10px 0;">
-                        <div style="text-align: center; color: black; font-weight: bold; font-size: 0.9em;">
-                            POINTS : -{f_pts if can_pull_points else 0}<br>
-                            <small>Document généré par terminal</small>
+                    <div style="border: 2px solid black; padding: 10px; background: white; color: black; font-family: 'Courier New', monospace; margin-bottom: 10px; font-size: 0.85em;">
+                        <center><b>TITRE DE CIRCULATION</b></center>
+                        <hr style="border-top: 1px solid #ccc; margin: 5px 0;">
+                        <b>MODÈLE :</b> {veh['Marque du véhicule']}<br>
+                        <b>PLAQUE :</b> <span style="border: 1px solid black; padding: 0 2px;">{veh['Numéro de la plaque']}</span><br>
+                        <hr style="border-top: 1px solid #ccc; margin: 5px 0;">
+                        <div style="text-align: center; color: {col_v}; font-weight: bold;">
+                            {txt_v}
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
-
-                # --- COLONNE 3 : VÉHICULES (À DROITE) ---
-                with col_vehicules:
-                    st.markdown("#### 🚗 Véhicules")
-                    if not target_veh.empty:
-                        for _, veh in target_veh.iterrows():
-                            assu_v = str(veh['Assurance']).upper()
-                            
-                            # Logique de couleur Assurance
-                            if "RCT" in assu_v:
-                                col_v, txt_v = "#27ae60", "✅ ASSURÉ RCT"
-                            elif "AVERIS" in assu_v:
-                                col_v, txt_v = "#E67E22", "⚠️ ASSURÉ AVERIS"
-                            elif "OUI" in assu_v or "✅" in assu_v:
-                                col_v, txt_v = "#27ae60", "✅ VÉHICULE EN RÈGLE"
-                            else:
-                                col_v, txt_v = "#d32f2f", "🚨 DANGER : NON-ASSURÉ"
-
-                            st.markdown(f"""
-                            <div style="border: 2px solid black; padding: 10px; background: white; color: black; font-family: 'Courier New', monospace; margin-bottom: 10px; font-size: 0.85em;">
-                                <center><b>TITRE DE CIRCULATION</b></center>
-                                <hr style="border-top: 1px solid #ccc; margin: 5px 0;">
-                                <b>MODÈLE :</b> {veh['Marque du véhicule']}<br>
-                                <b>PLAQUE :</b> <span style="border: 1px solid black; padding: 0 2px;">{veh['Numéro de la plaque']}</span><br>
-                                <hr style="border-top: 1px solid #ccc; margin: 5px 0;">
-                                <div style="text-align: center; color: {col_v}; font-weight: bold;">
-                                    {txt_v}
-                                </div>
-                            </div>
-                            """, unsafe_allow_html=True)
-                    else:
-                        st.info("Aucun véhicule enregistré.")
+            else:
+                st.info("Aucun véhicule trouvé.")
 # ======================================================================================
 # 5. ONGLET ADMINISTRATION
 # ======================================================================================
@@ -1341,7 +1274,7 @@ if st.session_state.user_auth == "Staff":
                         today_str = datetime.now().strftime("%d/%m/%Y")
                         jobs_string = " / ".join(new_jobs) if new_jobs else "Sans-Emploi"
                         
-                        # Banque : Solde 15k et Date d'arrivée
+                        # Banque : Solde départ 15k selon consignes
                         new_bank_row = pd.DataFrame([{"Nom Roblox": new_name, "Nom Discord": new_discord, "Solde": 15000, "Emploiement": jobs_string, "Date d'arrivée": today_str, "Statut": "RAS", "Motif Recherche": ""}])
                         df_b = pd.concat([df_b, new_bank_row], ignore_index=True)
                         cloud_conn.update(worksheet="Banque", data=df_b)
@@ -1350,11 +1283,8 @@ if st.session_state.user_auth == "Staff":
                         new_pts_row = pd.DataFrame([{"Nom Roblox": new_name, "PTS": new_pts, "Validité": "OUI" if new_pts > 0 else "NON"}])
                         df_p = pd.concat([df_p, new_pts_row], ignore_index=True)
                         cloud_conn.update(worksheet="Points Permis", data=df_p)
-
-                        if "record_log" in globals():
-                            record_log("STAFF", f"Création de dossier : {new_name}")
                         
-                        st.success(f"✅ Dossier créé pour {new_name} (15,000$ + Date du jour)")
+                        st.success(f"✅ Dossier créé pour {new_name}")
                         st.cache_data.clear()
                         time.sleep(1); st.rerun()
 
@@ -1369,39 +1299,44 @@ if st.session_state.user_auth == "Staff":
             with st.container(border=True):
                 user_data = df_b[df_b["Nom Roblox"] == target_paie]
                 
-                # 1. Calcul des Primes de Service (Clock)
-                m_rct, m_pol = 0, 0
+                # 1. Calcul du cumul des heures séparé (RCT vs POLICE)
+                min_rct, min_pol = 0, 0
                 df_clock_paie = cloud_conn.read(worksheet="Clock", ttl=0)
                 logs_valid = df_clock_paie[(df_clock_paie["nom"] == target_paie) & (df_clock_paie["statut"] == "Validé")]
+                
                 for _, r in logs_valid.iterrows():
                     try:
                         diff = (datetime.strptime(str(r["fin"]), "%d/%m/%Y %H:%M:%S") - datetime.strptime(str(r["début"]), "%d/%m/%Y %H:%M:%S")).total_seconds() / 60
-                        if "RCT" in str(r["job"]).upper(): m_rct += diff
-                        elif "POL" in str(r["job"]).upper(): m_pol += diff
+                        if "RCT" in str(r["job"]).upper(): min_rct += diff
+                        elif "POL" in str(r["job"]).upper(): min_pol += diff
                     except: continue
 
-                prime_pol = int(3000 * min(m_pol/1200, 1.0))
-                prime_rct = int(2000 * min(m_rct/1200, 1.0))
+                # Conversion en heures pour l'affichage
+                h_rct, h_pol = round(min_rct/60, 1), round(min_pol/60, 1)
 
-                # 2. Détail des Revenus (Jobs & Bonus)
+                # Primes basées sur le temps (Max 3000 Police, 2000 RCT)
+                prime_pol = int(3000 * min(min_pol/1200, 1.0)) # 1200 min = 20h pour prime max
+                prime_rct = int(2000 * min(min_rct/1200, 1.0))
+
+                # 2. Construction du Salaire Brut
                 user_jobs = [j.strip() for j in str(user_data["Emploiement"].values[0]).split("/")]
-                revenus_details = {"Salaire de Base": 15000}
-                if prime_pol > 0: revenus_details["Prime Police (Temps)"] = prime_pol
-                if prime_rct > 0: revenus_details["Prime RCT (Temps)"] = prime_rct
-                if "Staff" in user_jobs: revenus_details["Bonus Staff"] = 4000
-                if "Averis" in user_jobs: revenus_details["Bonus Averis"] = 2000
-                if "Service Public" in user_jobs: revenus_details["Prime Service Public"] = 1000
+                revenus = {"Salaire Citoyen": 15000}
+                if prime_pol > 0: revenus[f"Primes Police ({h_pol}h)"] = prime_pol
+                if prime_rct > 0: revenus[f"Primes RCT ({h_rct}h)"] = prime_rct
+                if "Staff" in user_jobs: revenus["Bonus Staff"] = 4000
+                if "Averis" in user_jobs: revenus["Bonus Averis"] = 2000
+                if "Service Public" in user_jobs: revenus["Indemnité S.P."] = 1000
                 
-                total_brut = sum(revenus_details.values())
+                total_brut = sum(revenus.values())
 
-                # 3. Détail des Prélèvements (Assurances & JC)
+                # 3. Calcul des Taxes (Assurances & JC)
                 mes_vhc = df_i[df_i["Nom d'utilisateur ROBLOX"] == target_paie]
-                taxe_rct, taxe_av, taxe_std = 0, 0, 0
+                t_rct, t_av, t_std = 0, 0, 0
                 for _, vhc in mes_vhc.iterrows():
                     assu = str(vhc["Assurance"]).upper()
-                    if "RCT" in assu: taxe_rct += 150
-                    elif "AVERIS" in assu: taxe_av += 130
-                    else: taxe_std += 150
+                    if "RCT" in assu: t_rct += 150
+                    elif "AVERIS" in assu: t_av += 130
+                    else: t_std += 150
                 
                 # Taxe Jeune Conducteur
                 try:
@@ -1410,59 +1345,69 @@ if st.session_state.user_auth == "Staff":
                 except: is_jc = False
                 taxe_jc = (len(mes_vhc) * 50) if is_jc else 0
                 
-                total_taxes = taxe_rct + taxe_av + taxe_std + taxe_jc
+                total_taxes = t_rct + t_av + t_std + taxe_jc
                 total_net = total_brut - total_taxes
 
-                # Affichage Fiche de Paie
-                c1, c2 = st.columns(2)
-                with c1:
-                    st.write("**💰 REVENUS**")
-                    for k, v in revenus_details.items(): st.write(f"• {k} : +{v:,}$")
-                with c2:
-                    st.write("**📉 TAXES**")
-                    if taxe_rct > 0: st.write(f"• Assu RCT : -{taxe_rct}$")
-                    if taxe_av > 0: st.write(f"• Assu Averis : -{taxe_av}$")
-                    if taxe_std > 0: st.write(f"• Assu Standard : -{taxe_std}$")
-                    if is_jc: st.write(f"• Taxe Jeune Conducteur : -{taxe_jc}$")
+                # --- AFFICHAGE INTERFACE ---
+                st.markdown(f"#### FICHE DE PAIE : {target_paie}")
+                col_rev, col_tax = st.columns(2)
+                
+                with col_rev:
+                    st.markdown("##### 💰 REVENUS (BRUT)")
+                    for k, v in revenus.items():
+                        st.write(f"✅ {k} : **{v:,}$**")
+                
+                with col_tax:
+                    st.markdown("##### 📉 TAXES & DÉDUCTIONS")
+                    if t_rct > 0: st.write(f"🛡️ Assu RCT : **-{t_rct}$**")
+                    if t_av > 0: st.write(f"🛡️ Assu Averis : **-{t_av}$**")
+                    if t_std > 0: st.write(f"🛡️ Assu Standard : **-{t_std}$**")
+                    if is_jc: st.write(f"🔰 Taxe Jeune Cond. : **-{taxe_jc}$**")
+                    if total_taxes == 0: st.caption("Aucune taxe appliquée")
 
-                st.metric("TOTAL NET À VERSER", f"{total_net:,}$", delta=f"Brut: {total_brut:,}$")
+                st.divider()
+                st.metric(label="TOTAL NET À VERSER", value=f"{total_net:,}$", delta=f"Brut: {total_brut:,}$")
 
-                if st.button(f"🧧 CONFIRMER LA PAIE DE {target_paie.upper()}", use_container_width=True, type="primary"):
+                if st.button(f"🧧 VERSER LA PAIE À {target_paie.upper()}", use_container_width=True, type="primary"):
                     try:
-                        # Mise à jour Soldes (Moune2010 pour Averis)
                         def clean_v(v): return float(str(v).replace('$','').replace(',','').strip())
                         idx_ben = df_b[df_b["Nom Roblox"] == target_paie].index[0]
                         idx_rct_boss = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
                         idx_av_boss = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
 
+                        # Update Banque
                         df_b.at[idx_ben, "Solde"] = clean_v(df_b.at[idx_ben, "Solde"]) + total_net
-                        df_b.at[idx_rct_boss, "Solde"] = clean_v(df_b.at[idx_rct_boss, "Solde"]) + taxe_rct
-                        df_b.at[idx_av_boss, "Solde"] = clean_v(df_b.at[idx_av_boss, "Solde"]) + taxe_av
+                        df_b.at[idx_rct_boss, "Solde"] = clean_v(df_b.at[idx_rct_boss, "Solde"]) + t_rct
+                        df_b.at[idx_av_boss, "Solde"] = clean_v(df_b.at[idx_av_boss, "Solde"]) + t_av
                         
-                        # Reset Points & Validation Assurances
+                        # Reset Points Permis (Paie = Remise à neuf)
                         df_p.loc[df_p["Nom Roblox"] == target_paie, "PTS"] = 25
+                        
+                        # Validation des assurances sur les véhicules
                         mask_v = df_i["Nom d'utilisateur ROBLOX"] == target_paie
                         df_i.loc[mask_v, "Assurance"] = df_i.loc[mask_v, "Assurance"].apply(lambda x: f"✅ {str(x).replace('✅','')}")
                         
-                        # Archivage Clock
+                        # Archive les services comme "Payés"
                         df_clock_paie.loc[(df_clock_paie["nom"] == target_paie) & (df_clock_paie["statut"] == "Validé"), "statut"] = "Payé"
 
-                        # Push Data
+                        # Push
                         cloud_conn.update(worksheet="Banque", data=df_b)
                         cloud_conn.update(worksheet="Points Permis", data=df_p)
                         cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i)
                         cloud_conn.update(worksheet="Clock", data=df_clock_paie)
                         
-                        st.success("✅ Paie validée, points restaurés et assurances marquées !"); st.balloons()
+                        st.success("✅ Transaction nationale effectuée !"); st.balloons()
                         time.sleep(1); st.rerun()
-                    except Exception as e: st.error(f"Erreur : {e}")
+                    except Exception as e: st.error(f"Erreur lors de la transaction : {e}")
 
-        # --- SECTION 4 : LOGS ---
+        # --- SECTION 4 : LOGS (SANS CODE) ---
         st.divider()
-        st.markdown("### 📜 Journaux d'Audit (Civils)")
+        st.markdown("### 📜 Journaux d'Audit")
         if "audit_logs" in st.session_state and st.session_state.audit_logs:
-            st.code("\n".join(list(reversed(st.session_state.audit_logs))), language="bash")
-        else: st.info("Aucun log.")
+            # Affichage texte uniquement (pas de code pour les civils)
+            for log in reversed(st.session_state.audit_logs):
+                st.caption(log)
+        else: st.info("Aucun log récent.")
 
 else:
     st.error("Accès non autorisé. Réservé au Staff.")
