@@ -1212,7 +1212,7 @@ if len(tabs) > 1:
                         f_val = st.number_input("Amende ($)", 0, 100000, 500, step=100)
                         
                         can_pull_points = (st.session_state.user_auth == "Staff" and f_emetteur == "POLSTA")
-                       f_pts = st.slider("Retrait de points", 0, 25, 0, disabled=not can_pull_points)
+                        f_pts = st.slider("Retrait de points", 0, 25, 0, disabled=not can_pull_points)
                         
                         f_motif = st.text_area("Motif détaillé", key="mot_ui", placeholder="Décrivez l'infraction...")
                         
