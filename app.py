@@ -1496,7 +1496,8 @@ with tabs[2]:
                         # AJOUT AU LOG (Avant le rerun)
                         if "audit_logs" not in st.session_state:
                             st.session_state.audit_logs = []
-                        st.session_state.audit_logs.append(f"Paie effectuée pour {target_paie} ({total_net:,.0f}$)")
+                        # Note : J'utilise net_to_pay car total_net n'était pas défini dans ton dernier snippet
+                        st.session_state.audit_logs.append(f"Paie effectuée pour {target_paie} ({net_to_pay:,.0f}$)")
 
                         st.success("✅ Virement effectué, patrons payés et compteurs remis à zéro !")
                         time.sleep(2)
