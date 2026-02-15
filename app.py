@@ -922,11 +922,13 @@ with tabs[0]:
 # ======================================================================================
 # --- ONGLET 2 : SERVICES AGENTS (TERMINAL UNIFIÉ) ---
 # ======================================================================================
+# --- ONGLET 2 : SERVICES AGENTS (MODULE COMPLET AVEC HORLOGE) ---
+# ======================================================================================
 with tabs[1]:
     if st.session_state.user_auth in ["RCT", "Staff"]:
-        # --- 1. AUTHENTIFICATION UNIQUE & POINTAGE COMPLET ---
+        # --- 1. AUTHENTIFICATION & POINTAGE TEMPS RÉEL ---
         with st.container(border=True):
-            c_auth, c_status, c_action = st.columns([1.2, 1, 1.5])
+            c_auth, c_stats = st.columns([1, 2])
             
             with c_auth:
                 agent_code_saisi = st.text_input("🔑 Code Agent", type="password", key="main_agent_auth")
@@ -935,7 +937,6 @@ with tabs[1]:
             en_service = False
             
             if agent_code_saisi:
-                # Nettoyage des colonnes pour la recherche
                 df_b.columns = df_b.columns.str.strip()
                 df_b["Code_Clean"] = df_b["Code"].astype(str).apply(lambda x: x.strip().split('.')[0])
                 res_agent = df_b[df_b["Code_Clean"] == agent_code_saisi.strip()]
@@ -943,56 +944,57 @@ with tabs[1]:
                 if not res_agent.empty:
                     agent_identifie = res_agent.iloc[0]["Nom Roblox"]
                     
-                    try:
-                        df_clock = cloud_conn.read(worksheet="Clock", ttl=0).fillna("")
-                        df_clock.columns = df_clock.columns.str.strip().str.lower()
-                        session_active = df_clock[(df_clock["nom"] == agent_identifie) & (df_clock["statut"] == "en cours")]
-                        en_service = not session_active.empty
-                    except: 
-                        df_clock = pd.DataFrame(columns=["nom", "action", "job", "début", "fin", "statut"])
+                    # Lecture des pointages
+                    df_clock = cloud_conn.read(worksheet="Clock", ttl=0).fillna("")
+                    df_clock.columns = df_clock.columns.str.strip().str.lower()
+                    session_active = df_clock[(df_clock["nom"] == agent_identifie) & (df_clock["statut"] == "en cours")]
+                    en_service = not session_active.empty
 
-                    with c_status:
-                        st.markdown(f"👤 **{agent_identifie}**")
-                        st.caption("🟢 EN SERVICE" if en_service else "🔴 HORS SERVICE")
-                    
-                    with c_action:
-                        if not en_service:
-                            # Options de prise de service complètes
-                            col_j, col_a = st.columns(2)
-                            with col_j:
-                                # Choix du job si Staff, sinon RCT forcé
-                                list_jobs = ["POLSTA", "RCT"] if st.session_state.user_auth == "Staff" else ["RCT"]
-                                s_job = st.selectbox("Unité", list_jobs, key="s_job_ui")
-                            with col_a:
-                                s_act = st.selectbox("Mission", ["PATROUILLE", "FORMATION", "OPÉ_SPÉ"], key="s_act_ui")
-                                
-                            if st.button("▶️ PRENDRE SERVICE", use_container_width=True, type="primary"):
-                                h_deb = datetime.now(timezone(timedelta(hours=1))).strftime("%d/%m/%Y %H:%M:%S")
-                                new_row = pd.DataFrame([{
-                                    "nom": agent_identifie, 
-                                    "action": s_act, 
-                                    "job": s_job, 
-                                    "début": h_deb, 
-                                    "fin": "", 
-                                    "statut": "en cours"
-                                }])
-                                cloud_conn.update(worksheet="Clock", data=pd.concat([df_clock, new_row], ignore_index=True))
-                                st.rerun()
-                        else:
-                            # Affichage de l'activité en cours
-                            act_en_cours = session_active.iloc[-1]['action']
-                            job_en_cours = session_active.iloc[-1]['job']
-                            st.info(f"⚡ {job_en_cours} - {act_en_cours}")
+                    # --- AFFICHAGE DES HEURES (Le "Truc" que tu préférais) ---
+                    with c_stats:
+                        h_actuelle = datetime.now(timezone(timedelta(hours=1))).strftime("%H:%M:%S")
+                        
+                        m1, m2, m3 = st.columns(3)
+                        if en_service:
+                            h_debut_brute = session_active.iloc[-1]['début']
+                            # Extraction de l'heure pour l'affichage court
+                            h_debut_clean = h_debut_brute.split(' ')[1] if ' ' in h_debut_brute else h_debut_brute
                             
-                            if st.button("⏹️ FIN DE SERVICE", use_container_width=True):
-                                h_fin = datetime.now(timezone(timedelta(hours=1))).strftime("%d/%m/%Y %H:%M:%S")
-                                df_clock.at[session_active.index[-1], "fin"] = h_fin
-                                df_clock.at[session_active.index[-1], "statut"] = "à valider"
-                                cloud_conn.update(worksheet="Clock", data=df_clock)
-                                st.rerun()
+                            m1.metric("Début", h_debut_clean)
+                            m2.metric("Heure Actuelle", h_actuelle)
+                            # Calcul simple de durée
+                            try:
+                                diff = datetime.now(timezone(timedelta(hours=1))) - datetime.strptime(h_debut_brute, "%d/%m/%Y %H:%M:%S").replace(tzinfo=timezone(timedelta(hours=1)))
+                                duree_min = int(diff.total_seconds() / 60)
+                                m3.metric("Durée", f"{duree_min} min")
+                            except: m3.metric("Durée", "calcul...")
+                        else:
+                            m1.metric("Début", "--:--")
+                            m2.metric("Heure Actuelle", h_actuelle)
+                            m3.metric("Statut", "OFF")
+
+                    # --- ACTIONS ---
+                    st.divider()
+                    if not en_service:
+                        c1, c2, c3 = st.columns([1, 1, 1])
+                        list_jobs = ["POLSTA", "RCT"] if st.session_state.user_auth == "Staff" else ["RCT"]
+                        s_job = c1.selectbox("Unité", list_jobs)
+                        s_act = c2.selectbox("Mission", ["PATROUILLE", "FORMATION", "OPÉ_SPÉ"])
+                        
+                        if c3.button("▶️ PRENDRE SERVICE", use_container_width=True, type="primary"):
+                            h_deb = datetime.now(timezone(timedelta(hours=1))).strftime("%d/%m/%Y %H:%M:%S")
+                            new_row = pd.DataFrame([{"nom": agent_identifie, "action": s_act, "job": s_job, "début": h_deb, "fin": "", "statut": "en cours"}])
+                            cloud_conn.update(worksheet="Clock", data=pd.concat([df_clock, new_row], ignore_index=True))
+                            st.rerun()
+                    else:
+                        if st.button(f"⏹️ FINIR LA SESSION ({agent_identifie})", use_container_width=True):
+                            h_fin = datetime.now(timezone(timedelta(hours=1))).strftime("%d/%m/%Y %H:%M:%S")
+                            df_clock.at[session_active.index[-1], "fin"] = h_fin
+                            df_clock.at[session_active.index[-1], "statut"] = "à valider"
+                            cloud_conn.update(worksheet="Clock", data=df_clock)
+                            st.rerun()
                 else:
                     st.error("❌ Code Agent Invalide")
-
         # --- 2. RECHERCHE & MANDATS ---
         st.markdown("### 🔍 MANDATS & RECHERCHE")
         col_m1, col_m2 = st.columns([2, 1])
