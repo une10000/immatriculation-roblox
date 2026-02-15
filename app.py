@@ -482,14 +482,14 @@ with st.container():
                         st.rerun()
             else: st.info("Aucun permis trouvé.")
 
-        # ---------------- COLONNE 2 : BANQUE & PAIE ----------------
+# ---------------- COLONNE 2 : BANQUE & PAIE ----------------
         with col2:
             if not citoyen_info.empty:
                 st.metric("SOLDE BANCAIRE", f"{citoyen_info.iloc[0]['Solde']}$")
                 job_raw = str(citoyen_info.iloc[0]['Emploiement'])
                 st.write(f"🏢 Métier : **{job_raw}**")
 
-# --- CALCULATEUR DE PAIE (VERSION STAFF & PRIMES) ---
+                # --- CALCULATEUR DE PAIE (VERSION STAFF & PRIMES) ---
                 with st.expander("💳 Détails de ma prochaine paie", expanded=False):
                     # 1. Calcul des minutes (via Logs)
                     m_pol, m_rct = 0, 0
@@ -522,6 +522,7 @@ with st.container():
                     is_trio = count_rct >= 3
                     taxe_v = 200 if is_trio else (len(mes_v) * 150)
 
+                    # --- CALCUL DU NET (BASE 15K + TOUS LES BONUS) ---
                     net = 15000 + p_pol + p_rct + p_staff + p_extra - taxe_v
 
                     # 3. Affichage visuel
@@ -562,6 +563,7 @@ with st.container():
                             <span style="font-size: 1.5em; font-weight: bold; color: #fff;">{int(net):,}$$</span>
                         </div>
                     """, unsafe_allow_html=True)
+
                 # --- MODIFICATION MÉTIER (STAFF) ---
                 if st.session_state.user_auth in ["Staff", "Admin"]:
                     if st.button("✏️ Modifier Métier", key=f"edit_{target}", use_container_width=True):
@@ -578,7 +580,6 @@ with st.container():
                             st.success("Enregistré !")
                             st.session_state[f"mode_{target}"] = False
                             st.rerun()
-
         # ---------------- COLONNE 3 : ARCHIVES & REMBOURSEMENT ----------------
         with col3:
             st.markdown("### 📁 ARCHIVES")
