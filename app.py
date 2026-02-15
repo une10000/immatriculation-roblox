@@ -919,11 +919,14 @@ with tabs[0]:
 # ======================================================================================
 # --- ONGLET 2 : SERVICES AGENTS (TERMINAL UNIFIÉ) ---
 # ======================================================================================
+# ======================================================================================
+# --- ONGLET 2 : SERVICES AGENTS (TERMINAL UNIFIÉ) ---
+# ======================================================================================
 with tabs[1]:
     if st.session_state.user_auth in ["RCT", "Staff"]:
-        # --- 1. AUTHENTIFICATION UNIQUE & POINTAGE ---
+        # --- 1. AUTHENTIFICATION UNIQUE & POINTAGE COMPLET ---
         with st.container(border=True):
-            c_auth, c_status, c_action = st.columns([1.2, 1, 1])
+            c_auth, c_status, c_action = st.columns([1.2, 1, 1.5])
             
             with c_auth:
                 agent_code_saisi = st.text_input("🔑 Code Agent", type="password", key="main_agent_auth")
@@ -932,6 +935,7 @@ with tabs[1]:
             en_service = False
             
             if agent_code_saisi:
+                # Nettoyage des colonnes pour la recherche
                 df_b.columns = df_b.columns.str.strip()
                 df_b["Code_Clean"] = df_b["Code"].astype(str).apply(lambda x: x.strip().split('.')[0])
                 res_agent = df_b[df_b["Code_Clean"] == agent_code_saisi.strip()]
@@ -953,12 +957,33 @@ with tabs[1]:
                     
                     with c_action:
                         if not en_service:
+                            # Options de prise de service complètes
+                            col_j, col_a = st.columns(2)
+                            with col_j:
+                                # Choix du job si Staff, sinon RCT forcé
+                                list_jobs = ["POLSTA", "RCT"] if st.session_state.user_auth == "Staff" else ["RCT"]
+                                s_job = st.selectbox("Unité", list_jobs, key="s_job_ui")
+                            with col_a:
+                                s_act = st.selectbox("Mission", ["PATROUILLE", "FORMATION", "OPÉ_SPÉ"], key="s_act_ui")
+                                
                             if st.button("▶️ PRENDRE SERVICE", use_container_width=True, type="primary"):
                                 h_deb = datetime.now(timezone(timedelta(hours=1))).strftime("%d/%m/%Y %H:%M:%S")
-                                new_row = pd.DataFrame([{"nom": agent_identifie, "action": "WORK", "job": "POLSTA" if st.session_state.user_auth == "Staff" else "RCT", "début": h_deb, "fin": "", "statut": "en cours"}])
+                                new_row = pd.DataFrame([{
+                                    "nom": agent_identifie, 
+                                    "action": s_act, 
+                                    "job": s_job, 
+                                    "début": h_deb, 
+                                    "fin": "", 
+                                    "statut": "en cours"
+                                }])
                                 cloud_conn.update(worksheet="Clock", data=pd.concat([df_clock, new_row], ignore_index=True))
                                 st.rerun()
                         else:
+                            # Affichage de l'activité en cours
+                            act_en_cours = session_active.iloc[-1]['action']
+                            job_en_cours = session_active.iloc[-1]['job']
+                            st.info(f"⚡ {job_en_cours} - {act_en_cours}")
+                            
                             if st.button("⏹️ FIN DE SERVICE", use_container_width=True):
                                 h_fin = datetime.now(timezone(timedelta(hours=1))).strftime("%d/%m/%Y %H:%M:%S")
                                 df_clock.at[session_active.index[-1], "fin"] = h_fin
@@ -998,7 +1023,6 @@ with tabs[1]:
                         st.info(f"👤 **Proprio :** {nom_proprio}\n\n🚘 **Modèle :** {modele_vhc}")
                     else: 
                         st.error("❌ Plaque inconnue")
-
         # --- 3. INTERVENTION SUR CITOYEN ---
         st.divider()
         if target == "---":
