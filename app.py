@@ -470,28 +470,26 @@ with st.container():
             if not p_data.empty:
                 pts = int(p_data.iloc[0]["PTS"])
                 
-                # --- SYSTÈME DE FILIGRANE (Watermark) ---
-                if pts <= 0:
-                    st.markdown("""
-                        <style>
-                        .watermark {
-                            position: absolute;
-                            top: 50%;
-                            left: 50%;
-                            transform: translate(-50%, -50%) rotate(-30deg);
-                            font-size: 60px;
-                            color: rgba(255, 0, 0, 0.2);
-                            font-weight: bold;
-                            z-index: 0;
-                            white-space: nowrap;
-                            pointer-events: none;
-                            text-transform: uppercase;
-                        }
-                        </style>
-                        <div class="watermark">ANNULÉ / SUSPENDU</div>
-                    """, unsafe_allow_html=True)
+                # --- FILIGRANE PERMIS ---
+                st.markdown("""
+                    <style>
+                    .watermark-permis {
+                        position: absolute;
+                        top: 50%;
+                        left: 50%;
+                        transform: translate(-50%, -50%) rotate(-25deg);
+                        font-size: 35px;
+                        color: rgba(0, 0, 0, 0.07); /* Très léger */
+                        font-weight: bold;
+                        z-index: 0;
+                        white-space: nowrap;
+                        pointer-events: none;
+                        text-align: center;
+                    }
+                    </style>
+                    <div class="watermark-permis">🚙 🪪 PERMIS OFFICIEL 🪪 🚙</div>
+                """, unsafe_allow_html=True)
 
-                # Affichage des métriques
                 st.metric("POINTS PERMIS", f"{pts}/25")
                 color = "green" if pts > 0 else "red"
                 st.markdown(f"Statut : <b style='color:{color};'>{'VALIDE' if pts > 0 else 'SUSPENDU'}</b>", unsafe_allow_html=True)
@@ -509,27 +507,28 @@ with st.container():
 # ---------------- COLONNE 2 : BANQUE & PAIE ----------------
         with col2:
             if not citoyen_info.empty:
-                # --- SYSTÈME DE FILIGRANE BANCAIRE ---
+                # --- FILIGRANE BANQUE ---
                 st.markdown("""
                     <style>
-                    .watermark-bank {
+                    .watermark-banque {
                         position: absolute;
-                        top: 40%;
+                        top: 50%;
                         left: 50%;
                         transform: translate(-50%, -50%) rotate(-15deg);
-                        font-size: 50px;
-                        color: rgba(76, 175, 80, 0.1);
+                        font-size: 35px;
+                        color: rgba(0, 0, 0, 0.07);
                         font-weight: bold;
                         z-index: 0;
                         white-space: nowrap;
                         pointer-events: none;
-                        text-transform: uppercase;
+                        text-align: center;
                     }
                     </style>
-                    <div class="watermark-bank">PAIEMENT SÉCURISÉ</div>
+                    <div class="watermark-banque">💳 💵 DOSSIER BANCAIRE 💵 💳</div>
                 """, unsafe_allow_html=True)
 
                 st.metric("SOLDE BANCAIRE", f"{citoyen_info.iloc[0]['Solde']}$")
+                # ... (le reste de ton code pour le métier et la paie)
                 job_raw = str(citoyen_info.iloc[0]['Emploiement'])
                 st.write(f"🏢 Métier : **{job_raw}**")
 
