@@ -1389,18 +1389,25 @@ if len(tabs) > 2:
                         elif "POL" in str(r["job"]).upper(): v_min_pol += duree
                     except: continue
 
-                # Affichage des metrics d'activité
+                # --- CALCUL DES GAINS PAR JOB (Basé sur 20h = Primes Max) ---
+                # Ratio : Minutes accumulées / 1200 (20h)
+                v_earn_rct = int(2000 * min(v_min_rct / 1200, 1.0))
+                v_earn_pol = int(3000 * min(v_min_pol / 1200, 1.0))
+
+                # Affichage des metrics d'activité avec Gains
                 m1, m2, m3 = st.columns(3)
-                m1.metric("Minutes RCT", f"{int(v_min_rct)} min")
-                m2.metric("Minutes Police", f"{int(v_min_pol)} min")
-                m3.metric("Sessions en attente", len(logs_view))
+                m1.metric("Minutes RCT", f"{int(v_min_rct)} min", f"+{v_earn_rct}$")
+                m2.metric("Minutes Police", f"{int(v_min_pol)} min", f"+{v_earn_pol}$")
+                
+                # Somme totale des primes en attente
+                total_primes = v_earn_rct + v_earn_pol
+                m3.metric("Total Primes", f"{total_primes}$", f"{len(logs_view)} sessions")
 
                 if not logs_view.empty:
                     with st.expander("📄 Voir le détail des sessions"):
                         st.table(logs_view[["job", "début", "fin"]])
                 else:
                     st.info("Aucune heure validée en attente pour cet agent.")
-
         # ======================================================================================
         # --- SECTION D : TERMINAL DE PAIE NATIONALE ---
         # ======================================================================================
