@@ -1053,6 +1053,91 @@ if len(tabs) > 1:
                                 st.rerun()
                     else:
                         st.error("❌ Code Agent Invalide")
+
+# --- 2. RECHERCHE DE FACTURES & ALERTES RETARD ---
+            st.markdown("### 📑 GESTION DES FACTURES")
+            
+            # --- SOUS-SECTION : CALCUL DES RETARDS ---
+            df_f_check = cloud_conn.read(worksheet="Factures").fillna("")
+            maintenant = datetime.now()
+            retardataires_liste = []
+            total_dette_retard = 0
+
+            for _, row_f in df_f_check.iterrows():
+                if str(row_f["Statut"]).upper() == "EN ATTENTE":
+                    try:
+                        # On compare la date d'émission + 24h avec l'heure actuelle
+                        date_limite = pd.to_datetime(row_f['Date_Emission'], dayfirst=True) + timedelta(hours=24)
+                        if maintenant > date_limite:
+                            retardataires_liste.append(row_f['Cible'])
+                            total_dette_retard += int(row_f['Montant'])
+                    except: pass
+
+            # Affichage du bandeau d'alerte orange si des retards existent
+            if retardataires_liste:
+                nb_citoyens = len(set(retardataires_liste))
+                st.markdown(f'''
+                    <div style="background-color: #E67E22; padding: 12px; border-radius: 8px; text-align: center; color: white; font-weight: bold; margin-bottom: 20px; border: 2px solid white;">
+                        ⚠️ ATTENTION : {len(retardataires_liste)} FACTURES EN RETARD DÉTECTÉES ({nb_citoyens} CITOYENS)<br>
+                        TOTAL DES IMPAYÉS HORS DÉLAI : {total_dette_retard}$
+                    </div>
+                ''', unsafe_allow_html=True)
+
+            with st.container(border=True):
+                col_s1, col_s2 = st.columns([2, 1])
+                with col_s1:
+                    search_f = st.text_input("🔍 Rechercher une facture (N° Référence, Nom ou Motif)", placeholder="Ex: 54210 ou Vitesse...", key="search_facture_input")
+                with col_s2:
+                    filter_f = st.selectbox("Filtrer l'état", ["Toutes", "EN ATTENTE", "PAYÉE", "EN RETARD"])
+
+                # Logique de filtrage
+                df_display = df_f_check.copy()
+                
+                # Ajout d'une colonne temporaire pour marquer les retards visuellement
+                def check_retard_label(row):
+                    if str(row["Statut"]).upper() == "PAYÉE": return "PAYÉE"
+                    try:
+                        limite = pd.to_datetime(row['Date_Emission'], dayfirst=True) + timedelta(hours=24)
+                        return "⚠️ EN RETARD" if maintenant > limite else "EN ATTENTE"
+                    except: return row["Statut"]
+
+                df_display["État Réel"] = df_display.apply(check_retard_label, axis=1)
+
+                if search_f or filter_f != "Toutes":
+                    q = search_f.lower()
+                    mask = (
+                        df_display["ID"].astype(str).str.contains(q) | 
+                        df_display["Cible"].str.lower().str.contains(q) |
+                        df_display["Motif"].str.lower().str.contains(q)
+                    )
+                    res_f = df_display[mask]
+                    
+                    if filter_f == "EN RETARD":
+                        res_f = res_f[res_f["État Réel"] == "⚠️ EN RETARD"]
+                    elif filter_f != "Toutes":
+                        res_f = res_f[res_f["Statut"] == filter_f]
+
+                    if not res_f.empty:
+                        st.dataframe(res_f[["ID", "Date_Emission", "Cible", "Montant", "Motif", "État Réel"]], 
+                                     use_container_width=True, hide_index=True)
+                        
+                        # Action de régularisation
+                        st.write("---")
+                        selected_id = st.selectbox("🎯 Choisir une référence pour régulariser :", res_f["ID"].tolist(), key="select_ref_pay")
+                        if st.button(f"✅ MARQUER LA RÉFÉRENCE {selected_id} COMME PAYÉE", use_container_width=True, type="primary"):
+                            try:
+                                # Re-lecture pour éviter les conflits d'index
+                                full_f = cloud_conn.read(worksheet="Factures")
+                                idx_f = full_f[full_f["ID"].astype(str) == str(selected_id)].index[0]
+                                full_f.at[idx_f, "Statut"] = "PAYÉE"
+                                cloud_conn.update(worksheet="Factures", data=full_f)
+                                st.success(f"Facture {selected_id} régularisée !")
+                                time.sleep(1); st.rerun()
+                            except Exception as e:
+                                st.error(f"Erreur : {e}")
+                    else:
+                        st.warning("Aucun résultat pour cette recherche.")
+                        
         # --- 2. RECHERCHE & MANDATS ---
         st.markdown("### 🔍 MANDATS & RECHERCHE")
         
