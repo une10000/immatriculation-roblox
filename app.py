@@ -1162,39 +1162,70 @@ with tabs[1]:
                             else:
                                 st.error("❌ Le motif est obligatoire.")
 
-                        # --- ALERTES DE VIGILANCE (Impayés & Mandats) ---
-                        st.markdown("---")
+# --- ALERTES DE VIGILANCE (JUSTE EN DESSOUS DU BOUTON) ---
+                        st.markdown("<br>", unsafe_allow_html=True)
+                        
+                        # 1. LOGIQUE DE DÉTECTION
+                        # Check Recherche & Motif
+                        is_wanted = "RECHERCHÉ" in str(citoyen_info.iloc[0].get("Statut", "")).upper() if not citoyen_info.empty else False
+                        motif_recherche = citoyen_info.iloc[0].get("Motif Recherche", "Non spécifié") if is_wanted else ""
+                        
                         # Check Impayés
                         df_check_f = cloud_conn.read(worksheet="Factures").fillna("")
-                        has_debts = not df_check_f[(df_check_f["Cible"] == target) & (df_check_f["Statut"] == "EN ATTENTE")].empty
-                        # Check Recherche
-                        is_wanted = "RECHERCHÉ" in str(citoyen_info.iloc[0].get("Statut", "")).upper() if not citoyen_info.empty else False
+                        impayes = df_check_f[(df_check_f["Cible"] == target) & (df_check_f["Statut"] == "EN ATTENTE")]
+                        has_debts = not impayes.empty
+                        total_dette = impayes["Montant"].astype(int).sum() if has_debts else 0
 
-                        if has_debts or is_wanted:
-                            msg = "⚠️ ATTENTION : "
-                            if is_wanted: msg += "INDIVIDU RECHERCHÉ ! "
-                            if has_debts: msg += "FACTURES IMPAYÉES !"
-                            
+                        # 2. AFFICHAGE DES BLOCS
+                        # STYLE CSS POUR LES ANIMATIONS
+                        st.markdown("""
+                            <style>
+                            @keyframes pulse-red {
+                                0% { box-shadow: 0 0 0 0px rgba(211, 47, 47, 0.7); border-color: #ffffff; }
+                                50% { box-shadow: 0 0 0 15px rgba(211, 47, 47, 0); border-color: #ff0000; }
+                                100% { box-shadow: 0 0 0 0px rgba(211, 47, 47, 0); border-color: #ffffff; }
+                            }
+                            @keyframes pulse-orange {
+                                0% { background-color: #e67e22; }
+                                50% { background-color: #f39c12; }
+                                100% { background-color: #e67e22; }
+                            }
+                            .alert-mandat {
+                                background-color: #d32f2f;
+                                color: white;
+                                padding: 15px;
+                                border-radius: 10px;
+                                border: 3px solid white;
+                                text-align: center;
+                                animation: pulse-red 1s infinite;
+                                margin-bottom: 10px;
+                            }
+                            .alert-dette {
+                                background-color: #e67e22;
+                                color: white;
+                                padding: 10px;
+                                border-radius: 10px;
+                                text-align: center;
+                                animation: pulse-orange 2s infinite;
+                                font-weight: bold;
+                            }
+                            </style>
+                        """, unsafe_allow_html=True)
+
+                        # Bloc Mandat (Rouge)
+                        if is_wanted:
                             st.markdown(f"""
-                                <style>
-                                @keyframes pulse_red {{
-                                    0% {{ background-color: #d32f2f; box-shadow: 0 0 0 0px rgba(211, 47, 47, 0.7); }}
-                                    50% {{ background-color: #ff5252; box-shadow: 0 0 0 15px rgba(211, 47, 47, 0); }}
-                                    100% {{ background-color: #d32f2f; box-shadow: 0 0 0 0px rgba(211, 47, 47, 0); }}
-                                }}
-                                .alert-box {{
-                                    animation: pulse_red 1.5s infinite;
-                                    color: white;
-                                    padding: 15px;
-                                    border-radius: 8px;
-                                    text-align: center;
-                                    font-weight: bold;
-                                    font-size: 1.1em;
-                                    border: 2px solid white;
-                                }}
-                                </style>
-                                <div class="alert-box">
-                                    {msg}
+                                <div class="alert-mandat">
+                                    <h3 style="margin:0; color:white;">🚨 INDIVIDU RECHERCHÉ 🚨</h3>
+                                    <p style="margin:5px 0 0 0; font-size:14px;"><b>MOTIF :</b> {motif_recherche.upper()}</p>
+                                </div>
+                            """, unsafe_allow_html=True)
+
+                        # Bloc Dette (Orange)
+                        if has_debts:
+                            st.markdown(f"""
+                                <div class="alert-dette">
+                                    ⚠️ FACTURES IMPAYÉES : {total_dette}$
                                 </div>
                             """, unsafe_allow_html=True)
                 # --- COLONNE 2 : TICKET (AU MILIEU) ---
