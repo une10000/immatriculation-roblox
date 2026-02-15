@@ -464,11 +464,34 @@ with st.container():
         # --- D. DOSSIER DÉTAILLÉ (3 COLONNES) ---
         col1, col2, col3 = st.columns(3)
 
-        # ---------------- COLONNE 1 : POINTS & PERMIS ----------------
+# ---------------- COLONNE 1 : POINTS & PERMIS ----------------
         with col1:
             p_data = df_p[df_p["Nom Roblox"] == target]
             if not p_data.empty:
                 pts = int(p_data.iloc[0]["PTS"])
+                
+                # --- SYSTÈME DE FILIGRANE (Watermark) ---
+                if pts <= 0:
+                    st.markdown("""
+                        <style>
+                        .watermark {
+                            position: absolute;
+                            top: 50%;
+                            left: 50%;
+                            transform: translate(-50%, -50%) rotate(-30deg);
+                            font-size: 60px;
+                            color: rgba(255, 0, 0, 0.2);
+                            font-weight: bold;
+                            z-index: 0;
+                            white-space: nowrap;
+                            pointer-events: none;
+                            text-transform: uppercase;
+                        }
+                        </style>
+                        <div class="watermark">ANNULÉ / SUSPENDU</div>
+                    """, unsafe_allow_html=True)
+
+                # Affichage des métriques
                 st.metric("POINTS PERMIS", f"{pts}/25")
                 color = "green" if pts > 0 else "red"
                 st.markdown(f"Statut : <b style='color:{color};'>{'VALIDE' if pts > 0 else 'SUSPENDU'}</b>", unsafe_allow_html=True)
@@ -479,12 +502,33 @@ with st.container():
                         df_p.loc[df_p["Nom Roblox"] == target, "PTS"] = 25
                         cloud_conn.update(worksheet="Points Permis", data=df_p)
                         st.success("Permis rendu !")
+                        time.sleep(1)
                         st.rerun()
-            else: st.info("Aucun permis trouvé.")
-
+            else: 
+                st.info("Aucun permis trouvé.")
 # ---------------- COLONNE 2 : BANQUE & PAIE ----------------
         with col2:
             if not citoyen_info.empty:
+                # --- SYSTÈME DE FILIGRANE BANCAIRE ---
+                st.markdown("""
+                    <style>
+                    .watermark-bank {
+                        position: absolute;
+                        top: 40%;
+                        left: 50%;
+                        transform: translate(-50%, -50%) rotate(-15deg);
+                        font-size: 50px;
+                        color: rgba(76, 175, 80, 0.1);
+                        font-weight: bold;
+                        z-index: 0;
+                        white-space: nowrap;
+                        pointer-events: none;
+                        text-transform: uppercase;
+                    }
+                    </style>
+                    <div class="watermark-bank">PAIEMENT SÉCURISÉ</div>
+                """, unsafe_allow_html=True)
+
                 st.metric("SOLDE BANCAIRE", f"{citoyen_info.iloc[0]['Solde']}$")
                 job_raw = str(citoyen_info.iloc[0]['Emploiement'])
                 st.write(f"🏢 Métier : **{job_raw}**")
@@ -509,12 +553,8 @@ with st.container():
                     
                     p_pol = int(3000 * ratio_pol) if "police" in job_raw.lower() else 0
                     p_rct = int(2000 * ratio_rct) if "agent rct" in job_raw.lower() else 0
-                    
-                    # Prime Staff (Automatique si le job contient "Staff")
                     p_staff = 4000 if "staff" in job_raw.lower() else 0
-                    
-                    # Prime Exceptionnelle (Exemple : Bonus événement ou autre)
-                    p_extra = 0 # À modifier manuellement ou via une autre colonne si besoin
+                    p_extra = 0 
                     
                     # Taxes Véhicules (Trio RCT)
                     mes_v = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
@@ -531,20 +571,14 @@ with st.container():
                     with c_cred:
                         st.markdown("<div style='color: #4CAF50; font-weight:bold; margin-bottom:5px;'>📥 REVENUS</div>", unsafe_allow_html=True)
                         st.markdown(f"➕ **Base Civile** : `15,000$`")
-                        
-                        if p_staff > 0:
-                            st.markdown(f"⭐ **Prime Staff** : `{p_staff}$`")
-                        
+                        if p_staff > 0: st.markdown(f"⭐ **Prime Staff** : `{p_staff}$`")
                         if "police" in job_raw.lower():
                             st.markdown(f"👮 **Prime Police** : `{p_pol}$`")
                             st.progress(ratio_pol, text=f"{int(m_pol/60)}h / 20h")
-                        
                         if "agent rct" in job_raw.lower():
                             st.markdown(f"👷‍♂️ **Prime RCT** : `{p_rct}$`")
                             st.progress(ratio_rct, text=f"{int(m_rct/60)}h / 20h")
-                            
-                        if p_extra > 0:
-                            st.markdown(f"🎁 **Bonus** : `{p_extra}$`")
+                        if p_extra > 0: st.markdown(f"🎁 **Bonus** : `{p_extra}$`")
 
                     with c_deb:
                         st.markdown("<div style='color: #E53935; font-weight:bold; margin-bottom:5px;'>📤 DÉPENSES</div>", unsafe_allow_html=True)
@@ -556,11 +590,10 @@ with st.container():
                             st.markdown("🚗 **Assurances** : `0$`")
 
                     st.markdown("---")
-                    
                     st.markdown(f"""
                         <div style="background-color: #1E1E1E; padding: 15px; border-radius: 8px; border-left: 5px solid #4CAF50; display: flex; justify-content: space-between; align-items: center;">
                             <span style="font-size: 1.1em; color: #bbb;">NET ESTIMÉ</span>
-                            <span style="font-size: 1.5em; font-weight: bold; color: #fff;">{int(net):,}$$</span>
+                            <span style="font-size: 1.5em; font-weight: bold; color: #fff;">{int(net):,}$</span>
                         </div>
                     """, unsafe_allow_html=True)
 
