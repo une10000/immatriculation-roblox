@@ -1112,12 +1112,15 @@ with tabs[1]:
             else:
                 st.markdown(f"### ⚡ INTERVENTION : {target.upper()}")
                 col_form, col_facture, col_vehicules = st.columns([1.2, 1, 1])
-
-                # --- COLONNE 1 : FORMULAIRE ---
+# --- COLONNE 1 : FORMULAIRE ---
                 with col_form:
                     with st.container(border=True):
-                        # Choix de l'émetteur selon le grade
-                        f_emetteur = st.selectbox("Émetteur", ["POLSTA", "Averis", "RCT"], key="em_ui") if st.session_state.user_auth == "Staff" else "RCT"
+                        # Choix de l'émetteur selon le grade avec info visuelle pour RCT
+                        if st.session_state.user_auth == "Staff":
+                            f_emetteur = st.selectbox("Émetteur", ["POLSTA", "Averis", "RCT"], key="em_ui")
+                        else:
+                            f_emetteur = "RCT"
+                            st.info(f"🏢 **Émetteur :** {f_emetteur}")
                         
                         f_val = st.number_input("Amende ($)", 0, 100000, 500, step=100)
                         
@@ -1130,8 +1133,8 @@ with tabs[1]:
                         # Récupération des véhicules pour la plaque
                         target_veh = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
                         f_plate = st.selectbox("Véhicule lié", ["AUCUN"] + target_veh["Numéro de la plaque"].tolist())
-
-                        if st.button("🚨 VALIDER L'INTERVENTION", use_container_width=True, type="primary"):
+                        
+                        if st.button("🚨 ENVOYER FACTURE", use_container_width=True, type="primary"):
                             if f_motif:
                                 with st.spinner("Transmission au central..."):
                                     import random
