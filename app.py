@@ -589,44 +589,46 @@ with st.container():
                 archives = df_f_check[(df_f_check["Cible"] == target) & (df_f_check["Statut"] == "PAYÉ")]
                 
                 if not archives.empty:
-                    for _, f in archives.iterrows():
-                        # --- AFFICHAGE DU PETIT TICKET D'ARCHIVE ---
-                        st.markdown(f"""
-                        <div style="border: 1px solid #000; padding: 10px; background: #f9f9f9; color: black; margin-bottom: 8px; border-left: 5px solid green;">
-                            <div style="display: flex; justify-content: space-between; font-size: 0.8em;">
-                                <b>REF: #{f['ID']}</b>
-                                <b style="color: green;">ACQUITTÉE ✔</b>
+                    # Bouton déroulant pour voir l'historique
+                    with st.expander(f"👁️ Voir l'historique ({len(archives)} factures)"):
+                        for _, f in archives.iterrows():
+                            # --- AFFICHAGE DU PETIT TICKET D'ARCHIVE ---
+                            st.markdown(f"""
+                            <div style="border: 1px solid #000; padding: 10px; background: #f9f9f9; color: black; margin-bottom: 8px; border-left: 5px solid green;">
+                                <div style="display: flex; justify-content: space-between; font-size: 0.8em;">
+                                    <b>REF: #{f['ID']}</b>
+                                    <b style="color: green;">ACQUITTÉE ✔</b>
+                                </div>
+                                <hr style="margin: 5px 0; border-top: 1px dashed #000;">
+                                <div style="font-size: 0.9em;">
+                                    <b>MOTIF :</b> {f['Motif']}<br>
+                                    <b>MONTANT :</b> {f['Montant']}$<br>
+                                    <b>POINTS :</b> {f.get('Points', 0)}
+                                </div>
                             </div>
-                            <hr style="margin: 5px 0; border-top: 1px dashed #000;">
-                            <div style="font-size: 0.9em;">
-                                <b>MOTIF :</b> {f['Motif']}<br>
-                                <b>MONTANT :</b> {f['Montant']}$<br>
-                                <b>POINTS :</b> {f.get('Points', 0)}
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        
-                        # --- OPTION REMBOURSEMENT (STAFF/ADMIN) ---
-                        if st.session_state.user_auth in ["Staff", "Admin"]:
-                            if st.button(f"🔄 Rembourser #{f['ID']}", key=f"ref_{f['ID']}", use_container_width=True):
-                                try:
-                                    # Calcul des montants
-                                    solde_c = float(str(citoyen_info.iloc[0]['Solde']).replace('$','').replace(',',''))
-                                    remb = float(str(f['Montant']).replace('$','').replace(',',''))
-                                    
-                                    # Mise à jour des DataFrames
-                                    df_b.loc[df_b["Nom Roblox"] == target, "Solde"] = solde_c + remb
-                                    df_f_check.loc[df_f_check["ID"] == f["ID"], "Statut"] = "REMBOURSÉ"
-                                    
-                                    # Envoi vers Google Sheets
-                                    cloud_conn.update(worksheet="Banque", data=df_b)
-                                    cloud_conn.update(worksheet="Factures", data=df_f_check)
-                                    
-                                    st.success(f"Ticket #{f['ID']} remboursé !")
-                                    time.sleep(1)
-                                    st.rerun()
-                                except Exception as e:
-                                    st.error(f"Erreur remboursement : {e}")
+                            """, unsafe_allow_html=True)
+                            
+                            # --- OPTION REMBOURSEMENT (STAFF/ADMIN) ---
+                            if st.session_state.user_auth in ["Staff", "Admin"]:
+                                if st.button(f"🔄 Rembourser #{f['ID']}", key=f"ref_{f['ID']}", use_container_width=True):
+                                    try:
+                                        # Calcul des montants
+                                        solde_c = float(str(citoyen_info.iloc[0]['Solde']).replace('$','').replace(',',''))
+                                        remb = float(str(f['Montant']).replace('$','').replace(',',''))
+                                        
+                                        # Mise à jour des DataFrames
+                                        df_b.loc[df_b["Nom Roblox"] == target, "Solde"] = solde_c + remb
+                                        df_f_check.loc[df_f_check["ID"] == f["ID"], "Statut"] = "REMBOURSÉ"
+                                        
+                                        # Envoi vers Google Sheets
+                                        cloud_conn.update(worksheet="Banque", data=df_b)
+                                        cloud_conn.update(worksheet="Factures", data=df_f_check)
+                                        
+                                        st.success(f"Ticket #{f['ID']} remboursé !")
+                                        time.sleep(1)
+                                        st.rerun()
+                                    except Exception as e:
+                                        st.error(f"Erreur remboursement : {e}")
                 else:
                     st.info("Aucun paiement archivé.")
                     
