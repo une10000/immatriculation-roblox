@@ -466,39 +466,23 @@ with st.container():
 
 # ---------------- COLONNE 1 : POINTS & PERMIS ----------------
         with col1:
-            # On crée un conteneur pour isoler le style
-            with st.container():
-                p_data = df_p[df_p["Nom Roblox"] == target]
-                if not p_data.empty:
-                    pts = int(p_data.iloc[0]["PTS"])
-                    
-                    # --- FILIGRANE DISCRET ---
-                    st.markdown("""
-                        <style>
-                        .watermark-p {
-                            position: absolute;
-                            right: 10px;
-                            top: 40px;
-                            font-size: 22px;
-                            font-weight: 900;
-                            color: rgba(0, 0, 0, 0.05); /* Ultra transparent */
-                            transform: rotate(-15deg);
-                            pointer-events: none;
-                            white-space: nowrap;
-                            z-index: 0;
-                        }
-                        </style>
-                        <div class="watermark-p">🚙 PERMIS OFFICIEL 🪪</div>
-                    """, unsafe_allow_html=True)
+            p_data = df_p[df_p["Nom Roblox"] == target]
+            if not p_data.empty:
+                pts = int(p_data.iloc[0]["PTS"])
+                
+                # Filigrane ultra-discret à droite
+                st.markdown("""
+                    <style>
+                    .wm-p { position: absolute; right: -20px; top: 10px; font-size: 16px; 
+                            color: rgba(0,0,0,0.1); transform: rotate(-10deg); font-weight: bold; }
+                    </style>
+                    <div class="wm-p">🚙 PERMIS OFFICIEL 🪪</div>
+                """, unsafe_allow_html=True)
 
-                    st.metric("POINTS PERMIS", f"{pts}/25")
-                    color = "green" if pts > 0 else "red"
-                    st.markdown(f"Statut : <b style='color:{color};'>{'VALIDE' if pts > 0 else 'SUSPENDU'}</b>", unsafe_allow_html=True)
-                    # ... reste du code reset ...
+                st.metric("POINTS PERMIS", f"{pts}/25")
                 color = "green" if pts > 0 else "red"
                 st.markdown(f"Statut : <b style='color:{color};'>{'VALIDE' if pts > 0 else 'SUSPENDU'}</b>", unsafe_allow_html=True)
                 
-                # Bouton Reset pour Staff
                 if st.session_state.user_auth in ["Staff", "Admin"] and pts <= 0:
                     if st.button("🔓 Rendre le permis", key=f"res_{target}", use_container_width=True):
                         df_p.loc[df_p["Nom Roblox"] == target, "PTS"] = 25
@@ -508,29 +492,24 @@ with st.container():
                         st.rerun()
             else: 
                 st.info("Aucun permis trouvé.")
-# ---------------- COLONNE 2 : BANQUE & PAIE ----------------
+
+        # ---------------- COLONNE 2 : BANQUE & PAIE ----------------
         with col2:
             if not citoyen_info.empty:
-                # --- FILIGRANE DISCRET ---
+                # Filigrane ultra-discret à droite
                 st.markdown("""
                     <style>
-                    .watermark-b {
-                        position: absolute;
-                        right: 10px;
-                        top: 40px;
-                        font-size: 22px;
-                        font-weight: 900;
-                        color: rgba(0, 0, 0, 0.05);
-                        transform: rotate(-15deg);
-                        pointer-events: none;
-                        white-space: nowrap;
-                        z-index: 0;
-                    }
+                    .wm-b { position: absolute; right: -20px; top: 10px; font-size: 16px; 
+                            color: rgba(0,0,0,0.1); transform: rotate(-10deg); font-weight: bold; }
                     </style>
-                    <div class="watermark-b">💳 DOSSIER BANCAIRE 💵</div>
+                    <div class="wm-b">💳 DOSSIER BANCAIRE 💵</div>
                 """, unsafe_allow_html=True)
 
                 st.metric("SOLDE BANCAIRE", f"{citoyen_info.iloc[0]['Solde']}$")
+                job_raw = str(citoyen_info.iloc[0]['Emploiement'])
+                st.write(f"🏢 Métier : **{job_raw}**")
+                
+                # ... Ton code pour l'expander de paie continue ici ...
                 # ... reste du code paie ...
                 # ... (le reste de ton code pour le métier et la paie)
                 job_raw = str(citoyen_info.iloc[0]['Emploiement'])
