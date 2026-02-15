@@ -1053,43 +1053,50 @@ if len(tabs) > 1:
                                 st.rerun()
                     else:
                         st.error("❌ Code Agent Invalide")
-# --- 2. RECHERCHE & CONSULTATION DES FACTURES (SANS BOUTONS) ---
+# --- 2. RECHERCHE & CONSULTATION DES FACTURES ---
             st.markdown("### 📑 GESTION DES FACTURES")
             
             df_f_check = cloud_conn.read(worksheet="Factures").fillna("")
             maintenant = datetime.now()
 
-            # Conversion de la date limite pour le calcul automatique du retard
+            # Conversion de la date limite
             df_f_check['Date_Limite_DT'] = pd.to_datetime(df_f_check['Date_Limite'], dayfirst=True, errors='coerce')
             
             def determiner_statut(row):
                 s_sheets = str(row["Statut"]).strip().upper()
-                
-                # Priorité aux statuts définitifs du Sheets
                 statuts_regles = ["PAYÉ", "PAYÉE", "REMBOURSÉ", "REMBOURSÉE", "ANNULÉ", "ANNULÉE"]
-                if s_sheets in statuts_regles:
-                    return s_sheets
-                
-                # Calcul du retard si non réglé
+                if s_sheets in statuts_regles: return s_sheets
                 if pd.notnull(row['Date_Limite_DT']) and maintenant > row['Date_Limite_DT']:
                     return "EN RETARD"
-                
                 return "EN ATTENTE"
 
             df_f_check["Statut_Reel"] = df_f_check.apply(determiner_statut, axis=1)
 
-            # --- ZONE DE FILTRES ---
+            # --- NOUVEAU : RADAR AUTOMATIQUE DES RETARDS (TOUJOURS VISIBLE) ---
+            df_retards_auto = df_f_check[df_f_check["Statut_Reel"] == "EN RETARD"]
+            
+            if not df_retards_auto.empty:
+                with st.expander("🚨 ALERTES : FACTURES EN RETARD DÉTECTÉES", expanded=True):
+                    # Style pour une liste compacte et alertante
+                    for _, row in df_retards_auto.sort_values(by="Date_Limite_DT").iterrows():
+                        st.markdown(f"""
+                            <div style="background-color: #fdf2f2; border-left: 4px solid #e74c3c; padding: 5px 10px; margin-bottom: 5px;">
+                                <span style="color: #e74c3c; font-weight: bold;">[REF: {row['ID']}]</span> 
+                                <b>{row['Cible']}</b> — <span style="color: #c0392b;">{row['Montant']}$</span> 
+                                <small>(Limite dépassée le {row['Date_Limite']})</small>
+                            </div>
+                        """, unsafe_allow_html=True)
+            else:
+                st.success("✅ Aucune facture en retard pour le moment.")
+
+            # --- ZONE DE FILTRES (POUR LA RECHERCHE PRÉCISE) ---
             with st.container(border=True):
                 c_s1, c_s2 = st.columns([2, 1])
-                search_f = c_s1.text_input("🔍 Rechercher par Nom ou Référence", placeholder="Chercher un dossier...", key="search_ui")
-                # Ajout des sections de tri demandées
-                filter_f = c_s2.selectbox("Filtrer par état", 
-                    ["---", "En Attente", "En Retard", "Payé", "Remboursé", "Annulé"])
+                search_f = c_s1.text_input("🔍 Chercher un dossier spécifique", placeholder="Nom, Référence...", key="search_ui")
+                filter_f = c_s2.selectbox("Filtrer par état", ["---", "En Attente", "En Retard", "Payé", "Remboursé", "Annulé"])
 
-            # --- LOGIQUE D'AFFICHAGE ---
-            if search_f == "" and filter_f == "---":
-                st.info("💡 Saisissez un nom ou choisissez un filtre pour afficher les dossiers.")
-            else:
+            # --- LOGIQUE D'AFFICHAGE DU MOTEUR DE RECHERCHE ---
+            if search_f != "" or filter_f != "---":
                 query = search_f.lower()
                 df_filtered = df_f_check[
                     (df_f_check["ID"].astype(str).str.contains(query)) | 
@@ -1097,52 +1104,34 @@ if len(tabs) > 1:
                     (df_f_check["Motif"].str.lower().str.contains(query))
                 ]
 
-                # Application du filtre de tri
                 if filter_f != "---":
                     f_val = filter_f.upper()
-                    if f_val == "PAYÉ": 
-                        df_filtered = df_filtered[df_filtered["Statut_Reel"].isin(["PAYÉ", "PAYÉE"])]
-                    elif f_val == "REMBOURSÉ":
-                        df_filtered = df_filtered[df_filtered["Statut_Reel"].isin(["REMBOURSÉ", "REMBOURSÉE"])]
-                    elif f_val == "ANNULÉ":
-                        df_filtered = df_filtered[df_filtered["Statut_Reel"].isin(["ANNULÉ", "ANNULÉE"])]
-                    else:
-                        df_filtered = df_filtered[df_filtered["Statut_Reel"] == f_val]
+                    if f_val == "PAYÉ": df_filtered = df_filtered[df_filtered["Statut_Reel"].isin(["PAYÉ", "PAYÉE"])]
+                    elif f_val == "REMBOURSÉ": df_filtered = df_filtered[df_filtered["Statut_Reel"].isin(["REMBOURSÉ", "REMBOURSÉE"])]
+                    elif f_val == "ANNULÉ": df_filtered = df_filtered[df_filtered["Statut_Reel"].isin(["ANNULÉ", "ANNULÉE"])]
+                    else: df_filtered = df_filtered[df_filtered["Statut_Reel"] == f_val]
 
                 if not df_filtered.empty:
-                    # Affichage sous forme de cartes UI
+                    st.write(f"🔍 Résultats ({len(df_filtered)}) :")
                     for _, row in df_filtered.iterrows():
                         s = row["Statut_Reel"]
-                        
-                        # Style visuel selon le statut
-                        if "REMBOURS" in s:
-                            b_col, icon = "#3498db", "↩️" # Bleu
-                        elif "ANNUL" in s:
-                            b_col, icon = "#95a5a6", "❌" # Gris
-                        elif "PAY" in s:
-                            b_col, icon = "#27ae60", "✅" # Vert
-                        elif s == "EN RETARD":
-                            b_col, icon = "#e74c3c", "🚨" # Rouge
-                        else:
-                            b_col, icon = "#f39c12", "⏳" # Orange
+                        if "REMBOURS" in s: b_col, icon = "#3498db", "↩️"
+                        elif "ANNUL" in s: b_col, icon = "#95a5a6", "❌"
+                        elif "PAY" in s: b_col, icon = "#27ae60", "✅"
+                        elif s == "EN RETARD": b_col, icon = "#e74c3c", "🚨"
+                        else: b_col, icon = "#f39c12", "⏳"
 
                         with st.container(border=True):
                             c1, c2 = st.columns([3, 1])
                             with c1:
                                 st.markdown(f"""
                                     <div style="border-left: 5px solid {b_col}; padding-left: 15px;">
-                                        <b style="color:{b_col}; font-size: 1.1em;">{icon} {s} — RÉF : {row['ID']}</b><br>
-                                        <span style="font-size: 1.2em; font-weight: bold;">{row['Cible']}</span><br>
-                                        <span style="color: gray;">Motif : {row['Motif']}</span><br>
-                                        <small>Émis le : {row['Date_Emission']} | Limite : {row['Date_Limite']}</small>
+                                        <b style="color:{b_col};">{icon} {s} — RÉF : {row['ID']}</b><br>
+                                        <b>{row['Cible']}</b> | <small>{row['Motif']}</small>
                                     </div>
                                 """, unsafe_allow_html=True)
-                            
                             with c2:
-                                # Juste l'affichage du montant, pas de bouton
-                                st.markdown(f"<h2 style='text-align: center; margin-top: 10px;'>{row['Montant']}$</h2>", unsafe_allow_html=True)
-                else:
-                    st.warning("🔎 Aucun dossier trouvé pour ces critères.")
+                                st.markdown(f"<h3 style='text-align: center;'>{row['Montant']}$</h3>", unsafe_allow_html=True)
         # --- 2. RECHERCHE & MANDATS ---
         st.markdown("### 🔍 MANDATS & RECHERCHE")
         
