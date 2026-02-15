@@ -1053,27 +1053,27 @@ if len(tabs) > 1:
                                 st.rerun()
                     else:
                         st.error("❌ Code Agent Invalide")
-
-# --- 2. RECHERCHE & GESTION DES FACTURES (CORRIGÉ) ---
+# --- 2. RECHERCHE & CONSULTATION DES FACTURES (SANS BOUTONS) ---
             st.markdown("### 📑 GESTION DES FACTURES")
             
             df_f_check = cloud_conn.read(worksheet="Factures").fillna("")
             maintenant = datetime.now()
 
-            # Conversion pour le calcul
+            # Conversion de la date limite pour le calcul automatique du retard
             df_f_check['Date_Limite_DT'] = pd.to_datetime(df_f_check['Date_Limite'], dayfirst=True, errors='coerce')
             
             def determiner_statut(row):
-                # 1. On vérifie d'abord si c'est payé (Priorité n°1)
-                statut_sheets = str(row["Statut"]).strip().upper()
-                if statut_sheets == "PAYÉE" or statut_sheets == "PAYE":
-                    return "PAYÉE"
+                s_sheets = str(row["Statut"]).strip().upper()
                 
-                # 2. Si ce n'est pas payé, on regarde si la date est dépassée
+                # Priorité aux statuts définitifs du Sheets
+                statuts_regles = ["PAYÉ", "PAYÉE", "REMBOURSÉ", "REMBOURSÉE", "ANNULÉ", "ANNULÉE"]
+                if s_sheets in statuts_regles:
+                    return s_sheets
+                
+                # Calcul du retard si non réglé
                 if pd.notnull(row['Date_Limite_DT']) and maintenant > row['Date_Limite_DT']:
                     return "EN RETARD"
                 
-                # 3. Sinon c'est en attente
                 return "EN ATTENTE"
 
             df_f_check["Statut_Reel"] = df_f_check.apply(determiner_statut, axis=1)
@@ -1081,12 +1081,14 @@ if len(tabs) > 1:
             # --- ZONE DE FILTRES ---
             with st.container(border=True):
                 c_s1, c_s2 = st.columns([2, 1])
-                search_f = c_s1.text_input("🔍 Rechercher par Nom ou Référence", placeholder="Tapez pour chercher...", key="search_ui")
-                filter_f = c_s2.selectbox("Filtrer par état", ["---", "En Attente", "En Retard", "Payée"])
+                search_f = c_s1.text_input("🔍 Rechercher par Nom ou Référence", placeholder="Chercher un dossier...", key="search_ui")
+                # Ajout des sections de tri demandées
+                filter_f = c_s2.selectbox("Filtrer par état", 
+                    ["---", "En Attente", "En Retard", "Payé", "Remboursé", "Annulé"])
 
             # --- LOGIQUE D'AFFICHAGE ---
             if search_f == "" and filter_f == "---":
-                st.info("💡 Utilisez la barre de recherche ou choisissez un filtre pour afficher les factures.")
+                st.info("💡 Saisissez un nom ou choisissez un filtre pour afficher les dossiers.")
             else:
                 query = search_f.lower()
                 df_filtered = df_f_check[
@@ -1095,22 +1097,34 @@ if len(tabs) > 1:
                     (df_f_check["Motif"].str.lower().str.contains(query))
                 ]
 
+                # Application du filtre de tri
                 if filter_f != "---":
-                    df_filtered = df_filtered[df_filtered["Statut_Reel"] == filter_f.upper()]
+                    f_val = filter_f.upper()
+                    if f_val == "PAYÉ": 
+                        df_filtered = df_filtered[df_filtered["Statut_Reel"].isin(["PAYÉ", "PAYÉE"])]
+                    elif f_val == "REMBOURSÉ":
+                        df_filtered = df_filtered[df_filtered["Statut_Reel"].isin(["REMBOURSÉ", "REMBOURSÉE"])]
+                    elif f_val == "ANNULÉ":
+                        df_filtered = df_filtered[df_filtered["Statut_Reel"].isin(["ANNULÉ", "ANNULÉE"])]
+                    else:
+                        df_filtered = df_filtered[df_filtered["Statut_Reel"] == f_val]
 
                 if not df_filtered.empty:
-                    # Tri : Retards en premier, puis Attente, puis Payées
-                    df_filtered = df_filtered.sort_values(by="Statut_Reel", ascending=True)
-
+                    # Affichage sous forme de cartes UI
                     for _, row in df_filtered.iterrows():
                         s = row["Statut_Reel"]
                         
-                        if s == "EN RETARD":
-                            b_col, icon = "#e74c3c", "🚨"
-                        elif s == "PAYÉE":
-                            b_col, icon = "#27ae60", "✅"
+                        # Style visuel selon le statut
+                        if "REMBOURS" in s:
+                            b_col, icon = "#3498db", "↩️" # Bleu
+                        elif "ANNUL" in s:
+                            b_col, icon = "#95a5a6", "❌" # Gris
+                        elif "PAY" in s:
+                            b_col, icon = "#27ae60", "✅" # Vert
+                        elif s == "EN RETARD":
+                            b_col, icon = "#e74c3c", "🚨" # Rouge
                         else:
-                            b_col, icon = "#f39c12", "⏳"
+                            b_col, icon = "#f39c12", "⏳" # Orange
 
                         with st.container(border=True):
                             c1, c2 = st.columns([3, 1])
@@ -1120,23 +1134,15 @@ if len(tabs) > 1:
                                         <b style="color:{b_col}; font-size: 1.1em;">{icon} {s} — RÉF : {row['ID']}</b><br>
                                         <span style="font-size: 1.2em; font-weight: bold;">{row['Cible']}</span><br>
                                         <span style="color: gray;">Motif : {row['Motif']}</span><br>
-                                        <small>Limite : {row['Date_Limite']}</small>
+                                        <small>Émis le : {row['Date_Emission']} | Limite : {row['Date_Limite']}</small>
                                     </div>
                                 """, unsafe_allow_html=True)
                             
                             with c2:
-                                st.markdown(f"<h2 style='text-align: center;'>{row['Montant']}$</h2>", unsafe_allow_html=True)
-                                if s != "PAYÉE":
-                                    if st.button("Payer", key=f"btn_{row['ID']}", use_container_width=True):
-                                        full_df = cloud_conn.read(worksheet="Factures")
-                                        idx = full_df[full_df["ID"].astype(str) == str(row["ID"])].index[0]
-                                        full_df.at[idx, "Statut"] = "PAYÉE"
-                                        cloud_conn.update(worksheet="Factures", data=full_df)
-                                        st.success(f"Référence {row['ID']} enregistrée comme payée !")
-                                        time.sleep(1)
-                                        st.rerun()
+                                # Juste l'affichage du montant, pas de bouton
+                                st.markdown(f"<h2 style='text-align: center; margin-top: 10px;'>{row['Montant']}$</h2>", unsafe_allow_html=True)
                 else:
-                    st.warning("🔎 Aucun résultat trouvé.")
+                    st.warning("🔎 Aucun dossier trouvé pour ces critères.")
         # --- 2. RECHERCHE & MANDATS ---
         st.markdown("### 🔍 MANDATS & RECHERCHE")
         
