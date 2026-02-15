@@ -982,7 +982,95 @@ if len(tabs) > 1:
     with tabs[1]:
         roles_autorises = ["RCT", "Averis", "Police", "Staff"]
         if any(r in st.session_state.user_auth for r in roles_autorises):
+            st.subheader("🕵️ Panel de Surveillance des Services")
             
+            # --- SOUS-SECTION : AMENDES EN RETARD ---
+            st.markdown("#### 🚩 Alertes : Factures en Retard")
+            
+            # Délai avant d'être considéré en retard (7 jours)
+            DELAI_RETARD = 7 
+            
+            if not df_f.empty:
+                # 1. Conversion propre de la date
+                df_f['Date_dt'] = pd.to_datetime(df_f['Date'], dayfirst=True, errors='coerce')
+                aujourdhui = datetime.now()
+                
+                # 2. Masque pour les impayés qui dépassent le délai
+                retard_mask = (df_f["Statut"] == "En attente") & \
+                              ((aujourdhui - df_f['Date_dt']).dt.days >= DELAI_RETARD)
+                
+                df_retard = df_f[retard_mask].copy()
+                
+                if not df_retard.empty:
+                    df_retard['Jours'] = (aujourdhui - df_retard['Date_dt']).dt.days
+                    st.error(f"⚠️ **{len(df_retard)}** facture(s) dépassent le délai de {DELAI_RETARD} jours.")
+                    
+                    # Affichage du tableau des impayés
+                    st.dataframe(
+                        df_retard[["Référence", "Nom Roblox", "Montant", "Raison", "Jours"]]
+                        .sort_values("Jours", ascending=False)
+                        .rename(columns={"Jours": "Retard (Jours)"}),
+                        use_container_width=True,
+                        hide_index=True
+                    )
+                    
+                    # Action de relance rapide
+                    c1, c2 = st.columns([2, 1])
+                    with c1:
+                        target_relance = st.selectbox("🎯 Cibler un citoyen en retard :", 
+                                                    df_retard["Nom Roblox"].unique(), key="relance_select")
+                    with c2:
+                        if st.button("🔔 Notifier Retard", use_container_width=True):
+                            st.toast(f"Relance envoyée à {target_relance}", icon="📩")
+                else:
+                    st.success("✅ Aucun retard de paiement détecté au-delà de 7 jours.")
+            else:
+                st.info("Aucune donnée de facturation trouvée.")
+
+            # --- SECTION : RECHERCHE & RÉGULARISATION ---
+            st.divider()
+            st.markdown("#### 📑 Recherche Rapide & Gestion")
+
+            with st.container(border=True):
+                col_search1, col_search2 = st.columns([2, 1])
+                
+                with col_search1:
+                    search_query = st.text_input("🔍 Rechercher (Nom ou N° Référence) :", key="agent_search_box")
+                
+                with col_search2:
+                    filter_status = st.selectbox("État :", ["Toutes", "En attente", "Payée"], key="agent_filter_status")
+
+                if search_query:
+                    # Recherche hybride
+                    mask = (
+                        df_f["Nom Roblox"].str.contains(search_query, case=False, na=False) | 
+                        df_f["Référence"].astype(str).str.contains(search_query, case=False, na=False)
+                    )
+                    
+                    results = df_f[mask]
+                    if filter_status != "Toutes":
+                        results = results[results["Statut"] == filter_status]
+
+                    if not results.empty:
+                        st.dataframe(results[["Référence", "Nom Roblox", "Montant", "Raison", "Statut"]], use_container_width=True, hide_index=True)
+                        
+                        # Action de paiement
+                        selected_ref = st.selectbox("Sélectionner une référence pour action :", results["Référence"].tolist(), key="agent_ref_pay")
+                        
+                        if st.button(f"✅ Marquer {selected_ref} comme PAYÉE", use_container_width=True, type="primary"):
+                            try:
+                                idx = df_f[df_f["Référence"] == selected_ref].index[0]
+                                df_f.at[idx, "Statut"] = "Payée"
+                                cloud_conn.update(worksheet="Factures", data=df_f)
+                                st.success(f"Facture {selected_ref} régularisée !")
+                                time.sleep(1)
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Erreur : {e}")
+                    else:
+                        st.warning("Aucun résultat pour cette recherche.")
+        else:
+            st.warning("🔒 Accès réservé aux unités de service (RCT, Police, Staff, Averis).")
             # --- 1. AUTHENTIFICATION & POINTAGE ---
             with st.container(border=True):
                 c_auth, c_stats = st.columns([1, 2.5])
@@ -1124,53 +1212,6 @@ if len(tabs) > 1:
                 col_form, col_facture, col_vehicules = st.columns([1.2, 1, 1])
                 
                 # (Ici tes codes pour col_form, col_facture et col_vehicules...)
-
-                # ======================================================================================
-                # --- SECTION : SERVICES AGENT (Recherche par Facture / Référence) ---
-                # ======================================================================================
-                st.markdown("---")
-                st.markdown("#### 📑 Recherche Rapide de Facture")
-
-                with st.container(border=True):
-                    col_search1, col_search2 = st.columns([2, 1])
-                    
-                    with col_search1:
-                        # Recherche hybride Nom ou Référence
-                        search_query = st.text_input("🔍 Rechercher (Nom ou N° Référence) :", key="search_facture")
-                    
-                    with col_search2:
-                        filter_status = st.selectbox("État :", ["Toutes", "En attente", "Payée"], key="filter_fact_status")
-
-                    if search_query:
-                        # Filtrage par Nom OU par Référence (conversion en string pour éviter les erreurs)
-                        mask = (
-                            df_f["Nom Roblox"].str.contains(search_query, case=False, na=False) | 
-                            df_f["Référence"].astype(str).str.contains(search_query, case=False, na=False)
-                        )
-                        
-                        results = df_f[mask]
-
-                        if filter_status != "Toutes":
-                            results = results[results["Statut"] == filter_status]
-
-                        if not results.empty:
-                            st.dataframe(results[["Référence", "Nom Roblox", "Montant", "Raison", "Statut"]], use_container_width=True)
-                            
-                            # Sélection précise par référence pour action rapide
-                            selected_ref = st.selectbox("Sélectionner une référence pour action :", results["Référence"].tolist(), key="select_ref_action")
-                            
-                            if st.button(f"✅ Régulariser la facture {selected_ref}", use_container_width=True):
-                                try:
-                                    idx = df_f[df_f["Référence"] == selected_ref].index[0]
-                                    df_f.at[idx, "Statut"] = "Payée"
-                                    cloud_conn.update(worksheet="Factures", data=df_f)
-                                    st.success(f"Facture {selected_ref} marquée comme PAYÉE.")
-                                    time.sleep(1)
-                                    st.rerun()
-                                except Exception as e:
-                                    st.error(f"Erreur lors de la mise à jour : {e}")
-                        else:
-                            st.warning("Aucune facture trouvée pour cette recherche.")
                 # --- COLONNE 1 : FORMULAIRE D'ACTION ---
                 with col_form:
                     with st.container(border=True):
