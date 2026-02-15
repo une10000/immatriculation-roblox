@@ -1053,90 +1053,74 @@ if len(tabs) > 1:
                                 st.rerun()
                     else:
                         st.error("❌ Code Agent Invalide")
-# --- 2. RECHERCHE & CONSULTATION DES FACTURES (OPTIMISÉ MODE NUIT) ---
-st.markdown("### 📑 GESTION DES FACTURES")
-
-df_f_check = cloud_conn.read(worksheet="Factures").fillna("")
-maintenant = datetime.now()
-
-# Conversion de la date limite
-df_f_check['Date_Limite_DT'] = pd.to_datetime(df_f_check['Date_Limite'], dayfirst=True, errors='coerce')
-
-def determiner_statut(row):
-    s_sheets = str(row["Statut"]).strip().upper()
-    statuts_regles = ["PAYÉ", "PAYÉE", "REMBOURSÉ", "REMBOURSÉE", "ANNULÉ", "ANNULÉE"]
-    if s_sheets in statuts_regles: return s_sheets
-    if pd.notnull(row['Date_Limite_DT']) and maintenant > row['Date_Limite_DT']:
-        return "EN RETARD"
-    return "EN ATTENTE"
-
-df_f_check["Statut_Reel"] = df_f_check.apply(determiner_statut, axis=1)
-
-# --- RADAR AUTOMATIQUE DES RETARDS (LISIBLE EN MODE NUIT) ---
-df_retards_auto = df_f_check[df_f_check["Statut_Reel"] == "EN RETARD"]
-
-if not df_retards_auto.empty:
-    with st.expander(f"🚨 ALERTES : {len(df_retards_auto)} RETARDS DÉTECTÉES", expanded=True):
-        for _, row in df_retards_auto.sort_values(by="Date_Limite_DT").iterrows():
-            st.markdown(f"""
-                <div style="background-color: #ffe5e5; border-left: 5px solid #ff0000; padding: 10px; margin-bottom: 8px; border-radius: 4px;">
-                    <strong style="color: #b30000; font-size: 1.1em;">[REF: {row['ID']}]</strong> 
-                    <b style="color: #000000; font-size: 1.1em;">{row['Cible']}</b> — 
-                    <span style="font-weight: bold; color: #d63031;">{row['Montant']}$</span> 
-                    <br><span style="color: #2d3436; font-size: 0.9em;">⚠️ Limite dépassée le : {row['Date_Limite']}</span>
-                </div>
-            """, unsafe_allow_html=True)
-else:
-    st.success("✅ Aucune facture en retard pour le moment.")
-
-# --- ZONE DE FILTRES ---
-with st.container(border=True):
-    c_s1, c_s2 = st.columns([2, 1])
-    search_f = c_s1.text_input("🔍 Chercher un dossier spécifique", placeholder="Nom, Référence...", key="search_ui")
-    filter_f = c_s2.selectbox("Filtrer par état", ["---", "En Attente", "En Retard", "Payé", "Remboursé", "Annulé"])
-
-# --- LOGIQUE D'AFFICHAGE DU MOTEUR DE RECHERCHE ---
-if search_f != "" or filter_f != "---":
-    query = search_f.lower()
-    df_filtered = df_f_check[
-        (df_f_check["ID"].astype(str).str.contains(query)) | 
-        (df_f_check["Cible"].str.lower().str.contains(query)) |
-        (df_f_check["Motif"].str.lower().str.contains(query))
-    ]
-
-    if filter_f != "---":
-        f_val = filter_f.upper()
-        if f_val == "PAYÉ": df_filtered = df_filtered[df_filtered["Statut_Reel"].isin(["PAYÉ", "PAYÉE"])]
-        elif f_val == "REMBOURSÉ": df_filtered = df_filtered[df_filtered["Statut_Reel"].isin(["REMBOURSÉ", "REMBOURSÉE"])]
-        elif f_val == "ANNULÉ": df_filtered = df_filtered[df_filtered["Statut_Reel"].isin(["ANNULÉ", "ANNULÉE"])]
-        else: df_filtered = df_filtered[df_filtered["Statut_Reel"] == f_val]
-
-    if not df_filtered.empty:
-        st.write(f"🔍 Résultats ({len(df_filtered)}) :")
-        for _, row in df_filtered.iterrows():
-            s = row["Statut_Reel"]
+# --- 2. RECHERCHE & CONSULTATION DES FACTURES ---
+            st.markdown("### 📑 GESTION DES FACTURES")
             
-            # Couleurs contrastées pour Mode Nuit
-            if "REMBOURS" in s: b_col, bg_col, t_col = "#3498db", "#ebf5fb", "#21618c"
-            elif "ANNUL" in s: b_col, bg_col, t_col = "#95a5a6", "#f2f4f4", "#515a5a"
-            elif "PAY" in s: b_col, bg_col, t_col = "#27ae60", "#e9f7ef", "#186a3b"
-            elif s == "EN RETARD": b_col, bg_col, t_col = "#e74c3c", "#fdedec", "#943126"
-            else: b_col, bg_col, t_col = "#f39c12", "#fef5e7", "#9c640c"
-
+            df_f_check = cloud_conn.read(worksheet="Factures").fillna("")
+            maintenant = datetime.now()
+            df_f_check['Date_Limite_DT'] = pd.to_datetime(df_f_check['Date_Limite'], dayfirst=True, errors='coerce')
+            
+            def determiner_statut(row):
+                s_sheets = str(row["Statut"]).strip().upper()
+                statuts_regles = ["PAYÉ", "PAYÉE", "REMBOURSÉ", "REMBOURSÉE", "ANNULÉ", "ANNULÉE"]
+                if s_sheets in statuts_regles: return s_sheets
+                if pd.notnull(row['Date_Limite_DT']) and maintenant > row['Date_Limite_DT']:
+                    return "EN RETARD"
+                return "EN ATTENTE"
+            
+            df_f_check["Statut_Reel"] = df_f_check.apply(determiner_statut, axis=1)
+            
+            # --- RADAR AUTOMATIQUE DES RETARDS ---
+            df_retards_auto = df_f_check[df_f_check["Statut_Reel"] == "EN RETARD"]
+            if not df_retards_auto.empty:
+                with st.expander(f"🚨 ALERTES : {len(df_retards_auto)} RETARDS DÉTECTÉS", expanded=True):
+                    for _, row in df_retards_auto.sort_values(by="Date_Limite_DT").iterrows():
+                        st.error(f"**[REF: {row['ID']}]** {row['Cible']} — **{row['Montant']}$** (Limite : {row['Date_Limite']})")
+            else:
+                st.success("✅ Aucune facture en retard pour le moment.")
+            
+            # --- ZONE DE FILTRES ---
             with st.container(border=True):
-                c1, c2 = st.columns([3, 1])
-                with c1:
-                    st.markdown(f"""
-                        <div style="border-left: 5px solid {b_col}; background-color: {bg_col}; padding: 10px; border-radius: 0 4px 4px 0;">
-                            <b style="color:{t_col}; font-size: 1.1em;">{s} — RÉF : {row['ID']}</b><br>
-                            <span style="font-size: 1.2em; font-weight: bold; color: #000000;">{row['Cible']}</span><br>
-                            <span style="color: #444444;">Motif : {row['Motif']}</span>
-                        </div>
-                    """, unsafe_allow_html=True)
-                with c2:
-                    st.markdown(f"<h3 style='text-align: center; color: {t_col}; margin-top: 15px;'>{row['Montant']}$</h3>", unsafe_allow_html=True)
-    else:
-        st.warning("🔎 Aucun dossier trouvé.")
+                c_s1, c_s2 = st.columns([2, 1])
+                search_f = c_s1.text_input("🔍 Chercher un dossier spécifique", placeholder="Nom, Référence...", key="search_ui")
+                filter_f = c_s2.selectbox("Filtrer par état", ["---", "En Attente", "En Retard", "Payé", "Remboursé", "Annulé"])
+            
+            # --- AFFICHAGE DES RÉSULTATS ---
+            if search_f != "" or filter_f != "---":
+                query = search_f.lower()
+                df_filtered = df_f_check[
+                    (df_f_check["ID"].astype(str).str.contains(query)) | 
+                    (df_f_check["Cible"].str.lower().str.contains(query)) |
+                    (df_f_check["Motif"].str.lower().str.contains(query))
+                ]
+            
+                if filter_f != "---":
+                    f_val = filter_f.upper()
+                    if f_val == "PAYÉ": df_filtered = df_filtered[df_filtered["Statut_Reel"].isin(["PAYÉ", "PAYÉE"])]
+                    elif f_val == "REMBOURSÉ": df_filtered = df_filtered[df_filtered["Statut_Reel"].isin(["REMBOURSÉ", "REMBOURSÉE"])]
+                    elif f_val == "ANNULÉ": df_filtered = df_filtered[df_filtered["Statut_Reel"].isin(["ANNULÉ", "ANNULÉE"])]
+                    else: df_filtered = df_filtered[df_filtered["Statut_Reel"] == f_val]
+            
+                if not df_filtered.empty:
+                    st.write(f"🔍 Résultats ({len(df_filtered)}) :")
+                    for _, row in df_filtered.iterrows():
+                        s = row["Statut_Reel"]
+                        b_col = "#3498db" if "REMBOURS" in s else "#95a5a6" if "ANNUL" in s else "#27ae60" if "PAY" in s else "#e74c3c" if s == "EN RETARD" else "#f39c12"
+                        
+                        with st.container(border=True):
+                            c1, c2 = st.columns([3, 1])
+                            with c1:
+                                st.markdown(f"""
+                                    <div style="border-left: 5px solid {b_col}; padding-left: 15px;">
+                                        <b style="color:{b_col}; font-size: 1.1em;">{s} — RÉF : {row['ID']}</b><br>
+                                        <span style="font-size: 1.2em; font-weight: bold;">{row['Cible']}</span><br>
+                                        <small>Motif : {row['Motif']}</small>
+                                    </div>
+                                """, unsafe_allow_html=True)
+                            with c2:
+                                st.markdown(f"<h3 style='text-align: center; margin-top: 10px;'>{row['Montant']}$</h3>", unsafe_allow_html=True)
+                else:
+                    st.warning("🔎 Aucun dossier trouvé.")
         # --- 2. RECHERCHE & MANDATS ---
         st.markdown("### 🔍 MANDATS & RECHERCHE")
         
