@@ -493,37 +493,31 @@ with st.container():
                         st.rerun()
             else: 
                 st.info("Aucun permis trouvé.")
-
-        # ---------------- COLONNE 2 : BANQUE & PAIE ----------------
+# ---------------- COLONNE 2 : BANQUE & PAIE ----------------
         with col2:
             if not citoyen_info.empty:
-                # --- FILIGRANE EMPILÉ GRAND ET DISCRET ---
+                # --- FILIGRANE EMPILÉ XXL (Visuel uniquement) ---
                 st.markdown("""
                     <div style="position: relative; height: 0px;">
-                        <div style="position: absolute; right: -5px; top: -10px; font-size: 22px; 
-                                    line-height: 1.1; font-weight: 900; color: rgba(0,0,0,0.06); 
-                                    transform: rotate(-15deg); text-align: center; pointer-events: none; z-index: 0;">
-                            💳<br>💵<br>DOSSIER<br>BANCAIRE
+                        <div style="position: absolute; right: 0px; top: -15px; font-size: 32px; 
+                                    line-height: 0.9; font-weight: 900; color: rgba(0,0,0,0.06); 
+                                    transform: rotate(-12deg); text-align: center; pointer-events: none; z-index: 0;">
+                            💳<br>💵<br><span style="font-size: 16px;">DOSSIER<br>BANCAIRE</span>
                         </div>
                     </div>
                 """, unsafe_allow_html=True)
 
+                # Affichage principal du solde
                 st.metric("SOLDE BANCAIRE", f"{citoyen_info.iloc[0]['Solde']}$")
                 job_raw = str(citoyen_info.iloc[0]['Emploiement'])
                 st.write(f"🏢 Métier : **{job_raw}**")
-                
-                # ... Ton code pour l'expander de paie continue ici ...
-                # ... reste du code paie ...
-                # ... (le reste de ton code pour le métier et la paie)
-                job_raw = str(citoyen_info.iloc[0]['Emploiement'])
-                st.write(f"🏢 Métier : **{job_raw}**")
 
-                # --- CALCULATEUR DE PAIE (VERSION STAFF & PRIMES) ---
+                # --- CALCULATEUR DE PAIE (VERSION DÉTAILLÉE) ---
                 with st.expander("💳 Détails de ma prochaine paie", expanded=False):
-                    # 1. Calcul des minutes (via Logs)
+                    # 1. Calcul des minutes (Correction : Utilisation de df_admin_clock)
                     m_pol, m_rct = 0, 0
                     try:
-                        logs = df_admin[(df_admin["nom"] == target) & (df_admin["statut"] == "Validé")]
+                        logs = df_admin_clock[(df_admin_clock["nom"] == target) & (df_admin_clock["statut"] == "Validé")]
                         for _, r in logs.iterrows():
                             t_debut = pd.to_datetime(r["début"], dayfirst=True)
                             t_fin = pd.to_datetime(r["fin"], dayfirst=True)
@@ -532,47 +526,46 @@ with st.container():
                             elif "RCT" in str(r["job"]).upper(): m_rct += diff
                     except: pass
 
-                    # 2. Détection des Primes
+                    # 2. Détection des Primes et Bonus (Harmonisation Terminal de Paie)
                     ratio_pol = min(m_pol/1200, 1.0)
                     ratio_rct = min(m_rct/1200, 1.0)
                     
                     p_pol = int(3000 * ratio_pol) if "police" in job_raw.lower() else 0
                     p_rct = int(2000 * ratio_rct) if "agent rct" in job_raw.lower() else 0
                     p_staff = 4000 if "staff" in job_raw.lower() else 0
-                    p_extra = 0 
+                    p_averis = 2000 if "averis" in job_raw.lower() else 0
+                    p_sp = 1000 if "service public" in job_raw.lower() else 0
                     
-                    # Taxes Véhicules (Trio RCT)
+                    # Taxes Véhicules (Trio RCT incluse)
                     mes_v = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
                     count_rct = len(mes_v[mes_v["Assurance"].str.contains("RCT", na=False, case=False)])
                     is_trio = count_rct >= 3
                     taxe_v = 200 if is_trio else (len(mes_v) * 150)
 
-                    # --- CALCUL DU NET (BASE 15K + TOUS LES BONUS) ---
-                    net = 15000 + p_pol + p_rct + p_staff + p_extra - taxe_v
+                    # Calcul du NET (Base 15k fixée)
+                    net = 15000 + p_pol + p_rct + p_staff + p_averis + p_sp - taxe_v
 
-                    # 3. Affichage visuel
+                    # 3. Affichage visuel crédits/débits
                     c_cred, c_deb = st.columns(2)
-                    
                     with c_cred:
                         st.markdown("<div style='color: #4CAF50; font-weight:bold; margin-bottom:5px;'>📥 REVENUS</div>", unsafe_allow_html=True)
                         st.markdown(f"➕ **Base Civile** : `15,000$`")
                         if p_staff > 0: st.markdown(f"⭐ **Prime Staff** : `{p_staff}$`")
+                        if p_averis > 0: st.markdown(f"🛡️ **Prime Averis** : `{p_averis}$`")
+                        if p_sp > 0: st.markdown(f"👷 **Prime Service Public** : `{p_sp}$`")
+                        
                         if "police" in job_raw.lower():
                             st.markdown(f"👮 **Prime Police** : `{p_pol}$`")
                             st.progress(ratio_pol, text=f"{int(m_pol/60)}h / 20h")
                         if "agent rct" in job_raw.lower():
                             st.markdown(f"👷‍♂️ **Prime RCT** : `{p_rct}$`")
                             st.progress(ratio_rct, text=f"{int(m_rct/60)}h / 20h")
-                        if p_extra > 0: st.markdown(f"🎁 **Bonus** : `{p_extra}$`")
 
                     with c_deb:
                         st.markdown("<div style='color: #E53935; font-weight:bold; margin-bottom:5px;'>📤 DÉPENSES</div>", unsafe_allow_html=True)
-                        if len(mes_v) > 0:
-                            label_taxe = "Offre Trio RCT ✅" if is_trio else f"{len(mes_v)} véhicule(s)"
-                            st.markdown(f"🚗 **Assurances** : `{taxe_v}$`")
-                            st.caption(label_taxe)
-                        else:
-                            st.markdown("🚗 **Assurances** : `0$`")
+                        label_taxe = "Offre Trio RCT ✅" if is_trio else f"{len(mes_v)} véhicule(s)"
+                        st.markdown(f"🚗 **Assurances** : `{taxe_v}$`")
+                        st.caption(label_taxe)
 
                     st.markdown("---")
                     st.markdown(f"""
@@ -582,21 +575,24 @@ with st.container():
                         </div>
                     """, unsafe_allow_html=True)
 
-                # --- MODIFICATION MÉTIER (STAFF) ---
+                # --- MODIFICATION MÉTIER (RÉSERVÉ STAFF) ---
                 if st.session_state.user_auth in ["Staff", "Admin"]:
+                    st.write("") # Petit espacement
                     if st.button("✏️ Modifier Métier", key=f"edit_{target}", use_container_width=True):
                         st.session_state[f"mode_{target}"] = not st.session_state.get(f"mode_{target}", False)
                     
                     if st.session_state.get(f"mode_{target}", False):
                         opts = ["Sans-Emploi", "Agent RCT", "Averis", "Police", "Staff", "Service Public"]
                         cur = [j.strip() for j in job_raw.split("/") if j.strip() in opts]
-                        new_m = st.multiselect("Nouveau :", opts, default=cur)
-                        if st.button("💾 Sauver"):
+                        new_m = st.multiselect("Accréditations :", opts, default=cur)
+                        
+                        if st.button("💾 Enregistrer les modifications", type="primary", use_container_width=True):
                             txt = " / ".join(new_m) if new_m else "Sans-Emploi"
                             df_b.loc[df_b["Nom Roblox"] == target, "Emploiement"] = txt
                             cloud_conn.update(worksheet="Banque", data=df_b)
-                            st.success("Enregistré !")
+                            st.success("Modifications enregistrées !")
                             st.session_state[f"mode_{target}"] = False
+                            time.sleep(1)
                             st.rerun()
 # ---------------- COLONNE 3 : ARCHIVES & REMBOURSEMENT ----------------
         with col3:
