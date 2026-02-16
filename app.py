@@ -887,7 +887,6 @@ if st.session_state.user_auth in ["RCT", "Staff"]: tab_labels.append("👮 SERVI
 if st.session_state.user_auth == "Staff": tab_labels.append("🛠️ ADMINISTRATION")
 
 tabs = st.tabs(tab_labels)
-
 # --- ONGLET 1 : IMMATRICULATION & RADIATION (ALIGNÉ) ---
 with tabs[0]:
     # On crée les colonnes DIRECTEMENT au début du tab
@@ -904,6 +903,20 @@ with tabs[0]:
             f_assu = st.selectbox("Type d'Assurance", ["Aucune", "AVERIS (130$)", "RCT (150$)"], key="k_assu_v7")
             f_code = st.text_input("Définir un Code de Radiation (Secret)", type="password", key="k_code_v7")
             
+            # --- VÉRIFICATION BLACKLIST RCT ---
+            is_banned = False
+            raison_ban = ""
+            if "RCT" in f_assu and f_owner != "---":
+                try:
+                    df_blacklist = cloud_conn.read(worksheet="Blacklist_RCT", ttl=0).fillna("")
+                    if f_owner.strip() in df_blacklist['Nom'].str.strip().tolist():
+                        is_banned = True
+                        raison_ban = df_blacklist[df_blacklist['Nom'].str.strip() == f_owner.strip()]['Raison'].values[0]
+                        st.error(f"🚫 **ACTION INTERDITE** : {f_owner} est banni de la RCT.")
+                        st.warning(f"⚠️ **Motif :** {raison_ban}")
+                except:
+                    pass
+
             # --- CALCULS TAXE JEUNE ---
             val_taxe_jeune = 0
             if f_owner != "---":
@@ -917,9 +930,13 @@ with tabs[0]:
 
             # --- CALCUL DU TOTAL + OFFRE TRIO RCT ---
             taxe_gouv = 175
-            taxe_assu = 130 if "AVERIS" in f_assu else (150 if "RCT" in f_assu else 0)
+            # On bloque la taxe RCT si banni
+            if is_banned:
+                taxe_assu = 0
+            else:
+                taxe_assu = 130 if "AVERIS" in f_assu else (150 if "RCT" in f_assu else 0)
             
-            if "RCT" in f_assu and f_owner != "---":
+            if "RCT" in f_assu and f_owner != "---" and not is_banned:
                 nb_vehicules = len(df_i[df_i["Nom d'utilisateur ROBLOX"] == f_owner])
                 if nb_vehicules >= 2:
                     taxe_assu = 0
@@ -927,8 +944,14 @@ with tabs[0]:
 
             total_bill = taxe_gouv + taxe_assu + val_taxe_jeune
             
-            # --- BOUTON DE VALIDATION (LOGIQUE RÉELLE) ---
-            if st.button(f"S'ACQUITTER DE {total_bill}$ ET ENREGISTRER", use_container_width=True, key="btn_pay_final", type="primary"):
+            # --- BOUTON DE VALIDATION (LOGIQUE RÉELLE + SÉCURITÉ BAN) ---
+            # Le bouton est désactivé (disabled) si l'utilisateur est banni
+            if st.button(f"S'ACQUITTER DE {total_bill}$ ET ENREGISTRER", 
+                         use_container_width=True, 
+                         key="btn_pay_final", 
+                         type="primary", 
+                         disabled=is_banned):
+                
                 if f_owner == "---" or not f_model or not f_plate or not f_code:
                     st.error("⚠️ Formulaire incomplet ! Remplis tous les champs.")
                 else:
@@ -936,7 +959,8 @@ with tabs[0]:
                         with st.spinner("Paiement et enregistrement en cours..."):
                             # 1. Calcul du solde
                             idx_user = df_b[df_b["Nom Roblox"] == f_owner].index[0]
-                            solde_actuel = float(str(df_b.at[idx_user, "Solde"]).replace('$', '').replace(',', ''))
+                            solde_raw = str(df_b.at[idx_user, "Solde"]).replace('$', '').replace(',', '')
+                            solde_actuel = float(solde_raw)
                             
                             if solde_actuel < total_bill:
                                 st.error(f"❌ Solde insuffisant ! (Solde: {solde_actuel}$)")
@@ -981,7 +1005,6 @@ with tabs[0]:
                                 
                     except Exception as e:
                         st.error(f"⚠️ Erreur de connexion au Sheets : {e}")
-
     with col_t:
         st.markdown("### 🖼️ Aperçu du Titre")
         
