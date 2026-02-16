@@ -571,10 +571,10 @@ with st.container():
                         
                         if "police" in job_raw.lower():
                             st.markdown(f"👮 **Prime Police** : `{p_pol}$`")
-                            st.progress(ratio_pol, text=f"{int(m_pol/60)}h{int(m_pol%60):02d} / 20h")
+                            st.progress(ratio_pol, text=f"{int(m_pol/60)}h{int(m_pol%60):02d} / 15h")
                         if "agent rct" in job_raw.lower():
                             st.markdown(f"👷‍♂️ **Prime RCT** : `{p_rct}$`")
-                            st.progress(ratio_rct, text=f"{int(m_rct/60)}h{int(m_rct%60):02d} / 20h")
+                            st.progress(ratio_rct, text=f"{int(m_rct/60)}h{int(m_rct%60):02d} / 15h")
 
                     with c_deb:
                         st.markdown("<div style='color: #E53935; font-weight:bold; margin-bottom:5px;'>📤 DÉPENSES</div>", unsafe_allow_html=True)
@@ -1483,8 +1483,8 @@ if len(tabs) > 2:
 
                 # --- CALCUL DES GAINS PAR JOB (Basé sur 20h = Primes Max) ---
                 # Ratio : Minutes accumulées / 1200 (20h)
-                v_earn_rct = int(2000 * min(v_min_rct / 1200, 1.0))
-                v_earn_pol = int(3000 * min(v_min_pol / 1200, 1.0))
+                v_earn_rct = int(2000 * min(v_min_rct / 900, 1.0))
+                v_earn_pol = int(3000 * min(v_min_pol / 900, 1.0))
 
                 # Affichage des metrics d'activité avec Gains
                 m1, m2, m3 = st.columns(3)
