@@ -683,22 +683,42 @@ mes_factures = df_all_f[(df_all_f["Cible"] == target) & (df_all_f["Statut"] == "
 if not mes_factures.empty:
     st.error(f"⚠️ {len(mes_factures)} FACTURE(S) EN ATTENTE DE PAIEMENT")
     
-    for _, fac in mes_factures.iterrows():
-        # 1. CALCUL DU TIMER
+for _, fac in mes_factures.iterrows():
+        # 1. CALCUL DU TIMER (VERSION ROBUSTE)
         try:
-            date_limite = datetime.strptime(str(fac['Date_Limite']), "%d/%m/%Y %H:%M:%S")
-            temps_restant = date_limite - datetime.now()
-            if temps_restant.total_seconds() > 0:
-                h, rem = divmod(int(temps_restant.total_seconds()), 3600)
-                m, _ = divmod(rem, 60)
-                timer_info = f"⌛ EXPIRE DANS : {h}h {m}min"
-                t_color = "#f39c12" 
+            # pd.to_datetime est magique : il comprend le format tout seul (avec ou sans secondes)
+            # errors='coerce' évite le crash si la case est vide
+            date_limite = pd.to_datetime(fac['Date_Limite'], dayfirst=True, errors='coerce')
+            
+            if pd.notnull(date_limite):
+                maintenant = datetime.now()
+                temps_restant = date_limite - maintenant
+                
+                if temps_restant.total_seconds() > 0:
+                    h, rem = divmod(int(temps_restant.total_seconds()), 3600)
+                    m, _ = divmod(rem, 60)
+                    
+                    if h >= 24:
+                        jours = h // 24
+                        heures = h % 24
+                        timer_info = f"⌛ EXPIRE DANS : {jours}j {heures}h"
+                    else:
+                        timer_info = f"⌛ EXPIRE DANS : {h}h {m}min"
+                    t_color = "#f39c12" # Orange
+                else:
+                    timer_info = "⚠️ DÉLAI DÉPASSÉ (IMPAYÉ)"
+                    t_color = "#d32f2f" # Rouge
             else:
-                timer_info = "⚠️ DÉLAI DÉPASSÉ (IMPAYÉ)"
-                t_color = "#d32f2f"
-        except:
-            timer_info = "⌛ Délai : 24 heures"; t_color = "#555"
+                # Si la case dans Sheets est vide ou texte invalide
+                timer_info = "⌛ Date invalide"
+                t_color = "#555"
+                
+        except Exception:
+            # Sécurité ultime pour ne pas bloquer l'affichage de la page
+            timer_info = f"⌛ Échéance : {fac['Date_Limite']}"
+            t_color = "#555"
 
+        # 2. Ton affichage Streamlit ici (ex: st.markdown avec t_color et timer_info)
         # 2. IDENTIFICATION ÉMETTEUR
         emetteur_label = str(fac.get('Emetteur', 'INCONNU'))
         if "POL" in emetteur_label.upper(): prefix_name = "POLICE NATIONALE"
