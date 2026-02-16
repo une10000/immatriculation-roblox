@@ -582,10 +582,19 @@ with st.container():
                         st.caption("Offre Trio RCT ✅" if is_trio else f"{len(mes_v)} véhicule(s)")
 
                     st.divider()
+                    # Bloc optimisé pour les deux modes (Clair/Sombre)
                     st.markdown(f"""
-                        <div style="background-color: #1E1E1E; padding: 15px; border-radius: 8px; border-left: 5px solid #4CAF50; display: flex; justify-content: space-between; align-items: center;">
-                            <span style="font-size: 1.1em; color: #bbb;">NET ESTIMÉ</span>
-                            <span style="font-size: 1.5em; font-weight: bold; color: #fff;">{int(net):,}$</span>
+                        <div style="
+                            background-color: rgba(76, 175, 80, 0.1); 
+                            padding: 15px; 
+                            border-radius: 8px; 
+                            border: 1px solid rgba(76, 175, 80, 0.3);
+                            border-left: 5px solid #4CAF50; 
+                            display: flex; 
+                            justify-content: space-between; 
+                            align-items: center;">
+                            <span style="font-size: 1.1em; font-weight: 500;">NET ESTIMÉ</span>
+                            <span style="font-size: 1.5em; font-weight: bold; color: #4CAF50;">{int(net):,}$</span>
                         </div>
                     """, unsafe_allow_html=True)
                 # --- MODIFICATION MÉTIER (RÉSERVÉ STAFF) ---
