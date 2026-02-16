@@ -628,23 +628,24 @@ with st.container():
                     # Bouton déroulant pour voir l'historique
                     with st.expander(f"👁️ Voir l'historique ({len(archives)} factures)"):
                         for _, f in archives.iterrows():
-                            # --- AFFICHAGE DU PETIT TICKET D'ARCHIVE ---
+# --- AFFICHAGE DU PETIT TICKET D'ARCHIVE ---
                             st.markdown(f"""
-                            <div style="border: 1px solid #000; padding: 10px; background: #f9f9f9; color: black; margin-bottom: 8px; border-left: 5px solid green;">
+                            <div style="border: 1px solid #000; padding: 12px; background: #f9f9f9; color: black; margin-bottom: 8px; border-left: 5px solid green; font-family: monospace;">
                                 <div style="display: flex; justify-content: space-between; font-size: 0.8em;">
                                     <b>REF: #{f['ID']}</b>
                                     <b style="color: green;">ACQUITTÉE ✔</b>
                                 </div>
-                                <hr style="margin: 5px 0; border-top: 1px dashed #000;">
-                                <div style="font-size: 0.9em;">
+                                <hr style="margin: 5px 0; border-top: 1px dashed #ccc;">
+                                <div style="font-size: 0.9em; line-height: 1.4;">
+                                    <b>ÉMETTEUR :</b> {f.get('Auteur', 'Inconnu')}<br>
+                                    <b>SERVICE :</b> {f.get('Service', 'Non spécifié')}<br>
+                                    <hr style="margin: 5px 0; border-top: 1px dashed #eee;">
                                     <b>MOTIF :</b> {f['Motif']}<br>
                                     <b>MONTANT :</b> {f['Montant']}$<br>
                                     <b>POINTS :</b> {f.get('Points', 0)}
                                 </div>
                             </div>
                             """, unsafe_allow_html=True)
-                            
-                            # --- OPTION REMBOURSEMENT (STAFF/ADMIN) ---
                             if st.session_state.user_auth in ["Staff", "Admin"]:
                                 if st.button(f"🔄 Rembourser #{f['ID']}", key=f"ref_{f['ID']}", use_container_width=True):
                                     try:
