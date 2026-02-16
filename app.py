@@ -511,22 +511,37 @@ with st.container():
                 st.metric("SOLDE BANCAIRE", f"{citoyen_info.iloc[0]['Solde']}$")
                 job_raw = str(citoyen_info.iloc[0]['Emploiement'])
                 st.write(f"🏢 Métier : **{job_raw}**")
-
-                # --- CALCULATEUR DE PAIE (VERSION DÉTAILLÉE) ---
+# --- CALCULATEUR DE PAIE (VERSION FIXÉE & ROBUSTE) ---
                 with st.expander("💳 Détails de ma prochaine paie", expanded=False):
-                    # 1. Calcul des minutes (Correction : Utilisation de df_admin_clock)
                     m_pol, m_rct = 0, 0
+                    
+                    # On nettoie les colonnes pour éviter les erreurs de frappe ("nom " au lieu de "nom")
+                    df_paie_clean = df_admin_clock.copy()
+                    df_paie_clean.columns = df_paie_clean.columns.str.strip().str.lower()
+                    
                     try:
-                        logs = df_admin_clock[(df_admin_clock["nom"] == target) & (df_admin_clock["statut"] == "Validé")]
+                        # Filtrage : Nom correspondant + Statut validé (insensible à la casse)
+                        logs = df_paie_clean[
+                            (df_paie_clean["nom"].str.strip() == target.strip()) & 
+                            (df_paie_clean["statut"].str.contains("Valid", case=False, na=False))
+                        ]
+                        
                         for _, r in logs.iterrows():
-                            t_debut = pd.to_datetime(r["début"], dayfirst=True)
-                            t_fin = pd.to_datetime(r["fin"], dayfirst=True)
-                            diff = (t_fin - t_debut).total_seconds() / 60
-                            if "POL" in str(r["job"]).upper(): m_pol += diff
-                            elif "RCT" in str(r["job"]).upper(): m_rct += diff
-                    except: pass
+                            # Conversion sécurisée : errors='coerce' transforme les dates invalides en NaT au lieu de crash
+                            t_debut = pd.to_datetime(r["début"], dayfirst=True, errors='coerce')
+                            t_fin = pd.to_datetime(r["fin"], dayfirst=True, errors='coerce')
+                            
+                            if pd.notnull(t_debut) and pd.notnull(t_fin):
+                                diff = (t_fin - t_debut).total_seconds() / 60
+                                if diff > 0:
+                                    job_str = str(r["job"]).upper()
+                                    if "POL" in job_str: m_pol += diff
+                                    elif "RCT" in job_str: m_rct += diff
+                    except Exception as e:
+                        st.error(f"Erreur de calcul des heures : {e}")
 
-                    # 2. Détection des Primes et Bonus (Harmonisation Terminal de Paie)
+                    # --- CALCUL DES PRIMES ---
+                    # Ratio sur 20h (1200 min)
                     ratio_pol = min(m_pol/1200, 1.0)
                     ratio_rct = min(m_rct/1200, 1.0)
                     
@@ -536,16 +551,15 @@ with st.container():
                     p_averis = 2000 if "averis" in job_raw.lower() else 0
                     p_sp = 1000 if "service public" in job_raw.lower() else 0
                     
-                    # Taxes Véhicules (Trio RCT incluse)
+                    # Taxes Véhicules (Rappel instruction : Solde départ 15k)
                     mes_v = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
                     count_rct = len(mes_v[mes_v["Assurance"].str.contains("RCT", na=False, case=False)])
                     is_trio = count_rct >= 3
                     taxe_v = 200 if is_trio else (len(mes_v) * 150)
 
-                    # Calcul du NET (Base 15k fixée)
                     net = 15000 + p_pol + p_rct + p_staff + p_averis + p_sp - taxe_v
 
-                    # 3. Affichage visuel crédits/débits
+                    # --- AFFICHAGE ---
                     c_cred, c_deb = st.columns(2)
                     with c_cred:
                         st.markdown("<div style='color: #4CAF50; font-weight:bold; margin-bottom:5px;'>📥 REVENUS</div>", unsafe_allow_html=True)
@@ -556,16 +570,15 @@ with st.container():
                         
                         if "police" in job_raw.lower():
                             st.markdown(f"👮 **Prime Police** : `{p_pol}$`")
-                            st.progress(ratio_pol, text=f"{int(m_pol/60)}h / 20h")
+                            st.progress(ratio_pol, text=f"{int(m_pol/60)}h{int(m_pol%60):02d} / 20h")
                         if "agent rct" in job_raw.lower():
                             st.markdown(f"👷‍♂️ **Prime RCT** : `{p_rct}$`")
-                            st.progress(ratio_rct, text=f"{int(m_rct/60)}h / 20h")
+                            st.progress(ratio_rct, text=f"{int(m_rct/60)}h{int(m_rct%60):02d} / 20h")
 
                     with c_deb:
                         st.markdown("<div style='color: #E53935; font-weight:bold; margin-bottom:5px;'>📤 DÉPENSES</div>", unsafe_allow_html=True)
-                        label_taxe = "Offre Trio RCT ✅" if is_trio else f"{len(mes_v)} véhicule(s)"
                         st.markdown(f"🚗 **Assurances** : `{taxe_v}$`")
-                        st.caption(label_taxe)
+                        st.caption("Offre Trio RCT ✅" if is_trio else f"{len(mes_v)} véhicule(s)")
 
                     st.markdown("---")
                     st.markdown(f"""
@@ -574,7 +587,6 @@ with st.container():
                             <span style="font-size: 1.5em; font-weight: bold; color: #fff;">{int(net):,}$</span>
                         </div>
                     """, unsafe_allow_html=True)
-
                 # --- MODIFICATION MÉTIER (RÉSERVÉ STAFF) ---
                 if st.session_state.user_auth in ["Staff", "Admin"]:
                     st.write("") # Petit espacement
