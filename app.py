@@ -628,7 +628,7 @@ with st.container():
                     # Bouton déroulant pour voir l'historique
                     with st.expander(f"👁️ Voir l'historique ({len(archives)} factures)"):
                         for _, f in archives.iterrows():
-# --- AFFICHAGE DU PETIT TICKET D'ARCHIVE ---
+# --- AFFICHAGE DU PETIT TICKET D'ARCHIVE CORRIGÉ ---
                             st.markdown(f"""
                             <div style="border: 1px solid #000; padding: 12px; background: #f9f9f9; color: black; margin-bottom: 8px; border-left: 5px solid green; font-family: monospace;">
                                 <div style="display: flex; justify-content: space-between; font-size: 0.8em;">
@@ -637,8 +637,8 @@ with st.container():
                                 </div>
                                 <hr style="margin: 5px 0; border-top: 1px dashed #ccc;">
                                 <div style="font-size: 0.9em; line-height: 1.4;">
-                                    <b>ÉMETTEUR :</b> {f.get('Auteur', 'Inconnu')}<br>
-                                    <b>SERVICE :</b> {f.get('Service', 'Non spécifié')}<br>
+                                    <b>ÉMETTEUR :</b> {f.get('Agent_Signataire', 'N/A')}<br>
+                                    <b>SERVICE :</b> {f.get('Emetteur', 'GÉNÉRAL')}<br>
                                     <hr style="margin: 5px 0; border-top: 1px dashed #eee;">
                                     <b>MOTIF :</b> {f['Motif']}<br>
                                     <b>MONTANT :</b> {f['Montant']}$<br>
