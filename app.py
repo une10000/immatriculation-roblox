@@ -1048,7 +1048,70 @@ if len(tabs) > 1:
     with tabs[1]:
         roles_autorises = ["RCT", "Averis", "Police", "Staff"]
         if any(r in st.session_state.user_auth for r in roles_autorises):
+            st.markdown("## 🛡️ Administration des Services")
             
+            # --- SOUS-ONGLETS DU PANEL SERVICES ---
+            sub_service = st.tabs(["📋 Gestion Blacklist RCT", "⚙️ Autres outils"])
+            
+            with sub_service[0]:
+                col_add, col_list = st.columns([1, 1.5])
+                
+                with col_add:
+                    st.markdown("#### 🚫 Bannir un client (RCT)")
+                    with st.container(border=True):
+                        # On récupère la liste des citoyens pour le selectbox
+                        b_nom = st.selectbox("Citoyen à bannir", ["---"] + df_b["Nom Roblox"].tolist(), key="rct_ban_nom")
+                        b_raison = st.text_area("Raison du bannissement", placeholder="Ex: Impayés récurrents, comportement agressif...", key="rct_ban_raison")
+                        
+                        if st.button("🔴 AJOUTER À LA BLACKLIST", use_container_width=True):
+                            if b_nom != "---" and b_raison:
+                                try:
+                                    with st.spinner("Mise à jour de la liste..."):
+                                        # 1. Charger la liste actuelle
+                                        df_bl = cloud_conn.read(worksheet="Blacklist_RCT", ttl=0).fillna("")
+                                        
+                                        # 2. Vérifier si déjà banni
+                                        if b_nom in df_bl['Nom'].tolist():
+                                            st.error("Cette personne est déjà blacklistée.")
+                                        else:
+                                            # 3. Ajouter la ligne
+                                            new_ban = pd.DataFrame([{"Nom": b_nom, "Raison": b_raison}])
+                                            df_final = pd.concat([df_bl, new_ban], ignore_index=True)
+                                            
+                                            # 4. Envoi au Sheets
+                                            cloud_conn.update(worksheet="Blacklist_RCT", data=df_final)
+                                            st.success(f"✅ {b_nom} a été banni des services RCT.")
+                                            time.sleep(1)
+                                            st.cache_data.clear()
+                                            st.rerun()
+                                except Exception as e:
+                                    st.error(f"Erreur : {e}")
+                            else:
+                                st.warning("Veuillez remplir tous les champs.")
+
+                with col_list:
+                    st.markdown("#### 📜 Liste Noire Actuelle")
+                    try:
+                        df_show_bl = cloud_conn.read(worksheet="Blacklist_RCT", ttl=0).fillna("")
+                        if not df_show_bl.empty:
+                            # On affiche un petit tableau propre
+                            st.dataframe(df_show_bl, use_container_width=True, hide_index=True)
+                            
+                            # Option pour débannir
+                            st.divider()
+                            unban_nom = st.selectbox("Sélectionner pour débannir", ["---"] + df_show_bl["Nom"].tolist())
+                            if st.button("🟢 RETIRER DE LA LISTE"):
+                                if unban_nom != "---":
+                                    df_final = df_show_bl[df_show_bl["Nom"] != unban_nom]
+                                    cloud_conn.update(worksheet="Blacklist_RCT", data=df_final)
+                                    st.success(f"{unban_nom} est à nouveau autorisé.")
+                                    time.sleep(1)
+                                    st.cache_data.clear()
+                                    st.rerun()
+                        else:
+                            st.info("La blacklist est vide pour le moment.")
+                    except:
+                        st.error("Impossible de charger la liste. L'onglet 'Blacklist_RCT' existe-t-il dans le Sheets ?")
             # --- 1. AUTHENTIFICATION & POINTAGE ---
             with st.container(border=True):
                 c_auth, c_stats = st.columns([1, 2.5])
