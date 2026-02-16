@@ -1046,7 +1046,7 @@ with tabs[0]:
 # --- ONGLET 2 : SERVICES AGENTS ---
 if len(tabs) > 1:
     with tabs[1]:
-roles_autorises = ["RCT", "Averis", "Police", "Staff"]
+        roles_autorises = ["RCT", "Averis", "Police", "Staff"]
         if any(r in st.session_state.user_auth for r in roles_autorises):
             st.markdown("## 🛡️ Administration & Blacklist RCT")
             
