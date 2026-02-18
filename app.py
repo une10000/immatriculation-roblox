@@ -597,28 +597,30 @@ if not citoyen_info.empty:
             
             st.divider()
             st.markdown(f"### NET : {int(net_final):,}$")
-
-    # ---------------- COLONNE 3 : ARCHIVES ----------------
+# ---------------- COLONNE 3 : ARCHIVES ----------------
     with col3:
         st.markdown("### 📁 ARCHIVES")
         try:
-            res_f = conn.table("factures").select("*").eq("Cible", target).eq("Statut", "PAYÉ").execute()
-            archives = pd.DataFrame(res_f.data)
+            # CORRECTION : Utilisation de "Factures" (Majuscule) et .fillna("")
+            res_f = conn.table("Factures").select("*").eq("Cible", target).eq("Statut", "PAYÉ").execute()
+            archives = pd.DataFrame(res_f.data).fillna("") # On nettoie les données vides
             
             if not archives.empty:
-                for _, f in archives.head(5).iterrows(): # Affiche les 5 dernières
+                # On trie par ID décroissant pour avoir les plus récentes en premier
+                archives = archives.sort_values(by="id", ascending=False)
+                
+                for _, f in archives.head(5).iterrows(): 
                     st.markdown(f"""
-                        <div style="border-left: 4px solid #4CAF50; padding: 5px 10px; background: #f0f2f6; margin-bottom: 5px;">
-                            <small>#{f['id']} - {f['Motif']}</small><br><b>{f['Montant']}$</b>
+                        <div style="border-left: 4px solid #4CAF50; padding: 5px 10px; background: #f0f2f6; margin-bottom: 5px; color: black;">
+                            <small style="color: #666;">#{f['id']} - {f['Motif']}</small><br>
+                            <b style="color: #2e7d32;">{f['Montant']}$</b>
                         </div>
                     """, unsafe_allow_html=True)
             else:
                 st.info("Aucune archive.")
-        except:
-            st.error("Erreur archives.")
-
-else:
-    st.warning("Aucune donnée trouvée pour ce citoyen dans la table Banque.")
+        except Exception as e:
+            # On affiche l'erreur réelle pour savoir si c'est un problème de nom de colonne
+            st.error(f"Erreur archives : {e}")
 # ======================================================================================
 # 7. LOGIQUE DES ONGLETS (CORRIGÉE)
 # ======================================================================================
