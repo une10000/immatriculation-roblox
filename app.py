@@ -75,7 +75,7 @@ def fetch_database():
     try:
         # On récupère les données de chaque table
         # .select("*") signifie "prends toutes les colonnes"
-        res_bank = conn.table("banque").select("*").execute()
+        res_bank = conn.table("Banque").select("*").execute()
         res_immat = conn.table("immatriculations").select("*").execute()
         res_pts = conn.table("points_permis").select("*").execute()
 
