@@ -1,8 +1,8 @@
 import streamlit as st
 import pandas as pd
-import time  # <--- AJOUTE CETTE LIGNE ICI
+import time
 from datetime import datetime, timedelta, timezone
-from streamlit_gsheets import GSheetsConnection
+from st_supabase_connection import SupabaseConnection # <--- On remplace GSheets par ça
 
 # 1. INTERFACE & DESIGN
 st.set_page_config(
@@ -968,28 +968,34 @@ with tabs[0]:
                                 # 2. Retrait de l'argent
                                 df_b.at[idx_user, "Solde"] = solde_actuel - total_bill
                                 
-                                # 3. Création de la ligne
+# --- Garde bien le même alignement que tes lignes précédentes ---
+                                # 3. Création de la ligne pour Supabase
                                 nouvelle_immat = {
                                     "Horodateur": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
                                     "Nom d'utilisateur ROBLOX": f_owner,
                                     "Marque du véhicule": f_model,
                                     "Numéro de la plaque": f_plate,
                                     "Assurance": f_assu.split(" (")[0],
-                                    "CODE": f_code,
+                                    "Numéro de dossier": f_code,
                                     "Points": 25
                                 }
 
-                                # Ajout au tableau local
-                                new_df_i = pd.concat([df_i, pd.DataFrame([nouvelle_immat])], ignore_index=True)
-                                
-                                # 4. Envoi au Google Sheets
-                                cloud_conn.update(worksheet="Banque", data=df_b)
-                                cloud_conn.update(worksheet="Copie de Immatriculations", data=new_df_i)
-                                
+                                # 4. Envoi à Supabase
+                                try:
+                                    # On insère l'immat
+                                    conn.table("immatriculations").insert(nouvelle_immat).execute()
+                                    
+                                    # On retire l'argent (on cible uniquement le joueur concerné)
+                                    conn.table("banque").update({"Solde": nouveau_solde}).eq("Nom Roblox", f_owner).execute()
+                                    
+                                    st.success(f"✅ Terminé ! Dossier {f_code} enregistré.")
+                                except Exception as e:
+                                    st.error(f"Erreur Supabase : {e}")
                                 # 5. Confirmation
                                 st.balloons()
                                 st.success(f"""
                                 ### ✅ IMMATRICULATION RÉUSSIE !
+                                
                                 ---
                                 * **Propriétaire :** {f_owner}
                                 * **Véhicule :** {f_model}
@@ -1004,7 +1010,7 @@ with tabs[0]:
                                 st.rerun()
                                 
                     except Exception as e:
-                        st.error(f"⚠️ Erreur de connexion au Sheets : {e}")
+                        st.error(f"⚠️ Erreur de connexion au Serveur : {e}")
     with col_t:
         st.markdown("### 🖼️ Aperçu du Titre")
         
