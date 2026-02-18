@@ -620,7 +620,7 @@ if not citoyen_info.empty:
                     st.markdown(f"""
                         <div style="border: 1px solid #e0e0e0; border-left: 5px solid #2e7d32; padding: 10px; border-radius: 5px; background: #ffffff; margin-bottom: 10px; box-shadow: 2px 2px 5px rgba(0,0,0,0.05);">
                             <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <span style="color: #666; font-size: 0.75em; font-family: monospace;">#{f['id']}</span>
+                                <span style="color: #666; font-size: 0.75em; font-family: monospace;">#{f['ID']}</span>
                                 <span style="background: #d4edda; color: #155724; font-size: 0.7em; padding: 2px 6px; border-radius: 10px; font-weight: bold;">PAYÉE</span>
                             </div>
                             <div style="margin-top: 5px;">
