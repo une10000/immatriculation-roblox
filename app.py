@@ -482,7 +482,7 @@ with st.container():
                             solde_p = float(res_s.data[0]["Solde"])
                             if solde_p >= 10:
                                 # 2. Recherche de la plaque dans la table immatriculations
-                                res_i = conn.table("Copie de Immatriculations").select("*").eq("Numéro de la plaque", search_plate).execute()
+                                res_i = conn.table("public.Copie de Immatriculations").select("*").eq("Numéro de la plaque", search_plate).execute()
                                 
                                 if res_i.data:
                                     owner = res_i.data[0]["Nom d'utilisateur ROBLOX"]
