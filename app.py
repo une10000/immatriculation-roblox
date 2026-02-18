@@ -627,7 +627,7 @@ else:
 # NOUVEAU : SYSTÈME DE PAIEMENT DES FACTURES (STYLE TICKET)
 # ======================================================================================
 # Version Supabase pour remplacer ta ligne Google Sheets
-df_all_f = pd.DataFrame(conn.table("factures").select("*").execute().data).fillna("")
+df_all_f = pd.DataFrame(conn.table("Factures").select("*").execute().data).fillna("")
 mes_factures = df_all_f[(df_all_f["Cible"] == target) & (df_all_f["Statut"] == "EN ATTENTE")]
 
 if not mes_factures.empty:
@@ -1183,7 +1183,7 @@ st.markdown("### 📑 GESTION DES FACTURES")
 
 try:
     # Lecture en temps réel via Supabase
-    res_f = conn.table("factures").select("*").execute()
+    res_f = conn.table("Factures").select("*").execute()
     df_f_check = pd.DataFrame(res_f.data)
     
     if not df_f_check.empty:
