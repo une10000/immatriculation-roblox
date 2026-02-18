@@ -607,7 +607,7 @@ if not citoyen_info.empty:
             
             if not archives.empty:
                 # On trie par ID pour avoir les dernières en haut
-                archives = archives.sort_values(by="id", ascending=False)
+                archives = archives.sort_values(by="ID", ascending=False)
                 
                 st.write(f"Derniers paiements ({len(archives)}) :")
                 
