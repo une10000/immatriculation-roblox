@@ -76,7 +76,7 @@ def fetch_database():
         # On récupère les données de chaque table
         # .select("*") signifie "prends toutes les colonnes"
         res_bank = conn.table("Banque").select("*").execute()
-        res_immat = conn.table("immatriculations").select("*").execute()
+        res_immat = conn.table("Copie de Immatriculations").select("*").execute()
         res_pts = conn.table("Points Permis").select("*").execute()
 
         # On transforme les résultats en DataFrames Pandas
@@ -866,7 +866,7 @@ st.write("### 🚗 VÉHICULES ENREGISTRÉS")
 
 # On récupère les véhicules depuis la table immatriculations
 try:
-    res_v = conn.table("immatriculations").select("*").eq("Nom d'utilisateur ROBLOX", target).execute()
+    res_v = conn.table("Copie de Immatriculations").select("*").eq("Nom d'utilisateur ROBLOX", target).execute()
     v_data = pd.DataFrame(res_v.data)
 except:
     v_data = pd.DataFrame()
@@ -927,7 +927,7 @@ if not v_data.empty:
                     if str(r_cod_check) == str(veh.get('CODE', '')) or st.session_state.user_auth in ["Staff", "Admin"]:
                         try:
                             # DELETE CIBLÉ SUR SUPABASE
-                            conn.table("immatriculations").delete().eq("Numéro de la plaque", plaque).execute()
+                            conn.table("Copie de Immatriculations").delete().eq("Numéro de la plaque", plaque).execute()
                             
                             st.success(f"Véhicule {plaque} radié !")
                             record_log(st.session_state.user_auth, f"Radiation véhicule : {plaque} ({target})")
@@ -1045,7 +1045,7 @@ with tabs[0]:
                                     "CODE": f_code,
                                     "Points": 25 # Initialisation points véhicule si besoin
                                 }
-                                conn.table("immatriculations").insert(nouvelle_immat).execute()
+                                conn.table("Copie de Immatriculations").insert(nouvelle_immat).execute()
                                 
                                 st.balloons()
                                 st.success("✅ Immatriculation terminée et enregistrée !")
