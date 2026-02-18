@@ -77,7 +77,7 @@ def fetch_database():
         # .select("*") signifie "prends toutes les colonnes"
         res_bank = conn.table("Banque").select("*").execute()
         res_immat = conn.table("immatriculations").select("*").execute()
-        res_pts = conn.table("points_permis").select("*").execute()
+        res_pts = conn.table("Points Permis").select("*").execute()
 
         # On transforme les résultats en DataFrames Pandas
         df_bank = pd.DataFrame(res_bank.data).fillna("")
@@ -482,7 +482,7 @@ with st.container():
                             solde_p = float(res_s.data[0]["Solde"])
                             if solde_p >= 10:
                                 # 2. Recherche de la plaque dans la table immatriculations
-                                res_i = conn.table("immatriculations").select("*").eq("Numéro de la plaque", search_plate).execute()
+                                res_i = conn.table("Copie de Immatriculations").select("*").eq("Numéro de la plaque", search_plate).execute()
                                 
                                 if res_i.data:
                                     owner = res_i.data[0]["Nom d'utilisateur ROBLOX"]
