@@ -1035,119 +1035,180 @@ def record_log(user, action):
     st.session_state.audit_logs.append(f"[{timestamp}] {user} : {action}")
 
 # =================================================================
-# --- ONGLET 2 : SERVICES AGENTS (INTERFACE OPÉRATIONNELLE) ---
+# --- ONGLET 2 : SERVICES AGENTS (TERMINAL DE TERRAIN COMPLET) ---
 # =================================================================
 if len(tabs) > 1:
     with tabs[1]:
-        # Vérification des accès
+        # Vérification des rôles autorisés
         roles_autorises = ["RCT", "Averis", "Police", "Staff", "Admin"]
-        user_auth = str(st.session_state.get("user_auth", ""))
+        user_role_global = str(st.session_state.get("user_auth", ""))
         
-        if any(r in user_auth for r in roles_autorises):
-            st.markdown("## 🛡️ Espace d'Intervention Agents")
+        if any(r in user_role_global for r in roles_autorises):
+            # --- ENTÊTE DYNAMIQUE ---
+            st.markdown("## 🛡️ Terminal d'Intervention National")
             
-            # --- PARTIE 1 : POINTAGE (CLOCK) ---
+            # --- ZONE 1 : AUTHENTIFICATION ET STATS AGENT ---
             with st.container(border=True):
-                c_a, c_b = st.columns([1, 2])
-                agent_code = c_a.text_input("🔑 Code Agent", type="password")
+                c_login, c_stats = st.columns([1, 2.5])
+                with c_login:
+                    st.markdown("##### 🔑 Connexion")
+                    agent_code = st.text_input("Code Personnel", type="password", help="Obligatoire pour débloquer les outils.")
+                
                 agent_identifie = None
                 if agent_code:
-                    res_a = df_b[df_b["Code"].astype(str).str.contains(agent_code, na=False)]
-                    if not res_a.empty:
-                        agent_identifie = res_a.iloc[0]["Nom Roblox"]
-                        agent_role = res_a.iloc[0]["Emploiement"]
-                        c_b.success(f"Connecté : **{agent_identifie}**")
-                        # (Logique de pointage simplifiée ici pour laisser place au reste)
+                    res_agent = df_b[df_b["Code"].astype(str).str.contains(agent_code, na=False)]
+                    if not res_agent.empty:
+                        agent_identifie = res_agent.iloc[0]["Nom Roblox"]
+                        agent_role_data = res_agent.iloc[0]["Emploiement"]
+                        
+                        # Récupération de la session de service
+                        res_clock = conn.table("Clock").select("*").eq("nom", agent_identifie).eq("statut", "en cours").execute()
+                        session = res_clock.data
+                        en_service = len(session) > 0
 
-            # --- PARTIE 2 : SYSTÈME DE FACTURATION TRIPLE COLONNE ---
+                        with c_stats:
+                            st.markdown(f"##### 🎖️ Profil : {agent_identifie}")
+                            s1, s2, s3 = st.columns(3)
+                            s1.metric("Statut", "En Service" if en_service else "Hors-Service")
+                            if en_service:
+                                h_deb = session[0]['debut']
+                                diff = datetime.now() - datetime.strptime(h_deb, "%d/%m/%Y %H:%M:%S")
+                                s2.metric("Temps de Patrouille", f"{int(diff.total_seconds() / 60)} min")
+                            else:
+                                s2.metric("Temps de Patrouille", "0 min")
+                            s3.metric("Poste", "Officier" if "Police" in agent_role_data else "Agent")
+
+                        # Boutons de service
+                        job_label = "POLICE" if "Police" in agent_role_data else ("AVERIS" if "Averis" in agent_role_data else "RCT")
+                        if "Staff" in agent_role_data: job_label = "STAFF"
+
+                        b_serv1, b_serv2 = st.columns(2)
+                        if not en_service:
+                            if b_serv1.button(f"▶️ PRENDRE LE SERVICE ({job_label})", use_container_width=True, type="primary"):
+                                conn.table("Clock").insert({"nom": agent_identifie, "job": job_label, "debut": datetime.now().strftime("%d/%m/%Y %H:%M:%S"), "statut": "en cours"}).execute()
+                                st.rerun()
+                        else:
+                            if b_serv1.button("⏹️ FINIR LE SERVICE", use_container_width=True):
+                                conn.table("Clock").update({"fin": datetime.now().strftime("%d/%m/%Y %H:%M:%S"), "statut": "à valider"}).eq("id", session[0]['id']).execute()
+                                st.rerun()
+                    else:
+                        c_login.error("Code Invalide")
+
             st.divider()
-            st.markdown("### 🧾 Terminal de Facturation & Contrôle")
-            
-            if agent_identifie:
-                col_form, col_ticket, col_vehs = st.columns([1, 1, 1], gap="medium")
-                
-                # --- GAUCHE : LE FORMULAIRE ---
-                with col_form:
-                    st.markdown("##### 📝 Paramètres")
-                    f_client = st.selectbox("Citoyen", ["---"] + sorted(df_b["Nom Roblox"].tolist()), key="f_cli")
-                    f_type = st.selectbox("Type", ["Amende", "Facture RCT", "Facture Averis", "Autre"])
-                    f_montant = st.number_input("Montant ($)", min_value=0, step=50)
-                    f_motif = st.text_area("Motif / Articles", placeholder="Ex: Excès de vitesse (Art. 4)...")
-                    
-                    valider_facture = st.button("📤 EMETTRE & PRÉLEVER", use_container_width=True, type="primary")
 
-                # --- MILIEU : LE TICKET (APERÇU) ---
-                with col_ticket:
-                    st.markdown("##### 📄 Aperçu du Ticket")
+            # --- SÉCURITÉ : SI PAS DE CODE, ON AFFICHE L'AVERTISSEMENT ---
+            if not agent_identifie:
+                st.warning("⚠️ **VÉRIFICATION REQUISE** : Veuillez saisir votre code agent pour débloquer les outils de facturation, le scanner de plaques et les mandats.")
+                st.info("ℹ️ Ce système assure la traçabilité des interventions et le calcul automatique de vos primes.")
+            else:
+                # --- ZONE 2 : FACTURATION TRIPLE COLONNE ---
+                st.markdown("### 🧾 Terminal de Facturation & Contrôle")
+                col_f1, col_f2, col_f3 = st.columns([1, 1, 1], gap="medium")
+
+                with col_f1:
+                    st.markdown("##### 📝 Formulaire")
+                    f_cli = st.selectbox("Client Cible", ["---"] + sorted(df_b["Nom Roblox"].tolist()), key="f_cli_agent")
+                    f_type = st.selectbox("Type d'acte", ["Amende", "Facture RCT", "Facture Averis", "Frais de Mise en Fourrière"])
+                    f_amt = st.number_input("Montant de la transaction ($)", min_value=0, step=100)
+                    f_mot = st.text_area("Motif détaillé", placeholder="Ex: Excès de vitesse (>130 km/h)...", height=100)
+                    
+                    if st.button("📤 EMETTRE LA FACTURE", use_container_width=True, type="primary"):
+                        if f_cli != "---" and f_amt > 0:
+                            idx = df_b[df_b["Nom Roblox"] == f_cli].index[0]
+                            solde_old = float(str(df_b.at[idx, "Solde"]).replace('$','').replace(',',''))
+                            df_b.at[idx, "Solde"] = solde_old - f_amt
+                            cloud_conn.update(worksheet="Banque", data=df_b)
+                            record_log(agent_identifie, f"FACTURE : {f_amt}$ à {f_cli} (Motif: {f_mot})")
+                            st.success(f"Facture envoyée à {f_cli}"); time.sleep(1); st.rerun()
+
+                with col_f2:
+                    st.markdown("##### 📄 Aperçu Ticket")
                     with st.container(border=True):
                         st.markdown(f"""
-                        <div style="font-family: monospace; border: 1px dashed gray; padding: 10px; background-color: #f9f9f9; color: black;">
-                            <center><strong>ÉTAT NATIONAL</strong><br>Service : {f_type}</center><br>
-                            --------------------------<br>
-                            <strong>CLIENT :</strong> {f_client}<br>
+                        <div style="font-family: 'Courier New'; border: 2px solid #333; padding: 15px; background-color: #eee; color: #111;">
+                            <center><strong>--- GOUVERNEMENT NATIONAL ---</strong><br><small>Service {f_type}</small></center>
+                            <hr style="border: 1px dashed #333">
+                            <strong>CLIENT :</strong> {f_cli}<br>
                             <strong>AGENT  :</strong> {agent_identifie}<br>
                             <strong>DATE   :</strong> {datetime.now().strftime("%d/%m/%Y")}<br>
-                            --------------------------<br>
-                            <strong>MOTIF :</strong><br>{f_motif if f_motif else "N/A"}<br>
-                            --------------------------<br>
-                            <h3 style='margin:0;'>TOTAL : {f_montant}$</h3>
+                            <hr style="border: 1px dashed #333">
+                            <strong>MOTIF :</strong><br><small>{f_mot if f_mot else "Aucun motif saisi"}</small><br>
+                            <hr style="border: 1px dashed #333">
+                            <h2 style="text-align:right; margin:0;">{f_amt}$</h2>
                         </div>
                         """, unsafe_allow_html=True)
 
-                # --- DROITE : LES VÉHICULES DU CLIENT ---
-                with col_vehs:
-                    st.markdown("##### 🚘 Garage du Client")
-                    if f_client != "---":
-                        v_client = df_i[df_i["Nom d'utilisateur ROBLOX"] == f_client]
-                        if not v_client.empty:
-                            for _, v in v_client.iterrows():
-                                assu = str(v.get("Assurance", "N/A"))
-                                color = "green" if assu != "N/A" else "red"
+                with col_f3:
+                    st.markdown("##### 🚘 Garage du Suspect")
+                    if f_cli != "---":
+                        v_list = df_i[df_i["Nom d'utilisateur ROBLOX"] == f_cli]
+                        if not v_list.empty:
+                            for _, v in v_list.iterrows():
+                                assu = str(v.get("Assurance", "AUCUNE"))
+                                status_color = "#2ecc71" if assu != "AUCUNE" else "#e74c3c"
                                 st.markdown(f"""
-                                <div style="border-left: 5px solid {color}; padding-left: 10px; margin-bottom: 10px; background: rgba(255,255,255,0.05);">
+                                <div style="border-left: 4px solid {status_color}; padding: 8px; margin-bottom: 8px; background: rgba(255,255,255,0.05);">
                                     <strong>{v['Modèle du véhicule']}</strong><br>
-                                    <small>Plat: {v['Numéro de la plaque']}</small><br>
-                                    <span style="color:{color};">🛡️ {assu}</span>
+                                    <small>Plaque: {v['Numéro de la plaque']}</small><br>
+                                    <span style="color:{status_color}; font-size: 0.8em;">🛡️ {assu}</span>
                                 </div>
                                 """, unsafe_allow_html=True)
-                        else: st.info("Aucun véhicule enregistré.")
-                    else: st.caption("Sélectionnez un client pour voir ses véhicules.")
+                        else:
+                            st.info("Aucun véhicule trouvé pour ce citoyen.")
+                    else:
+                        st.caption("Sélectionnez un client à gauche.")
 
-                # LOGIQUE DE VALIDATION FACTURE
-                if valider_facture and f_client != "---":
-                    idx = df_b[df_b["Nom Roblox"] == f_client].index[0]
-                    solde_brut = float(str(df_b.at[idx, "Solde"]).replace('$','').replace(',',''))
-                    df_b.at[idx, "Solde"] = solde_brut - f_montant
-                    cloud_conn.update(worksheet="Banque", data=df_b)
-                    record_log(agent_identifie, f"{f_type} émise : {f_montant}$ à {f_client}. Motif: {f_motif}")
-                    st.success("Facture traitée !"); time.sleep(1); st.rerun()
+                # --- ZONE 3 : MANDATS ET SCANNER (BAS DE PAGE) ---
+                st.divider()
+                m_col1, m_col2 = st.columns([1.8, 1])
+                
+                with m_col1:
+                    st.markdown("#### 🚨 Centre des Mandats d'Arrêt")
+                    with st.expander("📝 Lancer un nouveau mandat", expanded=False):
+                        target_m = st.selectbox("Suspect à rechercher", ["---"] + df_b["Nom Roblox"].tolist())
+                        motif_m = st.text_input("Raison de l'alerte")
+                        if st.button("LANCER L'ALERTE NATIONALE"):
+                            conn.table("Banque").update({"Statut": "RECHERCHÉ", "Motif Recherche": motif_m}).eq("Nom Roblox", target_m).execute()
+                            record_log(agent_identifie, f"MANDAT : Alerte lancée contre {target_m}")
+                            st.rerun()
 
-            # --- PARTIE 3 : MANDATS & RECHERCHE (PLUS BAS) ---
-            st.divider()
-            col_m1, col_m2 = st.columns([2, 1])
-            with col_m1:
-                st.markdown("#### 🚨 Mandats d'Arrêt en cours")
-                recherches = df_b[df_b["Statut"].str.upper().str.contains("RECHERCHÉ", na=False)]
-                if not recherches.empty:
-                    for _, crim in recherches.iterrows():
-                        with st.container(border=True):
-                            c_a, c_b = st.columns([3, 1])
-                            c_a.warning(f"**{crim['Nom Roblox']}**\n\nMotif : {crim.get('Motif Recherche', 'N/A')}")
-                            if c_b.button("Interpeller", key=f"int_{crim['Nom Roblox']}"):
-                                conn.table("Banque").update({"Statut": "RAS", "Motif Recherche": ""}).eq("Nom Roblox", crim["Nom Roblox"]).execute()
-                                st.rerun()
-                else: st.success("Aucun individu recherché.")
-            
-            with col_m2:
-                st.markdown("#### 🚫 Blacklist RCT")
-                try:
-                    res_bl = conn.table("blacklist_rct").select("*").execute()
-                    df_bl = pd.DataFrame(res_bl.data)
-                    if not df_bl.empty:
-                        for _, b in df_bl.iterrows():
-                            st.error(f"**{b['Nom']}**\n{b['Raison']}")
-                    else: st.info("Blacklist vide.")
-                except: pass
+                    # Liste des alertes
+                    recherches = df_b[df_b["Statut"].str.upper().str.contains("RECHERCHÉ", na=False)]
+                    if not recherches.empty:
+                        for _, r in recherches.iterrows():
+                            with st.container(border=True):
+                                ca, cb = st.columns([3, 1])
+                                ca.error(f"⚠️ **{r['Nom Roblox']}**\n\nMotif : {r.get('Motif Recherche', 'N/A')}")
+                                if cb.button("Interpellé", key=f"int_{r['Nom Roblox']}"):
+                                    conn.table("Banque").update({"Statut": "RAS", "Motif Recherche": ""}).eq("Nom Roblox", r["Nom Roblox"]).execute()
+                                    st.rerun()
+                    else:
+                        st.success("✅ Aucun mandat d'arrêt actif en ce moment.")
+
+                with m_col2:
+                    st.markdown("#### 🔦 Scanner de Plaque")
+                    search_p = st.text_input("Saisir une plaque", key="p_scanner").upper().strip()
+                    if search_p:
+                        match = df_i[df_i["Numéro de la plaque"].astype(str).str.contains(search_p, na=False)]
+                        if not match.empty:
+                            proprio = match.iloc[0]["Nom d'utilisateur ROBLOX"]
+                            st.write(f"👤 **Propriétaire :** {proprio}")
+                            statut_proprio = df_b[df_b["Nom Roblox"] == proprio]["Statut"].values[0]
+                            if "RECHERCHÉ" in str(statut_proprio).upper():
+                                st.error("🚨 DANGER : INDIVIDU RECHERCHÉ")
+                            else:
+                                st.success("✅ Individu en règle")
+                        else:
+                            st.error("❌ Plaque inconnue au fichier.")
+
+                    st.markdown("---")
+                    st.markdown("#### 🚫 Blacklist RCT")
+                    try:
+                        res_bl = conn.table("blacklist_rct").select("*").execute()
+                        for b in res_bl.data:
+                            st.warning(f"**{b['Nom']}**\n{b['Raison']}")
+                    except:
+                        st.caption("Aucune blacklist active.")
 # ======================================================================================
 # --- CONSOLE D'ADMINISTRATION COMPLÈTE (STAFF ONLY) ---
 # ======================================================================================
