@@ -1071,7 +1071,7 @@ if len(tabs) > 1:
                             s1, s2, s3 = st.columns(3)
                             s1.metric("Statut", "En Service" if en_service else "Hors-Service")
                             if en_service:
-                                h_deb = session[0]['debut']
+                                h_deb = session[0]['début']
                                 diff = datetime.now() - datetime.strptime(h_deb, "%d/%m/%Y %H:%M:%S")
                                 s2.metric("Temps de Patrouille", f"{int(diff.total_seconds() / 60)} min")
                             else:
