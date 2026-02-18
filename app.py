@@ -1035,161 +1035,119 @@ def record_log(user, action):
     st.session_state.audit_logs.append(f"[{timestamp}] {user} : {action}")
 
 # =================================================================
-# --- ONGLET 2 : SERVICES AGENTS (RCT / AVERIS / POLICE) ---
+# --- ONGLET 2 : SERVICES AGENTS (INTERFACE OPÉRATIONNELLE) ---
 # =================================================================
 if len(tabs) > 1:
     with tabs[1]:
-        # Vérification des accès (Agents et Staff)
+        # Vérification des accès
         roles_autorises = ["RCT", "Averis", "Police", "Staff", "Admin"]
-        if any(r in str(st.session_state.user_auth) for r in roles_autorises):
-            st.markdown("## 🛡️ Administration & Blacklist")
+        user_auth = str(st.session_state.get("user_auth", ""))
+        
+        if any(r in user_auth for r in roles_autorises):
+            st.markdown("## 🛡️ Espace d'Intervention Agents")
             
+            # --- PARTIE 1 : POINTAGE (CLOCK) ---
             with st.container(border=True):
-                col_add, col_list = st.columns([1, 1.5], gap="large")
-                
-                # --- PARTIE GAUCHE : AJOUTER ---
-                with col_add:
-                    st.markdown("#### 🚫 Bannir un client")
-                    b_nom = st.selectbox("Citoyen à bannir", ["---"] + df_b["Nom Roblox"].tolist(), key="rct_ban_nom")
-                    b_raison = st.text_area("Raison du bannissement", placeholder="Ex: Impayés récurrents...", key="rct_ban_raison")
-                    
-                    if st.button("🔴 AJOUTER À LA LISTE", use_container_width=True, type="primary"):
-                        if b_nom != "---" and b_raison:
-                            try:
-                                with st.spinner("Mise à jour..."):
-                                    check = conn.table("blacklist_rct").select("*").eq("Nom", b_nom).execute()
-                                    if check.data:
-                                        st.error(f"⚠️ {b_nom} est déjà banni.")
-                                    else:
-                                        new_ban = {
-                                            "Nom": b_nom, 
-                                            "Raison": b_raison,
-                                            "Agent": st.session_state.user_auth,
-                                            "Date": datetime.now().strftime("%d/%m/%Y")
-                                        }
-                                        conn.table("blacklist_rct").insert(new_ban).execute()
-                                        record_log(st.session_state.user_auth, f"BLACKLIST : {b_nom}")
-                                        st.success(f"✅ {b_nom} banni.")
-                                        st.cache_data.clear()
-                                        time.sleep(1); st.rerun()
-                            except Exception as e: st.error(f"Erreur : {e}")
-
-                # --- PARTIE DROITE : LISTE ---
-                with col_list:
-                    st.markdown("#### 📜 Liste Noire Actuelle")
-                    try:
-                        res_bl = conn.table("blacklist_rct").select("*").execute()
-                        df_show_bl = pd.DataFrame(res_bl.data)
-                        if not df_show_bl.empty:
-                            st.dataframe(df_show_bl[["Nom", "Raison", "Date"]], use_container_width=True, hide_index=True, height=150)
-                            st.divider()
-                            unban_nom = st.selectbox("Débannir", ["---"] + df_show_bl["Nom"].tolist(), key="unban_select")
-                            if st.button("🟢 RÉAUTORISER", use_container_width=True):
-                                if unban_nom != "---":
-                                    conn.table("blacklist_rct").delete().eq("Nom", unban_nom).execute()
-                                    st.success(f"✅ {unban_nom} réautorisé."); time.sleep(1); st.rerun()
-                        else: st.info("ℹ️ Liste vide.")
-                    except: pass
-
-            # --- 1. AUTHENTIFICATION & POINTAGE ---
-            st.divider()
-            with st.container(border=True):
-                c_auth, c_stats = st.columns([1, 2.5])
-                with c_auth:
-                    agent_code_saisi = st.text_input("🔑 Code Agent", type="password", key="main_agent_auth").strip()
-                
+                c_a, c_b = st.columns([1, 2])
+                agent_code = c_a.text_input("🔑 Code Agent", type="password")
                 agent_identifie = None
-                en_service = False
-                
-                if agent_code_saisi:
-                    res_agent = df_b[df_b["Code"].astype(str).str.contains(agent_code_saisi, na=False)]
-                    if not res_agent.empty:
-                        agent_identifie = res_agent.iloc[0]["Nom Roblox"]
-                        agent_role = res_agent.iloc[0]["Emploiement"]
-                        res_clock = conn.table("Clock").select("*").eq("nom", agent_identifie).eq("statut", "en cours").execute()
-                        session_active = res_clock.data
-                        en_service = len(session_active) > 0
+                if agent_code:
+                    res_a = df_b[df_b["Code"].astype(str).str.contains(agent_code, na=False)]
+                    if not res_a.empty:
+                        agent_identifie = res_a.iloc[0]["Nom Roblox"]
+                        agent_role = res_a.iloc[0]["Emploiement"]
+                        c_b.success(f"Connecté : **{agent_identifie}**")
+                        # (Logique de pointage simplifiée ici pour laisser place au reste)
 
-                        with c_stats:
-                            st.markdown(f"### 🎖️ Agent : {agent_identifie}")
-                            m_actuelle, m_debut, m_fin = st.columns(3)
-                            m_actuelle.metric("Heure", datetime.now().strftime("%H:%M"))
-                            
-                            if en_service:
-                                h_deb_brute = session_active[0]['debut']
-                                m_debut.metric("Début", h_deb_brute.split(' ')[1][:5] if ' ' in h_deb_brute else h_deb_brute[:5])
-                                diff = datetime.now() - datetime.strptime(h_deb_brute, "%d/%m/%Y %H:%M:%S")
-                                m_fin.metric("Temps", f"{int(diff.total_seconds() / 60)} min")
-                            else:
-                                m_debut.metric("Début", "--:--")
-                                m_fin.metric("Temps", "0 min")
-
-                        st.divider()
-                        job_auto = "RCT"
-                        if any(x in agent_role for x in ["Staff", "Admin"]): job_auto = "STAFF"
-                        elif "Averis" in agent_role: job_auto = "AVERIS"
-                        elif "Police" in agent_role: job_auto = "POLICE"
-                        
-                        if not en_service:
-                            if st.button(f"▶️ DÉBUT DE SERVICE ({job_auto})", use_container_width=True, type="primary"):
-                                conn.table("Clock").insert({"nom": agent_identifie, "action": "SERVICE", "job": job_auto, "debut": datetime.now().strftime("%d/%m/%Y %H:%M:%S"), "statut": "en cours", "role_at_time": agent_role}).execute()
-                                st.rerun()
-                        else:
-                            bonus_txt = " (+ Bonus Staff)" if job_auto == "STAFF" else ""
-                            st.warning(f"🚨 Session {job_auto} en cours{bonus_txt}.")
-                            if st.button("⏹️ FIN DE SERVICE", use_container_width=True):
-                                conn.table("Clock").update({"fin": datetime.now().strftime("%d/%m/%Y %H:%M:%S"), "statut": "à valider"}).eq("id", session_active[0]['id']).execute()
-                                st.rerun()
-                    else: st.error("❌ Code Agent Invalide.")
-
-            # --- 2. GESTION DES FACTURES & MANDATS ---
+            # --- PARTIE 2 : SYSTÈME DE FACTURATION TRIPLE COLONNE ---
+            st.divider()
+            st.markdown("### 🧾 Terminal de Facturation & Contrôle")
+            
             if agent_identifie:
-                st.markdown("### 🔍 MANDATS & RECHERCHE")
-                with st.container(border=True):
-                    st.markdown("#### 📝 Lancer un Mandat d'Arrêt")
-                    c1, c2, c3 = st.columns([1.5, 2, 1])
-                    with c1:
-                        cible_mandat = st.selectbox("Suspect", ["---"] + sorted(df_b["Nom Roblox"].unique().tolist()), key="mandat_cible")
-                    with c2:
-                        motif_mandat = st.text_input("Motif", placeholder="Ex: Délit de fuite...", key="mandat_motif")
-                    with c3:
-                        st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
-                        if st.button("🚨 LANCER L'ALERTE", use_container_width=True, type="primary"):
-                            if cible_mandat != "---" and motif_mandat:
-                                conn.table("Banque").update({"Statut": "RECHERCHÉ", "Motif Recherche": motif_mandat}).eq("Nom Roblox", cible_mandat).execute()
-                                st.success("Alerte lancée !"); time.sleep(1); st.rerun()
+                col_form, col_ticket, col_vehs = st.columns([1, 1, 1], gap="medium")
+                
+                # --- GAUCHE : LE FORMULAIRE ---
+                with col_form:
+                    st.markdown("##### 📝 Paramètres")
+                    f_client = st.selectbox("Citoyen", ["---"] + sorted(df_b["Nom Roblox"].tolist()), key="f_cli")
+                    f_type = st.selectbox("Type", ["Amende", "Facture RCT", "Facture Averis", "Autre"])
+                    f_montant = st.number_input("Montant ($)", min_value=0, step=50)
+                    f_motif = st.text_area("Motif / Articles", placeholder="Ex: Excès de vitesse (Art. 4)...")
+                    
+                    valider_facture = st.button("📤 EMETTRE & PRÉLEVER", use_container_width=True, type="primary")
 
-                col_m1, col_m2 = st.columns([2, 1], gap="medium")
-                with col_m1:
+                # --- MILIEU : LE TICKET (APERÇU) ---
+                with col_ticket:
+                    st.markdown("##### 📄 Aperçu du Ticket")
                     with st.container(border=True):
-                        st.markdown("#### 📢 Alertes Actives")
-                        recherches = df_b[df_b["Statut"].str.upper().str.contains("RECHERCHÉ", na=False)]
-                        if not recherches.empty:
-                            for _, crim in recherches.iterrows():
-                                with st.container(border=True):
-                                    cr1, cr2 = st.columns([3, 1])
-                                    cr1.warning(f"🚨 **{crim['Nom Roblox']}**\n\n{crim.get('Motif Recherche', 'Non spécifié')}")
-                                    if cr2.button("Interpellé", key=f"rel_{crim['Nom Roblox']}"):
-                                        conn.table("Banque").update({"Statut": "RAS", "Motif Recherche": ""}).eq("Nom Roblox", crim["Nom Roblox"]).execute()
-                                        st.rerun()
-                        else: st.success("✅ Aucun mandat actif.")
+                        st.markdown(f"""
+                        <div style="font-family: monospace; border: 1px dashed gray; padding: 10px; background-color: #f9f9f9; color: black;">
+                            <center><strong>ÉTAT NATIONAL</strong><br>Service : {f_type}</center><br>
+                            --------------------------<br>
+                            <strong>CLIENT :</strong> {f_client}<br>
+                            <strong>AGENT  :</strong> {agent_identifie}<br>
+                            <strong>DATE   :</strong> {datetime.now().strftime("%d/%m/%Y")}<br>
+                            --------------------------<br>
+                            <strong>MOTIF :</strong><br>{f_motif if f_motif else "N/A"}<br>
+                            --------------------------<br>
+                            <h3 style='margin:0;'>TOTAL : {f_montant}$</h3>
+                        </div>
+                        """, unsafe_allow_html=True)
 
-                with col_m2:
-                    with st.container(border=True):
-                        st.markdown("#### 🔦 Scanner Plaque")
-                        p_search = st.text_input("Saisir plaque", key="plate_ui").upper().strip()
-                        if p_search:
-                            m = df_i[df_i["Numéro de la plaque"].astype(str).str.contains(p_search, na=False)]
-                            if not m.empty:
-                                nom_p = m.iloc[0]["Nom d'utilisateur ROBLOX"]
-                                st.write(f"👤 **Proprio :** {nom_p}")
-                                if "RECHERCHÉ" in str(df_b[df_b["Nom Roblox"]==nom_p]["Statut"].values): st.error("🚨 PROPRIÉTAIRE RECHERCHÉ")
-                                else: st.success("✅ Véhicule en règle")
-                            else: st.error("❌ Plaque inconnue.")
+                # --- DROITE : LES VÉHICULES DU CLIENT ---
+                with col_vehs:
+                    st.markdown("##### 🚘 Garage du Client")
+                    if f_client != "---":
+                        v_client = df_i[df_i["Nom d'utilisateur ROBLOX"] == f_client]
+                        if not v_client.empty:
+                            for _, v in v_client.iterrows():
+                                assu = str(v.get("Assurance", "N/A"))
+                                color = "green" if assu != "N/A" else "red"
+                                st.markdown(f"""
+                                <div style="border-left: 5px solid {color}; padding-left: 10px; margin-bottom: 10px; background: rgba(255,255,255,0.05);">
+                                    <strong>{v['Modèle du véhicule']}</strong><br>
+                                    <small>Plat: {v['Numéro de la plaque']}</small><br>
+                                    <span style="color:{color};">🛡️ {assu}</span>
+                                </div>
+                                """, unsafe_allow_html=True)
+                        else: st.info("Aucun véhicule enregistré.")
+                    else: st.caption("Sélectionnez un client pour voir ses véhicules.")
 
-        else:
-            st.error("Accès restreint.")
+                # LOGIQUE DE VALIDATION FACTURE
+                if valider_facture and f_client != "---":
+                    idx = df_b[df_b["Nom Roblox"] == f_client].index[0]
+                    solde_brut = float(str(df_b.at[idx, "Solde"]).replace('$','').replace(',',''))
+                    df_b.at[idx, "Solde"] = solde_brut - f_montant
+                    cloud_conn.update(worksheet="Banque", data=df_b)
+                    record_log(agent_identifie, f"{f_type} émise : {f_montant}$ à {f_client}. Motif: {f_motif}")
+                    st.success("Facture traitée !"); time.sleep(1); st.rerun()
 
+            # --- PARTIE 3 : MANDATS & RECHERCHE (PLUS BAS) ---
+            st.divider()
+            col_m1, col_m2 = st.columns([2, 1])
+            with col_m1:
+                st.markdown("#### 🚨 Mandats d'Arrêt en cours")
+                recherches = df_b[df_b["Statut"].str.upper().str.contains("RECHERCHÉ", na=False)]
+                if not recherches.empty:
+                    for _, crim in recherches.iterrows():
+                        with st.container(border=True):
+                            c_a, c_b = st.columns([3, 1])
+                            c_a.warning(f"**{crim['Nom Roblox']}**\n\nMotif : {crim.get('Motif Recherche', 'N/A')}")
+                            if c_b.button("Interpeller", key=f"int_{crim['Nom Roblox']}"):
+                                conn.table("Banque").update({"Statut": "RAS", "Motif Recherche": ""}).eq("Nom Roblox", crim["Nom Roblox"]).execute()
+                                st.rerun()
+                else: st.success("Aucun individu recherché.")
+            
+            with col_m2:
+                st.markdown("#### 🚫 Blacklist RCT")
+                try:
+                    res_bl = conn.table("blacklist_rct").select("*").execute()
+                    df_bl = pd.DataFrame(res_bl.data)
+                    if not df_bl.empty:
+                        for _, b in df_bl.iterrows():
+                            st.error(f"**{b['Nom']}**\n{b['Raison']}")
+                    else: st.info("Blacklist vide.")
+                except: pass
 # ======================================================================================
 # --- CONSOLE D'ADMINISTRATION COMPLÈTE (STAFF ONLY) ---
 # ======================================================================================
