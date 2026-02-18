@@ -1089,7 +1089,7 @@ if len(tabs) > 1:
                                 st.rerun()
                         else:
                             if b_serv1.button("⏹️ FINIR LE SERVICE", use_container_width=True):
-                                conn.table("Clock").update({"fin": datetime.now().strftime("%d/%m/%Y %H:%M:%S"), "statut": "à valider"}).eq("id", session[0]['id']).execute()
+                                conn.table("Clock").update({"fin": datetime.now().strftime("%d/%m/%Y %H:%M:%S"), "statut": "à valider"}).eq("nom", agent_identifie).eq("statut", "en cours").execute()
                                 st.rerun()
                     else:
                         c_login.error("Code Invalide")
