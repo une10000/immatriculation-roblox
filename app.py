@@ -1339,8 +1339,6 @@ if "Staff" in str(st.session_state.get("user_auth", "")):
             for entry in reversed(st.session_state.audit_logs):
                 st.write(f"🔹 {entry}")
 
-else:
-    st.error("🚫 Accès réservé au Staff. Votre tentative a été loggée.")
     record_log("SYSTÈME", "Tentative d'accès non autorisée à l'Administration.")
 # 8. PIED DE PAGE
 # ======================================================================================
