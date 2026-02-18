@@ -119,7 +119,7 @@ def verifier_ou_creer_profil(nom_roblox):
     """Vérifie si le joueur existe, sinon crée son profil avec 15k et la date."""
     try:
         # On cherche le joueur
-        res = conn.table("banque").select("*").eq("Nom Roblox", nom_roblox).execute()
+        res = conn.table("Banque").select("*").eq("Nom Roblox", nom_roblox).execute()
         
         if not res.data:
             # LE JOUEUR N'EXISTE PAS -> CRÉATION AUTOMATIQUE
@@ -128,7 +128,7 @@ def verifier_ou_creer_profil(nom_roblox):
                 "Solde": 15000,  # Ton solde de départ
                 "Date de création": datetime.now().strftime("%d/%m/%Y") # Date auto
             }
-            conn.table("banque").insert(nouveau_profil).execute()
+            conn.table("Banque").insert(nouveau_profil).execute()
             return 15000, True # Retourne le solde et confirme la création
         
         return res.data[0]["Solde"], False # Retourne le solde existant
@@ -150,7 +150,7 @@ def traiter_paiement_prime(target_name, metier, montant):
             solde_target, _ = verifier_ou_creer_profil(target_name)
             
             # 2. On récupère le solde de l'employeur
-            res_source = conn.table("banque").select("Solde").eq("Nom Roblox", source_compte).execute()
+            res_source = conn.table("Banque").select("Solde").eq("Nom Roblox", source_compte).execute()
             if not res_source.data:
                 return False, f"❌ Le compte employeur ({source_compte}) n'existe pas."
             
@@ -158,9 +158,9 @@ def traiter_paiement_prime(target_name, metier, montant):
 
             # 3. MISE À JOUR DES SOLDES (Prélèvement et Ajout)
             # Retrait employeur
-            conn.table("banque").update({"Solde": solde_source - montant}).eq("Nom Roblox", source_compte).execute()
+            conn.table("Banque").update({"Solde": solde_source - montant}).eq("Nom Roblox", source_compte).execute()
             # Ajout employé
-            conn.table("banque").update({"Solde": solde_target + montant}).eq("Nom Roblox", target_name).execute()
+            conn.table("Banque").update({"Solde": solde_target + montant}).eq("Nom Roblox", target_name).execute()
             
             return True, f"✅ Prime de {montant}$ versée (Payé par {source_compte})"
         except Exception as e:
@@ -477,7 +477,7 @@ with st.container():
                 if st.button("Lancer", key="btn_p_search", use_container_width=True, type="primary"):
                     if search_plate:
                         # 1. On récupère le solde actuel en direct sur Supabase pour éviter les erreurs
-                        res_s = conn.table("banque").select("Solde").eq("Nom Roblox", target).execute()
+                        res_s = conn.table("Banque").select("Solde").eq("Nom Roblox", target).execute()
                         if res_s.data:
                             solde_p = float(res_s.data[0]["Solde"])
                             if solde_p >= 10:
@@ -489,7 +489,7 @@ with st.container():
                                     v_model = res_i.data[0]["Marque du véhicule"]
                                     
                                     # 3. On prélève les 10$ sur Supabase
-                                    conn.table("banque").update({"Solde": solde_p - 10}).eq("Nom Roblox", target).execute()
+                                    conn.table("Banque").update({"Solde": solde_p - 10}).eq("Nom Roblox", target).execute()
                                     
                                     st.success(f"🔍 Résultat : {search_plate} -> {owner} ({v_model})")
                                     st.cache_data.clear() # On force le refresh pour voir le nouveau solde
@@ -507,7 +507,7 @@ with st.container():
 # ==============================================================================
 try:
     # On force la récupération des infos pour le "target" (le citoyen sélectionné)
-    res_b = conn.table("banque").select("*").eq("Nom Roblox", target).execute()
+    res_b = conn.table("Banque").select("*").eq("Nom Roblox", target).execute()
     citoyen_info = pd.DataFrame(res_b.data)
 except Exception as e:
     st.error(f"Erreur Supabase (Table Banque) : {e}")
@@ -912,14 +912,14 @@ with tabs[0]:
                     try:
                         with st.spinner("Paiement en cours..."):
                             # 1. Vérification Solde
-                            res_s = conn.table("banque").select("Solde").eq("Nom Roblox", f_owner).execute()
+                            res_s = conn.table("Banque").select("Solde").eq("Nom Roblox", f_owner).execute()
                             solde_actuel = float(res_s.data[0]["Solde"])
                             
                             if solde_actuel < total_bill:
                                 st.error(f"❌ Solde insuffisant ! ({solde_actuel}$)")
                             else:
                                 # 2. Retrait argent Citoyen
-                                conn.table("banque").update({"Solde": solde_actuel - total_bill}).eq("Nom Roblox", f_owner).execute()
+                                conn.table("Banque").update({"Solde": solde_actuel - total_bill}).eq("Nom Roblox", f_owner).execute()
                                 
                                 # 3. Redirection des fonds (Taxes)
                                 # L'immat (175$) + Taxe Jeune va toujours à la RCT (une10000)
@@ -928,13 +928,13 @@ with tabs[0]:
                                 
                                 # Versement à la RCT (Frais fixes + Taxe Jeune + Assurance si RCT)
                                 part_rct = taxe_gouv + val_taxe_jeune + (taxe_assu if dest_assu == "une10000" else 0)
-                                res_rct = conn.table("banque").select("Solde").eq("Nom Roblox", "une10000").execute()
-                                conn.table("banque").update({"Solde": float(res_rct.data[0]["Solde"]) + part_rct}).eq("Nom Roblox", "une10000").execute()
+                                res_rct = conn.table("Banque").select("Solde").eq("Nom Roblox", "une10000").execute()
+                                conn.table("Banque").update({"Solde": float(res_rct.data[0]["Solde"]) + part_rct}).eq("Nom Roblox", "une10000").execute()
                                 
                                 # Versement à Averis si nécessaire
                                 if dest_assu == "Moune2010" and taxe_assu > 0:
-                                    res_av = conn.table("banque").select("Solde").eq("Nom Roblox", "Moune2010").execute()
-                                    conn.table("banque").update({"Solde": float(res_av.data[0]["Solde"]) + taxe_assu}).eq("Nom Roblox", "Moune2010").execute()
+                                    res_av = conn.table("Banque").select("Solde").eq("Nom Roblox", "Moune2010").execute()
+                                    conn.table("Banque").update({"Solde": float(res_av.data[0]["Solde"]) + taxe_assu}).eq("Nom Roblox", "Moune2010").execute()
 
                                 # 4. Enregistrement Véhicule
                                 nouvelle_immat = {
@@ -1104,7 +1104,7 @@ with st.container(border=True):
             agent_role = res_agent.iloc[0]["Role"] # On récupère le rôle pour les bonus
             
             # --- Lecture de la session active sur Supabase ---
-            res_clock = conn.table("clock").select("*").eq("nom", agent_identifie).eq("statut", "en cours").execute()
+            res_clock = conn.table("Clock").select("*").eq("nom", agent_identifie).eq("statut", "en cours").execute()
             session_active = res_clock.data
             en_service = len(session_active) > 0
 
@@ -1152,7 +1152,7 @@ with st.container(border=True):
                         "statut": "en cours",
                         "role_at_time": agent_role # Pour historique des bonus
                     }
-                    conn.table("clock").insert(new_clock).execute()
+                    conn.table("Clock").insert(new_clock).execute()
                     st.toast("Service démarré !")
                     time.sleep(1)
                     st.rerun()
@@ -1167,7 +1167,7 @@ with st.container(border=True):
                 if st.button(f"⏹️ FIN DE SERVICE", use_container_width=True):
                     h_fin = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
                     # Mise à jour de la session dans Supabase
-                    conn.table("clock").update({
+                    conn.table("Clock").update({
                         "fin": h_fin,
                         "statut": "à valider"
                     }).eq("id", session_active[0]['id']).execute()
@@ -1294,7 +1294,7 @@ with st.container(border=True):
             if cible_mandat != "---" and motif_mandat:
                 try:
                     # Mise à jour directe dans Supabase (Table Banque)
-                    conn.table("banque").update({
+                    conn.table("Banque").update({
                         "Statut": "RECHERCHÉ",
                         "Motif Recherche": motif_mandat
                     }).eq("Nom Roblox", cible_mandat).execute()
@@ -1325,7 +1325,7 @@ with col_m1:
                     
                     if c2_r.button("Interpellé", key=f"rel_{crim['Nom Roblox']}", use_container_width=True):
                         # Levée du mandat
-                        conn.table("banque").update({
+                        conn.table("Banque").update({
                             "Statut": "RAS",
                             "Motif Recherche": ""
                         }).eq("Nom Roblox", crim["Nom Roblox"]).execute()
