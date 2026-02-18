@@ -597,30 +597,52 @@ if not citoyen_info.empty:
             
             st.divider()
             st.markdown(f"### NET : {int(net_final):,}$")
-# ---------------- COLONNE 3 : ARCHIVES ----------------
+# ---------------- COLONNE 3 : ARCHIVES DÉTAILLÉES ----------------
     with col3:
         st.markdown("### 📁 ARCHIVES")
         try:
-            # CORRECTION : Utilisation de "Factures" (Majuscule) et .fillna("")
+            # Récupération des factures payées (Vérifie bien la majuscule "Factures")
             res_f = conn.table("Factures").select("*").eq("Cible", target).eq("Statut", "PAYÉ").execute()
-            archives = pd.DataFrame(res_f.data).fillna("") # On nettoie les données vides
+            archives = pd.DataFrame(res_f.data).fillna("N/A")
             
             if not archives.empty:
-                # On trie par ID décroissant pour avoir les plus récentes en premier
-                archives = archives.sort_values(by="ID", ascending=False)
+                # On trie par ID pour avoir les dernières en haut
+                archives = archives.sort_values(by="id", ascending=False)
                 
-                for _, f in archives.head(5).iterrows(): 
+                st.write(f"Derniers paiements ({len(archives)}) :")
+                
+                for _, f in archives.head(8).iterrows(): # On passe à 8 pour plus de visibilité
+                    # On définit une date propre si elle existe, sinon on met "Date inconnue"
+                    date_f = f.get('created_at', '---')
+                    if date_f != '---':
+                        date_f = date_f.split('T')[0] # On garde juste AAAA-MM-JJ
+
                     st.markdown(f"""
-                        <div style="border-left: 4px solid #4CAF50; padding: 5px 10px; background: #f0f2f6; margin-bottom: 5px; color: black;">
-                            <small style="color: #666;">#{f['ID']} - {f['Motif']}</small><br>
-                            <b style="color: #2e7d32;">{f['Montant']}$</b>
+                        <div style="border: 1px solid #e0e0e0; border-left: 5px solid #2e7d32; padding: 10px; border-radius: 5px; background: #ffffff; margin-bottom: 10px; box-shadow: 2px 2px 5px rgba(0,0,0,0.05);">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="color: #666; font-size: 0.75em; font-family: monospace;">#{f['id']}</span>
+                                <span style="background: #d4edda; color: #155724; font-size: 0.7em; padding: 2px 6px; border-radius: 10px; font-weight: bold;">PAYÉE</span>
+                            </div>
+                            <div style="margin-top: 5px;">
+                                <b style="color: #1a1a1a; font-size: 0.9em;">{f['Motif']}</b>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-top: 8px; border-top: 1px solid #f0f0f0; pt: 5px;">
+                                <div style="color: #444; font-size: 0.85em;">
+                                    👤 <small>Par: {f.get('Auteur', 'Inconnu')}</small>
+                                </div>
+                                <div style="color: #2e7d32; font-weight: bold; font-size: 1em;">
+                                    {f['Montant']:,}$
+                                </div>
+                            </div>
+                            <div style="text-align: right; color: #999; font-size: 0.7em; margin-top: 3px;">
+                                📅 {date_f}
+                            </div>
                         </div>
                     """, unsafe_allow_html=True)
             else:
-                st.info("Aucune archive.")
+                st.info("Aucun historique de paiement trouvé.")
         except Exception as e:
-            # On affiche l'erreur réelle pour savoir si c'est un problème de nom de colonne
-            st.error(f"Erreur archives : {e}")
+            st.error(f"Erreur lors de la lecture des archives : {e}")
 # ======================================================================================
 # 7. LOGIQUE DES ONGLETS (CORRIGÉE)
 # ======================================================================================
