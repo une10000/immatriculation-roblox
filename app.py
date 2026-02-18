@@ -626,7 +626,8 @@ else:
 # ======================================================================================
 # NOUVEAU : SYSTÈME DE PAIEMENT DES FACTURES (STYLE TICKET)
 # ======================================================================================
-df_all_f = cloud_conn.read(worksheet="Factures").fillna("")
+# Version Supabase pour remplacer ta ligne Google Sheets
+df_all_f = pd.DataFrame(conn.table("factures").select("*").execute().data).fillna("")
 mes_factures = df_all_f[(df_all_f["Cible"] == target) & (df_all_f["Statut"] == "EN ATTENTE")]
 
 if not mes_factures.empty:
