@@ -502,67 +502,55 @@ with st.container():
 
         st.markdown("---")
         
+# ==============================================================================
+# --- RÉCUPÉRATION DES DONNÉES (Table Banque) ---
+# ==============================================================================
+try:
+    # On force la récupération des infos pour le "target" (le citoyen sélectionné)
+    res_b = conn.table("banque").select("*").eq("Nom Roblox", target).execute()
+    citoyen_info = pd.DataFrame(res_b.data)
+except Exception as e:
+    st.error(f"Erreur Supabase (Table Banque) : {e}")
+    citoyen_info = pd.DataFrame()
+
+# ==============================================================================
 # --- D. DOSSIER DÉTAILLÉ (3 COLONNES) ---
-col1, col2, col3 = st.columns(3)
+# ==============================================================================
+if not citoyen_info.empty:
+    col1, col2, col3 = st.columns(3)
 
-# ---------------- COLONNE 1 : POINTS & PERMIS ----------------
-with col1:
-    st.markdown("### 🪪 PERMIS") # Titre aligné
-    p_data = df_p[df_p["Nom Roblox"] == target]
-    
-    if not p_data.empty:
-        pts = int(p_data.iloc[0]["PTS"])
+    # ---------------- COLONNE 1 : POINTS & PERMIS ----------------
+    with col1:
+        st.markdown("### 🪪 PERMIS")
+        p_data = df_p[df_p["Nom Roblox"] == target]
         
-        # Filigrane discret décalé pour ne pas casser l'alignement
-        st.markdown("""
-            <div style="position: relative; height: 0px;">
-                <div style="position: absolute; right: -5px; top: 0px; font-size: 22px; 
-                            line-height: 1.1; font-weight: 900; color: rgba(0,0,0,0.06); 
-                            transform: rotate(-15deg); text-align: center; pointer-events: none; z-index: 0;">
-                    🚙<br>🪪<br>OFFICIEL
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
-
-        st.metric("POINTS PERMIS", f"{pts}/25")
-        color = "green" if pts > 0 else "red"
-        st.markdown(f"Statut : <b style='color:{color};'>{'VALIDE' if pts > 0 else 'SUSPENDU'}</b>", unsafe_allow_html=True)
-        
-        if st.session_state.user_auth in ["Staff", "Admin"] and pts <= 0:
-            if st.button("🔓 Rendre le permis", key=f"res_{target}", use_container_width=True):
-                try:
+        if not p_data.empty:
+            pts = int(p_data.iloc[0]["PTS"])
+            st.metric("POINTS PERMIS", f"{pts}/25")
+            color = "green" if pts > 0 else "red"
+            st.markdown(f"Statut : <b style='color:{color};'>{'VALIDE' if pts > 0 else 'SUSPENDU'}</b>", unsafe_allow_html=True)
+            
+            # Action Staff : Restauration
+            if st.session_state.user_auth in ["Staff", "Admin"] and pts <= 0:
+                if st.button("🔓 Rendre le permis", key=f"res_{target}", use_container_width=True):
                     conn.table("points_permis").update({"PTS": 25}).eq("Nom Roblox", target).execute()
-                    st.success(f"Permis rendu à {target} !")
-                    record_log(st.session_state.user_auth, f"Restauration permis : {target}")
                     st.cache_data.clear()
-                    time.sleep(1)
                     st.rerun()
-                except Exception as e:
-                    st.error(f"Erreur : {e}")
-    else: 
-        st.info("Aucun permis trouvé.")
+        else:
+            st.info("Aucun permis trouvé.")
 
-# ---------------- COLONNE 2 : BANQUE & PAIE ----------------
-with col2:
-    st.markdown("### 💳 BANQUE") # Titre aligné
-    if not citoyen_info.empty:
-        st.markdown("""
-            <div style="position: relative; height: 0px;">
-                <div style="position: absolute; right: 0px; top: -5px; font-size: 32px; 
-                            line-height: 0.9; font-weight: 900; color: rgba(0,0,0,0.06); 
-                            transform: rotate(-12deg); text-align: center; pointer-events: none; z-index: 0;">
-                    💳<br>💵
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
-
+    # ---------------- COLONNE 2 : BANQUE & PAIE ----------------
+    with col2:
+        st.markdown("### 💳 BANQUE")
         solde_actuel = citoyen_info.iloc[0]['Solde']
-        st.metric("SOLDE BANCAIRE", f"{solde_actuel:,}$")
-        
         job_raw = str(citoyen_info.iloc[0]['Emploiement'])
+        
+        st.metric("SOLDE ACTUEL", f"{solde_actuel:,}$")
         st.write(f"🏢 Métier : **{job_raw}**")
 
-        with st.expander("💳 Détails de ma prochaine paie", expanded=False):
+        # --- CALCULATEUR DE PAIE DÉTAILLÉ ---
+        with st.expander("💳 Détails de la prochaine paie", expanded=False):
+            # 1. Calcul du temps de service (Table Clock)
             m_pol, m_rct = 0, 0
             try:
                 res_clock = conn.table("clock").select("*").eq("nom", target).execute()
@@ -577,9 +565,9 @@ with col2:
                             job_log = str(r["job"]).upper()
                             if "POL" in job_log: m_pol += diff
                             elif "RCT" in job_log: m_rct += diff
-            except Exception as e:
-                st.error(f"Erreur paie : {e}")
+            except: pass
 
+            # 2. Primes Métiers
             ratio_pol = min(m_pol/1200, 1.0)
             ratio_rct = min(m_rct/1200, 1.0)
             
@@ -589,72 +577,48 @@ with col2:
             p_averis = 2000 if "averis" in job_raw.lower() else 0
             p_sp = 1000 if "service public" in job_raw.lower() else 0
             
+            # 3. Taxes Véhicules & Offre Trio
             mes_v = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
             count_rct = len(mes_v[mes_v["Assurance"].str.contains("RCT", na=False, case=False)])
             is_trio = count_rct >= 3
             taxe_v = 200 if is_trio else (len(mes_v) * 150)
 
-            net = 15000 + p_pol + p_rct + p_staff + p_averis + p_sp - taxe_v
+            # 4. Total NET
+            net_final = 15000 + p_pol + p_rct + p_staff + p_averis + p_sp - taxe_v
 
-            c_cred, c_deb = st.columns(2)
-            with c_cred:
-                st.markdown("<div style='color: #4CAF50; font-weight:bold;'>📥 REVENUS</div>", unsafe_allow_html=True)
-                st.markdown(f"➕ **Base** : `15,000$`")
-                if p_staff > 0: st.markdown(f"⭐ **Staff** : `{p_staff}$`")
-                if p_averis > 0: st.markdown(f"🛡️ **Averis** : `{p_averis}$`")
-                if p_sp > 0: st.markdown(f"👷 **SP** : `{p_sp}$`")
-                if p_pol > 0: st.progress(ratio_pol, text=f"Pol: {int(m_pol/60)}h")
-                if p_rct > 0: st.progress(ratio_rct, text=f"RCT: {int(m_rct/60)}h")
-            with c_deb:
-                st.markdown("<div style='color: #E53935; font-weight:bold;'>📤 DÉPENSES</div>", unsafe_allow_html=True)
-                st.markdown(f"🚗 **Assur.** : `{taxe_v}$`")
-
+            # Affichage des lignes
+            st.markdown(f"➕ **Base Civile** : `15,000$`")
+            if p_staff > 0: st.markdown(f"⭐ **Prime Staff** : `{p_staff}$`")
+            if p_averis > 0: st.markdown(f"🛡️ **Prime Averis** : `{p_averis}$` (via Moune2010)")
+            if p_pol > 0: st.markdown(f"👮 **Prime Police** : `{p_pol}$` ({int(m_pol/60)}h/20h)")
+            if p_rct > 0: st.markdown(f"👷 **Prime RCT** : `{p_rct}$` ({int(m_rct/60)}h/20h)")
+            
+            st.markdown(f"🚗 **Taxe Véhicules** : `-{taxe_v}$` " + ("(Offre Trio ✅)" if is_trio else f"({len(mes_v)} immat.)"))
+            
             st.divider()
-            st.markdown(f"""<div style="background:rgba(76,175,80,0.1);padding:10px;border-radius:8px;border-left:5px solid #4CAF50;display:flex;justify-content:space-between;">
-                <b>NET ESTIMÉ</b><b style="color:#4CAF50;">{int(net):,}$</b></div>""", unsafe_allow_html=True)
+            st.markdown(f"### NET : {int(net_final):,}$")
 
-        if st.session_state.user_auth in ["Staff", "Admin"]:
-            if st.button("✏️ Modifier Métier", key=f"edit_{target}", use_container_width=True):
-                st.session_state[f"mode_{target}"] = not st.session_state.get(f"mode_{target}", False)
-            if st.session_state.get(f"mode_{target}", False):
-                opts = ["Sans-Emploi", "Agent RCT", "Averis", "Police", "Staff", "Service Public"]
-                new_m = st.multiselect("Accréditations :", opts, default=[j.strip() for j in job_raw.split("/") if j.strip() in opts])
-                if st.button("💾 Enregistrer", type="primary", use_container_width=True):
-                    txt = " / ".join(new_m) if new_m else "Sans-Emploi"
-                    conn.table("banque").update({"Emploiement": txt}).eq("Nom Roblox", target).execute()
-                    st.cache_data.clear()
-                    st.session_state[f"mode_{target}"] = False
-                    st.rerun()
-
-# ---------------- COLONNE 3 : ARCHIVES & REMBOURSEMENT ----------------
-with col3:
-    st.markdown("### 📁 ARCHIVES") # Titre aligné
-    try:
-        res_f = conn.table("factures").select("*").eq("Cible", target).eq("Statut", "PAYÉ").execute()
-        archives = pd.DataFrame(res_f.data)
-        if not archives.empty:
-            with st.expander(f"👁️ Historique ({len(archives)})", expanded=False):
-                for _, f in archives.iterrows():
+    # ---------------- COLONNE 3 : ARCHIVES ----------------
+    with col3:
+        st.markdown("### 📁 ARCHIVES")
+        try:
+            res_f = conn.table("factures").select("*").eq("Cible", target).eq("Statut", "PAYÉ").execute()
+            archives = pd.DataFrame(res_f.data)
+            
+            if not archives.empty:
+                for _, f in archives.head(5).iterrows(): # Affiche les 5 dernières
                     st.markdown(f"""
-                        <div style="border:1px solid #000;padding:10px;background:#f9f9f9;color:black;margin-bottom:8px;border-left:5px solid green;font-family:monospace;font-size:0.8em;">
-                            <b>REF: #{f['id']}</b> | <b style="color:green;">PAYÉE ✔</b><br>
-                            <b>MOTIF :</b> {f['Motif']}<br>
-                            <b>MONTANT :</b> {f['Montant']}$
+                        <div style="border-left: 4px solid #4CAF50; padding: 5px 10px; background: #f0f2f6; margin-bottom: 5px;">
+                            <small>#{f['id']} - {f['Motif']}</small><br><b>{f['Montant']}$</b>
                         </div>
                     """, unsafe_allow_html=True)
-                    if st.session_state.user_auth in ["Staff", "Admin"]:
-                        if st.button(f"🔄 Rembourser #{f['id']}", key=f"ref_{f['id']}", use_container_width=True):
-                            res_s = conn.table("banque").select("Solde").eq("Nom Roblox", target).execute()
-                            solde_v = float(res_s.data[0]["Solde"]) + float(f['Montant'])
-                            conn.table("banque").update({"Solde": solde_v}).eq("Nom Roblox", target).execute()
-                            conn.table("factures").update({"Statut": "REMBOURSÉ"}).eq("id", f["id"]).execute()
-                            record_log(st.session_state.user_auth, f"Remboursement #{f['id']} à {target}")
-                            st.cache_data.clear()
-                            st.rerun()
-        else:
-            st.info("Aucun paiement archivé.")
-    except Exception as e:
-        st.error(f"Erreur : {e}")
+            else:
+                st.info("Aucune archive.")
+        except:
+            st.error("Erreur archives.")
+
+else:
+    st.warning("Aucune donnée trouvée pour ce citoyen dans la table Banque.")
 # ======================================================================================
 # 7. LOGIQUE DES ONGLETS (CORRIGÉE)
 # ======================================================================================
