@@ -62,8 +62,13 @@ st.markdown("""
 # ======================================================================================
 # 2. MOTEUR DE DONNÉES (SYNC) - SUPABASE VERSION
 # ======================================================================================
-# Connexion au nouveau cerveau
-conn = st.connection("supabase", type=SupabaseConnection)
+# Connexion forcée (on bypass la détection automatique qui bug)
+conn = st.connection(
+    "supabase",
+    type=SupabaseConnection,
+    url=st.secrets["connections"]["supabase"]["url"],
+    key=st.secrets["connections"]["supabase"]["key"]
+)
 
 @st.cache_data(ttl=300)
 def fetch_database():
