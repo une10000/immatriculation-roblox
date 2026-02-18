@@ -1085,7 +1085,7 @@ if len(tabs) > 1:
                         b_serv1, b_serv2 = st.columns(2)
                         if not en_service:
                             if b_serv1.button(f"▶️ PRENDRE LE SERVICE ({job_label})", use_container_width=True, type="primary"):
-                                conn.table("Clock").insert({"nom": agent_identifie, "job": job_label, "debut": datetime.now().strftime("%d/%m/%Y %H:%M:%S"), "statut": "en cours"}).execute()
+                                conn.table("Clock").insert({"nom": agent_identifie, "job": job_label, "début": datetime.now().strftime("%d/%m/%Y %H:%M:%S"), "statut": "en cours"}).execute()
                                 st.rerun()
                         else:
                             if b_serv1.button("⏹️ FINIR LE SERVICE", use_container_width=True):
