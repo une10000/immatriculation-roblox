@@ -607,12 +607,12 @@ if not citoyen_info.empty:
             
             if not archives.empty:
                 # On trie par ID décroissant pour avoir les plus récentes en premier
-                archives = archives.sort_values(by="id", ascending=False)
+                archives = archives.sort_values(by="ID", ascending=False)
                 
                 for _, f in archives.head(5).iterrows(): 
                     st.markdown(f"""
                         <div style="border-left: 4px solid #4CAF50; padding: 5px 10px; background: #f0f2f6; margin-bottom: 5px; color: black;">
-                            <small style="color: #666;">#{f['id']} - {f['Motif']}</small><br>
+                            <small style="color: #666;">#{f['ID']} - {f['Motif']}</small><br>
                             <b style="color: #2e7d32;">{f['Montant']}$</b>
                         </div>
                     """, unsafe_allow_html=True)
