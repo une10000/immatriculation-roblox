@@ -502,23 +502,24 @@ with st.container():
 
         st.markdown("---")
         
-        # --- D. DOSSIER DÉTAILLÉ (3 COLONNES) ---
-        col1, col2, col3 = st.columns(3)
+# --- D. DOSSIER DÉTAILLÉ (3 COLONNES) ---
+col1, col2, col3 = st.columns(3)
+
 # ---------------- COLONNE 1 : POINTS & PERMIS ----------------
 with col1:
-    # On cherche les points dans df_p (notre DataFrame des permis)
+    st.markdown("### 🪪 PERMIS") # Titre aligné
     p_data = df_p[df_p["Nom Roblox"] == target]
     
     if not p_data.empty:
         pts = int(p_data.iloc[0]["PTS"])
         
-        # --- FILIGRANE EMPILÉ GRAND ET DISCRET ---
+        # Filigrane discret décalé pour ne pas casser l'alignement
         st.markdown("""
             <div style="position: relative; height: 0px;">
-                <div style="position: absolute; right: -5px; top: -10px; font-size: 22px; 
+                <div style="position: absolute; right: -5px; top: 0px; font-size: 22px; 
                             line-height: 1.1; font-weight: 900; color: rgba(0,0,0,0.06); 
                             transform: rotate(-15deg); text-align: center; pointer-events: none; z-index: 0;">
-                    🚙<br>🪪<br>PERMIS<br>OFFICIEL
+                    🚙<br>🪪<br>OFFICIEL
                 </div>
             </div>
         """, unsafe_allow_html=True)
@@ -527,73 +528,58 @@ with col1:
         color = "green" if pts > 0 else "red"
         st.markdown(f"Statut : <b style='color:{color};'>{'VALIDE' if pts > 0 else 'SUSPENDU'}</b>", unsafe_allow_html=True)
         
-        # --- ACTION STAFF : RESTAURER LE PERMIS ---
-        # Note : J'ai ajouté "Staff" conformément à tes accès
         if st.session_state.user_auth in ["Staff", "Admin"] and pts <= 0:
             if st.button("🔓 Rendre le permis", key=f"res_{target}", use_container_width=True):
                 try:
-                    # UPDATE SUPABASE : On remet à 25 points pour ce citoyen précis
                     conn.table("points_permis").update({"PTS": 25}).eq("Nom Roblox", target).execute()
-                    
                     st.success(f"Permis rendu à {target} !")
                     record_log(st.session_state.user_auth, f"Restauration permis : {target}")
-                    
-                    # On vide le cache et on relance pour voir les 25 pts immédiatement
                     st.cache_data.clear()
                     time.sleep(1)
                     st.rerun()
                 except Exception as e:
-                    st.error(f"Erreur lors de la restauration : {e}")
+                    st.error(f"Erreur : {e}")
     else: 
         st.info("Aucun permis trouvé.")
+
 # ---------------- COLONNE 2 : BANQUE & PAIE ----------------
 with col2:
+    st.markdown("### 💳 BANQUE") # Titre aligné
     if not citoyen_info.empty:
-        # --- FILIGRANE EMPILÉ XXL ---
         st.markdown("""
             <div style="position: relative; height: 0px;">
-                <div style="position: absolute; right: 0px; top: -15px; font-size: 32px; 
+                <div style="position: absolute; right: 0px; top: -5px; font-size: 32px; 
                             line-height: 0.9; font-weight: 900; color: rgba(0,0,0,0.06); 
                             transform: rotate(-12deg); text-align: center; pointer-events: none; z-index: 0;">
-                    💳<br>💵<br><span style="font-size: 16px;">DOSSIER<br>BANCAIRE</span>
+                    💳<br>💵
                 </div>
             </div>
         """, unsafe_allow_html=True)
 
-        # Affichage principal du solde (directement depuis Supabase)
         solde_actuel = citoyen_info.iloc[0]['Solde']
         st.metric("SOLDE BANCAIRE", f"{solde_actuel:,}$")
         
         job_raw = str(citoyen_info.iloc[0]['Emploiement'])
         st.write(f"🏢 Métier : **{job_raw}**")
 
-        # --- CALCULATEUR DE PAIE ---
         with st.expander("💳 Détails de ma prochaine paie", expanded=False):
             m_pol, m_rct = 0, 0
-            
             try:
-                # Lecture de la table 'clock' sur Supabase
                 res_clock = conn.table("clock").select("*").eq("nom", target).execute()
                 df_paie_clean = pd.DataFrame(res_clock.data)
-
                 if not df_paie_clean.empty:
-                    # Filtrage statut validé
                     logs = df_paie_clean[df_paie_clean["statut"].str.contains("Valid", case=False, na=False)]
-                    
                     for _, r in logs.iterrows():
                         t_debut = pd.to_datetime(r["début"], dayfirst=True, errors='coerce')
                         t_fin = pd.to_datetime(r["fin"], dayfirst=True, errors='coerce')
-                        
                         if pd.notnull(t_debut) and pd.notnull(t_fin):
                             diff = (t_fin - t_debut).total_seconds() / 60
-                            if diff > 0:
-                                job_log = str(r["job"]).upper()
-                                if "POL" in job_log: m_pol += diff
-                                elif "RCT" in job_log: m_rct += diff
+                            job_log = str(r["job"]).upper()
+                            if "POL" in job_log: m_pol += diff
+                            elif "RCT" in job_log: m_rct += diff
             except Exception as e:
-                st.error(f"Erreur données paie : {e}")
+                st.error(f"Erreur paie : {e}")
 
-            # Calcul des Primes (Ratio sur 20h / 1200 min)
             ratio_pol = min(m_pol/1200, 1.0)
             ratio_rct = min(m_rct/1200, 1.0)
             
@@ -603,121 +589,72 @@ with col2:
             p_averis = 2000 if "averis" in job_raw.lower() else 0
             p_sp = 1000 if "service public" in job_raw.lower() else 0
             
-            # Taxes Véhicules (On utilise df_i chargé en haut)
             mes_v = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
             count_rct = len(mes_v[mes_v["Assurance"].str.contains("RCT", na=False, case=False)])
             is_trio = count_rct >= 3
             taxe_v = 200 if is_trio else (len(mes_v) * 150)
 
-            # Total NET (Base 15k selon tes instructions)
             net = 15000 + p_pol + p_rct + p_staff + p_averis + p_sp - taxe_v
 
-            # Affichage
             c_cred, c_deb = st.columns(2)
             with c_cred:
                 st.markdown("<div style='color: #4CAF50; font-weight:bold;'>📥 REVENUS</div>", unsafe_allow_html=True)
-                st.markdown(f"➕ **Base Civile** : `15,000$`")
-                if p_staff > 0: st.markdown(f"⭐ **Prime Staff** : `{p_staff}$`")
-                if p_averis > 0: st.markdown(f"🛡️ **Prime Averis** : `{p_averis}$`")
-                if p_sp > 0: st.markdown(f"👷 **Prime Service Public** : `{p_sp}$`")
-                if p_pol > 0: st.progress(ratio_pol, text=f"Police: {int(m_pol/60)}h / 20h")
-                if p_rct > 0: st.progress(ratio_rct, text=f"RCT: {int(m_rct/60)}h / 20h")
-
+                st.markdown(f"➕ **Base** : `15,000$`")
+                if p_staff > 0: st.markdown(f"⭐ **Staff** : `{p_staff}$`")
+                if p_averis > 0: st.markdown(f"🛡️ **Averis** : `{p_averis}$`")
+                if p_sp > 0: st.markdown(f"👷 **SP** : `{p_sp}$`")
+                if p_pol > 0: st.progress(ratio_pol, text=f"Pol: {int(m_pol/60)}h")
+                if p_rct > 0: st.progress(ratio_rct, text=f"RCT: {int(m_rct/60)}h")
             with c_deb:
                 st.markdown("<div style='color: #E53935; font-weight:bold;'>📤 DÉPENSES</div>", unsafe_allow_html=True)
-                st.markdown(f"🚗 **Assurances** : `{taxe_v}$`")
-                st.caption("Offre Trio RCT ✅" if is_trio else f"{len(mes_v)} véhicule(s)")
+                st.markdown(f"🚗 **Assur.** : `{taxe_v}$`")
 
             st.divider()
-            st.markdown(f"""
-                <div style="background-color: rgba(76,175,80,0.1); padding:15px; border-radius:8px; border-left:5px solid #4CAF50; display:flex; justify-content:space-between; align-items:center;">
-                    <span style="font-weight:500;">NET ESTIMÉ</span>
-                    <span style="font-size:1.5em; font-weight:bold; color:#4CAF50;">{int(net):,}$</span>
-                </div>
-            """, unsafe_allow_html=True)
+            st.markdown(f"""<div style="background:rgba(76,175,80,0.1);padding:10px;border-radius:8px;border-left:5px solid #4CAF50;display:flex;justify-content:space-between;">
+                <b>NET ESTIMÉ</b><b style="color:#4CAF50;">{int(net):,}$</b></div>""", unsafe_allow_html=True)
 
-        # --- MODIFICATION MÉTIER (RÉSERVÉ STAFF) ---
         if st.session_state.user_auth in ["Staff", "Admin"]:
-            st.write("")
             if st.button("✏️ Modifier Métier", key=f"edit_{target}", use_container_width=True):
                 st.session_state[f"mode_{target}"] = not st.session_state.get(f"mode_{target}", False)
-            
             if st.session_state.get(f"mode_{target}", False):
                 opts = ["Sans-Emploi", "Agent RCT", "Averis", "Police", "Staff", "Service Public"]
-                cur = [j.strip() for j in job_raw.split("/") if j.strip() in opts]
-                new_m = st.multiselect("Accréditations :", opts, default=cur)
-                
+                new_m = st.multiselect("Accréditations :", opts, default=[j.strip() for j in job_raw.split("/") if j.strip() in opts])
                 if st.button("💾 Enregistrer", type="primary", use_container_width=True):
                     txt = " / ".join(new_m) if new_m else "Sans-Emploi"
-                    # UPDATE SUPABASE
                     conn.table("banque").update({"Emploiement": txt}).eq("Nom Roblox", target).execute()
-                    
-                    st.success("Métier mis à jour !")
-                    record_log(st.session_state.user_auth, f"Modif métier {target} -> {txt}")
                     st.cache_data.clear()
                     st.session_state[f"mode_{target}"] = False
-                    time.sleep(1)
                     st.rerun()
+
 # ---------------- COLONNE 3 : ARCHIVES & REMBOURSEMENT ----------------
 with col3:
-    st.markdown("### 📁 ARCHIVES") # Titre aligné sur col1 et col2
-    
+    st.markdown("### 📁 ARCHIVES") # Titre aligné
     try:
-        # On récupère les factures PAYÉES pour cette cible sur Supabase
         res_f = conn.table("factures").select("*").eq("Cible", target).eq("Statut", "PAYÉ").execute()
         archives = pd.DataFrame(res_f.data)
-        
         if not archives.empty:
-            with st.expander(f"👁️ Historique ({len(archives)} factures)", expanded=False):
+            with st.expander(f"👁️ Historique ({len(archives)})", expanded=False):
                 for _, f in archives.iterrows():
-                    # --- LE TICKET D'ARCHIVE ---
                     st.markdown(f"""
-                        <div style="border: 1px solid #000; padding: 12px; background: #f9f9f9; color: black; margin-bottom: 8px; border-left: 5px solid green; font-family: monospace;">
-                            <div style="display: flex; justify-content: space-between; font-size: 0.8em;">
-                                <b>REF: #{f['id']}</b>
-                                <b style="color: green;">ACQUITTÉE ✔</b>
-                            </div>
-                            <hr style="margin: 5px 0; border-top: 1px dashed #ccc;">
-                            <div style="font-size: 0.9em; line-height: 1.4;">
-                                <b>ÉMETTEUR :</b> {f.get('Agent_Signataire', 'N/A')}<br>
-                                <b>SERVICE :</b> {f.get('Emetteur', 'GÉNÉRAL')}<br>
-                                <hr style="margin: 5px 0; border-top: 1px dashed #eee;">
-                                <b>MOTIF :</b> {f['Motif']}<br>
-                                <b>MONTANT :</b> {f['Montant']}$<br>
-                                <b>POINTS :</b> {f.get('Points', 0)}
-                            </div>
+                        <div style="border:1px solid #000;padding:10px;background:#f9f9f9;color:black;margin-bottom:8px;border-left:5px solid green;font-family:monospace;font-size:0.8em;">
+                            <b>REF: #{f['id']}</b> | <b style="color:green;">PAYÉE ✔</b><br>
+                            <b>MOTIF :</b> {f['Motif']}<br>
+                            <b>MONTANT :</b> {f['Montant']}$
                         </div>
                     """, unsafe_allow_html=True)
-                    
-                    # --- ACTION DE REMBOURSEMENT (STAFF) ---
                     if st.session_state.user_auth in ["Staff", "Admin"]:
                         if st.button(f"🔄 Rembourser #{f['id']}", key=f"ref_{f['id']}", use_container_width=True):
-                            try:
-                                # 1. Récupérer le solde actuel pour éviter les erreurs de calcul
-                                res_s = conn.table("banque").select("Solde").eq("Nom Roblox", target).execute()
-                                solde_actuel = float(res_s.data[0]["Solde"])
-                                montant_remb = float(f['Montant'])
-                                
-                                # 2. Update Supabase : On rend l'argent au citoyen
-                                conn.table("banque").update({"Solde": solde_actuel + montant_remb}).eq("Nom Roblox", target).execute()
-                                
-                                # 3. Update Supabase : On change le statut de la facture
-                                conn.table("factures").update({"Statut": "REMBOURSÉ"}).eq("id", f["id"]).execute()
-                                
-                                # 4. Log l'action
-                                record_log(st.session_state.user_auth, f"Remboursement Facture #{f['id']} à {target} ({montant_remb}$)")
-                                
-                                st.success(f"Ticket #{f['id']} remboursé !")
-                                st.cache_data.clear()
-                                time.sleep(1)
-                                st.rerun()
-                            except Exception as e:
-                                st.error(f"Erreur remboursement : {e}")
+                            res_s = conn.table("banque").select("Solde").eq("Nom Roblox", target).execute()
+                            solde_v = float(res_s.data[0]["Solde"]) + float(f['Montant'])
+                            conn.table("banque").update({"Solde": solde_v}).eq("Nom Roblox", target).execute()
+                            conn.table("factures").update({"Statut": "REMBOURSÉ"}).eq("id", f["id"]).execute()
+                            record_log(st.session_state.user_auth, f"Remboursement #{f['id']} à {target}")
+                            st.cache_data.clear()
+                            st.rerun()
         else:
             st.info("Aucun paiement archivé.")
-            
     except Exception as e:
-        st.error(f"Erreur chargement archives : {e}")
+        st.error(f"Erreur : {e}")
 # ======================================================================================
 # 7. LOGIQUE DES ONGLETS (CORRIGÉE)
 # ======================================================================================
