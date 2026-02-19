@@ -68,9 +68,10 @@ cloud_conn = st.connection("gsheets", type=GSheetsConnection)
 @st.cache_data(ttl=300)
 def fetch_database():
     try:
-        df_bank = cloud_conn.read(worksheet="Banque").dropna(how='all').fillna("")
-        df_immat = cloud_conn.read(worksheet="Copie de Immatriculations").dropna(how='all').fillna("")
-        df_pts = cloud_conn.read(worksheet="Points Permis").dropna(how='all').fillna("")
+        # On ajoute ttl=20 dans chaque lecture
+        df_bank = cloud_conn.read(worksheet="Banque", ttl=20).dropna(how='all').fillna("")
+        df_immat = cloud_conn.read(worksheet="Copie de Immatriculations", ttl=20).dropna(how='all').fillna("")
+        df_pts = cloud_conn.read(worksheet="Points Permis", ttl=20).dropna(how='all').fillna("")
         return df_bank, df_immat, df_pts
     except Exception as e:
         st.error(f"Erreur de liaison : {e}")
@@ -420,7 +421,7 @@ with st.container():
         # 2. Alerte Dette en retard (Orange)
         maintenant = datetime.now()
         try:
-            df_f_check = cloud_conn.read(worksheet="Factures").fillna("")
+            df_f_check = cloud_conn.read(worksheet="Factures", ttl=20).fillna("")
             dettes = df_f_check[(df_f_check["Cible"] == target) & (df_f_check["Statut"] == "EN ATTENTE")]
             has_delay = False
             for _, r_f in dettes.iterrows():
@@ -518,7 +519,7 @@ with st.container():
                     
                     try:
                         # On lit l'onglet Clock
-                        df_admin_clock = cloud_conn.read(worksheet="Clock", ttl=0).fillna("")
+                        df_admin_clock = cloud_conn.read(worksheet="Clock", ttl=20).fillna("")
                         df_paie_clean = df_admin_clock.copy()
                         df_paie_clean.columns = df_paie_clean.columns.str.strip().str.lower()
                         
@@ -621,7 +622,7 @@ with st.container():
             st.markdown("### 📁 ARCHIVES")
             try:
                 # On recharge les factures pour être à jour
-                df_f_check = cloud_conn.read(worksheet="Factures").fillna("")
+                df_f_check = cloud_conn.read(worksheet="Factures", ttl=20).fillna("")
                 archives = df_f_check[(df_f_check["Cible"] == target) & (df_f_check["Statut"] == "PAYÉ")]
                 
                 if not archives.empty:
@@ -678,7 +679,7 @@ with st.container():
 # ======================================================================================
 # NOUVEAU : SYSTÈME DE PAIEMENT DES FACTURES (STYLE TICKET)
 # ======================================================================================
-df_all_f = cloud_conn.read(worksheet="Factures").fillna("")
+df_all_f = cloud_conn.read(worksheet="Factures", ttl=20).fillna("")
 mes_factures = df_all_f[(df_all_f["Cible"] == target) & (df_all_f["Statut"] == "EN ATTENTE")]
 
 if not mes_factures.empty:
@@ -786,8 +787,8 @@ for _, fac in mes_factures.iterrows():
             if st.button(f"🗑️ ANNULER LA FACTURE #{fac['ID']}", key=f"admin_del_{fac['ID']}", use_container_width=True):
                 try:
                     with st.spinner("Annulation..."):
-                        df_f_sync = cloud_conn.read(worksheet="Factures")
-                        df_p_sync = cloud_conn.read(worksheet="Points Permis")
+                        df_f_sync = cloud_conn.read(worksheet="Factures", ttl=20)
+                        df_p_sync = cloud_conn.read(worksheet="Points Permis", ttl=20)
                         
                         pts_a_rendre = fac.get('Points', 0)
                         
@@ -866,7 +867,7 @@ if not v_data.empty:
                 if st.button("CONFIRMER", key=f"btn_confirm_{veh['Numéro de la plaque']}_{i}", use_container_width=True):
                     if str(r_cod_check) == str(veh.get('CODE', '')) or st.session_state.user_auth == "Staff":
                         try:
-                            df_all_immat = cloud_conn.read(worksheet="Copie de Immatriculations")
+                            df_all_immat = cloud_conn.read(worksheet="Copie de Immatriculations", ttl=20)
                             df_updated = df_all_immat[df_all_immat["Numéro de la plaque"] != veh['Numéro de la plaque']]
                             cloud_conn.update(worksheet="Copie de Immatriculations", data=df_updated)
                             st.cache_data.clear()
@@ -908,7 +909,7 @@ with tabs[0]:
             raison_ban = ""
             if "RCT" in f_assu and f_owner != "---":
                 try:
-                    df_blacklist = cloud_conn.read(worksheet="Blacklist_RCT", ttl=0).fillna("")
+                    df_blacklist = cloud_conn.read(worksheet="Blacklist_RCT", ttl=20).fillna("")
                     if f_owner.strip() in df_blacklist['Nom'].str.strip().tolist():
                         is_banned = True
                         raison_ban = df_blacklist[df_blacklist['Nom'].str.strip() == f_owner.strip()]['Raison'].values[0]
@@ -1064,7 +1065,7 @@ if len(tabs) > 1:
                         if b_nom != "---" and b_raison:
                             try:
                                 with st.spinner("Mise à jour..."):
-                                    df_bl = cloud_conn.read(worksheet="Blacklist_RCT", ttl=0).fillna("")
+                                    df_bl = cloud_conn.read(worksheet="Blacklist_RCT", ttl=20).fillna("")
                                     if b_nom in df_bl['Nom'].tolist():
                                         st.error("Cette personne est déjà blacklistée.")
                                     else:
@@ -1084,7 +1085,7 @@ if len(tabs) > 1:
                 with col_list:
                     st.markdown("#### 📜 Liste Noire Actuelle")
                     try:
-                        df_show_bl = cloud_conn.read(worksheet="Blacklist_RCT", ttl=0).fillna("")
+                        df_show_bl = cloud_conn.read(worksheet="Blacklist_RCT", ttl=20).fillna("")
                         if not df_show_bl.empty:
                             st.dataframe(df_show_bl, use_container_width=True, hide_index=True, height=200)
                             
@@ -1122,7 +1123,7 @@ if len(tabs) > 1:
                         agent_identifie = res_agent.iloc[0]["Nom Roblox"]
                         
                         # Lecture Clock
-                        df_clock = cloud_conn.read(worksheet="Clock", ttl=0).fillna("")
+                        df_clock = cloud_conn.read(worksheet="Clock", ttl=20).fillna("")
                         df_clock.columns = df_clock.columns.str.strip().str.lower()
                         session_active = df_clock[(df_clock["nom"] == agent_identifie) & (df_clock["statut"] == "en cours")]
                         en_service = not session_active.empty
@@ -1175,7 +1176,7 @@ if len(tabs) > 1:
 # --- 2. RECHERCHE & CONSULTATION DES FACTURES ---
             st.markdown("### 📑 GESTION DES FACTURES")
             
-            df_f_check = cloud_conn.read(worksheet="Factures").fillna("")
+            df_f_check = cloud_conn.read(worksheet="Factures", ttl=20).fillna("")
             maintenant = datetime.now()
             df_f_check['Date_Limite_DT'] = pd.to_datetime(df_f_check['Date_Limite'], dayfirst=True, errors='coerce')
             
@@ -1343,7 +1344,7 @@ if len(tabs) > 1:
                             if f_motif:
                                 with st.spinner("Transmission au central..."):
                                     import random
-                                    df_all_f = cloud_conn.read(worksheet="Factures").fillna("")
+                                    df_all_f = cloud_conn.read(worksheet="Factures", ttl=20).fillna("")
                                     new_f = {
                                         "ID": random.randint(10000, 99999),
                                         "Cible": target,
@@ -1376,7 +1377,8 @@ if len(tabs) > 1:
                     is_wanted = "RECHERCHÉ" in str(citoyen_info.iloc[0].get("Statut", "")).upper() if not citoyen_info.empty else False
                     motif_recherche = citoyen_info.iloc[0].get("Motif Recherche", "Non spécifié") if is_wanted else ""
                     
-                    df_check_f = cloud_conn.read(worksheet="Factures").fillna("")
+                    # La ligne manquante pour récupérer le statut "Recherché"
+                    df_b = cloud_conn.read(worksheet="Banque", ttl=20).fillna("")
                     impayes = df_check_f[(df_check_f["Cible"] == target) & (df_check_f["Statut"] == "EN ATTENTE")]
                     total_dette = impayes["Montant"].astype(int).sum() if not impayes.empty else 0
 
@@ -1467,7 +1469,7 @@ if len(tabs) > 2:
             
             try:
                 # Lecture en temps réel pour l'administration
-                df_admin_clock = cloud_conn.read(worksheet="Clock", ttl=0).fillna("")
+                df_admin_clock = cloud_conn.read(worksheet="Clock", ttl=20).fillna("")
                 df_admin_clock.columns = df_admin_clock.columns.str.strip().str.lower()
                 
                 # On ne traite que les demandes "à valider"
