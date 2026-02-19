@@ -1371,16 +1371,20 @@ if len(tabs) > 1:
                             else:
                                 st.error("❌ Le motif est obligatoire.")
 
-                    # Alertes de vigilance sous le formulaire
-                    # On récupère les infos du citoyen sélectionné
-                    citoyen_info = df_b[df_b["Nom Roblox"] == target]
-                    is_wanted = "RECHERCHÉ" in str(citoyen_info.iloc[0].get("Statut", "")).upper() if not citoyen_info.empty else False
-                    motif_recherche = citoyen_info.iloc[0].get("Motif Recherche", "Non spécifié") if is_wanted else ""
-                    
-                    # La ligne manquante pour récupérer le statut "Recherché"
-                    df_b = cloud_conn.read(worksheet="Banque", ttl=20).fillna("")
-                    impayes = df_check_f[(df_check_f["Cible"] == target) & (df_check_f["Statut"] == "EN ATTENTE")]
-                    total_dette = impayes["Montant"].astype(int).sum() if not impayes.empty else 0
+                    # 1. D'abord, on charge les bases de données (AVANT de les utiliser)
+df_b = cloud_conn.read(worksheet="Banque", ttl=20).fillna("")
+df_check_f = cloud_conn.read(worksheet="Factures", ttl=20).fillna("")
+
+# 2. Ensuite, on récupère les infos du citoyen
+citoyen_info = df_b[df_b["Nom Roblox"] == target]
+
+# 3. On définit le statut de recherche
+is_wanted = "RECHERCHÉ" in str(citoyen_info.iloc[0].get("Statut", "")).upper() if not citoyen_info.empty else False
+motif_recherche = citoyen_info.iloc[0].get("Motif Recherche", "Non spécifié") if is_wanted else ""
+
+# 4. On calcule les dettes (maintenant que df_check_f existe !)
+impayes = df_check_f[(df_check_f["Cible"] == target) & (df_check_f["Statut"] == "EN ATTENTE")]
+total_dette = impayes["Montant"].astype(int).sum() if not impayes.empty else 0
 
                     st.markdown("""
                         <style>
