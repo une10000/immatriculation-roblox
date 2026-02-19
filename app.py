@@ -1357,7 +1357,7 @@ if len(tabs) > 1:
                                         "Date_Emission": datetime.now().strftime("%d/%m/%Y %H:%M"),
                                         "Date_Limite": (datetime.now() + timedelta(hours=24)).strftime("%d/%m/%Y %H:%M")
                                     }
-                                    # Logique de retrait de points si applicable
+# Logique de retrait de points si applicable
                                     if f_pts > 0 and can_pull_points:
                                         try:
                                             idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
@@ -1371,21 +1371,22 @@ if len(tabs) > 1:
                             else:
                                 st.error("❌ Le motif est obligatoire.")
 
-                    # 1. D'abord, on charge les bases de données (AVANT de les utiliser)
-df_b = cloud_conn.read(worksheet="Banque", ttl=20).fillna("")
-df_check_f = cloud_conn.read(worksheet="Factures", ttl=20).fillna("")
+                    # --- BLOC RÉALIGNÉ ICI ---
+                    # 1. On charge les bases (le df_b est souvent déjà chargé plus haut, mais on sécurise)
+                    df_b = cloud_conn.read(worksheet="Banque", ttl=20).fillna("")
+                    df_check_f = cloud_conn.read(worksheet="Factures", ttl=20).fillna("")
 
-# 2. Ensuite, on récupère les infos du citoyen
-citoyen_info = df_b[df_b["Nom Roblox"] == target]
+                    # 2. On récupère les infos du citoyen
+                    citoyen_info = df_b[df_b["Nom Roblox"] == target]
 
-# 3. On définit le statut de recherche
-is_wanted = "RECHERCHÉ" in str(citoyen_info.iloc[0].get("Statut", "")).upper() if not citoyen_info.empty else False
-motif_recherche = citoyen_info.iloc[0].get("Motif Recherche", "Non spécifié") if is_wanted else ""
+                    # 3. On définit le statut de recherche
+                    is_wanted = "RECHERCHÉ" in str(citoyen_info.iloc[0].get("Statut", "")).upper() if not citoyen_info.empty else False
+                    motif_recherche = citoyen_info.iloc[0].get("Motif Recherche", "Non spécifié") if is_wanted else ""
 
-# 4. On calcule les dettes (maintenant que df_check_f existe !)
-impayes = df_check_f[(df_check_f["Cible"] == target) & (df_check_f["Statut"] == "EN ATTENTE")]
-total_dette = impayes["Montant"].astype(int).sum() if not impayes.empty else 0
-
+                    # 4. On calcule les dettes
+                    impayes = df_check_f[(df_check_f["Cible"] == target) & (df_check_f["Statut"] == "EN ATTENTE")]
+                    total_dette = impayes["Montant"].astype(int).sum() if not impayes.empty else 0
+                    # --------------------------
                     st.markdown("""
                         <style>
                         @keyframes pulse-red { 0% { box-shadow: 0 0 0 0px rgba(211, 47, 47, 0.7); border-color:white; } 50% { box-shadow: 0 0 0 15px rgba(211, 47, 47, 0); border-color:red; } 100% { box-shadow: 0 0 0 0px rgba(211, 47, 47, 0); border-color:white; } }
