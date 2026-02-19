@@ -1344,7 +1344,7 @@ if len(tabs) > 1:
                             if f_motif:
                                 with st.spinner("Transmission au central..."):
                                     import random
-                                    df_all_f = cloud_conn.read(worksheet="Factures", ttl=20).fillna("")
+                                    df_all_f = cloud_conn.read(worksheet="Factures", ttl=5).fillna("")
                                     new_f = {
                                         "ID": random.randint(10000, 99999),
                                         "Cible": target,
