@@ -519,7 +519,7 @@ with st.container():
                     
                     try:
                         # On lit l'onglet Clock
-                        df_admin_clock = cloud_conn.read(worksheet="Clock", ttl=20).fillna("")
+                        df_admin_clock = cloud_conn.read(worksheet="Clock", ttl=5).fillna("")
                         df_paie_clean = df_admin_clock.copy()
                         df_paie_clean.columns = df_paie_clean.columns.str.strip().str.lower()
                         
