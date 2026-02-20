@@ -1159,7 +1159,7 @@ if len(tabs) > 1:
                             if st.button(f"▶️ DÉBUT DE SERVICE ({job_auto})", use_container_width=True, type="primary"):
                                 h_deb = datetime.now(timezone(timedelta(hours=1))).strftime("%d/%m/%Y %H:%M:%S")
                                 new_row = pd.DataFrame([{"nom": agent_identifie, "action": "SERVICE", "job": job_auto, "début": h_deb, "fin": "", "statut": "en cours"}])
-                                st.success(f"✅ Session {job_auto} a débuté !")
+                                st.success(f"✅ Session {job_auto} a débuté (se actualise dans 5 secondes)!")
                                 cloud_conn.update(worksheet="Clock", data=pd.concat([df_clock, new_row], ignore_index=True))
                                 st.rerun()
                         else:
@@ -1169,7 +1169,7 @@ if len(tabs) > 1:
                                 df_clock.at[session_active.index[-1], "fin"] = h_fin
                                 df_clock.at[session_active.index[-1], "statut"] = "à valider"
                                 cloud_conn.update(worksheet="Clock", data=df_clock)
-                                st.success(f"✅ Session {job_auto} a pris fin et a été enregistré !")
+                                st.success(f"✅ Session {job_auto} a pris fin et a été enregistré ! (se actualise dans 5 secondes)")
                                 time.sleep(1)
                                 st.rerun()
                     else:
