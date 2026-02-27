@@ -138,7 +138,7 @@ def record_log(user, action):
 if st.session_state.user_auth is not None:
     with st.sidebar:
         # LOGO RCRP
-        st.image("https://cdn.discordapp.com/attachments/1441508709024006315/1471115849631793256/Capture_decran_2025-12-01_a_21.03.31.png?ex=698dc2e6&is=698c7166&hm=ddabf40f0fad8139ed693e02221341fe14e01ad84b35317af6a101c62986b79b&", use_container_width=True)
+        st.image("https://image2url.com/r2/default/images/1772203662552-5db3e119-999b-47cc-827b-c84903ce3876.blob", use_container_width=True)
         st.divider()
         from datetime import datetime, timedelta, timezone
         import streamlit.components.v1 as components
