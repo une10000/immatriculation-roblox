@@ -751,98 +751,108 @@ for _, fac in mes_factures.iterrows():
         </div>
         """, unsafe_allow_html=True)
 
-        # 4. BOUTON DE PAIEMENT
-        if st.button(f"💳 RÉGLER LA FACTURE #{fac['ID']}", key=f"pay_{fac['ID']}", use_container_width=True):
-            try:
-                idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
-                solde_actuel = float(str(df_b.at[idx_b, "Solde"]).replace('$', '').replace(',', ''))
-                montant_facture = float(str(fac['Montant']).replace(',', ''))
-                
-                if solde_actuel >= montant_facture:
-                    df_b.at[idx_b, "Solde"] = solde_actuel - montant_facture
-                    
-                    # --- REDIRECTION DES FONDS ---
-                    if "RCT" in emetteur_label.upper():
-                        idx_p = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
-                        df_b.at[idx_p, "Solde"] = float(str(df_b.at[idx_p, "Solde"]).replace('$', '')) + montant_facture
-                    elif "AVERIS" in emetteur_label.upper():
-                        # Argent envoyé à Moune2010 pour Averis
-                        idx_p = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
-                        df_b.at[idx_p, "Solde"] = float(str(df_b.at[idx_p, "Solde"]).replace('$', '')) + montant_facture
-                    
-                    df_all_f.loc[df_all_f["ID"] == fac["ID"], "Statut"] = "PAYÉ"
-                    cloud_conn.update(worksheet="Banque", data=df_b)
-                    cloud_conn.update(worksheet="Factures", data=df_all_f)
-                    
-                    st.success("✅ Facture payée !")
-                    st.cache_data.clear()
-                    st.rerun()
-                else:
-                    st.error("❌ Solde insuffisant.")
-            except Exception as e:
-                st.error(f"Erreur paiement : {e}")
-
-# 5. BOUTON ANNULER (Staff/Admin) avec vérification de Code
-if st.session_state.user_auth in ["Staff", "Admin", "POLSTA"]:
-    with st.expander(f"🗑️ Zone d'annulation - Facture #{fac['ID']}"):
-        # Saisie du code agent pour confirmer
-        code_confirm = st.text_input("Entrez votre Code Agent pour confirmer", type="password", key=f"code_confirm_{fac['ID']}")
-        
-        if st.button(f"Confirmer l'annulation", key=f"admin_del_{fac['ID']}", use_container_width=True):
-            # 1. Vérification du code (on suppose que le code est stocké dans st.session_state.agent_code)
-            if code_confirm != str(st.session_state.get('agent_code')):
-                st.error("❌ Code Agent incorrect. Action annulée.")
-            else:
+# 4. BOUTON DE PAIEMENT
+        if fac['Statut'] == "EN ATTENTE":
+            if st.button(f"💳 RÉGLER LA FACTURE #{fac['ID']}", key=f"pay_{fac['ID']}", use_container_width=True):
                 try:
-                    with st.spinner("Annulation et journalisation en cours..."):
-                        # Lecture des données
-                        df_f_sync = cloud_conn.read(worksheet="Factures", ttl=0)
-                        df_p_sync = cloud_conn.read(worksheet="Points Permis", ttl=0)
+                    with st.spinner("Traitement du paiement..."):
+                        df_b = cloud_conn.read(worksheet="Banque", ttl=0)
+                        df_all_f = cloud_conn.read(worksheet="Factures", ttl=0)
                         
-                        cible = fac.get('Cible')
-                        pts_a_rendre = fac.get('Points', 0)
-                        agent_nom = st.session_state.get('staff_name', 'Inconnu')
-
-                        # --- LOGIQUE DE RESTITUTION DES POINTS ---
-                        if pts_a_rendre and str(pts_a_rendre).isdigit() and int(pts_a_rendre) > 0:
-                            if cible in df_p_sync["Nom Roblox"].values:
-                                idx_p = df_p_sync[df_p_sync["Nom Roblox"] == cible].index[0]
-                                current_pts = int(df_p_sync.at[idx_p, "PTS"])
-                                nouveau_total = min(12, current_pts + int(pts_a_rendre))
-                                df_p_sync.at[idx_p, "PTS"] = nouveau_total
-                                cloud_conn.update(worksheet="Points Permis", data=df_p_sync)
-
-                        # --- MISE À JOUR DU STATUT DE LA FACTURE ---
-                        if fac["ID"] in df_f_sync["ID"].values:
-                            df_f_sync.loc[df_f_sync["ID"] == fac["ID"], "Statut"] = "ANNULÉ"
-                            cloud_conn.update(worksheet="Factures", data=df_f_sync)
-
-                        # --- ENREGISTREMENT DANS LE TABLEAU DES LOGS (Qui, Quoi, Comment) ---
-                        from datetime import datetime
-                        timestamp = datetime.now().strftime("%d/%m/%Y %H:%M")
+                        target = fac['Cible']
+                        emetteur_label = fac['Emetteur']
                         
-                        # On crée une ligne pour ton tableau "Logs_Actions"
-                        new_log = {
-                            "Date": timestamp,
-                            "Agent": f"{agent_nom} (Code: {code_confirm})",
-                            "Action": "ANNULATION FACTURE",
-                            "Détails": f"Facture #{fac['ID']} de {cible}",
-                            "Points Rendus": pts_a_rendre,
-                            "Statut final": "ANNULÉ"
-                        }
+                        idx_b = df_b[df_b["Nom Roblox"] == target].index[0]
+                        solde_actuel = float(str(df_b.at[idx_b, "Solde"]).replace('$', '').replace(',', ''))
+                        montant_facture = float(str(fac['Montant']).replace(',', ''))
                         
-                        # Ici, on ajoute la ligne au tableau des logs
-                        df_logs = cloud_conn.read(worksheet="Logs_Actions", ttl=0)
-                        df_logs = pd.concat([df_logs, pd.DataFrame([new_log])], ignore_index=True)
-                        cloud_conn.update(worksheet="Logs_Actions", data=df_logs)
-
-                        st.success(f"Facture #{fac['ID']} annulée et tracée dans les logs.")
-                        st.cache_data.clear()
-                        st.rerun()
-
+                        if solde_actuel >= montant_facture:
+                            # Débit du client
+                            df_b.at[idx_b, "Solde"] = solde_actuel - montant_facture
+                            
+                            # --- REDIRECTION DES FONDS (Selon tes consignes) ---
+                            if "RCT" in emetteur_label.upper():
+                                idx_dest = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
+                                df_b.at[idx_dest, "Solde"] = float(str(df_b.at[idx_dest, "Solde"]).replace('$', '')) + montant_facture
+                            elif "AVERIS" in emetteur_label.upper():
+                                # Argent envoyé à Moune2010 pour Averis
+                                idx_dest = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
+                                df_b.at[idx_dest, "Solde"] = float(str(df_b.at[idx_dest, "Solde"]).replace('$', '')) + montant_facture
+                            
+                            # Mise à jour des statuts
+                            df_all_f.loc[df_all_f["ID"] == fac["ID"], "Statut"] = "PAYÉ"
+                            
+                            cloud_conn.update(worksheet="Banque", data=df_b)
+                            cloud_conn.update(worksheet="Factures", data=df_all_f)
+                            
+                            st.success("✅ Facture payée avec succès !")
+                            st.cache_data.clear()
+                            st.rerun()
+                        else:
+                            st.error("❌ Solde insuffisant pour régler cette facture.")
                 except Exception as e:
-                    st.error(f"Erreur lors de l'annulation : {e}")
-                    
+                    st.error(f"Erreur paiement : {e}")
+
+        st.write("---")
+
+        # 5. ZONE D'ANNULATION (Staff/Admin/POLSTA)
+        if st.session_state.user_auth in ["Staff", "Admin", "POLSTA"]:
+            # Correction de la syntaxe fac['ID'] ici
+            with st.expander(f"🗑️ Zone d'annulation - Facture #{fac['ID']}"):
+                code_confirm = st.text_input("Code Agent de sécurité", type="password", key=f"code_confirm_{fac['ID']}")
+                
+                if st.button(f"Confirmer l'annulation définitive", key=f"admin_del_{fac['ID']}", use_container_width=True):
+                    # Vérification du code agent stocké en session
+                    if code_confirm != str(st.session_state.get('agent_code')):
+                        st.error("❌ Code Agent incorrect. Autorisation refusée.")
+                    else:
+                        try:
+                            with st.spinner("Annulation, restitution des points et journalisation..."):
+                                # Lecture propre des données pour éviter les conflits
+                                df_f_sync = cloud_conn.read(worksheet="Factures", ttl=0)
+                                df_p_sync = cloud_conn.read(worksheet="Points Permis", ttl=0)
+                                
+                                cible = fac.get('Cible')
+                                pts_a_rendre = fac.get('Points', 0)
+                                agent_nom = st.session_state.get('staff_name', 'Agent Inconnu')
+
+                                # --- LOGIQUE : RESTITUTION DES POINTS ---
+                                if pts_a_rendre and str(pts_a_rendre).isdigit() and int(pts_a_rendre) > 0:
+                                    if cible in df_p_sync["Nom Roblox"].values:
+                                        idx_p = df_p_sync[df_p_sync["Nom Roblox"] == cible].index[0]
+                                        current_pts = int(df_p_sync.at[idx_p, "PTS"])
+                                        # On remet les points sans dépasser 12
+                                        df_p_sync.at[idx_p, "PTS"] = min(12, current_pts + int(pts_a_rendre))
+                                        cloud_conn.update(worksheet="Points Permis", data=df_p_sync)
+
+                                # --- LOGIQUE : MISE À JOUR STATUT FACTURE ---
+                                df_f_sync.loc[df_f_sync["ID"] == fac["ID"], "Statut"] = "ANNULÉ"
+                                cloud_conn.update(worksheet="Factures", data=df_f_sync)
+
+                                # --- LOGIQUE : TRACABILITÉ (LOGS) ---
+                                from datetime import datetime
+                                import pandas as pd
+                                
+                                timestamp = datetime.now().strftime("%d/%m/%Y %H:%M")
+                                new_log = {
+                                    "Date": timestamp,
+                                    "Agent": f"{agent_nom}",
+                                    "Action": "ANNULATION",
+                                    "Détails": f"Facture #{fac['ID']} (Cible: {cible})",
+                                    "Points_Rendus": pts_a_rendre
+                                }
+                                
+                                # Ajout au tableau Logs_Actions
+                                df_logs = cloud_conn.read(worksheet="Logs_Actions", ttl=0)
+                                df_logs = pd.concat([df_logs, pd.DataFrame([new_log])], ignore_index=True)
+                                cloud_conn.update(worksheet="Logs_Actions", data=df_logs)
+
+                                st.success(f"Facture #{fac['ID']} annulée. Points restitués à {cible}.")
+                                st.cache_data.clear()
+                                st.rerun()
+
+                        except Exception as e:
+                            st.error(f"Erreur lors de l'opération : {e}")
 # --- SECTION VÉHICULES UNIFORMISÉE ---
 st.write("### 🚗 VÉHICULES ENREGISTRÉS")
 v_data = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
