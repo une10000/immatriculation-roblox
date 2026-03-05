@@ -236,7 +236,8 @@ if st.session_state.user_auth is not None:
 # ======================================================================================
 if st.session_state.user_auth is None:
     # === ✏️ ZONE DE MESSAGE PERSONNALISABLE (MODIFIEZ LE TEXTE ICI) ===
-    MESSAGE_ACCUEIL = "🌙 Aïd Moubarak à tous les citoyens de RCRPFR ! ✨"
+    # Tu peux utiliser du HTML simple ici si tu veux.
+    MESSAGE_ACCUEIL = "🌙 Bon Ramadan à tous ! ✨ Que ce mois vous apporte paix, santé et prospérité."
     # ==================================================================
 
     # --- CONFIGURATION INTERFACE ---
@@ -258,24 +259,42 @@ if st.session_state.user_auth is None:
         salut_complet = "Bonjour☀️"
         pattern_style = "background-color: #87CEEB; background-image: conic-gradient(from 200deg at 85% 10%, transparent 0deg, rgba(255,255,255,0.4) 15deg, transparent 30deg, rgba(255,223,137,0.5) 45deg, transparent 60deg, rgba(255,255,255,0.4) 75deg, transparent 90deg), radial-gradient(circle at 85% 10%, #FFF9E3 0%, #FFD700 15%, rgba(255,215,0,0.4) 30%, transparent 60%);"
         t_color = "#1E1E1E"
-        glow = "0 0 30px rgba(255, 255, 255, 1), 0 0 60px rgba(255, 200, 0, 0.6)"
+        glow_text = "0 0 30px rgba(255, 255, 255, 1), 0 0 60px rgba(255, 200, 0, 0.6)"
     else:
         salut_complet = "Bonsoir🌕"
         pattern_style = "background-color: #05070a; background-image: radial-gradient(1px 1px at 25% 35%, white, transparent), radial-gradient(1px 1px at 50% 10%, white, transparent); background-size: 150px 150px, 200px 200px;"
         t_color = "#FFFFFF"
-        glow = "0 0 40px rgba(255,255,255,0.9), 0 0 80px rgba(255,255,255,0.4)"
+        glow_text = "0 0 40px rgba(255,255,255,0.9), 0 0 80px rgba(255,255,255,0.4)"
 
     # --- LE BLOC MONOLITHIQUE (Haut + Annonce + Bas) ---
     import streamlit.components.v1 as components
     
-    # On gère l'affichage ou non du bloc annonce dans le HTML
+    # On gère l'affichage ou non du bloc annonce
     display_annonce = "block" if MESSAGE_ACCUEIL else "none"
 
     components.html(f"""
+        <style>
+            @keyframes spotlight {{
+                0% {{ background-position: -200% 0; }}
+                100% {{ background-position: 200% 0; }}
+            }}
+            
+            .glow-spotlight {{
+                background: linear-gradient(90deg, #ffffff, #00d4ff, #ffffff);
+                background-size: 200% auto;
+                color: white;
+                background-clip: text;
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                animation: spotlight 3s linear infinite;
+                font-weight: bold;
+            }}
+        </style>
+        
         <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; width: 100%; border-radius: 25px; overflow: hidden; border: none; box-shadow: 0 20px 50px rgba(0,0,0,0.3);">
             
             <div style="text-align: center; padding: 60px 20px; color: {t_color}; {pattern_style} box-sizing: border-box;">
-                <h1 style="font-size: 5.5em; margin: 0; font-weight: 900; letter-spacing: -3px; text-shadow: {glow}; line-height: 1.1;">
+                <h1 style="font-size: 5.5em; margin: 0; font-weight: 900; letter-spacing: -3px; text-shadow: {glow_text}; line-height: 1.1;">
                     {salut_complet}
                 </h1>
                 <p style="font-size: 1.1em; opacity: 0.8; letter-spacing: 5px; font-weight: bold; text-transform: uppercase; margin: 25px 0;">
@@ -286,9 +305,9 @@ if st.session_state.user_auth is None:
                 </div>
             </div>
 
-            <div style="display: {display_annonce}; background-color: #262730; padding: 30px; text-align: center; border-top: 1px solid rgba(255,255,255,0.1); border-bottom: 1px solid rgba(255,255,255,0.1);">
-                <div style="color: #00d4ff; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; font-size: 0.9em; margin-bottom: 10px;">📢 Bulletin d'Information</div>
-                <div style="color: white; font-size: 28px; font-weight: 500; line-height: 1.4;">
+            <div style="display: {display_annonce}; background-color: #20222a; padding: 35px; text-align: center; border-top: 2px solid rgba(0,212,255,0.3); border-bottom: 2px solid rgba(0,212,255,0.3); box-shadow: inset 0 0 50px rgba(0,212,255,0.2), 0 0 20px rgba(0,212,255,0.3);">
+                <div style="color: #00d4ff; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; font-size: 0.9em; margin-bottom: 12px; text-shadow: 0 0 10px #00d4ff;">📢 Bulletin d'Information</div>
+                <div class="glow-spotlight" style="font-size: 32px; line-height: 1.4;">
                     {MESSAGE_ACCUEIL}
                 </div>
             </div>
@@ -312,7 +331,7 @@ if st.session_state.user_auth is None:
             setInterval(update, 1000);
             update();
         </script>
-    """, height=850) # Hauteur augmentée pour accueillir le nouveau bloc
+    """, height=850)
 
     st.write("")
     st.warning("⚠️ **AVERTISSEMENT :** Toute action effectuée sur ce terminal est enregistrée.")
