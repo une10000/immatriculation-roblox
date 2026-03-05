@@ -1357,7 +1357,10 @@ if len(tabs) > 1:
 # ======================================================================================
 # --- COLONNE 1 : FORMULAIRE D'ACTION ---
 with col_form:
-    with st.container(border=True):
+    # On encapsule tout dans un form pour éviter le rafraîchissement à chaque touche tapée
+    with st.form("form_facture", clear_on_submit=False):
+        st.markdown("### 📝 Création de Facture")
+        
         # Choix de l'émetteur selon le grade
         if st.session_state.user_auth == "Staff":
             f_emetteur = st.selectbox("Émetteur", ["POLSTA", "Averis", "RCT"], key="em_ui")
@@ -1378,37 +1381,41 @@ with col_form:
         target_veh = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
         f_plate = st.selectbox("Véhicule lié", ["AUCUN"] + target_veh["Numéro de la plaque"].tolist())
         
-        # Bouton d'envoi
-        if st.button("🚨 ENVOYER FACTURE", use_container_width=True, type="primary"):
-            if f_motif:
-                with st.spinner("Transmission au central..."):
-                    import random
-                    df_all_f = cloud_conn.read(worksheet="Factures", ttl=5).fillna("")
-                    new_f = {
-                        "ID": random.randint(10000, 99999),
-                        "Cible": target,
-                        "Emetteur": f_emetteur,
-                        "Agent_Signataire": agent_identifie,
-                        "Montant": f_val,
-                        "Points": f_pts if can_pull_points else 0,
-                        "Motif": f"{f_motif} [{f_plate}]",
-                        "Statut": "EN ATTENTE",
-                        "Date_Emission": datetime.now().strftime("%d/%m/%Y %H:%M"),
-                        "Date_Limite": (datetime.now() + timedelta(hours=24)).strftime("%d/%m/%Y %H:%M")
-                    }
-                    # Logique de retrait de points si applicable
-                    if f_pts > 0 and can_pull_points:
-                        try:
-                            idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
-                            df_p.at[idx_p, "PTS"] = max(0, int(df_p.at[idx_p, "PTS"]) - f_pts)
-                            cloud_conn.update(worksheet="Points Permis", data=df_p)
-                        except: pass
-                        
-                    cloud_conn.update(worksheet="Factures", data=pd.concat([df_all_f, pd.DataFrame([new_f])], ignore_index=True))
-                    st.success(f"✅ PV enregistré par {agent_identifie}")
-                    time.sleep(1); st.rerun()
-            else:
-                st.error("❌ Le motif est obligatoire.")
+        # Le bouton de validation du formulaire
+        submit_button = st.form_submit_button("🚨 ENVOYER FACTURE", use_container_width=True, type="primary")
+
+    # Logique d'envoi (ne s'active que si on clique sur le bouton)
+    if submit_button:
+        if f_motif:
+            with st.spinner("Transmission au central..."):
+                import random
+                df_all_f = cloud_conn.read(worksheet="Factures", ttl=5).fillna("")
+                new_f = {
+                    "ID": random.randint(10000, 99999),
+                    "Cible": target,
+                    "Emetteur": f_emetteur,
+                    "Agent_Signataire": agent_identifie,
+                    "Montant": f_val,
+                    "Points": f_pts if can_pull_points else 0,
+                    "Motif": f"{f_motif} [{f_plate}]",
+                    "Statut": "EN ATTENTE",
+                    "Date_Emission": datetime.now().strftime("%d/%m/%Y %H:%M"),
+                    "Date_Limite": (datetime.now() + timedelta(hours=24)).strftime("%d/%m/%Y %H:%M")
+                }
+                
+                # Logique de retrait de points
+                if f_pts > 0 and can_pull_points:
+                    try:
+                        idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
+                        df_p.at[idx_p, "PTS"] = max(0, int(df_p.at[idx_p, "PTS"]) - f_pts)
+                        cloud_conn.update(worksheet="Points Permis", data=df_p)
+                    except: pass
+                    
+                cloud_conn.update(worksheet="Factures", data=pd.concat([df_all_f, pd.DataFrame([new_f])], ignore_index=True))
+                st.success(f"✅ PV enregistré par {agent_identifie}")
+                time.sleep(1); st.rerun()
+        else:
+            st.error("❌ Le motif est obligatoire.")
 
     # --- BLOC ALERTES ---
     df_b = cloud_conn.read(worksheet="Banque", ttl=20).fillna("")
@@ -1464,18 +1471,16 @@ with col_vehicules:
             assu_v = str(veh['Assurance']).upper()
             user_is_rct = "RCT" in st.session_state.user_auth
             
-            # Logique de couleur Assurance Dynamique
             if user_is_rct:
                 if "RCT" in assu_v:
                     col_v, txt_v = "#27ae60", "✅ ASSURÉ RCT"
                 elif "AVERIS" in assu_v:
-                    col_v, txt_v = "#E67E22", "⚠️ ASSURÉ AVERIS" # Danger Jaune/Orange pour RCT
+                    col_v, txt_v = "#E67E22", "⚠️ ASSURÉ AVERIS"
                 elif any(word in assu_v for word in ["OUI", "✅"]):
                     col_v, txt_v = "#27ae60", "✅ VÉHICULE EN RÈGLE"
                 else:
                     col_v, txt_v = "#d32f2f", "🚨 NON-ASSURÉ"
             else:
-                # Logique Standard (POLSTA / Staff / Autres)
                 if any(word in assu_v for word in ["RCT", "AVERIS", "OUI", "✅"]):
                     col_v, txt_v = "#27ae60", "✅ VÉHICULE ASSURÉ"
                 else:
