@@ -1440,7 +1440,7 @@ with col_facture:
     <div style="border: 2px solid black; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; line-height: 1.2; box-shadow: 4px 4px 0px #888;">
         <center><b>{header_ticket}</b><br><small>RÉPUBLIQUE DE RENSSERLAER</small></center>
         <hr style="border-top: 1px dashed black; margin: 10px 0;">
-        <b>SIGNATAIRE :</b> {nom_agent.upper()}<br>
+        <b>SIGNATAIRE :</b> {agent_identifie.upper()}<br>
         <b>ÉMETTEUR   :</b> {f_emetteur.upper()}<br>
         <b>DATE       :</b> {datetime.now().strftime('%d/%m/%Y %H:%M')}<br>
         <b>NOM        :</b> {target}<br>
