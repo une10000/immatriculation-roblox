@@ -1410,23 +1410,15 @@ with col_form:
             else:
                 st.error("❌ Le motif est obligatoire.")
 
-    # --- BLOC RÉALIGNÉ ICI ---
-    # 1. On charge les bases
+    # --- BLOC ALERTES ---
     df_b = cloud_conn.read(worksheet="Banque", ttl=20).fillna("")
     df_check_f = cloud_conn.read(worksheet="Factures", ttl=20).fillna("")
-
-    # 2. On récupère les infos du citoyen
     citoyen_info = df_b[df_b["Nom Roblox"] == target]
-
-    # 3. On définit le statut de recherche
     is_wanted = "RECHERCHÉ" in str(citoyen_info.iloc[0].get("Statut", "")).upper() if not citoyen_info.empty else False
     motif_recherche = citoyen_info.iloc[0].get("Motif Recherche", "Non spécifié") if is_wanted else ""
-
-    # 4. On calcule les dettes
     impayes = df_check_f[(df_check_f["Cible"] == target) & (df_check_f["Statut"] == "EN ATTENTE")]
     total_dette = impayes["Montant"].astype(int).sum() if not impayes.empty else 0
     
-    # CSS des alertes
     st.markdown("""
         <style>
         @keyframes pulse-red { 0% { box-shadow: 0 0 0 0px rgba(211, 47, 47, 0.7); border-color:white; } 50% { box-shadow: 0 0 0 15px rgba(211, 47, 47, 0); border-color:red; } 100% { box-shadow: 0 0 0 0px rgba(211, 47, 47, 0); border-color:white; } }
@@ -1464,22 +1456,30 @@ with col_facture:
     </div>
     """, unsafe_allow_html=True)
 
-# --- COLONNE 3 : VÉHICULES DU CITOYEN (BOUCLE COMPLÈTE) ---
+# --- COLONNE 3 : VÉHICULES DU CITOYEN ---
 with col_vehicules:
     st.markdown("#### 🚗 Véhicules")
     if not target_veh.empty:
         for _, veh in target_veh.iterrows():
             assu_v = str(veh['Assurance']).upper()
+            user_is_rct = "RCT" in st.session_state.user_auth
             
-            # Logique de couleur Assurance
-            if "RCT" in assu_v:
-                col_v, txt_v = "#27ae60", "✅ ASSURÉ RCT"
-            elif "AVERIS" in assu_v:
-                col_v, txt_v = "#E67E22", "⚠️ ASSURÉ AVERIS"
-            elif any(word in assu_v for word in ["OUI", "✅"]):
-                col_v, txt_v = "#27ae60", "✅ VÉHICULE EN RÈGLE"
+            # Logique de couleur Assurance Dynamique
+            if user_is_rct:
+                if "RCT" in assu_v:
+                    col_v, txt_v = "#27ae60", "✅ ASSURÉ RCT"
+                elif "AVERIS" in assu_v:
+                    col_v, txt_v = "#E67E22", "⚠️ ASSURÉ AVERIS" # Danger Jaune/Orange pour RCT
+                elif any(word in assu_v for word in ["OUI", "✅"]):
+                    col_v, txt_v = "#27ae60", "✅ VÉHICULE EN RÈGLE"
+                else:
+                    col_v, txt_v = "#d32f2f", "🚨 NON-ASSURÉ"
             else:
-                col_v, txt_v = "#d32f2f", "🚨 NON-ASSURÉ"
+                # Logique Standard (POLSTA / Staff / Autres)
+                if any(word in assu_v for word in ["RCT", "AVERIS", "OUI", "✅"]):
+                    col_v, txt_v = "#27ae60", "✅ VÉHICULE ASSURÉ"
+                else:
+                    col_v, txt_v = "#d32f2f", "🚨 NON-ASSURÉ"
 
             st.markdown(f"""
             <div style="border: 2px solid black; padding: 10px; background: white; color: black; font-family: 'Courier New', monospace; margin-bottom: 10px; font-size: 0.85em;">
