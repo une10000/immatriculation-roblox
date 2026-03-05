@@ -236,7 +236,7 @@ if st.session_state.user_auth is not None:
 # ======================================================================================
 if st.session_state.user_auth is None:
     # === ✏️ ZONE DE MESSAGE PERSONNALISABLE (MODIFIEZ LE TEXTE ICI) ===
-    MESSAGE_ACCUEIL = "📢 **Annonce :** Bienvenue sur le Terminal. Mettez vos informations ou mises à jour ici !"
+    MESSAGE_ACCUEIL = "📢 **Annonce :** Ramadan Murabak! 🌙"
     # ==================================================================
 
     # --- CONFIGURATION INTERFACE ---
