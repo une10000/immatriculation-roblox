@@ -236,7 +236,7 @@ if st.session_state.user_auth is not None:
 # ======================================================================================
 if st.session_state.user_auth is None:
     # === ✏️ ZONE DE MESSAGE PERSONNALISABLE (MODIFIEZ LE TEXTE ICI) ===
-    MESSAGE_ACCUEIL = "🌙 Bon Ramadan à tous les citoyens de Rensselaer ! ✨"
+    MESSAGE_ACCUEIL = "🌙 Aïd Moubarak à tous les citoyens de RCRPFR ! ✨"
     # ==================================================================
 
     # --- CONFIGURATION INTERFACE ---
