@@ -1356,6 +1356,8 @@ if len(tabs) > 1:
 # --- SECTION : SERVICES AGENT (Recherche par Facture / Référence) ---
 # ======================================================================================
 
+col_form, col_facture, col_vehicules = st.columns([1.2, 1, 1]) 
+
 # --- COLONNE 1 : FORMULAIRE D'ACTION ---
 with col_form:
     with st.container(border=True):
