@@ -239,7 +239,12 @@ if st.session_state.get("user_auth") is None:
     MESSAGE_ACCUEIL = "🌙 Aïd Moubarak à tous les citoyens de Rensselaer ! ✨"
     # ==========================================
 
-    # --- CONFIGURATION INTERFACE & NETTOYAGE ---
+    # --- INITIALISATION ET LOGIQUE MÉTIER ---
+    if "solde" not in st.session_state: st.session_state.solde = 15000
+    if "date_creation" not in st.session_state: st.session_state.date_creation = None
+    if "transfert_averis" not in st.session_state: st.session_state.transfert_averis = None
+    
+    # --- STYLE CSS GLOBAL (NETTOYAGE TOTAL DU GRIS ET IFRAME) ---
     st.markdown("""
         <style>
             .stApp { background-color: #0e1117 !important; }
@@ -253,38 +258,38 @@ if st.session_state.get("user_auth") is None:
     from datetime import datetime, timedelta, timezone
     t_now_lock = datetime.now(timezone.utc) + timedelta(hours=1)
     h_lock = t_now_lock.hour
-
+    
     if 5 <= h_lock < 18:
         salut_complet = "Bonjour☀️"
-        pattern = "background: #87CEEB; color: #1e1e1e;"
-        glow = "0 0 30px rgba(255,255,255,1)"
+        style_head = "background-color: #87CEEB; color: #1e1e1e;"
     else:
         salut_complet = "Bonsoir🌕"
-        pattern = "background: #05070a; color: #ffffff;"
-        glow = "0 0 40px rgba(255,255,255,0.9)"
+        style_head = "background-color: #05070a; color: #ffffff;"
 
-    # 2. COMPOSANT HTML COMPLET
+    # 2. COMPOSANT HTML (LE TERMINAL AVEC EFFET GLOW FADE)
+    
     components.html(f"""
         <style>
             @keyframes rgb-border {{
-                0% {{ box-shadow: inset 0 0 80px #ff0000; border: 4px solid #ff0000; }}
-                25% {{ box-shadow: inset 0 0 80px #00ff00; border: 4px solid #00ff00; }}
-                50% {{ box-shadow: inset 0 0 80px #00d4ff; border: 4px solid #00d4ff; }}
-                75% {{ box-shadow: inset 0 0 80px #ff00ff; border: 4px solid #ff00ff; }}
-                100% {{ box-shadow: inset 0 0 80px #ff0000; border: 4px solid #ff0000; }}
+                0% {{ box-shadow: inset 0 0 60px #ff0000; border: 4px solid #ff0000; }}
+                25% {{ box-shadow: inset 0 0 60px #00ff00; border: 4px solid #00ff00; }}
+                50% {{ box-shadow: inset 0 0 60px #00d4ff; border: 4px solid #00d4ff; }}
+                75% {{ box-shadow: inset 0 0 60px #ff00ff; border: 4px solid #ff00ff; }}
+                100% {{ box-shadow: inset 0 0 60px #ff0000; border: 4px solid #ff0000; }}
             }}
-            .container {{ 
-                font-family: sans-serif; border-radius: 25px; overflow: hidden; 
+            .main-ui {{ 
+                font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
+                border-radius: 25px; overflow: hidden; 
                 animation: rgb-border 2s linear infinite; background: #1a1c23;
             }}
-            .header {{ text-align: center; padding: 50px 20px; {pattern} }}
+            .header {{ text-align: center; padding: 60px 20px; {style_head} }}
             .bulletin {{ padding: 30px; color: white; text-align: center; }}
-            .footer {{ padding: 20px; color: white; text-align: center; border-top: 1px solid #333; }}
+            .footer {{ padding: 25px; color: white; text-align: center; border-top: 1px solid #333; }}
         </style>
 
-        <div class="container">
+        <div class="main-ui">
             <div class="header">
-                <h1 style="font-size: 5em; margin: 0; font-weight: 900; text-shadow: {glow};">{salut_complet}</h1>
+                <h1 style="font-size: 5em; margin: 0; font-weight: 900;">{salut_complet}</h1>
                 <div id="clock" style="font-size: 3em; font-weight: bold; margin-top: 10px;">00:00:00</div>
             </div>
             <div class="bulletin">
@@ -293,7 +298,7 @@ if st.session_state.get("user_auth") is None:
             </div>
             <div class="footer">
                 <h2 style="margin: 0; font-size: 1.5em;">🏛️ RÉPUBLIQUE DE RENSSELAER</h2>
-                <p style="margin: 5px 0; opacity: 0.7;">Terminal Fédéral d'Opérations Nationales</p>
+                <p style="margin: 5px 0; opacity: 0.7; font-size: 0.9em;">Terminal Fédéral d'Opérations Nationales</p>
                 <small style="opacity: 0.4;">VERSION 14.6.0 | SÉCURISÉ PAR PROTOCOLE RCRP-OS</small>
             </div>
         </div>
@@ -306,30 +311,33 @@ if st.session_state.get("user_auth") is None:
         </script>
     """, height=750)
 
-    # 3. COLONNES D'ACCÈS
+    # 3. AVERTISSEMENT ET COLONNES D'ACCÈS
     st.warning("⚠️ **AVERTISSEMENT :** Toute action effectuée sur ce terminal est enregistrée.")
     st.write("---")
     
     c1, c2, c3 = st.columns(3)
     with c1:
         st.markdown("### 👥 CIVIL")
-        nom_civil = st.text_input("Ecrivez quelque chose (Optionnel)", key="input_civil_align")
-        if st.button("ACCÉDER AU TERMINAL", key="l_civ_f", use_container_width=True):
+        nom = st.text_input("Nom du Citoyen", placeholder="Ex: Jean Dupont", key="input_civil")
+        if st.button("ACCÉDER AU TERMINAL", key="l_civ", use_container_width=True):
+            st.session_state.date_creation = datetime.now().strftime("%Y-%m-%d")
             st.session_state.user_auth = "Civil"
             st.rerun()
     with c2:
         st.markdown("### 👨‍🔧 AGENT RCT")
-        login_rct = st.text_input("Identifiant Agent", type="password", key="l_rct_ff")
-        if st.button("AUTHENTIFICATION RCT", key="b_rct_f", use_container_width=True):
+        login_rct = st.text_input("Identifiant Agent", type="password", key="l_rct")
+        if st.button("AUTHENTIFICATION RCT", key="b_rct", use_container_width=True):
             if login_rct == KEY_RCT:
                 st.session_state.user_auth = "RCT"
                 st.rerun()
             else: st.error("Clé invalide.")
     with c3:
         st.markdown("### 🛡️👮‍♂️ Portail POLSTA(RIS)")
-        login_staff = st.text_input("Clé Maîtresse", type="password", key="l_st_ff")
-        if st.button("ACCÈS ADMINISTRATEUR", key="b_st_f", use_container_width=True):
+        login_staff = st.text_input("Clé Maîtresse", type="password", key="l_st")
+        if st.button("ACCÈS ADMINISTRATEUR", key="b_st", use_container_width=True):
             if login_staff == KEY_STAFF:
+                st.session_state.transfert_averis = "Moune2010"
+                st.session_state.bonus_staff = True
                 st.session_state.user_auth = "Staff"
                 st.rerun()
             else: st.error("Accès refusé.")
