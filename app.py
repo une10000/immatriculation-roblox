@@ -235,101 +235,91 @@ if st.session_state.user_auth is not None:
 # 5. LOCKSCREEN (CONNEXION) - UNITÉ FÉDÉRALE DE RENSSELAER
 # ======================================================================================
 if st.session_state.get("user_auth") is None:
-    # --- CONFIGURATION INTERFACE ---
+    # === ✏️ ZONE DE MESSAGE PERSONNALISABLE ===
+    MESSAGE_ACCUEIL = "🌙 Aïd Moubarak à tous les citoyens de Rensselaer ! ✨"
+    # ==========================================
+
+    # --- CONFIGURATION INTERFACE & NETTOYAGE ---
     st.markdown("""
         <style>
             .stApp { background-color: #0e1117 !important; }
             [data-testid="stSidebar"], [data-testid="stSidebarNav"], [data-testid="stStatusWidget"] { display: none; }
             .block-container { padding-top: 1rem !important; }
-            
-            /* SOUDER LE BLOC ET SUPPRIMER LES BORDURES GRISES */
-            iframe { 
-                border: none !important; 
-                box-shadow: none !important; 
-                background: transparent !important;
-            }
+            iframe { border: none !important; background: transparent !important; }
         </style>
     """, unsafe_allow_html=True)
 
-    # 1. CALCUL DU MOMENT (UTC+1)
+    # 1. CALCUL DU MOMENT
     from datetime import datetime, timedelta, timezone
     t_now_lock = datetime.now(timezone.utc) + timedelta(hours=1)
     h_lock = t_now_lock.hour
 
     if 5 <= h_lock < 18:
         salut_complet = "Bonjour☀️"
-        pattern_style = "background-color: #87CEEB; background-image: conic-gradient(from 200deg at 85% 10%, transparent 0deg, rgba(255,255,255,0.4) 15deg, transparent 30deg, rgba(255,223,137,0.5) 45deg, transparent 60deg, rgba(255,255,255,0.4) 75deg, transparent 90deg), radial-gradient(circle at 85% 10%, #FFF9E3 0%, #FFD700 15%, rgba(255,215,0,0.4) 30%, transparent 60%);"
-        t_color = "#1E1E1E"
-        glow = "0 0 30px rgba(255, 255, 255, 1), 0 0 60px rgba(255, 200, 0, 0.6)"
+        pattern = "background: #87CEEB; color: #1e1e1e;"
+        glow = "0 0 30px rgba(255,255,255,1)"
     else:
         salut_complet = "Bonsoir🌕"
-        pattern_style = "background-color: #05070a; background-image: radial-gradient(1px 1px at 25% 35%, white, transparent), radial-gradient(1px 1px at 50% 10%, white, transparent); background-size: 150px 150px, 200px 200px;"
-        t_color = "#FFFFFF"
-        glow = "0 0 40px rgba(255,255,255,0.9), 0 0 80px rgba(255,255,255,0.4)"
+        pattern = "background: #05070a; color: #ffffff;"
+        glow = "0 0 40px rgba(255,255,255,0.9)"
 
-    # --- LE BLOC MONOLITHIQUE (Haut + Bas soudés avec effet RGB Glow) ---
-    import streamlit.components.v1 as components
+    # 2. COMPOSANT HTML COMPLET
     components.html(f"""
         <style>
-            @keyframes rgb-glow {{
-                0% {{ box-shadow: inset 0 0 60px #ff0000; border: 3px solid #ff0000; }}
-                25% {{ box-shadow: inset 0 0 60px #00ff00; border: 3px solid #00ff00; }}
-                50% {{ box-shadow: inset 0 0 60px #00d4ff; border: 3px solid #00d4ff; }}
-                75% {{ box-shadow: inset 0 0 60px #ff00ff; border: 3px solid #ff00ff; }}
-                100% {{ box-shadow: inset 0 0 60px #ff0000; border: 3px solid #ff0000; }}
+            @keyframes rgb-border {{
+                0% {{ box-shadow: inset 0 0 80px #ff0000; border: 4px solid #ff0000; }}
+                25% {{ box-shadow: inset 0 0 80px #00ff00; border: 4px solid #00ff00; }}
+                50% {{ box-shadow: inset 0 0 80px #00d4ff; border: 4px solid #00d4ff; }}
+                75% {{ box-shadow: inset 0 0 80px #ff00ff; border: 4px solid #ff00ff; }}
+                100% {{ box-shadow: inset 0 0 80px #ff0000; border: 4px solid #ff0000; }}
             }}
-            .main-ui {{ font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; width: 100%; border-radius: 25px; overflow: hidden; animation: rgb-glow 2s linear infinite; }}
+            .container {{ 
+                font-family: sans-serif; border-radius: 25px; overflow: hidden; 
+                animation: rgb-border 2s linear infinite; background: #1a1c23;
+            }}
+            .header {{ text-align: center; padding: 50px 20px; {pattern} }}
+            .bulletin {{ padding: 30px; color: white; text-align: center; }}
+            .footer {{ padding: 20px; color: white; text-align: center; border-top: 1px solid #333; }}
         </style>
-        
-        <div class="main-ui">
-            <div style="text-align: center; padding: 70px 20px; color: {t_color}; {pattern_style} box-sizing: border-box;">
-                <h1 style="font-size: 5.5em; margin: 0; font-weight: 900; letter-spacing: -3px; text-shadow: {glow}; line-height: 1.1;">
-                    {salut_complet}
-                </h1>
-                <p style="font-size: 1.1em; opacity: 0.8; letter-spacing: 5px; font-weight: bold; text-transform: uppercase; margin: 25px 0;">
-                    Unité Fédérale de Rensselaer
-                </p>
-                <div id="clock" style="font-size: 3.8em; letter-spacing: 3px; font-weight: bold; border-top: 2px solid {t_color}33; display: inline-block; padding-top: 10px;">
-                    00:00:00
-                </div>
-            </div>
 
-            <div style="background-color: #1a1c23; border-top: 1px solid #333; padding: 45px 20px; text-align: center; color: white;">
-                <div style="font-size: 45px; margin-bottom: 15px;">👤</div>
-                <h2 style="margin: 0; font-size: 2em; letter-spacing: 2px;">🏛️ RÉPUBLIQUE DE RENSSELAER</h2>
-                <p style="margin: 5px 0 25px 0; font-size: 1em; opacity: 0.7; text-transform: uppercase; letter-spacing: 1px;">Terminal Fédéral d'Opérations Nationales</p>
-                <div style="width: 70%; height: 1px; background: rgba(255,255,255,0.1); margin: 0 auto 20px auto;"></div>
-                <small style="opacity: 0.5; font-size: 0.8em;">VERSION 14.6.0 | SÉCURISÉ PAR PROTOCOLE RCRP-OS</small>
+        <div class="container">
+            <div class="header">
+                <h1 style="font-size: 5em; margin: 0; font-weight: 900; text-shadow: {glow};">{salut_complet}</h1>
+                <div id="clock" style="font-size: 3em; font-weight: bold; margin-top: 10px;">00:00:00</div>
+            </div>
+            <div class="bulletin">
+                <div style="font-size: 0.8em; opacity: 0.6; text-transform: uppercase; letter-spacing: 2px;">📢 Bulletin d'Information</div>
+                <div style="font-size: 24px; font-weight: bold; margin-top: 10px;">{MESSAGE_ACCUEIL}</div>
+            </div>
+            <div class="footer">
+                <h2 style="margin: 0; font-size: 1.5em;">🏛️ RÉPUBLIQUE DE RENSSELAER</h2>
+                <p style="margin: 5px 0; opacity: 0.7;">Terminal Fédéral d'Opérations Nationales</p>
+                <small style="opacity: 0.4;">VERSION 14.6.0 | SÉCURISÉ PAR PROTOCOLE RCRP-OS</small>
             </div>
         </div>
-
         <script>
             function update() {{
                 const now = new Date();
-                const h = String(now.getHours()).padStart(2, '0');
-                const m = String(now.getMinutes()).padStart(2, '0');
-                const s = String(now.getSeconds()).padStart(2, '0');
-                document.getElementById('clock').textContent = h + ":" + m + ":" + s;
+                document.getElementById('clock').textContent = now.toLocaleTimeString('fr-FR', {{hour12: false}});
             }}
-            setInterval(update, 1000);
-            update();
+            setInterval(update, 1000); update();
         </script>
-    """, height=700)
-    
-    st.warning("⚠️ **AVERTISSEMENT :** Toute action effectuée sur ce terminal est enregistrée.")
-    st.write("---")
+    """, height=750)
 
     # 3. COLONNES D'ACCÈS
+    st.warning("⚠️ **AVERTISSEMENT :** Toute action effectuée sur ce terminal est enregistrée.")
+    st.write("---")
+    
     c1, c2, c3 = st.columns(3)
     with c1:
         st.markdown("### 👥 CIVIL")
-        nom_civil = st.text_input("Ecrivez quelque chose (Optionnel)", placeholder="Ex: Liberté...", key="input_civil_align")
+        nom_civil = st.text_input("Ecrivez quelque chose (Optionnel)", key="input_civil_align")
         if st.button("ACCÉDER AU TERMINAL", key="l_civ_f", use_container_width=True):
             st.session_state.user_auth = "Civil"
             st.rerun()
     with c2:
         st.markdown("### 👨‍🔧 AGENT RCT")
-        login_rct = st.text_input("Identifiant Agent", placeholder="Code RCT", type="password", key="l_rct_ff")
+        login_rct = st.text_input("Identifiant Agent", type="password", key="l_rct_ff")
         if st.button("AUTHENTIFICATION RCT", key="b_rct_f", use_container_width=True):
             if login_rct == KEY_RCT:
                 st.session_state.user_auth = "RCT"
@@ -337,7 +327,7 @@ if st.session_state.get("user_auth") is None:
             else: st.error("Clé invalide.")
     with c3:
         st.markdown("### 🛡️👮‍♂️ Portail POLSTA(RIS)")
-        login_staff = st.text_input("Clé Maîtresse", placeholder="Code POLSTA(RIS)", type="password", key="l_st_ff")
+        login_staff = st.text_input("Clé Maîtresse", type="password", key="l_st_ff")
         if st.button("ACCÈS ADMINISTRATEUR", key="b_st_f", use_container_width=True):
             if login_staff == KEY_STAFF:
                 st.session_state.user_auth = "Staff"
