@@ -1355,13 +1355,11 @@ if len(tabs) > 1:
 # ======================================================================================
 # --- SECTION : SERVICES AGENT (Recherche par Facture / Référence) ---
 # ======================================================================================
+
 # --- COLONNE 1 : FORMULAIRE D'ACTION ---
 with col_form:
-    # On encapsule tout dans un form pour éviter le rafraîchissement à chaque touche tapée
-    with st.form("form_facture", clear_on_submit=False):
-        st.markdown("### 📝 Création de Facture")
-        
-        # Choix de l'émetteur selon le grade
+    with st.container(border=True):
+        # Choix de l'émetteur
         if st.session_state.user_auth == "Staff":
             f_emetteur = st.selectbox("Émetteur", ["POLSTA", "Averis", "RCT"], key="em_ui")
         elif "Averis" in st.session_state.user_auth:
@@ -1371,79 +1369,71 @@ with col_form:
             f_emetteur = "RCT"
             st.info(f"🏢 **Émetteur :** {f_emetteur}")
         
-        f_val = st.number_input("Amende ($)", 0, 100000, 500, step=100)
+        # On utilise des keys pour que le ticket lise ces valeurs en direct
+        f_val = st.number_input("Amende ($)", 0, 100000, 500, step=100, key="val_live")
         
         can_pull_points = (st.session_state.user_auth == "Staff" and f_emetteur == "POLSTA")
-        f_pts = st.slider("Retrait de points", 0, 25, 0, disabled=not can_pull_points)
+        f_pts = st.slider("Retrait de points", 0, 25, 0, disabled=not can_pull_points, key="pts_live")
         
-        f_motif = st.text_area("Motif détaillé", key="mot_ui", placeholder="Décrivez l'infraction...")
+        f_motif = st.text_area("Motif détaillé", key="mot_live", placeholder="Décrivez l'infraction...")
         
         target_veh = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
-        f_plate = st.selectbox("Véhicule lié", ["AUCUN"] + target_veh["Numéro de la plaque"].tolist())
+        f_plate = st.selectbox("Véhicule lié", ["AUCUN"] + target_veh["Numéro de la plaque"].tolist(), key="plate_live")
         
-        # Le bouton de validation du formulaire
-        submit_button = st.form_submit_button("🚨 ENVOYER FACTURE", use_container_width=True, type="primary")
-
-    # Logique d'envoi (ne s'active que si on clique sur le bouton)
-    if submit_button:
-        if f_motif:
-            with st.spinner("Transmission au central..."):
-                import random
-                df_all_f = cloud_conn.read(worksheet="Factures", ttl=5).fillna("")
-                new_f = {
-                    "ID": random.randint(10000, 99999),
-                    "Cible": target,
-                    "Emetteur": f_emetteur,
-                    "Agent_Signataire": agent_identifie,
-                    "Montant": f_val,
-                    "Points": f_pts if can_pull_points else 0,
-                    "Motif": f"{f_motif} [{f_plate}]",
-                    "Statut": "EN ATTENTE",
-                    "Date_Emission": datetime.now().strftime("%d/%m/%Y %H:%M"),
-                    "Date_Limite": (datetime.now() + timedelta(hours=24)).strftime("%d/%m/%Y %H:%M")
-                }
-                
-                # Logique de retrait de points
-                if f_pts > 0 and can_pull_points:
-                    try:
-                        idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
-                        df_p.at[idx_p, "PTS"] = max(0, int(df_p.at[idx_p, "PTS"]) - f_pts)
-                        cloud_conn.update(worksheet="Points Permis", data=df_p)
-                    except: pass
+        # Bouton d'envoi (L'ACTION GSPREAD NE SE FAIT QU'ICI)
+        if st.button("🚨 ENVOYER FACTURE", use_container_width=True, type="primary"):
+            if f_motif:
+                with st.spinner("Transmission au central..."):
+                    import random
+                    # SEUL MOMENT OÙ ON LIT/ECRIT SUR GSPREAD
+                    df_all_f = cloud_conn.read(worksheet="Factures", ttl=0).fillna("") 
+                    new_f = {
+                        "ID": random.randint(10000, 99999),
+                        "Cible": target,
+                        "Emetteur": f_emetteur,
+                        "Agent_Signataire": agent_identifie,
+                        "Montant": f_val,
+                        "Points": f_pts if can_pull_points else 0,
+                        "Motif": f"{f_motif} [{f_plate}]",
+                        "Statut": "EN ATTENTE",
+                        "Date_Emission": datetime.now().strftime("%d/%m/%Y %H:%M"),
+                        "Date_Limite": (datetime.now() + timedelta(hours=24)).strftime("%d/%m/%Y %H:%M")
+                    }
                     
-                cloud_conn.update(worksheet="Factures", data=pd.concat([df_all_f, pd.DataFrame([new_f])], ignore_index=True))
-                st.success(f"✅ PV enregistré par {agent_identifie}")
-                time.sleep(1); st.rerun()
-        else:
-            st.error("❌ Le motif est obligatoire.")
+                    if f_pts > 0 and can_pull_points:
+                        try:
+                            idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
+                            df_p.at[idx_p, "PTS"] = max(0, int(df_p.at[idx_p, "PTS"]) - f_pts)
+                            cloud_conn.update(worksheet="Points Permis", data=df_p)
+                        except: pass
+                        
+                    cloud_conn.update(worksheet="Factures", data=pd.concat([df_all_f, pd.DataFrame([new_f])], ignore_index=True))
+                    st.success(f"✅ PV enregistré")
+                    time.sleep(1); st.rerun()
+            else:
+                st.error("❌ Motif obligatoire.")
 
-    # --- BLOC ALERTES ---
-    df_b = cloud_conn.read(worksheet="Banque", ttl=20).fillna("")
-    df_check_f = cloud_conn.read(worksheet="Factures", ttl=20).fillna("")
+    # Bloc Alertes (Lecture unique pour ne pas bugger)
     citoyen_info = df_b[df_b["Nom Roblox"] == target]
     is_wanted = "RECHERCHÉ" in str(citoyen_info.iloc[0].get("Statut", "")).upper() if not citoyen_info.empty else False
     motif_recherche = citoyen_info.iloc[0].get("Motif Recherche", "Non spécifié") if is_wanted else ""
-    impayes = df_check_f[(df_check_f["Cible"] == target) & (df_check_f["Statut"] == "EN ATTENTE")]
-    total_dette = impayes["Montant"].astype(int).sum() if not impayes.empty else 0
     
     st.markdown("""
         <style>
         @keyframes pulse-red { 0% { box-shadow: 0 0 0 0px rgba(211, 47, 47, 0.7); border-color:white; } 50% { box-shadow: 0 0 0 15px rgba(211, 47, 47, 0); border-color:red; } 100% { box-shadow: 0 0 0 0px rgba(211, 47, 47, 0); border-color:white; } }
         .alert-mandat { background-color: #d32f2f; color: white; padding: 15px; border-radius: 10px; border: 2px solid white; animation: pulse-red 1s infinite; text-align: center; margin-top:10px; }
-        .alert-dette { background-color: #e67e22; color: white; padding: 10px; border-radius: 10px; text-align: center; font-weight: bold; margin-top:5px; }
         </style>
     """, unsafe_allow_html=True)
     
     if is_wanted:
         st.markdown(f'<div class="alert-mandat">🚨 <b>INDIVIDU RECHERCHÉ</b> 🚨<br>{motif_recherche.upper()}</div>', unsafe_allow_html=True)
-    if total_dette > 0:
-        st.markdown(f'<div class="alert-dette">⚠️ FACTURES IMPAYÉES : {total_dette}$</div>', unsafe_allow_html=True)
 
-# --- COLONNE 2 : APERÇU DE LA FACTURE (STYLE TICKET) ---
+# --- COLONNE 2 : APERÇU EN DIRECT (MIS À JOUR SANS GSPREAD) ---
 with col_facture:
     st.markdown("#### 📄 Aperçu")
     header_ticket = "FACTURE AVERIS" if f_emetteur == "Averis" else "FACTURE OFFICIELLE"
     
+    # On utilise st.session_state pour l'affichage en temps réel
     st.markdown(f"""
     <div style="border: 2px solid black; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; line-height: 1.2; box-shadow: 4px 4px 0px #888;">
         <center><b>{header_ticket}</b><br><small>RÉPUBLIQUE DE RENSSERLAER</small></center>
@@ -1452,18 +1442,18 @@ with col_facture:
         <b>ÉMETTEUR   :</b> {f_emetteur.upper()}<br>
         <b>DATE       :</b> {datetime.now().strftime('%d/%m/%Y %H:%M')}<br>
         <b>NOM        :</b> {target}<br>
-        <b>MOTIF      :</b> {f_motif.upper() if f_motif else '...'}<br>
-        <b>PLAQUE     :</b> <span style="border: 1px solid black; padding: 0 3px;">{f_plate}</span><br>
-        <b>MONTANT    :</b> {f_val}$
+        <b>MOTIF      :</b> {st.session_state.get('mot_live', '...').upper()}<br>
+        <b>PLAQUE     :</b> <span style="border: 1px solid black; padding: 0 3px;">{st.session_state.get('plate_live', 'AUCUN')}</span><br>
+        <b>MONTANT    :</b> {st.session_state.get('val_live', 0)}$
         <hr style="border-top: 1px dashed black; margin: 10px 0;">
         <div style="text-align: center; font-weight: bold;">
-            POINTS : -{f_pts if can_pull_points else 0}<br>
+            POINTS : -{st.session_state.get('pts_live', 0) if can_pull_points else 0}<br>
             <small>Document certifié conforme</small>
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-# --- COLONNE 3 : VÉHICULES DU CITOYEN ---
+# --- COLONNE 3 : VÉHICULES ---
 with col_vehicules:
     st.markdown("#### 🚗 Véhicules")
     if not target_veh.empty:
@@ -1472,19 +1462,13 @@ with col_vehicules:
             user_is_rct = "RCT" in st.session_state.user_auth
             
             if user_is_rct:
-                if "RCT" in assu_v:
-                    col_v, txt_v = "#27ae60", "✅ ASSURÉ RCT"
-                elif "AVERIS" in assu_v:
-                    col_v, txt_v = "#E67E22", "⚠️ ASSURÉ AVERIS"
-                elif any(word in assu_v for word in ["OUI", "✅"]):
-                    col_v, txt_v = "#27ae60", "✅ VÉHICULE EN RÈGLE"
-                else:
-                    col_v, txt_v = "#d32f2f", "🚨 NON-ASSURÉ"
+                if "RCT" in assu_v: col_v, txt_v = "#27ae60", "✅ ASSURÉ RCT"
+                elif "AVERIS" in assu_v: col_v, txt_v = "#E67E22", "⚠️ ASSURÉ AVERIS"
+                elif any(word in assu_v for word in ["OUI", "✅"]): col_v, txt_v = "#27ae60", "✅ VÉHICULE EN RÈGLE"
+                else: col_v, txt_v = "#d32f2f", "🚨 NON-ASSURÉ"
             else:
-                if any(word in assu_v for word in ["RCT", "AVERIS", "OUI", "✅"]):
-                    col_v, txt_v = "#27ae60", "✅ VÉHICULE ASSURÉ"
-                else:
-                    col_v, txt_v = "#d32f2f", "🚨 NON-ASSURÉ"
+                if any(word in assu_v for word in ["RCT", "AVERIS", "OUI", "✅"]): col_v, txt_v = "#27ae60", "✅ VÉHICULE ASSURÉ"
+                else: col_v, txt_v = "#d32f2f", "🚨 NON-ASSURÉ"
 
             st.markdown(f"""
             <div style="border: 2px solid black; padding: 10px; background: white; color: black; font-family: 'Courier New', monospace; margin-bottom: 10px; font-size: 0.85em;">
@@ -1493,9 +1477,7 @@ with col_vehicules:
                 <b>MODÈLE :</b> {veh['Marque du véhicule']}<br>
                 <b>PLAQUE :</b> <span style="border: 1px solid black; padding: 0 2px;">{veh['Numéro de la plaque']}</span><br>
                 <hr style="border-top: 1px solid #ccc; margin: 5px 0;">
-                <div style="text-align: center; color: {col_v}; font-weight: bold;">
-                    {txt_v}
-                </div>
+                <div style="text-align: center; color: {col_v}; font-weight: bold;">{txt_v}</div>
             </div>
             """, unsafe_allow_html=True)
     else:
