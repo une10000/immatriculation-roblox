@@ -235,17 +235,16 @@ if st.session_state.user_auth is not None:
 # 5. LOCKSCREEN (CONNEXION) - UNITÉ FÉDÉRALE DE RENSSELAER
 # ======================================================================================
 if st.session_state.user_auth is None:
-    # === ✏️ ZONE DE MESSAGE PERSONNALISABLE (MODIFIEZ LE TEXTE ICI) ===
-    # Tu peux utiliser du HTML simple ici si tu veux.
-    MESSAGE_ACCUEIL = "🌙 Aïd Moubarak à tous les citoyens!."
-    # ==================================================================
+    # === ✏️ ZONE DE MESSAGE PERSONNALISABLE ===
+    MESSAGE_ACCUEIL = "🌙 Aïd Moubarak à tous les citoyens ! ✨"
+    # ==========================================
 
     # --- CONFIGURATION INTERFACE ---
     st.markdown("""
         <style>
             [data-testid="stSidebar"], [data-testid="stSidebarNav"] { display: none; }
             [data-testid="stStatusWidget"] { display: none; }
-            .block-container { padding-top: 2rem !important; }
+            .block-container { padding-top: 1rem !important; }
             iframe { border: none !important; box-shadow: none !important; background: transparent !important; }
         </style>
     """, unsafe_allow_html=True)
@@ -266,58 +265,65 @@ if st.session_state.user_auth is None:
         t_color = "#FFFFFF"
         glow_text = "0 0 40px rgba(255,255,255,0.9), 0 0 80px rgba(255,255,255,0.4)"
 
-    # --- LE BLOC MONOLITHIQUE (Haut + Annonce + Bas) ---
+    # --- LE BLOC MONOLITHIQUE ---
     import streamlit.components.v1 as components
-    
-    # On gère l'affichage ou non du bloc annonce
     display_annonce = "block" if MESSAGE_ACCUEIL else "none"
 
     components.html(f"""
         <style>
-            @keyframes spotlight {{
-                0% {{ background-position: -200% 0; }}
-                100% {{ background-position: 200% 0; }}
+            @keyframes border-glow {{
+                0% {{ border-color: #ff0000; box-shadow: 0 0 15px #ff0000; }}
+                25% {{ border-color: #00ff00; box-shadow: 0 0 15px #00ff00; }}
+                50% {{ border-color: #00d4ff; box-shadow: 0 0 15px #00d4ff; }}
+                75% {{ border-color: #ff00ff; box-shadow: 0 0 15px #ff00ff; }}
+                100% {{ border-color: #ff0000; box-shadow: 0 0 15px #ff0000; }}
             }}
             
-            .glow-spotlight {{
-                background: linear-gradient(90deg, #ffffff, #00d4ff, #ffffff);
-                background-size: 200% auto;
+            .container-annonce {{
+                display: {display_annonce};
+                background-color: #1a1c23;
+                padding: 25px;
+                text-align: center;
+                position: relative;
+                /* On crée la bordure animée ici */
+                border-top: 3px solid #00d4ff;
+                border-bottom: 3px solid #00d4ff;
+                animation: border-glow 4s linear infinite;
+                margin: 0;
+            }}
+
+            .text-annonce {{
                 color: white;
-                background-clip: text;
-                -webkit-background-clip: text;
-                -webkit-text-fill-color: transparent;
-                animation: spotlight 3s linear infinite;
+                font-size: 28px;
                 font-weight: bold;
+                text-shadow: 0 0 10px rgba(255,255,255,0.5);
+                margin: 0;
             }}
         </style>
         
         <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; width: 100%; border-radius: 25px; overflow: hidden; border: none; box-shadow: 0 20px 50px rgba(0,0,0,0.3);">
             
-            <div style="text-align: center; padding: 60px 20px; color: {t_color}; {pattern_style} box-sizing: border-box;">
-                <h1 style="font-size: 5.5em; margin: 0; font-weight: 900; letter-spacing: -3px; text-shadow: {glow_text}; line-height: 1.1;">
+            <div style="text-align: center; padding: 40px 20px; color: {t_color}; {pattern_style} box-sizing: border-box;">
+                <h1 style="font-size: 5em; margin: 0; font-weight: 900; letter-spacing: -3px; text-shadow: {glow_text}; line-height: 1.1;">
                     {salut_complet}
                 </h1>
-                <p style="font-size: 1.1em; opacity: 0.8; letter-spacing: 5px; font-weight: bold; text-transform: uppercase; margin: 25px 0;">
-                    Unité Fédérale de Rensselaer
-                </p>
-                <div id="clock" style="font-size: 3.8em; letter-spacing: 3px; font-weight: bold; border-top: 2px solid {t_color}33; display: inline-block; padding-top: 10px;">
+                <div id="clock" style="font-size: 3em; letter-spacing: 3px; font-weight: bold; border-top: 2px solid {t_color}33; display: inline-block; padding-top: 10px; margin-top: 10px;">
                     00:00:00
                 </div>
             </div>
 
-            <div style="display: {display_annonce}; background-color: #20222a; padding: 35px; text-align: center; border-top: 2px solid rgba(0,212,255,0.3); border-bottom: 2px solid rgba(0,212,255,0.3); box-shadow: inset 0 0 50px rgba(0,212,255,0.2), 0 0 20px rgba(0,212,255,0.3);">
-                <div style="color: #00d4ff; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; font-size: 0.9em; margin-bottom: 12px; text-shadow: 0 0 10px #00d4ff;">📢 Bulletin d'Information</div>
-                <div class="glow-spotlight" style="font-size: 32px; line-height: 1.4;">
+            <div class="container-annonce">
+                <div style="color: #ffffff; opacity: 0.6; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; font-size: 0.8em; margin-bottom: 8px;">📢 Bulletin d'Information</div>
+                <div class="text-annonce">
                     {MESSAGE_ACCUEIL}
                 </div>
             </div>
 
-            <div style="background-color: #1a1c23; border-left: 10px solid #ff4b4b; padding: 40px 20px; text-align: center; color: white;">
-                <h2 style="margin: 0; font-size: 2em; letter-spacing: 2px;">🏛️ RÉPUBLIQUE DE RENSSELAER</h2>
-                <p style="margin: 5px 0 15px 0; font-size: 1em; opacity: 0.7; text-transform: uppercase; letter-spacing: 1px;">Terminal Fédéral d'Opérations Nationales</p>
-                <small style="opacity: 0.5; font-size: 0.8em;">VERSION 14.6.0 | SÉCURISÉ PAR PROTOCOLE RCRP-OS</small>
+            <div style="background-color: #1a1c23; border-left: 10px solid #ff4b4b; padding: 30px 20px; text-align: center; color: white;">
+                <h2 style="margin: 0; font-size: 1.8em; letter-spacing: 2px;">🏛️ RÉPUBLIQUE DE RENSSELAER</h2>
+                <p style="margin: 5px 0 10px 0; font-size: 0.9em; opacity: 0.7; text-transform: uppercase; letter-spacing: 1px;">Terminal Fédéral d'Opérations Nationales</p>
+                <small style="opacity: 0.4; font-size: 0.7em;">VERSION 14.6.0 | SÉCURISÉ PAR PROTOCOLE RCRP-OS</small>
             </div>
-
         </div>
 
         <script>
@@ -331,9 +337,8 @@ if st.session_state.user_auth is None:
             setInterval(update, 1000);
             update();
         </script>
-    """, height=850)
+    """, height=600)
 
-    st.write("")
     st.warning("⚠️ **AVERTISSEMENT :** Toute action effectuée sur ce terminal est enregistrée.")
     st.write("---")
 
