@@ -1430,21 +1430,25 @@ with col_form:
     if is_wanted:
         st.markdown(f'<div class="alert-mandat">🚨 <b>INDIVIDU RECHERCHÉ</b> 🚨<br>{motif_recherche.upper()}</div>', unsafe_allow_html=True)
 
-# --- COLONNE 2 : APERÇU EN DIRECT (MIS À JOUR SANS GSPREAD) ---
+# --- COLONNE 2 : APERÇU EN DIRECT ---
 with col_facture:
     st.markdown("#### 📄 Aperçu")
     header_ticket = "FACTURE AVERIS" if f_emetteur == "Averis" else "FACTURE OFFICIELLE"
     
-    # On utilise st.session_state pour l'affichage en temps réel
+    # Sécurisation des variables pour éviter le crash 'NoneType'
+    nom_signataire = str(agent_identifie if agent_identifie else "NON CONNECTÉ").upper()
+    nom_emetteur = str(f_emetteur if f_emetteur else "INCONNU").upper()
+    motif_ticket = str(st.session_state.get('mot_live', '...')).upper()
+
     st.markdown(f"""
     <div style="border: 2px solid black; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; line-height: 1.2; box-shadow: 4px 4px 0px #888;">
         <center><b>{header_ticket}</b><br><small>RÉPUBLIQUE DE RENSSERLAER</small></center>
         <hr style="border-top: 1px dashed black; margin: 10px 0;">
-        <b>SIGNATAIRE :</b> {agent_identifie.upper()}<br>
-        <b>ÉMETTEUR   :</b> {f_emetteur.upper()}<br>
+        <b>SIGNATAIRE :</b> {nom_signataire}<br>
+        <b>ÉMETTEUR   :</b> {nom_emetteur}<br>
         <b>DATE       :</b> {datetime.now().strftime('%d/%m/%Y %H:%M')}<br>
         <b>NOM        :</b> {target}<br>
-        <b>MOTIF      :</b> {st.session_state.get('mot_live', '...').upper()}<br>
+        <b>MOTIF      :</b> {motif_ticket}<br>
         <b>PLAQUE     :</b> <span style="border: 1px solid black; padding: 0 3px;">{st.session_state.get('plate_live', 'AUCUN')}</span><br>
         <b>MONTANT    :</b> {st.session_state.get('val_live', 0)}$
         <hr style="border-top: 1px dashed black; margin: 10px 0;">
@@ -1454,7 +1458,6 @@ with col_facture:
         </div>
     </div>
     """, unsafe_allow_html=True)
-
 # --- COLONNE 3 : VÉHICULES ---
 with col_vehicules:
     st.markdown("#### 🚗 Véhicules")
