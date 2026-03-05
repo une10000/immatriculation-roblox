@@ -236,7 +236,7 @@ if st.session_state.user_auth is not None:
 # ======================================================================================
 if st.session_state.user_auth is None:
     # === ✏️ ZONE DE MESSAGE PERSONNALISABLE (MODIFIEZ LE TEXTE ICI) ===
-    MESSAGE_ACCUEIL = "📢 **Annonce :** Ramadan Murabak! 🌙"
+    MESSAGE_ACCUEIL = "🌙 Bon Ramadan à tous les citoyens de Rensselaer ! ✨"
     # ==================================================================
 
     # --- CONFIGURATION INTERFACE ---
@@ -245,13 +245,7 @@ if st.session_state.user_auth is None:
             [data-testid="stSidebar"], [data-testid="stSidebarNav"] { display: none; }
             [data-testid="stStatusWidget"] { display: none; }
             .block-container { padding-top: 2rem !important; }
-            
-            /* ON SUPPRIME L'ENCADRÉ GRIS ET L'OMBRE DE L'IFRAME */
-            iframe { 
-                border: none !important; 
-                box-shadow: none !important; 
-                background: transparent !important;
-            }
+            iframe { border: none !important; box-shadow: none !important; background: transparent !important; }
         </style>
     """, unsafe_allow_html=True)
 
@@ -271,12 +265,16 @@ if st.session_state.user_auth is None:
         t_color = "#FFFFFF"
         glow = "0 0 40px rgba(255,255,255,0.9), 0 0 80px rgba(255,255,255,0.4)"
 
-    # --- LE BLOC MONOLITHIQUE (Haut + Bas soudés) ---
+    # --- LE BLOC MONOLITHIQUE (Haut + Annonce + Bas) ---
     import streamlit.components.v1 as components
+    
+    # On gère l'affichage ou non du bloc annonce dans le HTML
+    display_annonce = "block" if MESSAGE_ACCUEIL else "none"
+
     components.html(f"""
-        <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; width: 100%; border-radius: 25px; overflow: hidden; border: none;">
+        <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; width: 100%; border-radius: 25px; overflow: hidden; border: none; box-shadow: 0 20px 50px rgba(0,0,0,0.3);">
             
-            <div style="text-align: center; padding: 70px 20px; color: {t_color}; {pattern_style} height: 350px; box-sizing: border-box;">
+            <div style="text-align: center; padding: 60px 20px; color: {t_color}; {pattern_style} box-sizing: border-box;">
                 <h1 style="font-size: 5.5em; margin: 0; font-weight: 900; letter-spacing: -3px; text-shadow: {glow}; line-height: 1.1;">
                     {salut_complet}
                 </h1>
@@ -288,11 +286,16 @@ if st.session_state.user_auth is None:
                 </div>
             </div>
 
-            <div style="background-color: #1a1c23; border-left: 10px solid #ff4b4b; padding: 45px 20px; text-align: center; color: white;">
-                <div style="font-size: 45px; margin-bottom: 15px;">👤</div>
+            <div style="display: {display_annonce}; background-color: #262730; padding: 30px; text-align: center; border-top: 1px solid rgba(255,255,255,0.1); border-bottom: 1px solid rgba(255,255,255,0.1);">
+                <div style="color: #00d4ff; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; font-size: 0.9em; margin-bottom: 10px;">📢 Bulletin d'Information</div>
+                <div style="color: white; font-size: 28px; font-weight: 500; line-height: 1.4;">
+                    {MESSAGE_ACCUEIL}
+                </div>
+            </div>
+
+            <div style="background-color: #1a1c23; border-left: 10px solid #ff4b4b; padding: 40px 20px; text-align: center; color: white;">
                 <h2 style="margin: 0; font-size: 2em; letter-spacing: 2px;">🏛️ RÉPUBLIQUE DE RENSSELAER</h2>
-                <p style="margin: 5px 0 25px 0; font-size: 1em; opacity: 0.7; text-transform: uppercase; letter-spacing: 1px;">Terminal Fédéral d'Opérations Nationales</p>
-                <div style="width: 70%; height: 1px; background: rgba(255,255,255,0.1); margin: 0 auto 20px auto;"></div>
+                <p style="margin: 5px 0 15px 0; font-size: 1em; opacity: 0.7; text-transform: uppercase; letter-spacing: 1px;">Terminal Fédéral d'Opérations Nationales</p>
                 <small style="opacity: 0.5; font-size: 0.8em;">VERSION 14.6.0 | SÉCURISÉ PAR PROTOCOLE RCRP-OS</small>
             </div>
 
@@ -309,22 +312,17 @@ if st.session_state.user_auth is None:
             setInterval(update, 1000);
             update();
         </script>
-    """, height=650) # Hauteur totale ajustée
-    
+    """, height=850) # Hauteur augmentée pour accueillir le nouveau bloc
+
     st.write("")
-    
-    # --- AFFICHAGE DU MESSAGE PERSONNALISÉ ---
-    if MESSAGE_ACCUEIL != "":
-        st.info(MESSAGE_ACCUEIL)
-        
     st.warning("⚠️ **AVERTISSEMENT :** Toute action effectuée sur ce terminal est enregistrée.")
     st.write("---")
 
-    # 3. COLONNES D'ACCÈS (Inchangé)
+    # 3. COLONNES D'ACCÈS
     c1, c2, c3 = st.columns(3)
     with c1:
         st.markdown("### 👥 CIVIL")
-        nom_civil = st.text_input("Ecrivez quelque chose (Optionnel)", placeholder="Ex: Liberté, Egalité, Renault Coupé.", key="input_civil_align")
+        nom_civil = st.text_input("Ecrivez quelque chose (Optionnel)", placeholder="Ex: Liberté...", key="input_civil_align")
         if st.button("ACCÉDER AU TERMINAL", key="l_civ_f", use_container_width=True):
             st.session_state.user_auth = "Civil"
             st.rerun()
@@ -337,8 +335,8 @@ if st.session_state.user_auth is None:
                 st.rerun()
             else: st.error("Clé invalide.")
     with c3:
-        st.markdown("### 🛡️👮‍♂️ Portail POLSTA(RIS)")
-        login_staff = st.text_input("Clé Maîtresse", placeholder="Code POLSTA(RIS)", type="password", key="l_st_ff")
+        st.markdown("### 🛡️ STAFF")
+        login_staff = st.text_input("Clé Maîtresse", placeholder="Code STAFF", type="password", key="l_st_ff")
         if st.button("ACCÈS ADMINISTRATEUR", key="b_st_f", use_container_width=True):
             if login_staff == KEY_STAFF:
                 st.session_state.user_auth = "Staff"
