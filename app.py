@@ -237,7 +237,7 @@ if st.session_state.user_auth is not None:
 if st.session_state.user_auth is None:
     # === ✏️ ZONE DE MESSAGE PERSONNALISABLE (MODIFIEZ LE TEXTE ICI) ===
     # Tu peux utiliser du HTML simple ici si tu veux.
-    MESSAGE_ACCUEIL = "🌙 Bon Ramadan à tous ! ✨ Que ce mois vous apporte paix, santé et prospérité."
+    MESSAGE_ACCUEIL = "🌙 Aïd Moubarak à tous les citoyens!."
     # ==================================================================
 
     # --- CONFIGURATION INTERFACE ---
