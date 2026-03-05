@@ -235,6 +235,10 @@ if st.session_state.user_auth is not None:
 # 5. LOCKSCREEN (CONNEXION) - UNITÉ FÉDÉRALE DE RENSSELAER
 # ======================================================================================
 if st.session_state.user_auth is None:
+    # === ✏️ ZONE DE MESSAGE PERSONNALISABLE (MODIFIEZ LE TEXTE ICI) ===
+    MESSAGE_ACCUEIL = "📢 **Annonce :** Bienvenue sur le Terminal. Mettez vos informations ou mises à jour ici !"
+    # ==================================================================
+
     # --- CONFIGURATION INTERFACE ---
     st.markdown("""
         <style>
@@ -308,6 +312,11 @@ if st.session_state.user_auth is None:
     """, height=650) # Hauteur totale ajustée
     
     st.write("")
+    
+    # --- AFFICHAGE DU MESSAGE PERSONNALISÉ ---
+    if MESSAGE_ACCUEIL != "":
+        st.info(MESSAGE_ACCUEIL)
+        
     st.warning("⚠️ **AVERTISSEMENT :** Toute action effectuée sur ce terminal est enregistrée.")
     st.write("---")
 
