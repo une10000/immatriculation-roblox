@@ -245,7 +245,16 @@ if st.session_state.user_auth is None:
             [data-testid="stSidebar"], [data-testid="stSidebarNav"] { display: none; }
             [data-testid="stStatusWidget"] { display: none; }
             .block-container { padding-top: 2rem !important; }
-            iframe { border: none !important; box-shadow: none !important; background: transparent !important; }
+            
+            /* SUPPRESSION RADICALE DES ENCADRÉS GRIS ET BORDURES D'IFRAME */
+            iframe { 
+                border: none !important; 
+                background: transparent !important;
+                box-shadow: none !important;
+            }
+            div[data-testid="stHtml"] {
+                background: transparent !important;
+            }
         </style>
     """, unsafe_allow_html=True)
 
@@ -271,10 +280,13 @@ if st.session_state.user_auth is None:
 
     components.html(f"""
         <style>
+            /* EFFET RGB PLUS RAPIDE (2s au lieu de 5s) */
             @keyframes border-glow {{
                 0% {{ border-color: #ff0000; box-shadow: 0 0 20px #ff0000; }}
-                33% {{ border-color: #00ff00; box-shadow: 0 0 20px #00ff00; }}
-                66% {{ border-color: #00d4ff; box-shadow: 0 0 20px #00d4ff; }}
+                20% {{ border-color: #ff8000; box-shadow: 0 0 20px #ff8000; }}
+                40% {{ border-color: #ffff00; box-shadow: 0 0 20px #ffff00; }}
+                60% {{ border-color: #00ff00; box-shadow: 0 0 20px #00ff00; }}
+                80% {{ border-color: #00d4ff; box-shadow: 0 0 20px #00d4ff; }}
                 100% {{ border-color: #ff0000; box-shadow: 0 0 20px #ff0000; }}
             }}
             
@@ -283,13 +295,13 @@ if st.session_state.user_auth is None:
                 background-color: #1a1c23;
                 padding: 40px 20px;
                 text-align: center;
-                border-top: 4px solid #00d4ff;
-                border-bottom: 4px solid #00d4ff;
-                animation: border-glow 5s linear infinite;
+                border-top: 5px solid #ff0000;
+                border-bottom: 5px solid #ff0000;
+                animation: border-glow 2s linear infinite; /* Vitesse boostée */
             }}
         </style>
         
-        <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; width: 100%; border-radius: 25px; overflow: hidden; border: none; box-shadow: 0 20px 50px rgba(0,0,0,0.3);">
+        <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; width: 100%; border-radius: 25px; overflow: hidden; border: none; box-shadow: 0 20px 50px rgba(0,0,0,0.3); background: transparent;">
             
             <div style="text-align: center; padding: 70px 20px; color: {t_color}; {pattern_style} box-sizing: border-box;">
                 <h1 style="font-size: 5.5em; margin: 0; font-weight: 900; letter-spacing: -3px; text-shadow: {glow_text}; line-height: 1.1;">
@@ -328,12 +340,12 @@ if st.session_state.user_auth is None:
             setInterval(update, 1000);
             update();
         </script>
-    """, height=820) # Hauteur ajustée pour que tout tienne en grand
+    """, height=820)
 
     st.warning("⚠️ **AVERTISSEMENT :** Toute action effectuée sur ce terminal est enregistrée.")
     st.write("---")
 
-    # 3. COLONNES D'ACCÈS (Restées inchangées)
+    # 3. COLONNES D'ACCÈS
     c1, c2, c3 = st.columns(3)
     with c1:
         st.markdown("### 👥 CIVIL")
@@ -350,7 +362,7 @@ if st.session_state.user_auth is None:
                 st.rerun()
             else: st.error("Clé invalide.")
     with c3:
-        st.markdown("### 🛡️ POLSTA/AVERIS")
+        st.markdown("### 🛡️ STAFF")
         login_staff = st.text_input("Clé Maîtresse", placeholder="Code STAFF", type="password", key="l_st_ff")
         if st.button("ACCÈS ADMINISTRATEUR", key="b_st_f", use_container_width=True):
             if login_staff == KEY_STAFF:
