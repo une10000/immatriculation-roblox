@@ -1347,8 +1347,8 @@ with col_form2:
         non_immatricule = st.toggle("⚠️ Véhicule non immatriculé", key="v_inconnu")
         
         if not non_immatricule:
-            # Utilisation de df_i (votre base immatriculation)
-            liste_v = sorted(df_i["Numéro de la plaque"].unique().tolist())
+            # On s'assure que toutes les plaques sont traitées comme du texte pour éviter l'erreur de tri
+            liste_v = sorted(df_i["Numéro de la plaque"].astype(str).unique().tolist())
             cible_v = st.selectbox("Plaque", ["---"] + liste_v, key="v_plaque")
         else:
             cible_v = st.text_input("Description", placeholder="Ex: Mustang Noire...", key="v_desc")
