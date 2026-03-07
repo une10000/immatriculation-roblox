@@ -380,9 +380,13 @@ if st.session_state.user_auth is None:
 with st.container():
     # --- A. TABLEAU PUBLIC DES AVIS DE RECHERCHE ---
     recherches_publics = df_b[df_b["Statut"].str.upper().str.contains("RECHERCHÉ", na=False)]
+    # On récupère aussi les véhicules recherchés
+    vehicules_publics = df_i[df_i["Statut"].str.upper().str.contains("RECHERCHÉ", na=False)]
     
-    if not recherches_publics.empty:
+    if not recherches_publics.empty or not vehicules_publics.empty:
         st.markdown("<h3 style='color: #ff4b4b; margin-bottom: 15px;'>🚨 AVIS DE RECHERCHE EN COURS</h3>", unsafe_allow_html=True)
+        
+        # Affichage des Individus
         for _, crim in recherches_publics.iterrows():
             motif = crim.get('Motif Recherche', 'Motif non spécifié').upper()
             st.markdown(f"""
@@ -390,8 +394,20 @@ with st.container():
                     <div style="color: #ffffff !important; font-weight: bold; font-size: 1.3em;">👤 {crim['Nom Roblox']}</div>
                     <div style="color: #ffcccc !important; font-weight: 700; font-size: 0.9em;">MOTIF : {motif}</div>
                 </div>
-                <style> @keyframes blinker_universal {{ 50% {{ background-color: #ff4b4b; border-color: #8B0000; }} }} </style>
             """, unsafe_allow_html=True)
+        
+        # Affichage des Véhicules
+        for _, car in vehicules_publics.iterrows():
+            motif_v = car.get('Motif Recherche', 'SIGNALÉ').upper()
+            st.markdown(f"""
+                <div style="display: flex; flex-direction: column; background-color: #1a1a1a; padding: 12px 20px; border-radius: 8px; border: 3px solid #ff4b4b; margin-bottom: 10px; border-left: 10px solid #ff4b4b;">
+                    <div style="color: #ffffff !important; font-weight: bold; font-size: 1.3em;">🚗 VÉHICULE : {car['Numéro de la plaque']}</div>
+                    <div style="color: #ffcccc !important; font-weight: 700; font-size: 0.9em;">MODÈLE : {car.get('Marque du véhicule', 'INCONNU')}</div>
+                    <div style="color: #ff4b4b !important; font-weight: 800; font-size: 0.9em;">MOTIF : {motif_v}</div>
+                </div>
+            """, unsafe_allow_html=True)
+
+        st.markdown("<style> @keyframes blinker_universal { 50% { background-color: #ff4b4b; border-color: #8B0000; } } </style>", unsafe_allow_html=True)
         st.divider()
 
 # TITRE DU REGISTRE
@@ -407,7 +423,7 @@ with st.container():
         # --- RÉCUPÉRATION DES DONNÉES GLOBALES ---
         citoyen_info = df_b[df_b["Nom Roblox"] == target]
         
-# --- B. ALERTES AUTOMATIQUES ---
+        # --- B. ALERTES AUTOMATIQUES ---
         # 1. Alerte Mandat (Rouge Flashy)
         if not citoyen_info.empty and "RECHERCHÉ" in str(citoyen_info.iloc[0].get("Statut", "")).upper():
             motif_critique = citoyen_info.iloc[0].get("Motif Recherche", "Non spécifié")
@@ -437,8 +453,7 @@ with st.container():
                         <b style="font-size: 20px;">MOTIF : {motif_critique}</b>
                     </div>
                 </div>
-            """, unsafe_allow_html=True)
-
+            """, unsafe_allow_html=True) 
         # 2. Alerte Permis Invalide (Orange Flashy)
         # Tu peux aussi l'ajouter si tu veux que ce soit aussi visible
         try:
