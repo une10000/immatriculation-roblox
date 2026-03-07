@@ -1320,17 +1320,16 @@ if len(tabs) > 1:
 # ==========================================
 st.markdown("### 🔍 MANDATS & RECHERCHE")
 
-# --- SECTION 1 : INDIVIDUS ---
-with st.container(border=True):
-    st.markdown("#### 👤 Lancer un Mandat d'Arrêt (Individu)")
-    c1, c2, c3 = st.columns([1.5, 2, 1])
-    with c1:
+# --- PARTIE A : FORMULAIRES DE LANCEMENT ---
+col_form1, col_form2 = st.columns(2)
+
+with col_form1:
+    with st.container(border=True):
+        st.markdown("#### 👤 Mandat d'Arrêt (Individu)")
         liste_citoyens = sorted(df_b["Nom Roblox"].unique().tolist())
         cible_mandat = st.selectbox("Suspect", ["---"] + liste_citoyens, key="mandat_cible")
-    with c2:
-        motif_mandat = st.text_input("Motif de recherche", placeholder="Ex: Braquage...", key="mandat_motif")
-    with c3:
-        st.write(" ")
+        motif_mandat = st.text_input("Motif", placeholder="Ex: Braquage...", key="mandat_motif")
+        
         if st.button("🚨 LANCER L'ALERTE (INDIVIDU)", use_container_width=True, type="primary"):
             if cible_mandat != "---" and motif_mandat:
                 idx = df_b[df_b["Nom Roblox"] == cible_mandat].index[0]
@@ -1342,79 +1341,80 @@ with st.container(border=True):
             else:
                 st.error("Champs requis !")
 
-# --- SECTION 2 : VÉHICULES ---
-with st.container(border=True):
-    st.markdown("#### 🚗 Signalement de Véhicule (APB)")
-    
-    # Checkbox pour les véhicules non immatriculés
-    non_immatricule = st.toggle("⚠️ Véhicule non immatriculé / Inconnu", key="v_inconnu")
-    
-    v1, v2, v3 = st.columns([1.5, 2, 1])
-    
-    with v1:
-        if not non_immatricule:
-            # Liste basée sur ta feuille "Véhicules"
-            liste_v = sorted(df_v["Plaque"].unique().tolist())
-            cible_v = st.selectbox("Plaque d'immatriculation", ["---"] + liste_v, key="v_plaque")
-        else:
-            # Saisie libre si pas de plaque
-            cible_v = st.text_input("Description (Modèle/Couleur)", placeholder="Ex: Mustang Noire...", key="v_desc")
-            
-    with v2:
-        motif_v = st.text_input("Raison de l'avis de recherche", placeholder="Ex: Délit de fuite...", key="v_motif")
+with col_form2:
+    with st.container(border=True):
+        st.markdown("#### 🚗 Signalement Véhicule (APB)")
+        non_immatricule = st.toggle("⚠️ Véhicule non immatriculé", key="v_inconnu")
         
-    with v3:
-        st.write(" ")
-        if st.button("🚨 DIFFUSER L'ALERTE (VÉHICULE)", use_container_width=True, type="primary"):
+        if not non_immatricule:
+            # Utilisation de df_i (votre base immatriculation)
+            liste_v = sorted(df_i["Numéro de la plaque"].unique().tolist())
+            cible_v = st.selectbox("Plaque", ["---"] + liste_v, key="v_plaque")
+        else:
+            cible_v = st.text_input("Description", placeholder="Ex: Mustang Noire...", key="v_desc")
+            
+        motif_v = st.text_input("Raison", placeholder="Ex: Délit de fuite...", key="v_motif")
+        
+        if st.button("🚨 LANCER L'ALERTE (VÉHICULE)", use_container_width=True, type="primary"):
             if cible_v and cible_v != "---" and motif_v:
-                
                 if not non_immatricule:
-                    # Cas d'un véhicule connu : on met à jour son statut dans la base
-                    idx_v = df_v[df_v["Plaque"] == cible_v].index[0]
-                    df_v.at[idx_v, "Statut"] = "RECHERCHÉ"
-                    df_v.at[idx_v, "Motif Recherche"] = motif_v
-                    cloud_conn.update(worksheet="Véhicules", data=df_v)
-                    st.success(f"Le véhicule {cible_v} est désormais recherché !")
+                    # On cherche dans df_i
+                    idx_v = df_i[df_i["Numéro de la plaque"] == cible_v].index[0]
+                    df_i.at[idx_v, "Statut"] = "RECHERCHÉ"
+                    df_i.at[idx_v, "Motif Recherche"] = motif_v
+                    cloud_conn.update(worksheet="Immatriculations", data=df_i) # Vérifie le nom de l'onglet
+                    st.success(f"Véhicule {cible_v} recherché !")
                 else:
-                    # Cas d'un véhicule inconnu : on peut l'ajouter à une liste de "Signalements Actifs"
-                    # Ou simplement afficher un message (à adapter selon ta structure de base)
-                    st.warning(f"Alerte générale diffusée : {cible_v} pour {motif_v} !")
-                
+                    st.warning(f"Alerte diffusée : {cible_v}")
                 time.sleep(1); st.rerun()
             else:
-                st.error("Veuillez remplir les informations !")
-            col_m1, col_m2 = st.columns([2, 1])
-            with col_m1:
-                with st.container(border=True):
-                    st.markdown("#### 📢 Alertes Actives")
-                    recherches = df_b[df_b["Statut"].str.upper().str.contains("RECHERCHÉ", na=False)]
-                    if not recherches.empty:
-                        for _, crim in recherches.iterrows():
-                            with st.container(border=True):
-                                c1_r, c2_r = st.columns([3, 1])
-                                c1_r.warning(f"🚨 **{crim['Nom Roblox']}**\n\n**Motif :** {crim.get('Motif Recherche', 'N/A')}")
-                                if c2_r.button("A été interpellé", key=f"rel_{crim['Nom Roblox']}", use_container_width=True):
-                                    idx = df_b[df_b["Nom Roblox"] == crim["Nom Roblox"]].index[0]
-                                    df_b.at[idx, "Statut"], df_b.at[idx, "Motif Recherche"] = "RAS", ""
-                                    cloud_conn.update(worksheet="Banque", data=df_b)
-                                    st.rerun()
-                    else: 
-                        st.success("✅ Aucun mandat actif.")
+                st.error("Champs requis !")
 
-            with col_m2:
-                with st.container(border=True):
-                    st.markdown("#### 🔦 Scanner Plaque")
-                    p_search = st.text_input("Saisir plaque", key="plate_ui").upper().strip()
-                    if p_search:
-                        m = df_i[df_i["Numéro de la plaque"].astype(str).str.contains(p_search, na=False)]
-                        if not m.empty:
-                            nom_proprio = m.iloc[0]["Nom d'utilisateur ROBLOX"]
-                            is_wanted = not df_b[(df_b["Nom Roblox"] == nom_proprio) & (df_b["Statut"] == "RECHERCHÉ")].empty
-                            if is_wanted: st.error(f"⚠️ **PROPRIO RECHERCHÉ**")
-                            st.info(f"👤 **Proprio :** {nom_proprio}\n\n🚘 **Modèle :** {m.iloc[0]['Marque du véhicule']}")
-                        else: 
-                            st.error("❌ Plaque inconnue")
+# --- PARTIE B : AFFICHAGE & SCANNER ---
+st.write("---")
+col_m1, col_m2 = st.columns([2, 1])
 
+with col_m1:
+    with st.container(border=True):
+        st.markdown("#### 📢 Alertes Actives")
+        # On affiche les gens ET les véhicules recherchés
+        recherches = df_b[df_b["Statut"].str.upper().str.contains("RECHERCHÉ", na=False)]
+        
+        if not recherches.empty:
+            for _, crim in recherches.iterrows():
+                with st.container(border=True):
+                    c1_r, c2_r = st.columns([3, 1])
+                    c1_r.warning(f"🚨 **{crim['Nom Roblox']}**\n\n**Motif :** {crim.get('Motif Recherche', 'N/A')}")
+                    if c2_r.button("Interpellé", key=f"rel_{crim['Nom Roblox']}", use_container_width=True):
+                        idx = df_b[df_b["Nom Roblox"] == crim["Nom Roblox"]].index[0]
+                        df_b.at[idx, "Statut"], df_b.at[idx, "Motif Recherche"] = "RAS", ""
+                        cloud_conn.update(worksheet="Banque", data=df_b)
+                        st.rerun()
+        else: 
+            st.success("✅ Aucun mandat actif sur les citoyens.")
+
+with col_m2:
+    with st.container(border=True):
+        st.markdown("#### 🔦 Scanner Plaque")
+        p_search = st.text_input("Saisir plaque", key="plate_ui").upper().strip()
+        if p_search:
+            # Recherche dans df_i (Immatriculations)
+            m = df_i[df_i["Numéro de la plaque"].astype(str).str.contains(p_search, na=False)]
+            if not m.empty:
+                nom_proprio = m.iloc[0]["Nom d'utilisateur ROBLOX"]
+                # Vérification si le proprio est recherché dans df_b
+                is_wanted = not df_b[(df_b["Nom Roblox"] == nom_proprio) & (df_b["Statut"] == "RECHERCHÉ")].empty
+                
+                if is_wanted: 
+                    st.error(f"⚠️ **PROPRIO RECHERCHÉ**")
+                
+                # Vérification si le VÉHICULE lui-même est recherché
+                if m.iloc[0].get("Statut") == "RECHERCHÉ":
+                    st.error(f"🚨 **VÉHICULE VOLÉ/RECHERCHÉ**")
+                
+                st.info(f"👤 **Proprio :** {nom_proprio}\n\n🚘 **Modèle :** {m.iloc[0]['Marque du véhicule']}")
+            else: 
+                st.error("❌ Plaque inconnue")
             # ==========================================
             # 5. INTERVENTION SUR CITOYEN & FACTURATION
             # ==========================================
