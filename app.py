@@ -1315,31 +1315,74 @@ if len(tabs) > 1:
                 else:
                     st.warning("🔎 Aucun dossier trouvé.")
 
-            # ==========================================
-            # 4. MANDATS & RECHERCHE
-            # ==========================================
-            st.markdown("### 🔍 MANDATS & RECHERCHE")
-            with st.container(border=True):
-                st.markdown("#### 📝 Lancer un Mandat d'Arrêt")
-                c1, c2, c3 = st.columns([1.5, 2, 1])
-                with c1:
-                    liste_citoyens = sorted(df_b["Nom Roblox"].unique().tolist())
-                    cible_mandat = st.selectbox("Suspect", ["---"] + liste_citoyens, key="mandat_cible")
-                with c2:
-                    motif_mandat = st.text_input("Motif de recherche", placeholder="Ex: Braquage...", key="mandat_motif")
-                with c3:
-                    st.write(" ")
-                    if st.button("🚨 LANCER L'ALERTE", use_container_width=True, type="primary"):
-                        if cible_mandat != "---" and motif_mandat:
-                            idx = df_b[df_b["Nom Roblox"] == cible_mandat].index[0]
-                            df_b.at[idx, "Statut"] = "RECHERCHÉ"
-                            df_b.at[idx, "Motif Recherche"] = motif_mandat
-                            cloud_conn.update(worksheet="Banque", data=df_b)
-                            st.success(f"Mandat lancé contre {cible_mandat} !")
-                            time.sleep(1); st.rerun()
-                        else:
-                            st.error("Champs requis !")
+# ==========================================
+# 4. MANDATS & RECHERCHE
+# ==========================================
+st.markdown("### 🔍 MANDATS & RECHERCHE")
 
+# --- SECTION 1 : INDIVIDUS ---
+with st.container(border=True):
+    st.markdown("#### 👤 Lancer un Mandat d'Arrêt (Individu)")
+    c1, c2, c3 = st.columns([1.5, 2, 1])
+    with c1:
+        liste_citoyens = sorted(df_b["Nom Roblox"].unique().tolist())
+        cible_mandat = st.selectbox("Suspect", ["---"] + liste_citoyens, key="mandat_cible")
+    with c2:
+        motif_mandat = st.text_input("Motif de recherche", placeholder="Ex: Braquage...", key="mandat_motif")
+    with c3:
+        st.write(" ")
+        if st.button("🚨 LANCER L'ALERTE (INDIVIDU)", use_container_width=True, type="primary"):
+            if cible_mandat != "---" and motif_mandat:
+                idx = df_b[df_b["Nom Roblox"] == cible_mandat].index[0]
+                df_b.at[idx, "Statut"] = "RECHERCHÉ"
+                df_b.at[idx, "Motif Recherche"] = motif_mandat
+                cloud_conn.update(worksheet="Banque", data=df_b)
+                st.success(f"Mandat lancé contre {cible_mandat} !")
+                time.sleep(1); st.rerun()
+            else:
+                st.error("Champs requis !")
+
+# --- SECTION 2 : VÉHICULES ---
+with st.container(border=True):
+    st.markdown("#### 🚗 Signalement de Véhicule (APB)")
+    
+    # Checkbox pour les véhicules non immatriculés
+    non_immatricule = st.toggle("⚠️ Véhicule non immatriculé / Inconnu", key="v_inconnu")
+    
+    v1, v2, v3 = st.columns([1.5, 2, 1])
+    
+    with v1:
+        if not non_immatricule:
+            # Liste basée sur ta feuille "Véhicules"
+            liste_v = sorted(df_v["Plaque"].unique().tolist())
+            cible_v = st.selectbox("Plaque d'immatriculation", ["---"] + liste_v, key="v_plaque")
+        else:
+            # Saisie libre si pas de plaque
+            cible_v = st.text_input("Description (Modèle/Couleur)", placeholder="Ex: Mustang Noire...", key="v_desc")
+            
+    with v2:
+        motif_v = st.text_input("Raison de l'avis de recherche", placeholder="Ex: Délit de fuite...", key="v_motif")
+        
+    with v3:
+        st.write(" ")
+        if st.button("🚨 DIFFUSER L'ALERTE (VÉHICULE)", use_container_width=True, type="primary"):
+            if cible_v and cible_v != "---" and motif_v:
+                
+                if not non_immatricule:
+                    # Cas d'un véhicule connu : on met à jour son statut dans la base
+                    idx_v = df_v[df_v["Plaque"] == cible_v].index[0]
+                    df_v.at[idx_v, "Statut"] = "RECHERCHÉ"
+                    df_v.at[idx_v, "Motif Recherche"] = motif_v
+                    cloud_conn.update(worksheet="Véhicules", data=df_v)
+                    st.success(f"Le véhicule {cible_v} est désormais recherché !")
+                else:
+                    # Cas d'un véhicule inconnu : on peut l'ajouter à une liste de "Signalements Actifs"
+                    # Ou simplement afficher un message (à adapter selon ta structure de base)
+                    st.warning(f"Alerte générale diffusée : {cible_v} pour {motif_v} !")
+                
+                time.sleep(1); st.rerun()
+            else:
+                st.error("Veuillez remplir les informations !")
             col_m1, col_m2 = st.columns([2, 1])
             with col_m1:
                 with st.container(border=True):
