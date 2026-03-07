@@ -1323,6 +1323,7 @@ st.markdown("### 🔍 MANDATS & RECHERCHE")
 # --- PARTIE A : FORMULAIRES DE LANCEMENT ---
 col_form1, col_form2 = st.columns(2)
 
+# --- SECTION INDIVIDUS ---
 with col_form1:
     with st.container(border=True):
         st.markdown("#### 👤 Mandat d'Arrêt (Individu)")
@@ -1341,80 +1342,100 @@ with col_form1:
             else:
                 st.error("Champs requis !")
 
+# --- SECTION VÉHICULES ---
 with col_form2:
     with st.container(border=True):
         st.markdown("#### 🚗 Signalement Véhicule (APB)")
+        # Toggle pour basculer entre véhicule connu et inconnu
         non_immatricule = st.toggle("⚠️ Véhicule non immatriculé", key="v_inconnu")
         
         if not non_immatricule:
-            # On s'assure que toutes les plaques sont traitées comme du texte pour éviter l'erreur de tri
+            # Correction du bug de tri : on force en String pour éviter le crash int/str
             liste_v = sorted(df_i["Numéro de la plaque"].astype(str).unique().tolist())
-            cible_v = st.selectbox("Plaque", ["---"] + liste_v, key="v_plaque")
+            cible_v = st.selectbox("Sélectionner Plaque", ["---"] + liste_v, key="v_plaque")
         else:
-            cible_v = st.text_input("Description", placeholder="Ex: Mustang Noire...", key="v_desc")
+            # Saisie manuelle pour les voitures sans plaques
+            cible_v = st.text_input("Description du véhicule", placeholder="Ex: Berline noire, jantes rouges...", key="v_desc")
             
-        motif_v = st.text_input("Raison", placeholder="Ex: Délit de fuite...", key="v_motif")
+        motif_v = st.text_input("Raison du signalement", placeholder="Ex: Go-fast, Vol...", key="v_motif")
         
         if st.button("🚨 LANCER L'ALERTE (VÉHICULE)", use_container_width=True, type="primary"):
             if cible_v and cible_v != "---" and motif_v:
                 if not non_immatricule:
-                    # On cherche dans df_i
-                    idx_v = df_i[df_i["Numéro de la plaque"] == cible_v].index[0]
+                    # Cas d'un véhicule dans la base df_i
+                    idx_v = df_i[df_i["Numéro de la plaque"].astype(str) == str(cible_v)].index[0]
                     df_i.at[idx_v, "Statut"] = "RECHERCHÉ"
                     df_i.at[idx_v, "Motif Recherche"] = motif_v
-                    cloud_conn.update(worksheet="Immatriculations", data=df_i) # Vérifie le nom de l'onglet
-                    st.success(f"Véhicule {cible_v} recherché !")
+                    # On met à jour la feuille des immatriculations
+                    cloud_conn.update(worksheet="Immatriculations", data=df_i)
+                    st.success(f"Le véhicule {cible_v} est maintenant recherché !")
                 else:
+                    # Cas véhicule inconnu : on peut l'ajouter à une feuille de logs "Signalements"
+                    # Si tu n'as pas cette feuille, le message s'affiche juste avant le refresh
                     st.warning(f"Alerte diffusée : {cible_v}")
+                    # Optionnel : cloud_conn.append(worksheet="Logs_APB", data={"Vehicule": cible_v, "Motif": motif_v})
+                
                 time.sleep(1); st.rerun()
             else:
-                st.error("Champs requis !")
+                st.error("Veuillez remplir toutes les informations !")
 
-# --- PARTIE B : AFFICHAGE & SCANNER ---
+# --- PARTIE B : AFFICHAGE DES ALERTES & SCANNER ---
 st.write("---")
 col_m1, col_m2 = st.columns([2, 1])
 
 with col_m1:
     with st.container(border=True):
         st.markdown("#### 📢 Alertes Actives")
-        # On affiche les gens ET les véhicules recherchés
-        recherches = df_b[df_b["Statut"].str.upper().str.contains("RECHERCHÉ", na=False)]
         
-        if not recherches.empty:
-            for _, crim in recherches.iterrows():
+        # On filtre les individus recherchés
+        wanted_people = df_b[df_b["Statut"].str.upper().str.contains("RECHERCHÉ", na=False)]
+        # On filtre les véhicules recherchés
+        wanted_cars = df_i[df_i["Statut"].str.upper().str.contains("RECHERCHÉ", na=False)]
+        
+        if wanted_people.empty and wanted_cars.empty:
+            st.success("✅ Aucun mandat ou signalement actif.")
+        else:
+            # Affichage des Individus
+            for _, crim in wanted_people.iterrows():
                 with st.container(border=True):
-                    c1_r, c2_r = st.columns([3, 1])
-                    c1_r.warning(f"🚨 **{crim['Nom Roblox']}**\n\n**Motif :** {crim.get('Motif Recherche', 'N/A')}")
-                    if c2_r.button("Interpellé", key=f"rel_{crim['Nom Roblox']}", use_container_width=True):
+                    r1, r2 = st.columns([3, 1])
+                    r1.warning(f"👤 **SUSPECT : {crim['Nom Roblox']}**\n\n**Motif :** {crim.get('Motif Recherche', 'N/A')}")
+                    if r2.button("Fin de recherche", key=f"stop_{crim['Nom Roblox']}", use_container_width=True):
                         idx = df_b[df_b["Nom Roblox"] == crim["Nom Roblox"]].index[0]
                         df_b.at[idx, "Statut"], df_b.at[idx, "Motif Recherche"] = "RAS", ""
                         cloud_conn.update(worksheet="Banque", data=df_b)
                         st.rerun()
-        else: 
-            st.success("✅ Aucun mandat actif sur les citoyens.")
+            
+            # Affichage des Véhicules
+            for _, car in wanted_cars.iterrows():
+                with st.container(border=True):
+                    v1_r, v2_r = st.columns([3, 1])
+                    v1_r.error(f"🚗 **VÉHICULE : {car['Numéro de la plaque']}**\n\n**Motif :** {car.get('Motif Recherche', 'N/A')}")
+                    if v2_r.button("Véhicule saisi", key=f"stop_v_{car['Numéro de la plaque']}", use_container_width=True):
+                        idx = df_i[df_i["Numéro de la plaque"] == car["Numéro de la plaque"]].index[0]
+                        df_i.at[idx, "Statut"], df_i.at[idx, "Motif Recherche"] = "EN RÈGLE", ""
+                        cloud_conn.update(worksheet="Immatriculations", data=df_i)
+                        st.rerun()
 
 with col_m2:
     with st.container(border=True):
-        st.markdown("#### 🔦 Scanner Plaque")
-        p_search = st.text_input("Saisir plaque", key="plate_ui").upper().strip()
+        st.markdown("#### 🔦 Scanner de Plaque")
+        p_search = st.text_input("Saisir plaque", key="plate_ui_new").upper().strip()
         if p_search:
-            # Recherche dans df_i (Immatriculations)
             m = df_i[df_i["Numéro de la plaque"].astype(str).str.contains(p_search, na=False)]
             if not m.empty:
-                nom_proprio = m.iloc[0]["Nom d'utilisateur ROBLOX"]
-                # Vérification si le proprio est recherché dans df_b
-                is_wanted = not df_b[(df_b["Nom Roblox"] == nom_proprio) & (df_b["Statut"] == "RECHERCHÉ")].empty
+                info = m.iloc[0]
+                nom_proprio = info["Nom d'utilisateur ROBLOX"]
                 
-                if is_wanted: 
-                    st.error(f"⚠️ **PROPRIO RECHERCHÉ**")
+                # Check si le proprio est recherché
+                proprio_wanted = not df_b[(df_b["Nom Roblox"] == nom_proprio) & (df_b["Statut"] == "RECHERCHÉ")].empty
                 
-                # Vérification si le VÉHICULE lui-même est recherché
-                if m.iloc[0].get("Statut") == "RECHERCHÉ":
-                    st.error(f"🚨 **VÉHICULE VOLÉ/RECHERCHÉ**")
+                if proprio_wanted: st.error("⚠️ LE PROPRIÉTAIRE EST RECHERCHÉ !")
+                if info.get("Statut") == "RECHERCHÉ": st.error("🚨 CE VÉHICULE EST RECHERCHÉ !")
                 
-                st.info(f"👤 **Proprio :** {nom_proprio}\n\n🚘 **Modèle :** {m.iloc[0]['Marque du véhicule']}")
+                st.info(f"👤 **Proprio :** {nom_proprio}\n\n🚘 **Véhicule :** {info['Marque du véhicule']}")
             else: 
-                st.error("❌ Plaque inconnue")
+                st.error("❌ Plaque inconnue au fichier national.")
             # ==========================================
             # 5. INTERVENTION SUR CITOYEN & FACTURATION
             # ==========================================
