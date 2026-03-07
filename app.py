@@ -238,29 +238,24 @@ if st.session_state.user_auth is None:
     # === ✏️ ZONE DE MESSAGE PERSONNALISABLE ===
     MESSAGE_ACCUEIL = "🌙 Aïd Moubarak à tous les citoyens ! ✨"
     # ==========================================
-# --- CONFIGURATION INTERFACE (DYNAMIQUE) ---
-    # On utilise t_color ou une logique similaire pour le fond global si besoin, 
-    # mais le plus simple est de laisser Streamlit gérer ou d'utiliser une variable.
-    
-    bg_global = "#0e1117" if 18 <= h_lock or h_lock < 5 else "#FFFFFF"
-
-    st.markdown(f"""
+    # --- CONFIGURATION INTERFACE (NETTOYAGE DU GRIS) ---
+    st.markdown("""
         <style>
-            /* On applique le fond en fonction de l'heure au lieu de forcer le noir */
-            .stApp, .main, .block-container {{
-                background-color: {bg_global} !important;
-            }}
-            [data-testid="stSidebar"], [data-testid="stSidebarNav"] {{ display: none; }}
-            [data-testid="stStatusWidget"] {{ display: none; }}
-            .block-container {{ padding-top: 2rem !important; }}
+            /* Force tout le fond de l'application en noir pour éliminer le gris */
+            .stApp, .main, .block-container {
+                background-color: #0e1117 !important;
+            }
+            [data-testid="stSidebar"], [data-testid="stSidebarNav"] { display: none; }
+            [data-testid="stStatusWidget"] { display: none; }
+            .block-container { padding-top: 2rem !important; }
             
-            iframe {{ 
+            /* Rend l'iframe totalement invisible (pas de bordures/fond) */
+            iframe { 
                 border: none !important; 
                 background: transparent !important;
-            }}
+            }
         </style>
     """, unsafe_allow_html=True)
-
     # 1. CALCUL DU MOMENT (UTC+1)
     from datetime import datetime, timedelta, timezone
     t_now_lock = datetime.now(timezone.utc) + timedelta(hours=1)
