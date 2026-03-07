@@ -380,21 +380,42 @@ if st.session_state.user_auth is None:
 
 with st.container():
     # --- A. TABLEAU PUBLIC DES AVIS DE RECHERCHE ---
-    recherches_publics = df_b[df_b["Statut"].str.upper().str.contains("RECHERCHÉ", na=False)]
+    # Récupération des données recherchées
+    recherches_citoyens = df_b[df_b["Statut"].str.upper().str.contains("RECHERCHÉ", na=False)]
+    recherches_vehicules = df_i[df_i["Statut"].str.upper().str.contains("RECHERCHÉ", na=False)]
     
-    if not recherches_publics.empty:
+    if not recherches_citoyens.empty or not recherches_vehicules.empty:
         st.markdown("<h3 style='color: #ff4b4b; margin-bottom: 15px;'>🚨 AVIS DE RECHERCHE EN COURS</h3>", unsafe_allow_html=True)
-        for _, crim in recherches_publics.iterrows():
-            motif = crim.get('Motif Recherche', 'Motif non spécifié').upper()
+        
+        # Affichage des CITOYENS recherchés
+        for _, crim in recherches_citoyens.iterrows():
+            motif = crim.get('Motif Recherche', 'MOTIF NON SPÉCIFIÉ').upper()
             st.markdown(f"""
                 <div style="display: flex; flex-direction: column; background-color: #8B0000; padding: 12px 20px; border-radius: 8px; border: 3px solid #ff0000; margin-bottom: 10px; animation: blinker_universal 2s linear infinite;">
                     <div style="color: #ffffff !important; font-weight: bold; font-size: 1.3em;">👤 {crim['Nom Roblox']}</div>
                     <div style="color: #ffcccc !important; font-weight: 700; font-size: 0.9em;">MOTIF : {motif}</div>
                 </div>
-                <style> @keyframes blinker_universal {{ 50% {{ background-color: #ff4b4b; border-color: #8B0000; }} }} </style>
             """, unsafe_allow_html=True)
-        st.divider()
+            
+        # Affichage des VÉHICULES recherchés
+        for _, car in recherches_vehicules.iterrows():
+            motif_v = car.get('Motif Recherche', 'SIGNALÉ').upper()
+            st.markdown(f"""
+                <div style="display: flex; flex-direction: column; background-color: #1a1a1a; padding: 12px 20px; border-radius: 8px; border: 3px solid #ff4b4b; margin-bottom: 10px; border-left: 10px solid #ff4b4b;">
+                    <div style="color: #ffffff !important; font-weight: bold; font-size: 1.3em;">🚗 VÉHICULE : {car['Numéro de la plaque']}</div>
+                    <div style="color: #ffcccc !important; font-weight: 700; font-size: 0.9em;">MODÈLE : {car.get('Marque du véhicule', 'INCONNU')}</div>
+                    <div style="color: #ff4b4b !important; font-weight: 800; font-size: 0.9em;">MOTIF : {motif_v}</div>
+                </div>
+            """, unsafe_allow_html=True)
 
+        # Style unique pour l'animation
+        st.markdown("""
+            <style> 
+                @keyframes blinker_universal { 50% { background-color: #ff4b4b; border-color: #8B0000; } } 
+            </style>
+        """, unsafe_allow_html=True)
+        
+        st.divider()
 # TITRE DU REGISTRE
 st.markdown('<div class="header-box"><h2>📂 REGISTRE NATIONAL DES CITOYENS</h2></div>', unsafe_allow_html=True)
 
