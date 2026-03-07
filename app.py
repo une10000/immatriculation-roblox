@@ -1,40 +1,4 @@
-import streamlit as st
-import pandas as pd
-import time  # <--- AJOUTE CETTE LIGNE ICI
-from datetime import datetime, timedelta, timezone
-from streamlit_gsheets import GSheetsConnection
-
-# 1. INTERFACE & DESIGN
-st.set_page_config(
-    page_title="RCRP FR OS - SYSTÈME NATIONAL",
-    page_icon="🏛️",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
-
-# --- CSS DYNAMIQUE (DÉTECTION SYSTÈME) ---
-st.markdown("""
-    <style>
-    /* Nettoyage des éléments Streamlit */
-    #MainMenu, footer, header { visibility: hidden; }
-
-    /* PAR DÉFAUT : MODE SOMBRE */
-    :root {
-        --bg-color: #0e1117;
-        --text-color: #ffffff;
-        --input-bg: #262730;
-        --border-color: #444444;
-    }
-
-    /* SI L'APPAREIL EST EN MODE CLAIR */
-    @media (prefers-color-scheme: light) {
-        :root {
-            --bg-color: #ffffff !important;
-            --text-color: #000000 !important;
-            --input-bg: #f0f2f6 !important;
-            --border-color: #d3d3d3 !important;
-        }
-        /* Correction spécifique pour le fond Streamlit */
+cd28aa38bd1358724e5935b9e7528ca416cd7900        /* Correction spécifique pour le fond Streamlit */
         .stApp { background-color: #ffffff !important; }
         .stMarkdown, p, label, span, div, h1, h2, h3 { color: #000000 !important; }
     }
