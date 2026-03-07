@@ -237,49 +237,50 @@ if st.session_state.user_auth is not None:
 if st.session_state.user_auth is None:
     # === ✏️ ZONE DE MESSAGE PERSONNALISABLE ===
     MESSAGE_ACCUEIL = "🌙 Aïd Moubarak à tous les citoyens ! ✨"
+    # ==========================================
+
+    # --- CONFIGURATION INTERFACE (NETTOYAGE DU GRIS) ---
+    st.markdown("""
+        <style>
+            /* Force tout le fond de l'application en noir pour éliminer le gris */
+            .stApp, .main, .block-container {
+                background-color: #0e1117 !important;
+            }
+            [data-testid="stSidebar"], [data-testid="stSidebarNav"] { display: none; }
+            [data-testid="stStatusWidget"] { display: none; }
+            .block-container { padding-top: 2rem !important; }
+            
+            /* Rend l'iframe totalement invisible (pas de bordures/fond) */
+            iframe { 
+                border: none !important; 
+                background: transparent !important;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+
     # 1. CALCUL DU MOMENT (UTC+1)
     from datetime import datetime, timedelta, timezone
     t_now_lock = datetime.now(timezone.utc) + timedelta(hours=1)
     h_lock = t_now_lock.hour
 
-    # 2. LOGIQUE DE STYLE DYNAMIQUE (JOUR/NUIT)
     if 5 <= h_lock < 18:
         salut_complet = "Bonjour☀️"
         pattern_style = "background-color: #87CEEB; background-image: conic-gradient(from 200deg at 85% 10%, transparent 0deg, rgba(255,255,255,0.4) 15deg, transparent 30deg, rgba(255,223,137,0.5) 45deg, transparent 60deg, rgba(255,255,255,0.4) 75deg, transparent 90deg), radial-gradient(circle at 85% 10%, #FFF9E3 0%, #FFD700 15%, rgba(255,215,0,0.4) 30%, transparent 60%);"
         t_color = "#1E1E1E"
         glow_text = "0 0 30px rgba(255, 255, 255, 1), 0 0 60px rgba(255, 200, 0, 0.6)"
-        bg_global = "#FFFFFF" # Fond clair le jour
     else:
         salut_complet = "Bonsoir🌕"
         pattern_style = "background-color: #05070a; background-image: radial-gradient(1px 1px at 25% 35%, white, transparent), radial-gradient(1px 1px at 50% 10%, white, transparent); background-size: 150px 150px, 200px 200px;"
         t_color = "#FFFFFF"
         glow_text = "0 0 40px rgba(255,255,255,0.9), 0 0 80px rgba(255,255,255,0.4)"
-        bg_global = "#0e1117" # Fond sombre la nuit
 
-    # --- CONFIGURATION INTERFACE ---
-    st.markdown(f"""
-        <style>
-            /* Le fond s'adapte maintenant à la variable bg_global */
-            .stApp, .main, .block-container {{
-                background-color: {bg_global} !important;
-            }}
-            [data-testid="stSidebar"], [data-testid="stSidebarNav"] {{ display: none; }}
-            [data-testid="stStatusWidget"] {{ display: none; }}
-            .block-container {{ padding-top: 2rem !important; }}
-            
-            iframe {{ 
-                border: none !important; 
-                background: transparent !important;
-            }}
-        </style>
-    """, unsafe_allow_html=True)
-
-    # --- LE BLOC MONOLITHIQUE (HTML/JS) ---
+    # --- LE BLOC MONOLITHIQUE ---
     import streamlit.components.v1 as components
     display_annonce = "block" if MESSAGE_ACCUEIL else "none"
 
     components.html(f"""
         <style>
+            /* EFFET RGB ULTRA RAPIDE (1.5s) */
             @keyframes border-glow {{
                 0% {{ border-color: #ff0000; box-shadow: 0 0 25px #ff0000; }}
                 20% {{ border-color: #ff8000; box-shadow: 0 0 25px #ff8000; }}
@@ -1315,74 +1316,31 @@ if len(tabs) > 1:
                 else:
                     st.warning("🔎 Aucun dossier trouvé.")
 
-# ==========================================
-# 4. MANDATS & RECHERCHE
-# ==========================================
-st.markdown("### 🔍 MANDATS & RECHERCHE")
+            # ==========================================
+            # 4. MANDATS & RECHERCHE
+            # ==========================================
+            st.markdown("### 🔍 MANDATS & RECHERCHE")
+            with st.container(border=True):
+                st.markdown("#### 📝 Lancer un Mandat d'Arrêt")
+                c1, c2, c3 = st.columns([1.5, 2, 1])
+                with c1:
+                    liste_citoyens = sorted(df_b["Nom Roblox"].unique().tolist())
+                    cible_mandat = st.selectbox("Suspect", ["---"] + liste_citoyens, key="mandat_cible")
+                with c2:
+                    motif_mandat = st.text_input("Motif de recherche", placeholder="Ex: Braquage...", key="mandat_motif")
+                with c3:
+                    st.write(" ")
+                    if st.button("🚨 LANCER L'ALERTE", use_container_width=True, type="primary"):
+                        if cible_mandat != "---" and motif_mandat:
+                            idx = df_b[df_b["Nom Roblox"] == cible_mandat].index[0]
+                            df_b.at[idx, "Statut"] = "RECHERCHÉ"
+                            df_b.at[idx, "Motif Recherche"] = motif_mandat
+                            cloud_conn.update(worksheet="Banque", data=df_b)
+                            st.success(f"Mandat lancé contre {cible_mandat} !")
+                            time.sleep(1); st.rerun()
+                        else:
+                            st.error("Champs requis !")
 
-# --- SECTION 1 : INDIVIDUS ---
-with st.container(border=True):
-    st.markdown("#### 👤 Lancer un Mandat d'Arrêt (Individu)")
-    c1, c2, c3 = st.columns([1.5, 2, 1])
-    with c1:
-        liste_citoyens = sorted(df_b["Nom Roblox"].unique().tolist())
-        cible_mandat = st.selectbox("Suspect", ["---"] + liste_citoyens, key="mandat_cible")
-    with c2:
-        motif_mandat = st.text_input("Motif de recherche", placeholder="Ex: Braquage...", key="mandat_motif")
-    with c3:
-        st.write(" ")
-        if st.button("🚨 LANCER L'ALERTE (INDIVIDU)", use_container_width=True, type="primary"):
-            if cible_mandat != "---" and motif_mandat:
-                idx = df_b[df_b["Nom Roblox"] == cible_mandat].index[0]
-                df_b.at[idx, "Statut"] = "RECHERCHÉ"
-                df_b.at[idx, "Motif Recherche"] = motif_mandat
-                cloud_conn.update(worksheet="Banque", data=df_b)
-                st.success(f"Mandat lancé contre {cible_mandat} !")
-                time.sleep(1); st.rerun()
-            else:
-                st.error("Champs requis !")
-
-# --- SECTION 2 : VÉHICULES ---
-with st.container(border=True):
-    st.markdown("#### 🚗 Signalement de Véhicule (APB)")
-    
-    # Checkbox pour les véhicules non immatriculés
-    non_immatricule = st.toggle("⚠️ Véhicule non immatriculé / Inconnu", key="v_inconnu")
-    
-    v1, v2, v3 = st.columns([1.5, 2, 1])
-    
-    with v1:
-        if not non_immatricule:
-            # Liste basée sur ta feuille "Véhicules"
-            liste_v = sorted(df_v["Plaque"].unique().tolist())
-            cible_v = st.selectbox("Plaque d'immatriculation", ["---"] + liste_v, key="v_plaque")
-        else:
-            # Saisie libre si pas de plaque
-            cible_v = st.text_input("Description (Modèle/Couleur)", placeholder="Ex: Mustang Noire...", key="v_desc")
-            
-    with v2:
-        motif_v = st.text_input("Raison de l'avis de recherche", placeholder="Ex: Délit de fuite...", key="v_motif")
-        
-    with v3:
-        st.write(" ")
-        if st.button("🚨 DIFFUSER L'ALERTE (VÉHICULE)", use_container_width=True, type="primary"):
-            if cible_v and cible_v != "---" and motif_v:
-                
-                if not non_immatricule:
-                    # Cas d'un véhicule connu : on met à jour son statut dans la base
-                    idx_v = df_v[df_v["Plaque"] == cible_v].index[0]
-                    df_v.at[idx_v, "Statut"] = "RECHERCHÉ"
-                    df_v.at[idx_v, "Motif Recherche"] = motif_v
-                    cloud_conn.update(worksheet="Véhicules", data=df_v)
-                    st.success(f"Le véhicule {cible_v} est désormais recherché !")
-                else:
-                    # Cas d'un véhicule inconnu : on peut l'ajouter à une liste de "Signalements Actifs"
-                    # Ou simplement afficher un message (à adapter selon ta structure de base)
-                    st.warning(f"Alerte générale diffusée : {cible_v} pour {motif_v} !")
-                
-                time.sleep(1); st.rerun()
-            else:
-                st.error("Veuillez remplir les informations !")
             col_m1, col_m2 = st.columns([2, 1])
             with col_m1:
                 with st.container(border=True):
