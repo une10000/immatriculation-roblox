@@ -237,49 +237,50 @@ if st.session_state.user_auth is not None:
 if st.session_state.user_auth is None:
     # === ✏️ ZONE DE MESSAGE PERSONNALISABLE ===
     MESSAGE_ACCUEIL = "🌙 Aïd Moubarak à tous les citoyens ! ✨"
+    # ==========================================
+
+    # --- CONFIGURATION INTERFACE (NETTOYAGE DU GRIS) ---
+    st.markdown("""
+        <style>
+            /* Force tout le fond de l'application en noir pour éliminer le gris */
+            .stApp, .main, .block-container {
+                background-color: #0e1117 !important;
+            }
+            [data-testid="stSidebar"], [data-testid="stSidebarNav"] { display: none; }
+            [data-testid="stStatusWidget"] { display: none; }
+            .block-container { padding-top: 2rem !important; }
+            
+            /* Rend l'iframe totalement invisible (pas de bordures/fond) */
+            iframe { 
+                border: none !important; 
+                background: transparent !important;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+
     # 1. CALCUL DU MOMENT (UTC+1)
     from datetime import datetime, timedelta, timezone
     t_now_lock = datetime.now(timezone.utc) + timedelta(hours=1)
     h_lock = t_now_lock.hour
 
-    # 2. LOGIQUE DE STYLE DYNAMIQUE (JOUR/NUIT)
     if 5 <= h_lock < 18:
         salut_complet = "Bonjour☀️"
         pattern_style = "background-color: #87CEEB; background-image: conic-gradient(from 200deg at 85% 10%, transparent 0deg, rgba(255,255,255,0.4) 15deg, transparent 30deg, rgba(255,223,137,0.5) 45deg, transparent 60deg, rgba(255,255,255,0.4) 75deg, transparent 90deg), radial-gradient(circle at 85% 10%, #FFF9E3 0%, #FFD700 15%, rgba(255,215,0,0.4) 30%, transparent 60%);"
         t_color = "#1E1E1E"
         glow_text = "0 0 30px rgba(255, 255, 255, 1), 0 0 60px rgba(255, 200, 0, 0.6)"
-        bg_global = "#FFFFFF" # Fond clair le jour
     else:
         salut_complet = "Bonsoir🌕"
         pattern_style = "background-color: #05070a; background-image: radial-gradient(1px 1px at 25% 35%, white, transparent), radial-gradient(1px 1px at 50% 10%, white, transparent); background-size: 150px 150px, 200px 200px;"
         t_color = "#FFFFFF"
         glow_text = "0 0 40px rgba(255,255,255,0.9), 0 0 80px rgba(255,255,255,0.4)"
-        bg_global = "#0e1117" # Fond sombre la nuit
 
-    # --- CONFIGURATION INTERFACE ---
-    st.markdown(f"""
-        <style>
-            /* Le fond s'adapte maintenant à la variable bg_global */
-            .stApp, .main, .block-container {{
-                background-color: {bg_global} !important;
-            }}
-            [data-testid="stSidebar"], [data-testid="stSidebarNav"] {{ display: none; }}
-            [data-testid="stStatusWidget"] {{ display: none; }}
-            .block-container {{ padding-top: 2rem !important; }}
-            
-            iframe {{ 
-                border: none !important; 
-                background: transparent !important;
-            }}
-        </style>
-    """, unsafe_allow_html=True)
-
-    # --- LE BLOC MONOLITHIQUE (HTML/JS) ---
+    # --- LE BLOC MONOLITHIQUE ---
     import streamlit.components.v1 as components
     display_annonce = "block" if MESSAGE_ACCUEIL else "none"
 
     components.html(f"""
         <style>
+            /* EFFET RGB ULTRA RAPIDE (1.5s) */
             @keyframes border-glow {{
                 0% {{ border-color: #ff0000; box-shadow: 0 0 25px #ff0000; }}
                 20% {{ border-color: #ff8000; box-shadow: 0 0 25px #ff8000; }}
@@ -380,13 +381,9 @@ if st.session_state.user_auth is None:
 with st.container():
     # --- A. TABLEAU PUBLIC DES AVIS DE RECHERCHE ---
     recherches_publics = df_b[df_b["Statut"].str.upper().str.contains("RECHERCHÉ", na=False)]
-    # On récupère aussi les véhicules recherchés
-    vehicules_publics = df_i[df_i["Statut"].str.upper().str.contains("RECHERCHÉ", na=False)]
     
-    if not recherches_publics.empty or not vehicules_publics.empty:
+    if not recherches_publics.empty:
         st.markdown("<h3 style='color: #ff4b4b; margin-bottom: 15px;'>🚨 AVIS DE RECHERCHE EN COURS</h3>", unsafe_allow_html=True)
-        
-        # Affichage des Individus
         for _, crim in recherches_publics.iterrows():
             motif = crim.get('Motif Recherche', 'Motif non spécifié').upper()
             st.markdown(f"""
@@ -394,20 +391,8 @@ with st.container():
                     <div style="color: #ffffff !important; font-weight: bold; font-size: 1.3em;">👤 {crim['Nom Roblox']}</div>
                     <div style="color: #ffcccc !important; font-weight: 700; font-size: 0.9em;">MOTIF : {motif}</div>
                 </div>
+                <style> @keyframes blinker_universal {{ 50% {{ background-color: #ff4b4b; border-color: #8B0000; }} }} </style>
             """, unsafe_allow_html=True)
-        
-        # Affichage des Véhicules
-        for _, car in vehicules_publics.iterrows():
-            motif_v = car.get('Motif Recherche', 'SIGNALÉ').upper()
-            st.markdown(f"""
-                <div style="display: flex; flex-direction: column; background-color: #1a1a1a; padding: 12px 20px; border-radius: 8px; border: 3px solid #ff4b4b; margin-bottom: 10px; border-left: 10px solid #ff4b4b;">
-                    <div style="color: #ffffff !important; font-weight: bold; font-size: 1.3em;">🚗 VÉHICULE : {car['Numéro de la plaque']}</div>
-                    <div style="color: #ffcccc !important; font-weight: 700; font-size: 0.9em;">MODÈLE : {car.get('Marque du véhicule', 'INCONNU')}</div>
-                    <div style="color: #ff4b4b !important; font-weight: 800; font-size: 0.9em;">MOTIF : {motif_v}</div>
-                </div>
-            """, unsafe_allow_html=True)
-
-        st.markdown("<style> @keyframes blinker_universal { 50% { background-color: #ff4b4b; border-color: #8B0000; } } </style>", unsafe_allow_html=True)
         st.divider()
 
 # TITRE DU REGISTRE
@@ -423,7 +408,7 @@ with st.container():
         # --- RÉCUPÉRATION DES DONNÉES GLOBALES ---
         citoyen_info = df_b[df_b["Nom Roblox"] == target]
         
-        # --- B. ALERTES AUTOMATIQUES ---
+# --- B. ALERTES AUTOMATIQUES ---
         # 1. Alerte Mandat (Rouge Flashy)
         if not citoyen_info.empty and "RECHERCHÉ" in str(citoyen_info.iloc[0].get("Statut", "")).upper():
             motif_critique = citoyen_info.iloc[0].get("Motif Recherche", "Non spécifié")
@@ -453,7 +438,8 @@ with st.container():
                         <b style="font-size: 20px;">MOTIF : {motif_critique}</b>
                     </div>
                 </div>
-            """, unsafe_allow_html=True) 
+            """, unsafe_allow_html=True)
+
         # 2. Alerte Permis Invalide (Orange Flashy)
         # Tu peux aussi l'ajouter si tu veux que ce soit aussi visible
         try:
@@ -1330,127 +1316,63 @@ if len(tabs) > 1:
                 else:
                     st.warning("🔎 Aucun dossier trouvé.")
 
-# ==========================================
-# 4. MANDATS & RECHERCHE
-# ==========================================
-st.markdown("### 🔍 MANDATS & RECHERCHE")
+            # ==========================================
+            # 4. MANDATS & RECHERCHE
+            # ==========================================
+            st.markdown("### 🔍 MANDATS & RECHERCHE")
+            with st.container(border=True):
+                st.markdown("#### 📝 Lancer un Mandat d'Arrêt")
+                c1, c2, c3 = st.columns([1.5, 2, 1])
+                with c1:
+                    liste_citoyens = sorted(df_b["Nom Roblox"].unique().tolist())
+                    cible_mandat = st.selectbox("Suspect", ["---"] + liste_citoyens, key="mandat_cible")
+                with c2:
+                    motif_mandat = st.text_input("Motif de recherche", placeholder="Ex: Braquage...", key="mandat_motif")
+                with c3:
+                    st.write(" ")
+                    if st.button("🚨 LANCER L'ALERTE", use_container_width=True, type="primary"):
+                        if cible_mandat != "---" and motif_mandat:
+                            idx = df_b[df_b["Nom Roblox"] == cible_mandat].index[0]
+                            df_b.at[idx, "Statut"] = "RECHERCHÉ"
+                            df_b.at[idx, "Motif Recherche"] = motif_mandat
+                            cloud_conn.update(worksheet="Banque", data=df_b)
+                            st.success(f"Mandat lancé contre {cible_mandat} !")
+                            time.sleep(1); st.rerun()
+                        else:
+                            st.error("Champs requis !")
 
-# --- PARTIE A : FORMULAIRES DE LANCEMENT ---
-col_form1, col_form2 = st.columns(2)
-
-# --- SECTION INDIVIDUS ---
-with col_form1:
-    with st.container(border=True):
-        st.markdown("#### 👤 Mandat d'Arrêt (Individu)")
-        liste_citoyens = sorted(df_b["Nom Roblox"].unique().tolist())
-        cible_mandat = st.selectbox("Suspect", ["---"] + liste_citoyens, key="mandat_cible")
-        motif_mandat = st.text_input("Motif", placeholder="Ex: Braquage...", key="mandat_motif")
-        
-        if st.button("🚨 LANCER L'ALERTE (INDIVIDU)", use_container_width=True, type="primary"):
-            if cible_mandat != "---" and motif_mandat:
-                idx = df_b[df_b["Nom Roblox"] == cible_mandat].index[0]
-                df_b.at[idx, "Statut"] = "RECHERCHÉ"
-                df_b.at[idx, "Motif Recherche"] = motif_mandat
-                cloud_conn.update(worksheet="Banque", data=df_b)
-                st.success(f"Mandat lancé contre {cible_mandat} !")
-                time.sleep(1); st.rerun()
-            else:
-                st.error("Champs requis !")
-
-# --- SECTION VÉHICULES ---
-with col_form2:
-    with st.container(border=True):
-        st.markdown("#### 🚗 Signalement Véhicule (APB)")
-        # Toggle pour basculer entre véhicule connu et inconnu
-        non_immatricule = st.toggle("⚠️ Véhicule non immatriculé", key="v_inconnu")
-        
-        if not non_immatricule:
-            # Correction du bug de tri : on force en String pour éviter le crash int/str
-            liste_v = sorted(df_i["Numéro de la plaque"].astype(str).unique().tolist())
-            cible_v = st.selectbox("Sélectionner Plaque", ["---"] + liste_v, key="v_plaque")
-        else:
-            # Saisie manuelle pour les voitures sans plaques
-            cible_v = st.text_input("Description du véhicule", placeholder="Ex: Berline noire, jantes rouges...", key="v_desc")
-            
-        motif_v = st.text_input("Raison du signalement", placeholder="Ex: Go-fast, Vol...", key="v_motif")
-        
-        if st.button("🚨 LANCER L'ALERTE (VÉHICULE)", use_container_width=True, type="primary"):
-            if cible_v and cible_v != "---" and motif_v:
-                if not non_immatricule:
-                    # Cas d'un véhicule dans la base df_i
-                    idx_v = df_i[df_i["Numéro de la plaque"].astype(str) == str(cible_v)].index[0]
-                    df_i.at[idx_v, "Statut"] = "RECHERCHÉ"
-                    df_i.at[idx_v, "Motif Recherche"] = motif_v
-                    # On met à jour la feuille des immatriculations
-                    cloud_conn.update(worksheet="Immatriculations", data=df_i)
-                    st.success(f"Le véhicule {cible_v} est maintenant recherché !")
-                else:
-                    # Cas véhicule inconnu : on peut l'ajouter à une feuille de logs "Signalements"
-                    # Si tu n'as pas cette feuille, le message s'affiche juste avant le refresh
-                    st.warning(f"Alerte diffusée : {cible_v}")
-                    # Optionnel : cloud_conn.append(worksheet="Logs_APB", data={"Vehicule": cible_v, "Motif": motif_v})
-                
-                time.sleep(1); st.rerun()
-            else:
-                st.error("Veuillez remplir toutes les informations !")
-
-# --- PARTIE B : AFFICHAGE DES ALERTES & SCANNER ---
-st.write("---")
-col_m1, col_m2 = st.columns([2, 1])
-
-with col_m1:
-    with st.container(border=True):
-        st.markdown("#### 📢 Alertes Actives")
-        
-        # On filtre les individus recherchés
-        wanted_people = df_b[df_b["Statut"].str.upper().str.contains("RECHERCHÉ", na=False)]
-        # On filtre les véhicules recherchés
-        wanted_cars = df_i[df_i["Statut"].str.upper().str.contains("RECHERCHÉ", na=False)]
-        
-        if wanted_people.empty and wanted_cars.empty:
-            st.success("✅ Aucun mandat ou signalement actif.")
-        else:
-            # Affichage des Individus
-            for _, crim in wanted_people.iterrows():
+            col_m1, col_m2 = st.columns([2, 1])
+            with col_m1:
                 with st.container(border=True):
-                    r1, r2 = st.columns([3, 1])
-                    r1.warning(f"👤 **SUSPECT : {crim['Nom Roblox']}**\n\n**Motif :** {crim.get('Motif Recherche', 'N/A')}")
-                    if r2.button("Fin de recherche", key=f"stop_{crim['Nom Roblox']}", use_container_width=True):
-                        idx = df_b[df_b["Nom Roblox"] == crim["Nom Roblox"]].index[0]
-                        df_b.at[idx, "Statut"], df_b.at[idx, "Motif Recherche"] = "RAS", ""
-                        cloud_conn.update(worksheet="Banque", data=df_b)
-                        st.rerun()
-            
-            # Affichage des Véhicules
-            for _, car in wanted_cars.iterrows():
-                with st.container(border=True):
-                    v1_r, v2_r = st.columns([3, 1])
-                    v1_r.error(f"🚗 **VÉHICULE : {car['Numéro de la plaque']}**\n\n**Motif :** {car.get('Motif Recherche', 'N/A')}")
-                    if v2_r.button("Véhicule saisi", key=f"stop_v_{car['Numéro de la plaque']}", use_container_width=True):
-                        idx = df_i[df_i["Numéro de la plaque"] == car["Numéro de la plaque"]].index[0]
-                        df_i.at[idx, "Statut"], df_i.at[idx, "Motif Recherche"] = "EN RÈGLE", ""
-                        cloud_conn.update(worksheet="Immatriculations", data=df_i)
-                        st.rerun()
+                    st.markdown("#### 📢 Alertes Actives")
+                    recherches = df_b[df_b["Statut"].str.upper().str.contains("RECHERCHÉ", na=False)]
+                    if not recherches.empty:
+                        for _, crim in recherches.iterrows():
+                            with st.container(border=True):
+                                c1_r, c2_r = st.columns([3, 1])
+                                c1_r.warning(f"🚨 **{crim['Nom Roblox']}**\n\n**Motif :** {crim.get('Motif Recherche', 'N/A')}")
+                                if c2_r.button("A été interpellé", key=f"rel_{crim['Nom Roblox']}", use_container_width=True):
+                                    idx = df_b[df_b["Nom Roblox"] == crim["Nom Roblox"]].index[0]
+                                    df_b.at[idx, "Statut"], df_b.at[idx, "Motif Recherche"] = "RAS", ""
+                                    cloud_conn.update(worksheet="Banque", data=df_b)
+                                    st.rerun()
+                    else: 
+                        st.success("✅ Aucun mandat actif.")
 
-with col_m2:
-    with st.container(border=True):
-        st.markdown("#### 🔦 Scanner de Plaque")
-        p_search = st.text_input("Saisir plaque", key="plate_ui_new").upper().strip()
-        if p_search:
-            m = df_i[df_i["Numéro de la plaque"].astype(str).str.contains(p_search, na=False)]
-            if not m.empty:
-                info = m.iloc[0]
-                nom_proprio = info["Nom d'utilisateur ROBLOX"]
-                
-                # Check si le proprio est recherché
-                proprio_wanted = not df_b[(df_b["Nom Roblox"] == nom_proprio) & (df_b["Statut"] == "RECHERCHÉ")].empty
-                
-                if proprio_wanted: st.error("⚠️ LE PROPRIÉTAIRE EST RECHERCHÉ !")
-                if info.get("Statut") == "RECHERCHÉ": st.error("🚨 CE VÉHICULE EST RECHERCHÉ !")
-                
-                st.info(f"👤 **Proprio :** {nom_proprio}\n\n🚘 **Véhicule :** {info['Marque du véhicule']}")
-            else: 
-                st.error("❌ Plaque inconnue au fichier national.")
+            with col_m2:
+                with st.container(border=True):
+                    st.markdown("#### 🔦 Scanner Plaque")
+                    p_search = st.text_input("Saisir plaque", key="plate_ui").upper().strip()
+                    if p_search:
+                        m = df_i[df_i["Numéro de la plaque"].astype(str).str.contains(p_search, na=False)]
+                        if not m.empty:
+                            nom_proprio = m.iloc[0]["Nom d'utilisateur ROBLOX"]
+                            is_wanted = not df_b[(df_b["Nom Roblox"] == nom_proprio) & (df_b["Statut"] == "RECHERCHÉ")].empty
+                            if is_wanted: st.error(f"⚠️ **PROPRIO RECHERCHÉ**")
+                            st.info(f"👤 **Proprio :** {nom_proprio}\n\n🚘 **Modèle :** {m.iloc[0]['Marque du véhicule']}")
+                        else: 
+                            st.error("❌ Plaque inconnue")
+
             # ==========================================
             # 5. INTERVENTION SUR CITOYEN & FACTURATION
             # ==========================================
