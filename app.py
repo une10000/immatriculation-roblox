@@ -431,7 +431,7 @@ with st.container():
             """, unsafe_allow_html=True)
 
     # 3. VÉHICULES NON IMMATRICULÉS (APB - df_apb)
-    if not df_apb.empty:
+    if not df_a.empty:
         for idx, apb in df_apb.iterrows():
             st.markdown(f"""
                 <div style="display: flex; flex-direction: column; background-color: #4b0082; padding: 12px 20px; border-radius: 8px; border: 3px solid #8a2be2; margin-bottom: 10px; animation: blinker_apb 2s linear infinite;">
