@@ -1331,188 +1331,152 @@ if len(tabs) > 1:
                 else:
                     st.warning("🔎 Aucun dossier trouvé.")
                     
-            # ==========================================
-            # 4. MANDATS & RECHERCHE
-            # ==========================================
-            st.markdown("### 🔍 MANDATS & RECHERCHE")
-            
-            # Création de deux onglets pour ne pas surcharger l'écran
-            tab_citoyens, tab_vehicules = st.tabs(["👤 Citoyens", "🚘 Véhicules"])
-            
-            # ---------------------------------------------------------
-            # ONGLET 1 : CITOYENS (Ton code actuel)
-            # ---------------------------------------------------------
-            with tab_citoyens:
-                with st.container(border=True):
-                    st.markdown("#### 📝 Lancer un Mandat d'Arrêt")
-                    c1, c2, c3 = st.columns([1.5, 2, 1])
-                    with c1:
-                        liste_citoyens = sorted(df_b["Nom Roblox"].unique().tolist())
-                        cible_mandat = st.selectbox("Suspect", ["---"] + liste_citoyens, key="mandat_cible")
-                    with c2:
-                        motif_mandat = st.text_input("Motif de recherche", placeholder="Ex: Braquage...", key="mandat_motif")
-                    with c3:
-                        st.write(" ")
-                        if st.button("🚨 LANCER L'ALERTE", use_container_width=True, type="primary"):
-                            if cible_mandat != "---" and motif_mandat:
-                                idx = df_b[df_b["Nom Roblox"] == cible_mandat].index[0]
-                                df_b.at[idx, "Statut"] = "RECHERCHÉ"
-                                df_b.at[idx, "Motif Recherche"] = motif_mandat
-                                cloud_conn.update(worksheet="Banque", data=df_b)
-                                st.success(f"Mandat lancé contre {cible_mandat} !")
-                                time.sleep(1); st.rerun()
-                            else:
-                                st.error("Champs requis !")
-
-                col_m1, col_m2 = st.columns([2, 1])
-                with col_m1:
-                    with st.container(border=True):
-                        st.markdown("#### 📢 Alertes Actives")
-                        recherches = df_b[df_b["Statut"].str.upper().str.contains("RECHERCHÉ", na=False)]
-                        if not recherches.empty:
-                            for _, crim in recherches.iterrows():
-                                with st.container(border=True):
-                                    c1_r, c2_r = st.columns([3, 1])
-                                    c1_r.warning(f"🚨 **{crim['Nom Roblox']}**\n\n**Motif :** {crim.get('Motif Recherche', 'N/A')}")
-                                    if c2_r.button("A été interpellé", key=f"rel_{crim['Nom Roblox']}", use_container_width=True):
-                                        idx = df_b[df_b["Nom Roblox"] == crim["Nom Roblox"]].index[0]
-                                        df_b.at[idx, "Statut"], df_b.at[idx, "Motif Recherche"] = "RAS", ""
-                                        cloud_conn.update(worksheet="Banque", data=df_b)
-                                        st.rerun()
-                        else: 
-                            st.success("✅ Aucun mandat actif.")
-
-                with col_m2:
-                    with st.container(border=True):
-                        st.markdown("#### 🔦 Scanner Plaque")
-                        p_search = st.text_input("Saisir plaque", key="plate_ui").upper().strip()
-                        if p_search:
-                            m = df_i[df_i["Numéro de la plaque"].astype(str).str.contains(p_search, na=False)]
-                            if not m.empty:
-                                nom_proprio = m.iloc[0]["Nom d'utilisateur ROBLOX"]
-                                is_wanted = not df_b[(df_b["Nom Roblox"] == nom_proprio) & (df_b["Statut"] == "RECHERCHÉ")].empty
-                                if is_wanted: st.error(f"⚠️ **PROPRIO RECHERCHÉ**")
-                                st.info(f"👤 **Proprio :** {nom_proprio}\n\n🚘 **Modèle :** {m.iloc[0]['Marque du véhicule']}")
-                            else: 
-                                st.error("❌ Plaque inconnue")
-
-            # ---------------------------------------------------------
-            # ONGLET 2 : VÉHICULES (Nouveau système)
-            # ---------------------------------------------------------
-            with tab_vehicules:
-                st.markdown("#### 📝 Lancer un Avis de Recherche Véhicule")
-                type_recherche = st.radio("Type de véhicule :", ["Immatriculé (Plaque connue)", "Non Immatriculé (Signalement APB)"], horizontal=True)
-
-                if "Immatriculé" in type_recherche:
-                    c1_v, c2_v, c3_v = st.columns([1.5, 2, 1])
-                    with c1_v:
-                        plaque_cible = st.text_input("Numéro de plaque", placeholder="Ex: OIH-5949").upper().strip()
-                    with c2_v:
-                        motif_veh = st.text_input("Motif de recherche", placeholder="Ex: Délit de fuite...", key="motif_plaque")
-                    with c3_v:
-                        st.write(" ")
-                        if st.button("🚨 ALERTE PLAQUE", use_container_width=True, type="primary"):
-                            if plaque_cible and motif_veh:
-                                mask = df_i["Numéro de la plaque"].astype(str).str.upper() == plaque_cible
-                                if mask.any():
-                                    idx_veh = df_i[mask].index[0]
-                                    df_i.at[idx_veh, "Statut"] = "RECHERCHÉ"
-                                    df_i.at[idx_veh, "Motif Recherche"] = motif_veh
-                                    cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i)
-                                    st.success(f"Avis lancé pour la plaque {plaque_cible} !")
-                                    time.sleep(1); st.rerun()
-                                else:
-                                    st.error("Plaque introuvable dans la base.")
-                            else:
-                                st.error("Champs requis !")
-
             # ======================================================================================
-# GESTION DES RECHERCHES ET SIGNALEMENTS
+# 4. MANDATS & RECHERCHE
 # ======================================================================================
+st.markdown("### 🔍 MANDATS & RECHERCHE")
 
-# --- 1. VÉHICULES IMMATRICULÉS RECHERCHÉS ---
-st.markdown("#### 📢 Véhicules Immatriculés Recherchés")
+# Création des onglets
+tab_citoyens, tab_vehicules = st.tabs(["👤 Citoyens", "🚘 Véhicules"])
 
-# Extraction des véhicules avec le statut 'RECHERCHÉ'
-veh_recherches = df_i[df_i["Statut"].str.upper().str.contains("RECHERCHÉ", na=False)] if 'Statut' in df_i.columns else pd.DataFrame()
+# --------------------------------------------------------------------------------------
+# ONGLET 1 : CITOYENS
+# --------------------------------------------------------------------------------------
+with tab_citoyens:
+    with st.container(border=True):
+        st.markdown("#### 📝 Lancer un Mandat d'Arrêt")
+        c1, c2, c3 = st.columns([1.5, 2, 1])
+        with c1:
+            liste_citoyens = sorted(df_b["Nom Roblox"].unique().tolist())
+            cible_mandat = st.selectbox("Suspect", ["---"] + liste_citoyens, key="mandat_cible")
+        with c2:
+            motif_mandat = st.text_input("Motif de recherche", placeholder="Ex: Braquage...", key="mandat_motif")
+        with c3:
+            st.write(" ")
+            if st.button("🚨 LANCER L'ALERTE", use_container_width=True, type="primary"):
+                if cible_mandat != "---" and motif_mandat:
+                    idx = df_b[df_b["Nom Roblox"] == cible_mandat].index[0]
+                    df_b.at[idx, "Statut"] = "RECHERCHÉ"
+                    df_b.at[idx, "Motif Recherche"] = motif_mandat
+                    cloud_conn.update(worksheet="Banque", data=df_b)
+                    st.success(f"Mandat lancé contre {cible_mandat} !")
+                    time.sleep(1); st.rerun()
+                else:
+                    st.error("Champs requis !")
 
-if not veh_recherches.empty:
-    for _, veh in veh_recherches.iterrows():
+    col_m1, col_m2 = st.columns([2, 1])
+    with col_m1:
         with st.container(border=True):
-            col1, col2 = st.columns([3, 1])
-            col1.warning(f"🚘 **Plaque:** {veh['Numéro de la plaque']} ({veh['Marque du véhicule']})\n\n**Motif:** {veh.get('Motif Recherche', 'N/A')}")
-            
-            if col2.button("Intercepté", key=f"rel_veh_{veh['Numéro de la plaque']}", use_container_width=True):
-                # Mise à jour du statut dans le DataFrame
-                idx = df_i[df_i["Numéro de la plaque"] == veh["Numéro de la plaque"]].index[0]
-                df_i.at[idx, "Statut"], df_i.at[idx, "Motif Recherche"] = "RAS", ""
-                # Envoi vers Google Sheets
-                cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i)
-                st.rerun()
-else:
-    st.success("✅ Aucun véhicule immatriculé recherché.")
+            st.markdown("#### 📢 Alertes Actives")
+            recherches = df_b[df_b["Statut"].str.upper().str.contains("RECHERCHÉ", na=False)]
+            if not recherches.empty:
+                for _, crim in recherches.iterrows():
+                    with st.container(border=True):
+                        c1_r, c2_r = st.columns([3, 1])
+                        c1_r.warning(f"🚨 **{crim['Nom Roblox']}**\n\n**Motif :** {crim.get('Motif Recherche', 'N/A')}")
+                        if c2_r.button("A été interpellé", key=f"rel_{crim['Nom Roblox']}", use_container_width=True):
+                            idx = df_b[df_b["Nom Roblox"] == crim["Nom Roblox"]].index[0]
+                            df_b.at[idx, "Statut"], df_b.at[idx, "Motif Recherche"] = "RAS", ""
+                            cloud_conn.update(worksheet="Banque", data=df_b)
+                            st.rerun()
+            else: 
+                st.success("✅ Aucun mandat actif.")
 
-st.divider()
+    with col_m2:
+        with st.container(border=True):
+            st.markdown("#### 🔦 Scanner Plaque")
+            p_search = st.text_input("Saisir plaque", key="plate_ui").upper().strip()
+            if p_search:
+                m = df_i[df_i["Numéro de la plaque"].astype(str).str.contains(p_search, na=False)]
+                if not m.empty:
+                    nom_proprio = m.iloc[0]["Nom d'utilisateur ROBLOX"]
+                    is_wanted = not df_b[(df_b["Nom Roblox"] == nom_proprio) & (df_b["Statut"] == "RECHERCHÉ")].empty
+                    if is_wanted: st.error(f"⚠️ **PROPRIO RECHERCHÉ**")
+                    st.info(f"👤 **Proprio :** {nom_proprio}\n\n🚘 **Modèle :** {m.iloc[0]['Marque du véhicule']}")
+                else: 
+                    st.error("❌ Plaque inconnue")
 
-# --- 2. VÉHICULE NON IMMATRICULÉ (LANCEMENT APB) ---
-st.markdown("#### 🚨 Lancer un Avis de Recherche (APB)")
+# --------------------------------------------------------------------------------------
+# ONGLET 2 : VÉHICULES (Tout est regroupé ici)
+# --------------------------------------------------------------------------------------
+with tab_vehicules:
+    st.markdown("#### 📝 Lancer un Avis de Recherche Véhicule")
+    type_recherche = st.radio("Type de recherche :", ["Immatriculé (Plaque)", "Non Immatriculé (APB)"], horizontal=True)
 
-# Utilisation d'un formulaire pour bloquer le refresh jusqu'au clic final
-with st.form("form_apb", clear_on_submit=True):
-    c1_a, c2_a = st.columns([1.5, 2])
-    
-    with c1_a:
-        desc_apb = st.text_input("Description du véhicule", placeholder="Ex: Berline noire, vitre cassée...")
-    
-    with c2_a:
-        motif_apb = st.text_input("Motif du signalement APB", placeholder="Ex: Braquage de banque...")
-    
-    submit_apb = st.form_submit_button("🚨 DIFFUSER L'AVIS", use_container_width=True, type="primary")
+    if "Immatriculé" in type_recherche:
+        # --- LANCEMENT PLAQUE ---
+        with st.container(border=True):
+            c1_v, c2_v, c3_v = st.columns([1.5, 2, 1])
+            with c1_v:
+                plaque_cible = st.text_input("Numéro de plaque", placeholder="Ex: OIH-5949").upper().strip()
+            with c2_v:
+                motif_veh = st.text_input("Motif de recherche", placeholder="Ex: Délit de fuite...", key="motif_plaque")
+            with c3_v:
+                st.write(" ")
+                if st.button("🚨 ALERTE PLAQUE", use_container_width=True, type="primary"):
+                    if plaque_cible and motif_veh:
+                        mask = df_i["Numéro de la plaque"].astype(str).str.upper() == plaque_cible
+                        if mask.any():
+                            idx_veh = df_i[mask].index[0]
+                            df_i.at[idx_veh, "Statut"] = "RECHERCHÉ"
+                            df_i.at[idx_veh, "Motif Recherche"] = motif_veh
+                            cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i)
+                            st.success("Avis lancé !")
+                            time.sleep(1); st.rerun()
+                        else:
+                            st.error("Plaque introuvable.")
+                    else:
+                        st.error("Champs requis !")
 
-    if submit_apb:
-        if desc_apb and motif_apb:
-            from datetime import datetime
-            date_creation = datetime.now().strftime("%d/%m/%Y %H:%M")
-            
-            # Création de la nouvelle entrée
-            nouvelle_ligne = pd.DataFrame([{
-                "Description": desc_apb,
-                "Motif": motif_apb,
-                "Date": date_creation
-            }])
-            
-            # Mise à jour de la base APB (df_a)
-            df_a = pd.concat([df_a, nouvelle_ligne], ignore_index=True)
-            cloud_conn.update(worksheet="Signalements_APB", data=df_a)
-            
-            st.success("Signalement APB diffusé avec succès !")
-            time.sleep(1)
-            st.rerun()
+        # --- LISTE DES RECHERCHES PLAQUES ---
+        st.markdown("#### 📢 Véhicules Immatriculés Recherchés")
+        veh_recherches = df_i[df_i["Statut"].str.upper().str.contains("RECHERCHÉ", na=False)] if 'Statut' in df_i.columns else pd.DataFrame()
+        if not veh_recherches.empty:
+            for _, veh in veh_recherches.iterrows():
+                with st.container(border=True):
+                    col1, col2 = st.columns([3, 1])
+                    col1.warning(f"🚘 **Plaque:** {veh['Numéro de la plaque']} | **Motif:** {veh.get('Motif Recherche', 'N/A')}")
+                    if col2.button("Intercepté", key=f"rel_veh_{veh['Numéro de la plaque']}", use_container_width=True):
+                        idx = df_i[df_i["Numéro de la plaque"] == veh["Numéro de la plaque"]].index[0]
+                        df_i.at[idx, "Statut"], df_i.at[idx, "Motif Recherche"] = "RAS", ""
+                        cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i)
+                        st.rerun()
         else:
-            st.error("Erreur : La description et le motif sont obligatoires.")
+            st.success("✅ Aucun véhicule immatriculé recherché.")
 
-# --- 3. AFFICHAGE ET LEVÉE DES APB ACTIFS ---
-st.markdown("#### 📋 Signalements APB Actifs (Sans plaque)")
-
-if not df_a.empty:
-    # On filtre les lignes qui pourraient être vides dans le Sheets
-    df_a_clean = df_a[df_a["Motif"].astype(str).str.strip() != ""]
-    
-    if not df_a_clean.empty:
-        for idx, apb in df_a_clean.iterrows():
-            with st.container(border=True):
-                col1, col2 = st.columns([3, 1])
-                col1.error(f"🚨 **Description:** {apb.get('Description', 'N/A')}\n\n**Motif:** {apb.get('Motif', 'N/A')} | **Date:** {apb.get('Date', 'N/A')}")
-                
-                if col2.button("Levée APB", key=f"rel_apb_{idx}", use_container_width=True):
-                    # Suppression de la ligne et mise à jour
-                    df_a = df_a.drop(idx)
-                    cloud_conn.update(worksheet="Signalements_APB", data=df_a)
-                    st.rerun()
     else:
-        st.info("Aucun signalement APB actif pour le moment.")
-else:
-    st.success("✅ Aucun APB en cours.")
+        # --- SECTION APB (FORMULAIRE) ---
+        with st.form("form_apb", clear_on_submit=True):
+            st.markdown("##### 🚨 Nouveau Signalement APB (Sans Plaque)")
+            ca1, ca2 = st.columns([1.5, 2])
+            with ca1:
+                desc_apb = st.text_input("Description", placeholder="Ex: Berline noire...")
+            with ca2:
+                motif_apb = st.text_input("Motif", placeholder="Ex: Braquage...")
+            
+            if st.form_submit_button("🚨 LANCER APB", use_container_width=True, type="primary"):
+                if desc_apb and motif_apb:
+                    from datetime import datetime
+                    new_apb = pd.DataFrame([{"Description": desc_apb, "Motif": motif_apb, "Date": datetime.now().strftime("%d/%m/%Y %H:%M")}])
+                    df_a = pd.concat([df_a, new_apb], ignore_index=True)
+                    cloud_conn.update(worksheet="Signalements_APB", data=df_a)
+                    st.success("APB Diffusé !")
+                    time.sleep(1); st.rerun()
+
+        # --- LISTE DES APB ---
+        st.markdown("#### 📋 Signalements APB Actifs")
+        if not df_a.empty:
+            df_a_clean = df_a[df_a["Motif"].astype(str).str.strip() != ""]
+            for idx, apb in df_a_clean.iterrows():
+                with st.container(border=True):
+                    col1, col2 = st.columns([3, 1])
+                    col1.error(f"🚨 **Description:** {apb.get('Description', 'N/A')}\n**Motif:** {apb.get('Motif', 'N/A')}")
+                    if col2.button("Levée APB", key=f"rel_apb_{idx}", use_container_width=True):
+                        df_a = df_a.drop(idx)
+                        cloud_conn.update(worksheet="Signalements_APB", data=df_a)
+                        st.rerun()
+        else:
+            st.success("✅ Aucun APB en cours.")
             # ==========================================
             # 5. INTERVENTION SUR CITOYEN & FACTURATION
             # ==========================================
