@@ -1397,20 +1397,20 @@ with tab_citoyens:
                     st.error("❌ Plaque inconnue")
 
 # --------------------------------------------------------------------------------------
-# ONGLET 2 : VÉHICULES (Tout est regroupé ici)
+# ONGLET 2 : VÉHICULES (Version Corrigée)
 # --------------------------------------------------------------------------------------
 with tab_vehicules:
     st.markdown("#### 📝 Lancer un Avis de Recherche Véhicule")
-    type_recherche = st.radio("Type de recherche :", ["Immatriculé (Plaque)", "Non Immatriculé (APB)"], horizontal=True)
+    type_recherche = st.radio("Méthode de recherche :", ["Immatriculé (Plaque)", "Non Immatriculé (APB)"], horizontal=True)
 
     if "Immatriculé" in type_recherche:
-        # --- LANCEMENT PLAQUE ---
+        # --- INTERFACE POUR VÉHICULES AVEC PLAQUE ---
         with st.container(border=True):
             c1_v, c2_v, c3_v = st.columns([1.5, 2, 1])
             with c1_v:
-                plaque_cible = st.text_input("Numéro de plaque", placeholder="Ex: OIH-5949").upper().strip()
+                plaque_cible = st.text_input("Numéro de plaque", placeholder="Ex: OIH-5949", key="input_plaque_fix").upper().strip()
             with c2_v:
-                motif_veh = st.text_input("Motif de recherche", placeholder="Ex: Délit de fuite...", key="motif_plaque")
+                motif_veh = st.text_input("Motif de recherche", placeholder="Ex: Délit de fuite...", key="motif_plaque_fix")
             with c3_v:
                 st.write(" ")
                 if st.button("🚨 ALERTE PLAQUE", use_container_width=True, type="primary"):
@@ -1424,13 +1424,15 @@ with tab_vehicules:
                             st.success("Avis lancé !")
                             time.sleep(1); st.rerun()
                         else:
-                            st.error("Plaque introuvable.")
+                            st.error("Plaque introuvable dans la base.")
                     else:
                         st.error("Champs requis !")
 
-        # --- LISTE DES RECHERCHES PLAQUES ---
+        # --- LISTE DES VÉHICULES RECHERCHÉS (PLAQUES) ---
+        st.markdown("---")
         st.markdown("#### 📢 Véhicules Immatriculés Recherchés")
         veh_recherches = df_i[df_i["Statut"].str.upper().str.contains("RECHERCHÉ", na=False)] if 'Statut' in df_i.columns else pd.DataFrame()
+        
         if not veh_recherches.empty:
             for _, veh in veh_recherches.iterrows():
                 with st.container(border=True):
@@ -1445,36 +1447,45 @@ with tab_vehicules:
             st.success("✅ Aucun véhicule immatriculé recherché.")
 
     else:
-        # --- SECTION APB (FORMULAIRE) ---
-        with st.form("form_apb", clear_on_submit=True):
-            st.markdown("##### 🚨 Nouveau Signalement APB (Sans Plaque)")
+        # --- INTERFACE APB (SANS PLAQUE) ---
+        with st.form("form_apb_unique", clear_on_submit=True):
+            st.markdown("##### 🚨 Nouveau Signalement APB (Signalement Visuel)")
             ca1, ca2 = st.columns([1.5, 2])
             with ca1:
-                desc_apb = st.text_input("Description", placeholder="Ex: Berline noire...")
+                desc_apb = st.text_input("Description du véhicule", placeholder="Ex: Berline noire, vitres teintées...")
             with ca2:
-                motif_apb = st.text_input("Motif", placeholder="Ex: Braquage...")
+                motif_apb = st.text_input("Motif de l'avis", placeholder="Ex: Braquage de supérette...")
             
-            if st.form_submit_button("🚨 LANCER APB", use_container_width=True, type="primary"):
+            submit = st.form_submit_button("🚨 DIFFUSER L'AVIS APB", use_container_width=True, type="primary")
+            
+            if submit:
                 if desc_apb and motif_apb:
                     from datetime import datetime
-                    new_apb = pd.DataFrame([{"Description": desc_apb, "Motif": motif_apb, "Date": datetime.now().strftime("%d/%m/%Y %H:%M")}])
-                    df_a = pd.concat([df_a, new_apb], ignore_index=True)
+                    new_line = pd.DataFrame([{"Description": desc_apb, "Motif": motif_apb, "Date": datetime.now().strftime("%d/%m/%Y %H:%M")}])
+                    df_a = pd.concat([df_a, new_line], ignore_index=True)
                     cloud_conn.update(worksheet="Signalements_APB", data=df_a)
-                    st.success("APB Diffusé !")
+                    st.success("APB diffusé avec succès !")
                     time.sleep(1); st.rerun()
+                else:
+                    st.error("Veuillez remplir la description et le motif.")
 
-        # --- LISTE DES APB ---
+        # --- LISTE DES APB ACTIFS ---
+        st.markdown("---")
         st.markdown("#### 📋 Signalements APB Actifs")
         if not df_a.empty:
+            # On ignore les lignes vides du Google Sheet
             df_a_clean = df_a[df_a["Motif"].astype(str).str.strip() != ""]
-            for idx, apb in df_a_clean.iterrows():
-                with st.container(border=True):
-                    col1, col2 = st.columns([3, 1])
-                    col1.error(f"🚨 **Description:** {apb.get('Description', 'N/A')}\n**Motif:** {apb.get('Motif', 'N/A')}")
-                    if col2.button("Levée APB", key=f"rel_apb_{idx}", use_container_width=True):
-                        df_a = df_a.drop(idx)
-                        cloud_conn.update(worksheet="Signalements_APB", data=df_a)
-                        st.rerun()
+            if not df_a_clean.empty:
+                for idx, apb in df_a_clean.iterrows():
+                    with st.container(border=True):
+                        c1, c2 = st.columns([3, 1])
+                        c1.error(f"🚨 **Description:** {apb.get('Description', 'N/A')}\n\n**Motif:** {apb.get('Motif', 'N/A')}")
+                        if c2.button("Levée APB", key=f"btn_apb_{idx}", use_container_width=True):
+                            df_a = df_a.drop(idx)
+                            cloud_conn.update(worksheet="Signalements_APB", data=df_a)
+                            st.rerun()
+            else:
+                st.info("Aucun APB actif.")
         else:
             st.success("✅ Aucun APB en cours.")
             # ==========================================
