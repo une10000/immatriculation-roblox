@@ -72,7 +72,9 @@ def fetch_database():
         df_bank = cloud_conn.read(worksheet="Banque", ttl=20).dropna(how='all').fillna("")
         df_immat = cloud_conn.read(worksheet="Copie de Immatriculations", ttl=20).dropna(how='all').fillna("")
         df_pts = cloud_conn.read(worksheet="Points Permis", ttl=20).dropna(how='all').fillna("")
-        return df_bank, df_immat, df_pts
+        # Charge la nouvelle feuille pour les véhicules non immatriculés
+        df_apb = cloud_conn.read(worksheet="Signalements_APB")
+        return df_bank, df_immat, df_pts, df_apb
     except Exception as e:
         st.error(f"Erreur de liaison : {e}")
         return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
