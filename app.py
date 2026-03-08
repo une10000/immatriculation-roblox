@@ -398,16 +398,32 @@ if st.session_state.user_auth is None:
 # LE RESTE DU CODE (S'affiche uniquement après connexion)
 # ======================================================================================
 # ======================================================================================
-# 6. MODULE : DOSSIER CITOYEN UNIFIÉ (VERSION FINALE & COMPLETE)
+# 6. MODULE : DOSSIER CITOYEN UNIFIÉ (VERSION CORRIGÉE)
 # ======================================================================================
 
-with st.container():
-# --- A. TABLEAU PUBLIC DES AVIS DE RECHERCHE ---
-    st.markdown("<h3 style='color: #ff4b4b; margin-bottom: 15px;'>🚨 AVIS DE RECHERCHE EN COURS</h3>", unsafe_allow_html=True)
-    
-    # 1. CITOYENS (df_b)
-    recherches_publics = df_b[df_b["Statut"].str.upper().str.contains("RECHERCHÉ", na=False)]
-    if not recherches_publics.empty:
+# --- PRÉ-VÉRIFICATION : Y a-t-il au moins un avis de recherche ? ---
+# 1. Check Citoyens
+has_crim = not df_b[df_b["Statut"].str.upper().str.contains("RECHERCHÉ", na=False)].empty
+
+# 2. Check Véhicules immatriculés
+has_veh = False
+if 'Statut' in df_i.columns:
+    has_veh = not df_i[df_i["Statut"].str.upper().str.contains("RECHERCHÉ", na=False)].empty
+
+# 3. Check APB (df_a) - On vérifie que le motif n'est pas vide
+has_apb = False
+if not df_a.empty:
+    # On regarde si au moins une ligne possède un motif réel
+    has_apb = any(str(m).strip() != "" for m in df_a["Motif"].tolist())
+
+# ON N'AFFICHE LE CONTAINER QUE SI UN DES TROIS EST VRAI
+if has_crim or has_veh or has_apb:
+    with st.container():
+        # --- A. TABLEAU PUBLIC DES AVIS DE RECHERCHE ---
+        st.markdown("<h3 style='color: #ff4b4b; margin-bottom: 15px;'>🚨 AVIS DE RECHERCHE EN COURS</h3>", unsafe_allow_html=True)
+        
+        # 1. CITOYENS (df_b)
+        recherches_publics = df_b[df_b["Statut"].str.upper().str.contains("RECHERCHÉ", na=False)]
         for _, crim in recherches_publics.iterrows():
             motif = crim.get('Motif Recherche', 'Motif non spécifié').upper()
             st.markdown(f"""
@@ -418,30 +434,31 @@ with st.container():
                 <style> @keyframes blinker_citoyen {{ 50% {{ background-color: #ff4b4b; border-color: #8B0000; }} }} </style>
             """, unsafe_allow_html=True)
 
-    # 2. VÉHICULES IMMATRICULÉS (df_i)
-    if 'Statut' in df_i.columns:
-        recherches_veh = df_i[df_i["Statut"].str.upper().str.contains("RECHERCHÉ", na=False)]
-        for _, veh in recherches_veh.iterrows():
-            st.markdown(f"""
-                <div style="display: flex; flex-direction: column; background-color: #b8860b; padding: 12px 20px; border-radius: 8px; border: 3px solid #ffd700; margin-bottom: 10px; animation: blinker_veh 2s linear infinite;">
-                    <div style="color: #ffffff !important; font-weight: bold; font-size: 1.3em;">🚘 PLAQUE : {veh.get('Numéro de la plaque', 'INCONNUE')} | {veh.get('Marque du véhicule', 'INCONNU')}</div>
-                    <div style="color: #fffacd !important; font-weight: 700; font-size: 0.9em;">MOTIF : {veh.get('Motif Recherche', 'Non spécifié').upper()}</div>
-                </div>
-                <style> @keyframes blinker_veh {{ 50% {{ background-color: #daa520; border-color: #b8860b; }} }} </style>
-            """, unsafe_allow_html=True)
+        # 2. VÉHICULES IMMATRICULÉS (df_i)
+        if 'Statut' in df_i.columns:
+            recherches_veh = df_i[df_i["Statut"].str.upper().str.contains("RECHERCHÉ", na=False)]
+            for _, veh in recherches_veh.iterrows():
+                st.markdown(f"""
+                    <div style="display: flex; flex-direction: column; background-color: #b8860b; padding: 12px 20px; border-radius: 8px; border: 3px solid #ffd700; margin-bottom: 10px; animation: blinker_veh 2s linear infinite;">
+                        <div style="color: #ffffff !important; font-weight: bold; font-size: 1.3em;">🚘 PLAQUE : {veh.get('Numéro de la plaque', 'INCONNUE')} | {veh.get('Marque du véhicule', 'INCONNU')}</div>
+                        <div style="color: #fffacd !important; font-weight: 700; font-size: 0.9em;">MOTIF : {veh.get('Motif Recherche', 'Non spécifié').upper()}</div>
+                    </div>
+                    <style> @keyframes blinker_veh {{ 50% {{ background-color: #daa520; border-color: #b8860b; }} }} </style>
+                """, unsafe_allow_html=True)
 
-    # 3. VÉHICULES NON IMMATRICULÉS (APB - df_apb)
-    if not df_a.empty:
-        for idx, apb in df_apb.iterrows():
-            st.markdown(f"""
-                <div style="display: flex; flex-direction: column; background-color: #4b0082; padding: 12px 20px; border-radius: 8px; border: 3px solid #8a2be2; margin-bottom: 10px; animation: blinker_apb 2s linear infinite;">
-                    <div style="color: #ffffff !important; font-weight: bold; font-size: 1.3em;">🚨 APB (SANS PLAQUE) : {apb.get('Description', 'Véhicule suspect')}</div>
-                    <div style="color: #e6e6fa !important; font-weight: 700; font-size: 0.9em;">MOTIF : {apb.get('Motif', 'Non spécifié').upper()} | DATE : {apb.get('Date', '')}</div>
-                </div>
-                <style> @keyframes blinker_apb {{ 50% {{ background-color: #800080; border-color: #4b0082; }} }} </style>
-            """, unsafe_allow_html=True)
-            
-    st.divider()
+        # 3. VÉHICULES NON IMMATRICULÉS (APB - df_a)
+        if has_apb:
+            for idx, apb in df_a.iterrows():
+                if str(apb.get('Motif', '')).strip() != "":
+                    st.markdown(f"""
+                        <div style="display: flex; flex-direction: column; background-color: #4b0082; padding: 12px 20px; border-radius: 8px; border: 3px solid #8a2be2; margin-bottom: 10px; animation: blinker_apb 2s linear infinite;">
+                            <div style="color: #ffffff !important; font-weight: bold; font-size: 1.3em;">🚨 APB (SANS PLAQUE) : {apb.get('Description', 'Véhicule suspect')}</div>
+                            <div style="color: #e6e6fa !important; font-weight: 700; font-size: 0.9em;">MOTIF : {apb.get('Motif', 'Non spécifié').upper()} | DATE : {apb.get('Date', '')}</div>
+                        </div>
+                        <style> @keyframes blinker_apb {{ 50% {{ background-color: #800080; border-color: #4b0082; }} }} </style>
+                    """, unsafe_allow_html=True)
+                    
+        st.divider()
 # TITRE DU REGISTRE
 st.markdown('<div class="header-box"><h2>📂 REGISTRE NATIONAL DES CITOYENS</h2></div>', unsafe_allow_html=True)
 
