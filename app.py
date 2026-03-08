@@ -1330,8 +1330,8 @@ if len(tabs) > 1:
                                 st.markdown(f"<h3 style='text-align: center; margin-top: 10px;'>{row['Montant']}$</h3>", unsafe_allow_html=True)
                 else:
                     st.warning("🔎 Aucun dossier trouvé.")
-
-# ==========================================
+                    
+            # ==========================================
             # 4. MANDATS & RECHERCHE
             # ==========================================
             st.markdown("### 🔍 MANDATS & RECHERCHE")
@@ -1425,7 +1425,8 @@ if len(tabs) > 1:
                                     st.error("Plaque introuvable dans la base.")
                             else:
                                 st.error("Champs requis !")
-# ======================================================================================
+
+            # ======================================================================================
 # GESTION DES RECHERCHES ET SIGNALEMENTS
 # ======================================================================================
 
