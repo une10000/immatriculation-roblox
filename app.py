@@ -79,7 +79,7 @@ def fetch_database():
         st.error(f"Erreur de liaison : {e}")
         return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
-df_b, df_i, df_p = fetch_database()
+df_b, df_i, df_p, df_a = fetch_database()
 # ======================================================================================
 # 3. ÉTAT DE LA SESSION & PARAMÈTRES
 # ======================================================================================
