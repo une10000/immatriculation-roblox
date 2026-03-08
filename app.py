@@ -1425,25 +1425,38 @@ if len(tabs) > 1:
                                     st.error("Plaque introuvable dans la base.")
                             else:
                                 st.error("Champs requis !")
+# ======================================================================================
+# GESTION DES RECHERCHES ET SIGNALEMENTS
+# ======================================================================================
 
-                    # --- GESTION DES IMMATRICULÉS RECHERCHÉS ---
-                    st.markdown("#### 📢 Véhicules Immatriculés Recherchés")
-                    veh_recherches = df_i[df_i["Statut"].str.upper().str.contains("RECHERCHÉ", na=False)] if 'Statut' in df_i.columns else pd.DataFrame()
-                    if not veh_recherches.empty:
-                        for _, veh in veh_recherches.iterrows():
-                            with st.container(border=True):
-                                col1, col2 = st.columns([3, 1])
-                                col1.warning(f"🚘 **Plaque:** {veh['Numéro de la plaque']} ({veh['Marque du véhicule']})\n\n**Motif:** {veh.get('Motif Recherche', 'N/A')}")
-                                if col2.button("Intercepté", key=f"rel_veh_{veh['Numéro de la plaque']}", use_container_width=True):
-                                    idx = df_i[df_i["Numéro de la plaque"] == veh["Numéro de la plaque"]].index[0]
-                                    df_i.at[idx, "Statut"], df_i.at[idx, "Motif Recherche"] = "RAS", ""
-                                    cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i)
-                                    st.rerun()
-                    else:
-                        st.success("✅ Aucun véhicule immatriculé recherché.")
+# --- 1. VÉHICULES IMMATRICULÉS RECHERCHÉS ---
+st.markdown("#### 📢 Véhicules Immatriculés Recherchés")
 
-# --- VÉHICULE NON IMMATRICULÉ (APB) ---
-# On utilise un formulaire pour éviter que la page refresh à chaque lettre tapée
+# Extraction des véhicules avec le statut 'RECHERCHÉ'
+veh_recherches = df_i[df_i["Statut"].str.upper().str.contains("RECHERCHÉ", na=False)] if 'Statut' in df_i.columns else pd.DataFrame()
+
+if not veh_recherches.empty:
+    for _, veh in veh_recherches.iterrows():
+        with st.container(border=True):
+            col1, col2 = st.columns([3, 1])
+            col1.warning(f"🚘 **Plaque:** {veh['Numéro de la plaque']} ({veh['Marque du véhicule']})\n\n**Motif:** {veh.get('Motif Recherche', 'N/A')}")
+            
+            if col2.button("Intercepté", key=f"rel_veh_{veh['Numéro de la plaque']}", use_container_width=True):
+                # Mise à jour du statut dans le DataFrame
+                idx = df_i[df_i["Numéro de la plaque"] == veh["Numéro de la plaque"]].index[0]
+                df_i.at[idx, "Statut"], df_i.at[idx, "Motif Recherche"] = "RAS", ""
+                # Envoi vers Google Sheets
+                cloud_conn.update(worksheet="Copie de Immatriculations", data=df_i)
+                st.rerun()
+else:
+    st.success("✅ Aucun véhicule immatriculé recherché.")
+
+st.divider()
+
+# --- 2. VÉHICULE NON IMMATRICULÉ (LANCEMENT APB) ---
+st.markdown("#### 🚨 Lancer un Avis de Recherche (APB)")
+
+# Utilisation d'un formulaire pour bloquer le refresh jusqu'au clic final
 with st.form("form_apb", clear_on_submit=True):
     c1_a, c2_a = st.columns([1.5, 2])
     
@@ -1453,44 +1466,50 @@ with st.form("form_apb", clear_on_submit=True):
     with c2_a:
         motif_apb = st.text_input("Motif du signalement APB", placeholder="Ex: Braquage de banque...")
     
-    # Le bouton à l'intérieur du form
-    submit_apb = st.form_submit_button("🚨 LANCER APB", use_container_width=True, type="primary")
+    submit_apb = st.form_submit_button("🚨 DIFFUSER L'AVIS", use_container_width=True, type="primary")
 
     if submit_apb:
         if desc_apb and motif_apb:
             from datetime import datetime
             date_creation = datetime.now().strftime("%d/%m/%Y %H:%M")
             
+            # Création de la nouvelle entrée
             nouvelle_ligne = pd.DataFrame([{
                 "Description": desc_apb,
                 "Motif": motif_apb,
                 "Date": date_creation
             }])
             
-            # Utilisation de df_a (ton nom de variable actuel)
+            # Mise à jour de la base APB (df_a)
             df_a = pd.concat([df_a, nouvelle_ligne], ignore_index=True)
             cloud_conn.update(worksheet="Signalements_APB", data=df_a)
             
-            st.success("Signalement APB diffusé !")
+            st.success("Signalement APB diffusé avec succès !")
             time.sleep(1)
             st.rerun()
         else:
-            st.error("Veuillez remplir la description et le motif !")
+            st.error("Erreur : La description et le motif sont obligatoires.")
 
-# --- GESTION DES APB ACTIFS ---
-# (Le reste du code pour l'affichage reste en dehors du formulaire)
-st.markdown("#### 📢 Signalements APB Actifs (Sans plaque)")
+# --- 3. AFFICHAGE ET LEVÉE DES APB ACTIFS ---
+st.markdown("#### 📋 Signalements APB Actifs (Sans plaque)")
+
 if not df_a.empty:
-    for idx, apb in df_a.iterrows():
-        # On vérifie que la ligne n'est pas vide (filtre visuel)
-        if str(apb.get('Motif', '')).strip() != "":
+    # On filtre les lignes qui pourraient être vides dans le Sheets
+    df_a_clean = df_a[df_a["Motif"].astype(str).str.strip() != ""]
+    
+    if not df_a_clean.empty:
+        for idx, apb in df_a_clean.iterrows():
             with st.container(border=True):
                 col1, col2 = st.columns([3, 1])
                 col1.error(f"🚨 **Description:** {apb.get('Description', 'N/A')}\n\n**Motif:** {apb.get('Motif', 'N/A')} | **Date:** {apb.get('Date', 'N/A')}")
+                
                 if col2.button("Levée APB", key=f"rel_apb_{idx}", use_container_width=True):
+                    # Suppression de la ligne et mise à jour
                     df_a = df_a.drop(idx)
                     cloud_conn.update(worksheet="Signalements_APB", data=df_a)
                     st.rerun()
+    else:
+        st.info("Aucun signalement APB actif pour le moment.")
 else:
     st.success("✅ Aucun APB en cours.")
             # ==========================================
