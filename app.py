@@ -239,13 +239,10 @@ if st.session_state.user_auth is None:
     MESSAGE_ACCUEIL = "🌙 Aïd Moubarak à tous les citoyens ! ✨"
     # ==========================================
 
-    # --- CONFIGURATION INTERFACE (NETTOYAGE DU GRIS) ---
+    # --- CONFIGURATION INTERFACE (NETTOYAGE) ---
     st.markdown("""
         <style>
-            /* Force tout le fond de l'application en noir pour éliminer le gris */
-            .stApp, .main, .block-container {
-                background-color: #0e1117 !important;
-            }
+            /* On supprime le forçage du fond noir ici pour laisser le mode clair/sombre de Streamlit agir */
             [data-testid="stSidebar"], [data-testid="stSidebarNav"] { display: none; }
             [data-testid="stStatusWidget"] { display: none; }
             .block-container { padding-top: 2rem !important; }
@@ -280,6 +277,21 @@ if st.session_state.user_auth is None:
 
     components.html(f"""
         <style>
+            /* Variables CSS pour s'adapter au thème clair/sombre du système */
+            :root {{
+                --bg-box: #f0f2f6; /* Fond clair pour les boîtes */
+                --text-main: #31333F; /* Texte foncé */
+                --text-muted: #555555; /* Texte grisé */
+            }}
+            
+            @media (prefers-color-scheme: dark) {{
+                :root {{
+                    --bg-box: #1a1c23; /* Fond sombre d'origine */
+                    --text-main: #ffffff; /* Texte blanc */
+                    --text-muted: rgba(255,255,255,0.6);
+                }}
+            }}
+
             /* EFFET RGB ULTRA RAPIDE (1.5s) */
             @keyframes border-glow {{
                 0% {{ border-color: #ff0000; box-shadow: 0 0 25px #ff0000; }}
@@ -292,12 +304,21 @@ if st.session_state.user_auth is None:
             
             .container-annonce {{
                 display: {display_annonce};
-                background-color: #1a1c23;
+                background-color: var(--bg-box);
+                color: var(--text-main);
                 padding: 40px 20px;
                 text-align: center;
                 border-top: 6px solid #ff0000;
                 border-bottom: 6px solid #ff0000;
                 animation: border-glow 1.5s linear infinite;
+            }}
+            
+            .footer-box {{
+                background-color: var(--bg-box);
+                color: var(--text-main);
+                border-left: 10px solid #ff4b4b;
+                padding: 45px 20px;
+                text-align: center;
             }}
         </style>
         
@@ -316,13 +337,13 @@ if st.session_state.user_auth is None:
             </div>
 
             <div class="container-annonce">
-                <div style="color: #ffffff; opacity: 0.6; font-weight: bold; text-transform: uppercase; letter-spacing: 3px; font-size: 0.9em; margin-bottom: 12px;">📢 Bulletin d'Information</div>
-                <div style="color: white; font-size: 35px; font-weight: bold; text-shadow: 0 0 15px rgba(255,255,255,0.4);">
+                <div style="color: var(--text-muted); font-weight: bold; text-transform: uppercase; letter-spacing: 3px; font-size: 0.9em; margin-bottom: 12px;">📢 Bulletin d'Information</div>
+                <div style="font-size: 35px; font-weight: bold;">
                     {MESSAGE_ACCUEIL}
                 </div>
             </div>
 
-            <div style="background-color: #1a1c23; border-left: 10px solid #ff4b4b; padding: 45px 20px; text-align: center; color: white;">
+            <div class="footer-box">
                 <h2 style="margin: 0; font-size: 2.2em; letter-spacing: 2px;">🏛️ RÉPUBLIQUE DE RENSSELAER</h2>
                 <p style="margin: 5px 0 20px 0; font-size: 1.1em; opacity: 0.7; text-transform: uppercase; letter-spacing: 1px;">Terminal Fédéral d'Opérations Nationales</p>
                 <small style="opacity: 0.5; font-size: 0.8em;">VERSION 14.6.0 | SÉCURISÉ PAR PROTOCOLE RCRP-OS</small>
