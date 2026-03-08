@@ -1442,44 +1442,57 @@ if len(tabs) > 1:
                     else:
                         st.success("✅ Aucun véhicule immatriculé recherché.")
 
-                else: # --- VÉHICULE NON IMMATRICULÉ (APB) ---
-                    c1_a, c2_a, c3_a = st.columns([1.5, 2, 1])
-                    with c1_a:
-                        desc_apb = st.text_input("Description du véhicule", placeholder="Ex: Berline noire, vitre cassée...")
-                    with c2_a:
-                        motif_apb = st.text_input("Motif du signalement APB", placeholder="Ex: Braquage de banque...", key="motif_apb")
-                    with c3_a:
-                        st.write(" ")
-                        if st.button("🚨 LANCER APB", use_container_width=True, type="primary"):
-                            if desc_apb and motif_apb:
-                                from datetime import datetime
-                                date_creation = datetime.now().strftime("%d/%m/%Y %H:%M")
-                                
-                                nouvelle_ligne = pd.DataFrame([{
-                                    "Description": desc_apb,
-                                    "Motif": motif_apb,
-                                    "Date": date_creation
-                                }])
-                                df_apb = pd.concat([df_apb, nouvelle_ligne], ignore_index=True)
-                                cloud_conn.update(worksheet="Signalements_APB", data=df_apb)
-                                st.success("Signalement APB diffusé !")
-                                time.sleep(1); st.rerun()
-                            else:
-                                st.error("Veuillez remplir la description et le motif !")
+# --- VÉHICULE NON IMMATRICULÉ (APB) ---
+# On utilise un formulaire pour éviter que la page refresh à chaque lettre tapée
+with st.form("form_apb", clear_on_submit=True):
+    c1_a, c2_a = st.columns([1.5, 2])
+    
+    with c1_a:
+        desc_apb = st.text_input("Description du véhicule", placeholder="Ex: Berline noire, vitre cassée...")
+    
+    with c2_a:
+        motif_apb = st.text_input("Motif du signalement APB", placeholder="Ex: Braquage de banque...")
+    
+    # Le bouton à l'intérieur du form
+    submit_apb = st.form_submit_button("🚨 LANCER APB", use_container_width=True, type="primary")
 
-                    # --- GESTION DES APB ACTIFS ---
-                    st.markdown("#### 📢 Signalements APB Actifs (Sans plaque)")
-                    if not df_apb.empty:
-                        for idx, apb in df_apb.iterrows():
-                            with st.container(border=True):
-                                col1, col2 = st.columns([3, 1])
-                                col1.error(f"🚨 **Description:** {apb.get('Description', 'N/A')}\n\n**Motif:** {apb.get('Motif', 'N/A')} | **Date:** {apb.get('Date', 'N/A')}")
-                                if col2.button("Levée APB", key=f"rel_apb_{idx}", use_container_width=True):
-                                    df_apb = df_apb.drop(idx)
-                                    cloud_conn.update(worksheet="Signalements_APB", data=df_apb)
-                                    st.rerun()
-                    else:
-                        st.success("✅ Aucun APB en cours.")
+    if submit_apb:
+        if desc_apb and motif_apb:
+            from datetime import datetime
+            date_creation = datetime.now().strftime("%d/%m/%Y %H:%M")
+            
+            nouvelle_ligne = pd.DataFrame([{
+                "Description": desc_apb,
+                "Motif": motif_apb,
+                "Date": date_creation
+            }])
+            
+            # Utilisation de df_a (ton nom de variable actuel)
+            df_a = pd.concat([df_a, nouvelle_ligne], ignore_index=True)
+            cloud_conn.update(worksheet="Signalements_APB", data=df_a)
+            
+            st.success("Signalement APB diffusé !")
+            time.sleep(1)
+            st.rerun()
+        else:
+            st.error("Veuillez remplir la description et le motif !")
+
+# --- GESTION DES APB ACTIFS ---
+# (Le reste du code pour l'affichage reste en dehors du formulaire)
+st.markdown("#### 📢 Signalements APB Actifs (Sans plaque)")
+if not df_a.empty:
+    for idx, apb in df_a.iterrows():
+        # On vérifie que la ligne n'est pas vide (filtre visuel)
+        if str(apb.get('Motif', '')).strip() != "":
+            with st.container(border=True):
+                col1, col2 = st.columns([3, 1])
+                col1.error(f"🚨 **Description:** {apb.get('Description', 'N/A')}\n\n**Motif:** {apb.get('Motif', 'N/A')} | **Date:** {apb.get('Date', 'N/A')}")
+                if col2.button("Levée APB", key=f"rel_apb_{idx}", use_container_width=True):
+                    df_a = df_a.drop(idx)
+                    cloud_conn.update(worksheet="Signalements_APB", data=df_a)
+                    st.rerun()
+else:
+    st.success("✅ Aucun APB en cours.")
             # ==========================================
             # 5. INTERVENTION SUR CITOYEN & FACTURATION
             # ==========================================
