@@ -446,19 +446,17 @@ if has_crim or has_veh or has_apb:
                     <style> @keyframes blinker_veh {{ 50% {{ background-color: #daa520; border-color: #b8860b; }} }} </style>
                 """, unsafe_allow_html=True)
 
-        # 3. VÉHICULES NON IMMATRICULÉS (APB - df_a)
-        if has_apb:
-            for idx, apb in df_a.iterrows():
-                if str(apb.get('Motif', '')).strip() != "":
-                    st.markdown(f"""
-                        <div style="display: flex; flex-direction: column; background-color: #4b0082; padding: 12px 20px; border-radius: 8px; border: 3px solid #8a2be2; margin-bottom: 10px; animation: blinker_apb 2s linear infinite;">
-                            <div style="color: #ffffff !important; font-weight: bold; font-size: 1.3em;">🚨 APB (SANS PLAQUE) : {apb.get('Description', 'Véhicule suspect')}</div>
-                            <div style="color: #e6e6fa !important; font-weight: 700; font-size: 0.9em;">MOTIF : {apb.get('Motif', 'Non spécifié').upper()} | DATE : {apb.get('Date', '')}</div>
-                        </div>
-                        <style> @keyframes blinker_apb {{ 50% {{ background-color: #800080; border-color: #4b0082; }} }} </style>
-                    """, unsafe_allow_html=True)
-                    
-        st.divider()
+        # 3. VÉHICULES NON IMMATRICULÉS (APB - df_a) - VERSION ROUGE ALERTE
+    if has_apb:
+    for idx, apb in df_a.iterrows():
+        if str(apb.get('Motif', '')).strip() != "":
+            st.markdown(f"""
+                <div style="display: flex; flex-direction: column; background-color: #B22222; padding: 12px 20px; border-radius: 8px; border: 3px solid #FF0000; margin-bottom: 10px; animation: blinker_apb 2s linear infinite;">
+                    <div style="color: #ffffff !important; font-weight: bold; font-size: 1.3em;">🚨 APB (SANS PLAQUE) : {apb.get('Description', 'Véhicule suspect')}</div>
+                    <div style="color: #ffcccc !important; font-weight: 700; font-size: 0.9em;">MOTIF : {apb.get('Motif', 'Non spécifié').upper()} | DATE : {apb.get('Date', '')}</div>
+                </div>
+                <style> @keyframes blinker_apb {{ 50% {{ background-color: #FF4500; border-color: #B22222; }} }} </style>
+            """, unsafe_allow_html=True)
 # TITRE DU REGISTRE
 st.markdown('<div class="header-box"><h2>📂 REGISTRE NATIONAL DES CITOYENS</h2></div>', unsafe_allow_html=True)
 
