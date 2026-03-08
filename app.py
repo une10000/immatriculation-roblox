@@ -1397,13 +1397,20 @@ with tab_citoyens:
                     st.error("❌ Plaque inconnue")
 
 # --------------------------------------------------------------------------------------
-# ONGLET 2 : VÉHICULES (Version Corrigée)
+# ONGLET 2 : VÉHICULES (Version Finale Sécurisée)
 # --------------------------------------------------------------------------------------
 with tab_vehicules:
     st.markdown("#### 📝 Lancer un Avis de Recherche Véhicule")
-    type_recherche = st.radio("Méthode de recherche :", ["Immatriculé (Plaque)", "Non Immatriculé (APB)"], horizontal=True)
+    
+    # Choix du mode avec une clé unique pour forcer le rafraîchissement propre
+    type_recherche = st.radio(
+        "Méthode de recherche :", 
+        ["Immatriculé (Plaque)", "Non Immatriculé (APB)"], 
+        horizontal=True,
+        key="selector_mode_recherche"
+    )
 
-    if "Immatriculé" in type_recherche:
+    if type_recherche == "Immatriculé (Plaque)":
         # --- INTERFACE POUR VÉHICULES AVEC PLAQUE ---
         with st.container(border=True):
             c1_v, c2_v, c3_v = st.columns([1.5, 2, 1])
@@ -1448,6 +1455,7 @@ with tab_vehicules:
 
     else:
         # --- INTERFACE APB (SANS PLAQUE) ---
+        # Ici, le code est totalement isolé du bloc précédent
         with st.form("form_apb_unique", clear_on_submit=True):
             st.markdown("##### 🚨 Nouveau Signalement APB (Signalement Visuel)")
             ca1, ca2 = st.columns([1.5, 2])
@@ -1473,7 +1481,6 @@ with tab_vehicules:
         st.markdown("---")
         st.markdown("#### 📋 Signalements APB Actifs")
         if not df_a.empty:
-            # On ignore les lignes vides du Google Sheet
             df_a_clean = df_a[df_a["Motif"].astype(str).str.strip() != ""]
             if not df_a_clean.empty:
                 for idx, apb in df_a_clean.iterrows():
