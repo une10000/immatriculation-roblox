@@ -965,7 +965,7 @@ if target and target != "---":
     else:
         st.info("Aucun véhicule trouvé pour ce citoyen.")
 # ======================================================================================
-# 7. LOGIQUE DES ONGLETS (CORRIGÉE)
+# 7. LOGIQUE DES ONGLETS (CORRIGÉE ET MISE A JOUR INTERCHANGEABLE)
 # ======================================================================================
 tab_labels = ["🚗 IMMATRICULATION"]
 if st.session_state.user_auth in ["RCT", "Staff"]: tab_labels.append("👮 SERVICES AGENT")
@@ -1002,6 +1002,26 @@ with tabs[0]:
                 except:
                     pass
 
+            # --- LOGIQUE PLAQUES INTERCHANGEABLES ---
+            is_interchangeable = False
+            if f_owner != "---" and f_plate:
+                # On vérifie si la plaque appartient déjà à quelqu'un d'autre
+                plate_taken_by_other = not df_i[(df_i["Numéro de la plaque"] == f_plate) & (df_i["Nom d'utilisateur ROBLOX"] != f_owner)].empty
+                
+                # On vérifie si elle appartient déjà à cet utilisateur
+                user_already_has_plate = df_i[(df_i["Numéro de la plaque"] == f_plate) & (df_i["Nom d'utilisateur ROBLOX"] == f_owner)]
+                
+                if plate_taken_by_other:
+                    st.error("❌ Cette plaque est déjà attribuée à un autre citoyen.")
+                    is_banned = True  # On bloque le bouton
+                elif not user_already_has_plate.empty:
+                    if len(user_already_has_plate) >= 2:
+                        st.error("🚫 Limite de 2 véhicules par plaque atteinte pour ce numéro.")
+                        is_banned = True  # On bloque le bouton
+                    else:
+                        is_interchangeable = True
+                        st.info("🔄 **Plaques Interchangeables :** Ajout d'un 2ème véhicule sur votre plaque actuelle.")
+
             # --- CALCULS TAXE JEUNE ---
             val_taxe_jeune = 0
             if f_owner != "---":
@@ -1014,7 +1034,8 @@ with tabs[0]:
                 except: pass
 
             # --- CALCUL DU TOTAL + OFFRE TRIO RCT ---
-            taxe_gouv = 175
+            taxe_gouv = 50 if is_interchangeable else 175 # Tarif réduit si interchangeable
+            
             # On bloque la taxe RCT si banni
             if is_banned:
                 taxe_assu = 0
@@ -1030,7 +1051,7 @@ with tabs[0]:
             total_bill = taxe_gouv + taxe_assu + val_taxe_jeune
             
             # --- BOUTON DE VALIDATION (LOGIQUE RÉELLE + SÉCURITÉ BAN) ---
-            # Le bouton est désactivé (disabled) si l'utilisateur est banni
+            # Le bouton est désactivé (disabled) si l'utilisateur est banni ou si la plaque est invalide
             if st.button(f"S'ACQUITTER DE {total_bill}$ ET ENREGISTRER", 
                          use_container_width=True, 
                          key="btn_pay_final", 
@@ -1099,6 +1120,7 @@ with tabs[0]:
         marque_v = f_model if f_model else "---"
         plaque_v = f_plate if f_plate else "---"
         nom_assu = f_assu if f_assu != "Aucune" else "NON ASSURÉ"
+        label_immat = "Frais Interchangeable" if is_interchangeable else "Immatriculation"
 
         ticket_html = f"""
         <div style='border: 2px dashed #555; padding: 20px; background-color: #f9f9f9; color: #333; font-family: "Courier New", monospace; height: 440px;'>
@@ -1115,7 +1137,7 @@ with tabs[0]:
                 <p><strong>ASSURANCE :</strong> {nom_assu}</p>
             </div>
             <div style='font-size: 0.8em;'>
-                <p style='display:flex; justify-content:space-between; margin:2px 0;'><span>Immatriculation :</span><span>175$</span></p>
+                <p style='display:flex; justify-content:space-between; margin:2px 0;'><span>{label_immat} :</span><span>{taxe_gouv}$</span></p>
                 <p style='display:flex; justify-content:space-between; margin:2px 0;'><span>Assurance :</span><span>{taxe_assu}$</span></p>
                 <p style='display:flex; justify-content:space-between; margin:2px 0;'><span>Taxe Jeune :</span><span>{val_taxe_jeune}$</span></p>
             </div>
