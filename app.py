@@ -965,7 +965,7 @@ if target and target != "---":
     else:
         st.info("Aucun véhicule trouvé pour ce citoyen.")
 # ======================================================================================
-# 7. LOGIQUE DES ONGLETS (CORRIGÉE ET MISE A JOUR INTERCHANGEABLE)
+# 7. LOGIQUE DES ONGLETS (CORRIGÉE ET MISE A JOUR INTERCHANGEABLES EN 1 ÉTAPE)
 # ======================================================================================
 tab_labels = ["🚗 IMMATRICULATION"]
 if st.session_state.user_auth in ["RCT", "Staff"]: tab_labels.append("👮 SERVICES AGENT")
@@ -983,7 +983,23 @@ with tabs[0]:
         
         with st.container(border=True):
             f_owner = st.selectbox("Propriétaire du véhicule", ["---"] + df_b["Nom Roblox"].tolist(), key="k_owner_v7")
-            f_model = st.text_input("Marque", key="k_model_v7")
+            
+            # --- CHOIX DU MODE D'IMMATRICULATION ---
+            type_immat = st.radio("Type de plaque", ["Unique (1 véhicule)", "Interchangeables (2 véhicules)"], horizontal=True)
+            
+            # Affichage dynamique des champs selon le choix
+            if "Interchangeables" in type_immat:
+                c1, c2 = st.columns(2)
+                with c1:
+                    f_model_1 = st.text_input("Marque du Véhicule 1", key="k_m1_v7")
+                with c2:
+                    f_model_2 = st.text_input("Marque du Véhicule 2", key="k_m2_v7")
+                f_model_display = f"{f_model_1} & {f_model_2}" if f_model_1 and f_model_2 else ""
+            else:
+                f_model_1 = st.text_input("Marque du véhicule", key="k_m1_v7")
+                f_model_2 = None
+                f_model_display = f_model_1
+
             f_plate = st.text_input("Numéro de Plaque souhaité", key="k_plate_v7").upper()
             f_assu = st.selectbox("Type d'Assurance", ["Aucune", "AVERIS (130$)", "RCT (150$)"], key="k_assu_v7")
             f_code = st.text_input("Définir un Code de Radiation (Secret)", type="password", key="k_code_v7")
@@ -1002,25 +1018,11 @@ with tabs[0]:
                 except:
                     pass
 
-            # --- LOGIQUE PLAQUES INTERCHANGEABLES ---
-            is_interchangeable = False
-            if f_owner != "---" and f_plate:
-                # On vérifie si la plaque appartient déjà à quelqu'un d'autre
-                plate_taken_by_other = not df_i[(df_i["Numéro de la plaque"] == f_plate) & (df_i["Nom d'utilisateur ROBLOX"] != f_owner)].empty
-                
-                # On vérifie si elle appartient déjà à cet utilisateur
-                user_already_has_plate = df_i[(df_i["Numéro de la plaque"] == f_plate) & (df_i["Nom d'utilisateur ROBLOX"] == f_owner)]
-                
-                if plate_taken_by_other:
-                    st.error("❌ Cette plaque est déjà attribuée à un autre citoyen.")
-                    is_banned = True  # On bloque le bouton
-                elif not user_already_has_plate.empty:
-                    if len(user_already_has_plate) >= 2:
-                        st.error("🚫 Limite de 2 véhicules par plaque atteinte pour ce numéro.")
-                        is_banned = True  # On bloque le bouton
-                    else:
-                        is_interchangeable = True
-                        st.info("🔄 **Plaques Interchangeables :** Ajout d'un 2ème véhicule sur votre plaque actuelle.")
+            # --- VÉRIFICATION DE LA PLAQUE (Déjà prise ?) ---
+            if f_plate:
+                if not df_i[df_i["Numéro de la plaque"] == f_plate].empty:
+                    st.error("❌ Cette plaque est déjà enregistrée dans la base de données. Veuillez en choisir une autre.")
+                    is_banned = True # On bloque le bouton car la plaque est prise
 
             # --- CALCULS TAXE JEUNE ---
             val_taxe_jeune = 0
@@ -1034,7 +1036,8 @@ with tabs[0]:
                 except: pass
 
             # --- CALCUL DU TOTAL + OFFRE TRIO RCT ---
-            taxe_gouv = 50 if is_interchangeable else 175 # Tarif réduit si interchangeable
+            # 175$ pour unique, 225$ (175 + 50) pour les interchangeables (tu peux ajuster ce prix)
+            taxe_gouv = 225 if "Interchangeables" in type_immat else 175 
             
             # On bloque la taxe RCT si banni
             if is_banned:
@@ -1051,15 +1054,25 @@ with tabs[0]:
             total_bill = taxe_gouv + taxe_assu + val_taxe_jeune
             
             # --- BOUTON DE VALIDATION (LOGIQUE RÉELLE + SÉCURITÉ BAN) ---
-            # Le bouton est désactivé (disabled) si l'utilisateur est banni ou si la plaque est invalide
+            
+            # On vérifie si le formulaire est bien rempli selon le mode
+            form_incomplet = False
+            if f_owner == "---" or not f_plate or not f_code:
+                form_incomplet = True
+            if "Unique" in type_immat and not f_model_1:
+                form_incomplet = True
+            if "Interchangeables" in type_immat and (not f_model_1 or not f_model_2):
+                form_incomplet = True
+
+            # Le bouton est désactivé (disabled) si l'utilisateur est banni ou si la plaque existe
             if st.button(f"S'ACQUITTER DE {total_bill}$ ET ENREGISTRER", 
                          use_container_width=True, 
                          key="btn_pay_final", 
                          type="primary", 
                          disabled=is_banned):
                 
-                if f_owner == "---" or not f_model or not f_plate or not f_code:
-                    st.error("⚠️ Formulaire incomplet ! Remplis tous les champs.")
+                if form_incomplet:
+                    st.error("⚠️ Formulaire incomplet ! Remplis tous les champs des véhicules.")
                 else:
                     try:
                         with st.spinner("Paiement et enregistrement en cours..."):
@@ -1074,19 +1087,35 @@ with tabs[0]:
                                 # 2. Retrait de l'argent
                                 df_b.at[idx_user, "Solde"] = solde_actuel - total_bill
                                 
-                                # 3. Création de la ligne
-                                nouvelle_immat = {
-                                    "Horodateur": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+                                # 3. Création des lignes (1 ligne si Unique, 2 lignes si Interchangeables)
+                                time_now = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+                                nouvelles_lignes = []
+                                
+                                # Ligne du Véhicule 1
+                                nouvelles_lignes.append({
+                                    "Horodateur": time_now,
                                     "Nom d'utilisateur ROBLOX": f_owner,
-                                    "Marque du véhicule": f_model,
+                                    "Marque du véhicule": f_model_1,
                                     "Numéro de la plaque": f_plate,
                                     "Assurance": f_assu.split(" (")[0],
                                     "CODE": f_code,
                                     "Points": 25
-                                }
+                                })
+
+                                # Ligne du Véhicule 2 (si interchangeable)
+                                if f_model_2:
+                                    nouvelles_lignes.append({
+                                        "Horodateur": time_now,
+                                        "Nom d'utilisateur ROBLOX": f_owner,
+                                        "Marque du véhicule": f_model_2,
+                                        "Numéro de la plaque": f_plate,
+                                        "Assurance": f_assu.split(" (")[0],
+                                        "CODE": f_code,
+                                        "Points": 25
+                                    })
 
                                 # Ajout au tableau local
-                                new_df_i = pd.concat([df_i, pd.DataFrame([nouvelle_immat])], ignore_index=True)
+                                new_df_i = pd.concat([df_i, pd.DataFrame(nouvelles_lignes)], ignore_index=True)
                                 
                                 # 4. Envoi au Google Sheets
                                 cloud_conn.update(worksheet="Banque", data=df_b)
@@ -1098,7 +1127,7 @@ with tabs[0]:
                                 ### ✅ IMMATRICULATION RÉUSSIE !
                                 ---
                                 * **Propriétaire :** {f_owner}
-                                * **Véhicule :** {f_model}
+                                * **Véhicule(s) :** {f_model_display}
                                 * **Plaque :** {f_plate}
                                 * **Montant débité :** {total_bill}$
                                 
@@ -1117,10 +1146,10 @@ with tabs[0]:
         # Préparation des variables de l'aperçu
         date_actuelle = (datetime.now() + timedelta(hours=1)).strftime("%d/%m/%Y %H:%M")
         nom_user = f_owner if f_owner != "---" else "---"
-        marque_v = f_model if f_model else "---"
+        marque_v = f_model_display if f_model_display else "---"
         plaque_v = f_plate if f_plate else "---"
         nom_assu = f_assu if f_assu != "Aucune" else "NON ASSURÉ"
-        label_immat = "Frais Interchangeable" if is_interchangeable else "Immatriculation"
+        label_immat = "Frais Interchangeables" if "Interchangeables" in type_immat else "Immatriculation"
 
         ticket_html = f"""
         <div style='border: 2px dashed #555; padding: 20px; background-color: #f9f9f9; color: #333; font-family: "Courier New", monospace; height: 440px;'>
@@ -1132,7 +1161,7 @@ with tabs[0]:
             <div style='border-top: 1px dashed #ccc; border-bottom: 1px dashed #ccc; padding: 10px 0; margin: 10px 0; font-size: 0.9em;'>
                 <p><strong>DATE :</strong> {date_actuelle}</p>
                 <p><strong>UTILISATEUR :</strong> {nom_user}</p>
-                <p><strong>MARQUE :</strong> {marque_v}</p>
+                <p><strong>MARQUE(S) :</strong> {marque_v}</p>
                 <p><strong>PLAQUE :</strong> <span style='border:1px solid #333; padding:2px 6px; background:#eee;'>{plaque_v}</span></p>
                 <p><strong>ASSURANCE :</strong> {nom_assu}</p>
             </div>
