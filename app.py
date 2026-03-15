@@ -1087,37 +1087,20 @@ with tabs[0]:
                                 # 2. Retrait de l'argent
                                 df_b.at[idx_user, "Solde"] = solde_actuel - total_bill
                                 
-                                # 3. Création des lignes (1 ligne si Unique, 2 lignes si Interchangeables)
                                 time_now = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-                                nouvelles_lignes = []
+                                marque_fusionnee = f"{f_model_1} / {f_model_2}" if f_model_2 else f_model_1
                                 
-                                # Ligne du Véhicule 1
-                                nouvelles_lignes.append({
+                                nouvelle_immat = {
                                     "Horodateur": time_now,
                                     "Nom d'utilisateur ROBLOX": f_owner,
-                                    "Marque du véhicule": f_model_1,
+                                    "Marque du véhicule": marque_fusionnee,
                                     "Numéro de la plaque": f_plate,
                                     "Assurance": f_assu.split(" (")[0],
                                     "CODE": f_code,
                                     "Points": 25
-                                })
-
-                                # Ligne du Véhicule 2 (si interchangeable)
-                                if f_model_2:
-                                    nouvelles_lignes.append({
-                                        "Horodateur": time_now,
-                                        "Nom d'utilisateur ROBLOX": f_owner,
-                                        "Marque du véhicule": f_model_2,
-                                        "Numéro de la plaque": f_plate,
-                                        "Assurance": f_assu.split(" (")[0],
-                                        "CODE": f_code,
-                                        "Points": 25
-                                    })
-
-                                # Ajout au tableau local
-                                new_df_i = pd.concat([df_i, pd.DataFrame(nouvelles_lignes)], ignore_index=True)
+                                }
+                                new_df_i = pd.concat([df_i, pd.DataFrame([nouvelle_immat])], ignore_index=True)
                                 
-                                # 4. Envoi au Google Sheets
                                 cloud_conn.update(worksheet="Banque", data=df_b)
                                 cloud_conn.update(worksheet="Copie de Immatriculations", data=new_df_i)
                                 
