@@ -1004,7 +1004,7 @@ with tabs[0]:
             f_assu = st.selectbox("Type d'Assurance", ["Aucune", "AVERIS (130$)", "RCT (150$)"], key="k_assu_v7")
             f_code = st.text_input("Définir un Code de Radiation (Secret)", type="password", key="k_code_v7")
             
-# --- VÉRIFICATION BLACKLIST RCT ---
+            # --- VÉRIFICATION BLACKLIST RCT ---
             is_banned = False
             raison_ban = ""
             if "RCT" in f_assu and f_owner != "---":
@@ -1020,19 +1020,20 @@ with tabs[0]:
 
             # --- VÉRIFICATION DU QUOTA (MAX 3 PLAQUES) ---
             quota_atteint = False
+            nb_plaques = 0
             if f_owner != "---":
-                # On compte le nombre de lignes (titres/plaques) pour cet utilisateur
+                # On compte le nombre de titres de circulation (lignes) appartenant au joueur
                 nb_plaques = len(df_i[df_i["Nom d'utilisateur ROBLOX"] == f_owner])
                 if nb_plaques >= 3:
                     quota_atteint = True
                     st.error(f"🛑 **LIMITE ATTEINTE** : {f_owner} possède déjà {nb_plaques} plaques.")
-                    st.info("L'utilisateur doit radier une ancienne plaque pour en immatriculer une nouvelle.")
+                    st.info("L'utilisateur a atteint son quota maximum (3 plaques). Il doit en radier une pour en immatriculer une nouvelle.")
 
             # --- VÉRIFICATION DE LA PLAQUE (Déjà prise ?) ---
             plaque_prise = False
             if f_plate:
                 if not df_i[df_i["Numéro de la plaque"] == f_plate].empty:
-                    st.error("❌ Cette plaque est déjà enregistrée dans la base de données.")
+                    st.error("❌ Cette plaque est déjà enregistrée dans la base de données. Veuillez en choisir une autre.")
                     plaque_prise = True
 
             # --- CALCULS TAXE JEUNE ---
@@ -1055,7 +1056,7 @@ with tabs[0]:
             else:
                 taxe_assu = 130 if "AVERIS" in f_assu else (150 if "RCT" in f_assu else 0)
             
-            # On utilise nb_plaques calculé plus haut pour l'offre trio
+            # Logique Offre Trio (Gratuit pour la 3ème plaque si RCT)
             if "RCT" in f_assu and f_owner != "---" and not is_banned and not quota_atteint:
                 if nb_plaques >= 2:
                     taxe_assu = 0
@@ -1063,7 +1064,7 @@ with tabs[0]:
 
             total_bill = taxe_gouv + taxe_assu + val_taxe_jeune
             
-            # --- BOUTON DE VALIDATION (MISE À JOUR) ---
+            # --- BOUTON DE VALIDATION (LOGIQUE RÉELLE + SÉCURITÉ) ---
             
             form_incomplet = False
             if f_owner == "---" or not f_plate or not f_code:
@@ -1073,7 +1074,7 @@ with tabs[0]:
             if "Interchangeables" in type_immat and (not f_model_1 or not f_model_2):
                 form_incomplet = True
 
-            # Désactivation si banni, si plaque prise OU si quota de 3 plaques atteint
+            # Le bouton est désactivé si : Banni OU Plaque prise OU Quota atteint
             bouton_bloque = is_banned or plaque_prise or quota_atteint
 
             if st.button(f"S'ACQUITTER DE {total_bill}$ ET ENREGISTRER", 
@@ -1081,7 +1082,6 @@ with tabs[0]:
                          key="btn_pay_final", 
                          type="primary", 
                          disabled=bouton_bloque):
-                # ... la suite du code de paiement reste la même
                 
                 if form_incomplet:
                     st.error("⚠️ Formulaire incomplet ! Remplis tous les champs des véhicules.")
@@ -1135,6 +1135,7 @@ with tabs[0]:
                                 
                     except Exception as e:
                         st.error(f"⚠️ Erreur de connexion au Sheets : {e}")
+
     with col_t:
         st.markdown("### 🖼️ Aperçu du Titre")
         
