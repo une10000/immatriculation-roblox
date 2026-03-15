@@ -1004,7 +1004,7 @@ with tabs[0]:
             f_assu = st.selectbox("Type d'Assurance", ["Aucune", "AVERIS (130$)", "RCT (150$)"], key="k_assu_v7")
             f_code = st.text_input("Définir un Code de Radiation (Secret)", type="password", key="k_code_v7")
             
-            # --- VÉRIFICATION BLACKLIST RCT ---
+# --- VÉRIFICATION BLACKLIST RCT ---
             is_banned = False
             raison_ban = ""
             if "RCT" in f_assu and f_owner != "---":
@@ -1018,11 +1018,22 @@ with tabs[0]:
                 except:
                     pass
 
+            # --- VÉRIFICATION DU QUOTA (MAX 3 PLAQUES) ---
+            quota_atteint = False
+            if f_owner != "---":
+                # On compte le nombre de lignes (titres/plaques) pour cet utilisateur
+                nb_plaques = len(df_i[df_i["Nom d'utilisateur ROBLOX"] == f_owner])
+                if nb_plaques >= 3:
+                    quota_atteint = True
+                    st.error(f"🛑 **LIMITE ATTEINTE** : {f_owner} possède déjà {nb_plaques} plaques.")
+                    st.info("L'utilisateur doit radier une ancienne plaque pour en immatriculer une nouvelle.")
+
             # --- VÉRIFICATION DE LA PLAQUE (Déjà prise ?) ---
+            plaque_prise = False
             if f_plate:
                 if not df_i[df_i["Numéro de la plaque"] == f_plate].empty:
-                    st.error("❌ Cette plaque est déjà enregistrée dans la base de données. Veuillez en choisir une autre.")
-                    is_banned = True # On bloque le bouton car la plaque est prise
+                    st.error("❌ Cette plaque est déjà enregistrée dans la base de données.")
+                    plaque_prise = True
 
             # --- CALCULS TAXE JEUNE ---
             val_taxe_jeune = 0
@@ -1036,26 +1047,24 @@ with tabs[0]:
                 except: pass
 
             # --- CALCUL DU TOTAL + OFFRE TRIO RCT ---
-            # 175$ pour unique, 225$ (175 + 50) pour les interchangeables (tu peux ajuster ce prix)
             taxe_gouv = 225 if "Interchangeables" in type_immat else 175 
             
-            # On bloque la taxe RCT si banni
-            if is_banned:
+            # On bloque la taxe RCT si banni ou quota atteint
+            if is_banned or quota_atteint:
                 taxe_assu = 0
             else:
                 taxe_assu = 130 if "AVERIS" in f_assu else (150 if "RCT" in f_assu else 0)
             
-            if "RCT" in f_assu and f_owner != "---" and not is_banned:
-                nb_vehicules = len(df_i[df_i["Nom d'utilisateur ROBLOX"] == f_owner])
-                if nb_vehicules >= 2:
+            # On utilise nb_plaques calculé plus haut pour l'offre trio
+            if "RCT" in f_assu and f_owner != "---" and not is_banned and not quota_atteint:
+                if nb_plaques >= 2:
                     taxe_assu = 0
                     st.success(f"🎁 OFFRE TRIO ACTIVÉE")
 
             total_bill = taxe_gouv + taxe_assu + val_taxe_jeune
             
-            # --- BOUTON DE VALIDATION (LOGIQUE RÉELLE + SÉCURITÉ BAN) ---
+            # --- BOUTON DE VALIDATION (MISE À JOUR) ---
             
-            # On vérifie si le formulaire est bien rempli selon le mode
             form_incomplet = False
             if f_owner == "---" or not f_plate or not f_code:
                 form_incomplet = True
@@ -1064,12 +1073,15 @@ with tabs[0]:
             if "Interchangeables" in type_immat and (not f_model_1 or not f_model_2):
                 form_incomplet = True
 
-            # Le bouton est désactivé (disabled) si l'utilisateur est banni ou si la plaque existe
+            # Désactivation si banni, si plaque prise OU si quota de 3 plaques atteint
+            bouton_bloque = is_banned or plaque_prise or quota_atteint
+
             if st.button(f"S'ACQUITTER DE {total_bill}$ ET ENREGISTRER", 
                          use_container_width=True, 
                          key="btn_pay_final", 
                          type="primary", 
-                         disabled=is_banned):
+                         disabled=bouton_bloque):
+                # ... la suite du code de paiement reste la même
                 
                 if form_incomplet:
                     st.error("⚠️ Formulaire incomplet ! Remplis tous les champs des véhicules.")
