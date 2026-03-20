@@ -238,7 +238,7 @@ if st.session_state.user_auth is not None:
 # ======================================================================================
 if st.session_state.user_auth is None:
     # === ✏️ ZONE DE MESSAGE PERSONNALISABLE ===
-    MESSAGE_ACCUEIL = "🌙 Aïd Moubarak à tous les citoyens ! ✨"
+    MESSAGE_ACCUEIL = ""
     # ==========================================
 
     # --- CONFIGURATION INTERFACE (NETTOYAGE) ---
