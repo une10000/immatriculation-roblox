@@ -1025,17 +1025,19 @@ with tabs[0]:
             metier_user = "Civil"
 
             if f_owner != "---":
-                # Récupération du métier dans la base de données
+                # Récupération du métier dans la base de données (Attention au "E" majuscule !)
                 try:
-                    metier_user = str(df_b[df_b["Nom Roblox"] == f_owner]["emploiement"].values[0])
+                    metier_user = str(df_b[df_b["Nom Roblox"] == f_owner]["Emploiement"].values[0])
                 except:
                     pass # Reste sur "Civil" si le métier n'est pas trouvé
 
-                # Ajustement du quota selon le rôle
-                if metier_user in ["Staff"]:
+                # Ajustement du quota selon le rôle (on cherche si le mot est DANS la cellule)
+                if "Staff" in metier_user:
                     quota_max = 6
-                elif metier_user in ["Agent RCT", "Service Public", "Police", "Averis"]:
+                elif any(role in metier_user for role in ["Agent RCT", "Service Public", "Police", "Averis"]):
                     quota_max = 4
+                else:
+                    quota_max = 3 # On s'assure que tout le reste a 3
 
                 # On compte le nombre de titres de circulation appartenant au joueur
                 nb_plaques = len(df_i[df_i["Nom d'utilisateur ROBLOX"] == f_owner])
