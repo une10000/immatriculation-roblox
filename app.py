@@ -1018,16 +1018,32 @@ with tabs[0]:
                 except:
                     pass
 
-            # --- VÉRIFICATION DU QUOTA (MAX 3 PLAQUES) ---
+            # --- VÉRIFICATION DU QUOTA DYNAMIQUE SELON LE MÉTIER ---
             quota_atteint = False
             nb_plaques = 0
+            quota_max = 3 # Quota de base (Civil)
+            metier_user = "Civil"
+
             if f_owner != "---":
-                # On compte le nombre de titres de circulation (lignes) appartenant au joueur
+                # Récupération du métier dans la base de données
+                try:
+                    metier_user = str(df_b[df_b["Nom Roblox"] == f_owner]["emploiement"].values[0])
+                except:
+                    pass # Reste sur "Civil" si le métier n'est pas trouvé
+
+                # Ajustement du quota selon le rôle
+                if metier_user in ["Staff"]:
+                    quota_max = 6
+                elif metier_user in ["Agent RCT", "Service Public", "Police", "Averis"]:
+                    quota_max = 4
+
+                # On compte le nombre de titres de circulation appartenant au joueur
                 nb_plaques = len(df_i[df_i["Nom d'utilisateur ROBLOX"] == f_owner])
-                if nb_plaques >= 3:
+                
+                if nb_plaques >= quota_max:
                     quota_atteint = True
                     st.error(f"🛑 **LIMITE ATTEINTE** : {f_owner} possède déjà {nb_plaques} plaques.")
-                    st.info("L'utilisateur a atteint son quota maximum (3 plaques). Il doit en radier une pour en immatriculer une nouvelle.")
+                    st.info(f"En tant que {metier_user}, le quota maximum est de {quota_max} plaques. Une ancienne plaque doit être radiée pour procéder à une nouvelle immatriculation.")
 
             # --- VÉRIFICATION DE LA PLAQUE (Déjà prise ?) ---
             plaque_prise = False
