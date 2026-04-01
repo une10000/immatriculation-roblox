@@ -1558,7 +1558,7 @@ if len(tabs) > 1:
                     else:
                         st.success("✅ Aucun APB en cours.")
                         
-            # ==========================================
+# ==========================================
             # 5. INTERVENTION SUR CITOYEN & FACTURATION
             # ==========================================
             st.divider()
@@ -1574,9 +1574,10 @@ if len(tabs) > 1:
                 # Tout est maintenant bien imbriqué ici
                 col_form, col_facture, col_vehicules = st.columns([1.2, 1, 1]) 
 
-                # --- COLONNE 1 : FORMULAIRE D'ACTION ---
+                # --- COLONNE 1 : FORMULAIRE D'ACTION (AVEC ST.FORM) ---
                 with col_form:
-                    with st.container(border=True):
+                    # On utilise st.form pour bloquer le rafraîchissement automatique
+                    with st.form("form_intervention", border=True):
                         # Choix de l'émetteur
                         if st.session_state.user_auth == "Staff":
                             f_emetteur = st.selectbox("Émetteur", ["POLSTA", "Averis", "RCT"], key="em_ui")
@@ -1598,8 +1599,10 @@ if len(tabs) > 1:
                         liste_plaques = ["AUCUN"] + target_veh["Numéro de la plaque"].tolist() if not target_veh.empty else ["AUCUN"]
                         f_plate = st.selectbox("Véhicule lié", liste_plaques, key="plate_live")
                         
-                        # Bouton d'envoi
-                        if st.button("🚨 ENVOYER FACTURE", use_container_width=True, type="primary"):
+                        # Le bouton classique devient un st.form_submit_button
+                        submit_facture = st.form_submit_button("🚨 ENVOYER FACTURE", use_container_width=True, type="primary")
+                        
+                        if submit_facture:
                             if f_motif:
                                 with st.spinner("Transmission au central..."):
                                     import random
@@ -1626,11 +1629,12 @@ if len(tabs) > 1:
                                         
                                     cloud_conn.update(worksheet="Factures", data=pd.concat([df_all_f, pd.DataFrame([new_f])], ignore_index=True))
                                     st.success(f"✅ PV enregistré")
-                                    time.sleep(1); st.rerun()
+                                    time.sleep(1)
+                                    st.rerun()
                             else:
                                 st.error("❌ Motif obligatoire.")
 
-                    # Bloc Alertes
+                    # Bloc Alertes (En dehors du form pour s'afficher correctement selon la target)
                     citoyen_info = df_b[df_b["Nom Roblox"] == target]
                     is_wanted = "RECHERCHÉ" in str(citoyen_info.iloc[0].get("Statut", "")).upper() if not citoyen_info.empty else False
                     motif_recherche = citoyen_info.iloc[0].get("Motif Recherche", "Non spécifié") if is_wanted else ""
@@ -1645,8 +1649,9 @@ if len(tabs) > 1:
                     if is_wanted:
                         st.markdown(f'<div class="alert-mandat">🚨 <b>INDIVIDU RECHERCHÉ</b> 🚨<br>{motif_recherche.upper()}</div>', unsafe_allow_html=True)
 
-                # --- COLONNE 2 : APERÇU EN DIRECT ---
+                # --- COLONNE 2 : APERÇU ---
                 with col_facture:
+                    # Reste de ton code pour col_facture inchangé...
                     st.markdown("#### 📄 Aperçu")
                     header_ticket = "FACTURE AVERIS" if f_emetteur == "Averis" else "FACTURE OFFICIELLE"
                     
