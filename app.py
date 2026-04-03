@@ -140,7 +140,7 @@ def record_log(user, action):
 if st.session_state.user_auth is not None:
     with st.sidebar:
         # LOGO RCRP
-        st.image("https://image2url.com/r2/default/images/1773572420764-86a5b273-f4d2-4903-9165-30218e8faf35.blob", use_container_width=True)
+        st.image("https://image2url.com/r2/default/images/1775244296060-933cc481-da69-4918-bc1d-655b2cc72c17.blob", use_container_width=True)
         st.divider()
         from datetime import datetime, timedelta, timezone
         import streamlit.components.v1 as components
