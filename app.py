@@ -887,13 +887,16 @@ for _, fac in mes_factures.iterrows():
                         st.error("❌ Solde insuffisant.")
             except Exception as e:
                 st.error(f"Erreur : {e}")
-
-    # 5. ZONE D'ANNULATION
+# 5. ZONE D'ANNULATION
     if st.session_state.user_auth in ["Staff", "Admin", "POLSTA"]:
         with st.expander(f"🗑️ Zone d'annulation - Facture #{fac['ID']}"):
             code_confirm = st.text_input("Code Agent", type="password", key=f"code_confirm_{fac['ID']}")
             if st.button("Confirmer l'annulation", key=f"admin_del_{fac['ID']}", use_container_width=True):
-                if code_confirm == str(st.session_state.get("agent_code")):
+                
+                # --- MODIFICATION ICI ---
+                if code_confirm == "2504": 
+                # -------------------------
+                
                     try:
                         df_f_sync = cloud_conn.read(worksheet="Factures", ttl=0)
                         df_p_sync = cloud_conn.read(worksheet="Points Permis", ttl=0)
@@ -915,7 +918,6 @@ for _, fac in mes_factures.iterrows():
                         st.error(f"Erreur : {e}")
                 else:
                     st.error("Code incorrect.")
-
 # ======================================================================================
 # SECTION VÉHICULES (CORRIGÉE : Ne s'affiche que si un citoyen est sélectionné)
 # ======================================================================================
