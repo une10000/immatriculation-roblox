@@ -1479,27 +1479,28 @@ if len(tabs) > 1:
                         st.success("✅ Aucun APB en cours.")
                         
 # ==========================================
-        # 5. INTERVENTION SUR CITOYEN & FACTURATION
-        # ==========================================
-        st.divider()
+# 5. INTERVENTION SUR CITOYEN & FACTURATION
+# ==========================================
+st.divider()
 
-        # Vérification si un citoyen est sélectionné
-        # Note : 'target' doit être défini plus haut dans ton code (selectbox de recherche)
-        if 'target' not in locals() or target == "---":
-            st.warning("⚠️ Sélectionnez un citoyen en haut de la page pour ouvrir le module d'intervention.")
-        
-        # Correction de ton erreur 'agent_identifie'
-        elif 'agent_identifie' not in locals() or not agent_identifie:
-            st.info("🔒 Veuillez vous identifier (Section 2) pour accéder à la facturation.")
-            
-        else:
-            st.markdown(f"### ⚡ INTERVENTION : {target.upper()}")
-            col_form, col_facture, col_vehicules = st.columns([1.2, 1, 1])
-            
+# Vérification si un citoyen est sélectionné
+# Note : 'target' doit être défini plus haut dans ton code (selectbox de recherche)
+if 'target' not in locals() or target == "---":
+    st.warning("⚠️ Sélectionnez un citoyen en haut de la page pour ouvrir le module d'intervention.")
+
+# Correction de ton erreur 'agent_identifie'
+elif 'agent_identifie' not in locals() or not agent_identifie:
+    st.info("🔒 Veuillez vous identifier (Section 2) pour accéder à la facturation.")
+
+else:
+    # On définit les colonnes SEULEMENT si les conditions ci-dessus sont remplies
+    st.markdown(f"### ⚡ INTERVENTION : {target.upper()}")
+    col_form, col_facture, col_vehicules = st.columns([1.2, 1, 1])
+
     # --- COLONNE 1 : FORMULAIRE D'ACTION ---
     with col_form:
         with st.form("form_intervention", border=True):
-            # Choix de l'émetteur adapté pour RDOI
+            # Choix de l'émetteur adapté selon l'authentification
             if st.session_state.user_auth == "Staff":
                 f_emetteur = st.selectbox("Émetteur", ["POLSTA", "Averis", "RCT", "Rensselaer Driving of Institute"], key="em_ui")
             elif st.session_state.user_auth == "Entreprise":
@@ -1516,11 +1517,13 @@ if len(tabs) > 1:
             label_montant = "Frais de prestation ($)" if f_emetteur == "Rensselaer Driving of Institute" else "Amende ($)"
             f_val = st.number_input(label_montant, 0, 100000, 500, step=100, key="val_live")
             
+            # Gestion des points (uniquement Staff + POLSTA)
             can_pull_points = (st.session_state.user_auth == "Staff" and f_emetteur == "POLSTA")
             f_pts = st.slider("Retrait de points", 0, 25, 0, disabled=not can_pull_points, key="pts_live")
             
             f_motif = st.text_area("Motif / Prestation", key="mot_live", placeholder="Ex: Passage de permis, Frais d'examen...")
             
+            # Récupération des véhicules de la cible
             target_veh = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
             liste_plaques = ["AUCUN"] + target_veh["Numéro de la plaque"].tolist() if not target_veh.empty else ["AUCUN"]
             f_plate = st.selectbox("Véhicule lié", liste_plaques, key="plate_live")
@@ -1530,6 +1533,7 @@ if len(tabs) > 1:
             if submit_facture:
                 if f_motif:
                     with st.spinner("Enregistrement..."):
+                        # Lecture de la base de données factures
                         df_all_f = cloud_conn.read(worksheet="Factures", ttl=0).fillna("") 
                         new_f = {
                             "ID": random.randint(10000, 99999),
@@ -1544,14 +1548,20 @@ if len(tabs) > 1:
                             "Date_Limite": (datetime.now() + timedelta(hours=24)).strftime("%d/%m/%Y %H:%M")
                         }
                         
+                        # Mise à jour des points si nécessaire
                         if f_pts > 0 and can_pull_points:
                             try:
                                 idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
-                                df_p.at[idx_p, "PTS"] = max(0, int(df_p.at[idx_p, "PTS"]) - f_pts)
+                                current_pts = int(df_p.at[idx_p, "PTS"])
+                                df_p.at[idx_p, "PTS"] = max(0, current_pts - f_pts)
                                 cloud_conn.update(worksheet="Points Permis", data=df_p)
-                            except: pass
-                            
-                        cloud_conn.update(worksheet="Factures", data=pd.concat([df_all_f, pd.DataFrame([new_f])], ignore_index=True))
+                            except Exception as e:
+                                st.error(f"Erreur points: {e}")
+                        
+                        # Envoi de la facture
+                        updated_df_f = pd.concat([df_all_f, pd.DataFrame([new_f])], ignore_index=True)
+                        cloud_conn.update(worksheet="Factures", data=updated_df_f)
+                        
                         st.success(f"✅ Facture/PV enregistré")
                         time.sleep(1)
                         st.rerun()
@@ -1561,6 +1571,7 @@ if len(tabs) > 1:
     # --- COLONNE 2 : APERÇU ---
     with col_facture:
         st.markdown("#### 📄 Aperçu")
+        
         # En-tête de ticket dynamique
         if f_emetteur == "Rensselaer Driving of Institute":
             header_ticket = "FACTURE RDOI"
@@ -1594,7 +1605,6 @@ if len(tabs) > 1:
 
     # --- COLONNE 3 : VÉHICULES ---
     with col_vehicules:
-        # (Le code des véhicules reste identique au tien)
         st.markdown("#### 🚗 Véhicules")
         if not target_veh.empty:
             for _, veh in target_veh.iterrows():
