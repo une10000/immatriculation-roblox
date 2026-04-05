@@ -1915,8 +1915,9 @@ try:
             col_auth, _ = st.columns([1, 2])
             with col_auth:
                 st.subheader("Authentification requise")
-                # Le code pour RDOI est : RDOI-2026
+                # Champ pour saisir le code (RDOI-2026)
                 code_saisi = st.text_input("Code Entreprise", type="password", help="Entrez le code secret de votre structure")
+                
                 if st.button("🔓 ACCÉDER AUX COMPTES"):
                     if code_saisi == "RDOI-2026":
                         st.session_state.auth_banque = True
@@ -1927,45 +1928,70 @@ try:
                         st.error("Code incorrect.")
         
         else:
-            # 2. ESPACE DE GESTION RDOI (Une fois le code RDOI-2026 saisi)
+            # 2. ESPACE DE GESTION RDOI (Une fois connecté)
             st.info("🏢 **Compte :** Rensselaer Driving of Institute")
             
-            # Récupération sécurisée des données
+            # Lecture des données Banque
             df_b = cloud_conn.read(worksheet="Banque", ttl=0)
             df_f = cloud_conn.read(worksheet="Factures", ttl=0)
             
-            nom_compte_rdoi = "RDOI_Bank" 
+            # On cherche le solde via le "Code Agent" (RDOI_Bank) dans ton Sheets
             try:
-                solde_rdoi = df_b[df_b["Nom Roblox"] == nom_compte_rdoi]["Solde"].values[0]
+                # Filtrage sur la colonne 'Code Agent'
+                solde_rdoi = df_b[df_b["Code Agent"] == "RDOI_Bank"]["Solde"].values[0]
             except:
                 solde_rdoi = 0
-                st.warning(f"Compte '{nom_compte_rdoi}' non trouvé dans la feuille Banque.")
+                st.warning("⚠️ Compte 'RDOI_Bank' non trouvé dans la colonne 'Code Agent' du Sheets.")
 
+            # Affichage du Solde
             st.metric(label="Solde Actuel", value=f"{solde_rdoi:,} $".replace(",", " "))
 
-            # --- Le reste de ton code de virement et archives ici ---
-            # (Garde le code que je t'ai donné précédemment pour les virements)
+            # 3. HISTORIQUE DES ENCAISSEMENTS (Factures payées)
+            st.subheader("📄 Dernières rentrées d'argent")
+            historique_rdoi = df_f[
+                (df_f["Emetteur"] == "Rensselaer Driving of Institute") & 
+                (df_f["Statut"] == "PAYÉ")
+            ].sort_index(ascending=False)
 
+            if not historique_rdoi.empty:
+                st.dataframe(historique_rdoi[["Date_Emission", "Cible", "Montant", "Motif"]], use_container_width=True, hide_index=True)
+            else:
+                st.write("Aucun encaissement enregistré.")
+
+            # 4. MODULE DE VIREMENT (TRANSFERT VERS COMPTE PERSO)
+            st.divider()
+            st.subheader("💸 Effectuer un virement")
+            
+            with st.expander("Transférer des fonds vers un citoyen"):
+                destinataire = st.selectbox("Destinataire", ["---"] + df_b["Nom Roblox"].tolist(), key="v_dest")
+                montant_v = st.number_input("Montant ($)", min_value=0, step=100, key="v_val")
+                motif_v = st.text_input("Motif", placeholder="Salaire, Prime...")
+
+                if st.button("🚀 VALIDER LE TRANSFERT", use_container_width=True):
+                    if destinataire != "---" and montant_v > 0 and motif_v:
+                        if solde_rdoi >= montant_v:
+                            # Logique de mise à jour des soldes
+                            idx_rdoi = df_b[df_b["Code Agent"] == "RDOI_Bank"].index[0]
+                            idx_dest = df_b[df_b["Nom Roblox"] == destinataire].index[0]
+                            
+                            df_b.at[idx_rdoi, "Solde"] -= montant_v
+                            df_b.at[idx_dest, "Solde"] += montant_v
+                            
+                            cloud_conn.update(worksheet="Banque", data=df_b)
+                            st.success(f"✅ Transfert de {montant_v}$ effectué vers {destinataire}")
+                            time.sleep(1)
+                            st.rerun()
+                        else:
+                            st.error("Solde entreprise insuffisant.")
+
+            # 5. BOUTON DE DÉCONNEXION
+            st.write("---")
             if st.button("🔒 QUITTER L'ESPACE BANCAIRE"):
                 st.session_state.auth_banque = False
                 st.rerun()
 
 except ValueError:
     pass
-
-# ==========================================
-# FIX POUR L'ERREUR DE POINTAGE (Ligne 1734)
-# ==========================================
-# Remplace ton bloc qui génère 'list_agents' par celui-ci pour ne plus avoir le message d'erreur rose :
-try:
-    if 'df_admin_clock' in locals() and not df_admin_clock.empty:
-        list_agents = sorted(df_admin_clock["nom"].unique().tolist())
-    else:
-        # On essaie de le charger si jamais il a été oublié
-        df_admin_clock = cloud_conn.read(worksheet="Pointage", ttl=0)
-        list_agents = sorted(df_admin_clock["nom"].unique().tolist())
-except:
-    list_agents = [] # Si vraiment ça veut pas, on met une liste vide pour pas que l'app plante
 # ======================================================================================
 # 8. PIED DE PAGE
 # ======================================================================================
