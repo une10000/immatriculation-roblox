@@ -1527,7 +1527,6 @@ else:
             if submit_facture:
                 if f_motif:
                     with st.spinner("Enregistrement..."):
-                        import random
                         df_all_f = cloud_conn.read(worksheet="Factures", ttl=0).fillna("") 
                         new_f = {
                             "ID": random.randint(10000, 99999),
