@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-import time  # <--- AJOUTE CETTE LIGNE ICI
+import time
 from datetime import datetime, timedelta, timezone
 from streamlit_gsheets import GSheetsConnection
 
@@ -62,24 +62,22 @@ st.markdown("""
 # ======================================================================================
 # 2. MOTEUR DE DONNÉES (SYNC)
 # ======================================================================================
-# Maintenant GSheetsConnection est bien reconnu grâce à l'import en haut
 cloud_conn = st.connection("gsheets", type=GSheetsConnection)
 
 @st.cache_data(ttl=300)
 def fetch_database():
     try:
-        # On ajoute ttl=20 dans chaque lecture
         df_bank = cloud_conn.read(worksheet="Banque", ttl=20).dropna(how='all').fillna("")
         df_immat = cloud_conn.read(worksheet="Copie de Immatriculations", ttl=20).dropna(how='all').fillna("")
         df_pts = cloud_conn.read(worksheet="Points Permis", ttl=20).dropna(how='all').fillna("")
-        # Charge la nouvelle feuille pour les véhicules non immatriculés
         df_apb = cloud_conn.read(worksheet="Signalements_APB")
         return df_bank, df_immat, df_pts, df_apb
     except Exception as e:
         st.error(f"Erreur de liaison : {e}")
-        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
 df_b, df_i, df_p, df_a = fetch_database()
+
 # ======================================================================================
 # 3. ÉTAT DE LA SESSION & PARAMÈTRES
 # ======================================================================================
@@ -87,7 +85,7 @@ if "user_auth" not in st.session_state: st.session_state.user_auth = None
 if "audit_logs" not in st.session_state: st.session_state.audit_logs = []
 
 # ======================================================================================
-# CONFIGURATION ET FONCTIONS TECHNIQUES (À METTRE EN HAUT)
+# CONFIGURATION ET FONCTIONS TECHNIQUES
 # ======================================================================================
 
 PRIME_JOB = {
@@ -101,7 +99,6 @@ PRIME_JOB = {
 }
 
 def traiter_paiement_prime(target_name, metier, montant, df_b, cloud_conn):
-    """Gère le prélèvement sur l'employeur et l'ajout sur l'employé"""
     source_compte = None
     if "Averis" in metier:
         source_compte = "Moune2010"
@@ -110,273 +107,172 @@ def traiter_paiement_prime(target_name, metier, montant, df_b, cloud_conn):
     
     if source_compte:
         try:
-            # --- PRÉLÈVEMENT SUR L'EMPLOYEUR ---
             idx_source = df_b[df_b["Nom Roblox"] == source_compte].index[0]
             df_b.at[idx_source, "Solde"] -= montant
-            
-            # --- AJOUT SUR L'EMPLOYÉ ---
             idx_target = df_b[df_b["Nom Roblox"] == target_name].index[0]
             df_b.at[idx_target, "Solde"] += montant
-            
-            # Sauvegarde globale
             cloud_conn.update(worksheet="Banque", data=df_b)
             return True, f"✅ Prime de {montant}$ versée (Payé par {source_compte})"
         except Exception as e:
             return False, f"❌ Erreur lors du virement : {e}"
     else:
-        return False, "⚠️ Aucun employeur configuré pour prélever cette prime (Averis ou RCT uniquement)."
+        return False, "⚠️ Aucun employeur configuré pour prélever cette prime."
 
 # Codes de Service
 KEY_RCT = "RCT-26-RCRPFR"
 KEY_STAFF = "RCRPFR-25-26"
+KEY_ENTREPRISES = "RCRPFR-2026-ENTRE-"
 
 def record_log(user, action):
     now = datetime.now().strftime("%H:%M:%S")
     st.session_state.audit_logs.append(f"[{now}] {user} : {action}")
+
 # ======================================================================================
 # 4. SIDEBAR CONDITIONNELLE (LOGO & INFOS)
 # ======================================================================================
 
 if st.session_state.user_auth is not None:
     with st.sidebar:
-        # LOGO RCRP
         st.image("https://image2url.com/r2/default/images/1775257035403-38cdfea2-f4f7-4ac5-b45b-9a9a8073babf.png", use_container_width=True)
         st.divider()
-        from datetime import datetime, timedelta, timezone
         import streamlit.components.v1 as components
 
-        # 1. Calcul de l'heure UTC+1
         t_now = datetime.now(timezone.utc) + timedelta(hours=1)
-
-        # 2. Dictionnaires de traduction
         jours = {"Monday": "Lundi", "Tuesday": "Mardi", "Wednesday": "Mercredi", "Thursday": "Jeudi", "Friday": "Vendredi", "Saturday": "Samedi", "Sunday": "Dimanche"}
         mois = {"January": "Janvier", "February": "Février", "March": "Mars", "April": "Avril", "May": "Mai", "June": "Juin", "July": "Juillet", "August": "Août", "September": "Septembre", "October": "Octobre", "November": "Novembre", "December": "Décembre"}
 
-        # 3. Variables de date
-        nom_jour = jours[t_now.strftime('%A')]
-        num_jour = t_now.strftime('%d')
-        nom_mois = mois[t_now.strftime('%B')]
-        annee = t_now.strftime('%Y')
-
-        # 4. Bloc Date (Forcé à gauche)
         st.markdown(f"""
             <div style="text-align: left; line-height: 1.1; margin-left: 0; padding-left: 0;">
                 <span style="font-size: 1.5em;">📅</span><br>
-                <b style="font-size: 1.2em;">{nom_jour},</b><br>
-                <span style="font-size: 1.1em;">{num_jour} {nom_mois} {annee}</span>
+                <b style="font-size: 1.2em;">{jours[t_now.strftime('%A')]},</b><br>
+                <span style="font-size: 1.1em;">{t_now.strftime('%d')} {mois[t_now.strftime('%B')]} {t_now.strftime('%Y')}</span>
             </div>
         """, unsafe_allow_html=True)
 
         st.write("") 
-
-        # 5. Bloc Horloge Dynamique (Correction du décalage)
         st.markdown("<div style='text-align: left; font-size: 1.5em; margin-bottom: 0; margin-left: 0;'>⏰</div>", unsafe_allow_html=True)
         
-        # Le secret est dans le "margin-left: -8px" pour compenser la marge naturelle de l'iframe Streamlit
         components.html(f"""
-            <div id="clock" style="
-                font-family: 'Source Sans Pro', sans-serif; 
-                font-size: 24px; 
-                font-weight: bold; 
-                text-align: left; 
-                color: #31333F;
-                margin-left: -8px; 
-                margin-top: -5px;
-            "></div>
+            <div id="clock" style="font-family: 'Source Sans Pro', sans-serif; font-size: 24px; font-weight: bold; text-align: left; color: #31333F; margin-left: -8px; margin-top: -5px;"></div>
             <script>
                 function updateClock() {{
                     const now = new Date();
                     const options = {{ timeZone: 'Europe/Paris', hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }};
-                    const timeString = now.toLocaleTimeString('fr-FR', options);
-                    document.getElementById('clock').textContent = timeString;
+                    document.getElementById('clock').textContent = now.toLocaleTimeString('fr-FR', options);
                 }}
-                setInterval(updateClock, 1000);
-                updateClock();
+                setInterval(updateClock, 1000); updateClock();
             </script>
         """, height=40)
         st.divider()
 
         st.write(f"🔐 Accréditation : **{st.session_state.user_auth}**")
 
-# --- BOUTON SYNCHRO ---
         if st.button("🔄 FORCER SYNCHRO", use_container_width=True):
             st.cache_data.clear()
             record_log(st.session_state.user_auth, "Synchro Cloud Manuelle")
             st.rerun()
 
         if st.button("🚪 DÉCONNEXION", use_container_width=True):
-            # 1. On enregistre le log avant de tout couper
-            try:
-                record_log(st.session_state.user_auth, "Déconnexion")
-            except:
-                pass
-            
-            # 2. On vide la session côté serveur
+            record_log(st.session_state.user_auth, "Déconnexion")
             st.cache_data.clear()
-            for key in list(st.session_state.keys()):
-                del st.session_state[key]
-            
-            # 3. LE HACK RADICAL : On force le navigateur à recharger la page proprement
-            # Cela va réinitialiser l'URL et vider le cache visuel
-            components.html("""
-                <script>
-                    window.parent.location.reload();
-                </script>
-            """, height=0)
-            
-            # 4. Sécurité pour arrêter le script Streamlit
+            for key in list(st.session_state.keys()): del st.session_state[key]
+            components.html("<script>window.parent.location.reload();</script>", height=0)
             st.stop()
             
         st.divider()
         st.caption("📜 JOURNAUX D'AUDIT (SESSION)")
-        # On vérifie si audit_logs existe pour éviter une erreur après le del
         if "audit_logs" in st.session_state:
             for log in reversed(st.session_state.audit_logs[-8:]):
                 st.caption(log)
+
 # ======================================================================================
-# 5. LOCKSCREEN (CONNEXION) - UNITÉ FÉDÉRALE DE RENSSELAER
+# 5. LOCKSCREEN (CONNEXION)
 # ======================================================================================
 if st.session_state.user_auth is None:
-    # === ✏️ ZONE DE MESSAGE PERSONNALISABLE ===
     MESSAGE_ACCUEIL = "Joyeuses Pâques 🐣"
-    # ==========================================
 
-    # --- CONFIGURATION INTERFACE (NETTOYAGE) ---
     st.markdown("""
         <style>
-            /* On supprime le forçage du fond noir ici pour laisser le mode clair/sombre de Streamlit agir */
             [data-testid="stSidebar"], [data-testid="stSidebarNav"] { display: none; }
             [data-testid="stStatusWidget"] { display: none; }
             .block-container { padding-top: 2rem !important; }
-            
-            /* Rend l'iframe totalement invisible (pas de bordures/fond) */
-            iframe { 
-                border: none !important; 
-                background: transparent !important;
-            }
+            iframe { border: none !important; background: transparent !important; }
         </style>
     """, unsafe_allow_html=True)
 
-    # 1. CALCUL DU MOMENT (UTC+1)
-    from datetime import datetime, timedelta, timezone
     t_now_lock = datetime.now(timezone.utc) + timedelta(hours=1)
     h_lock = t_now_lock.hour
 
     if 5 <= h_lock < 18:
-        salut_complet = "Bonjour☀️"
-        pattern_style = "background-color: #87CEEB; background-image: conic-gradient(from 200deg at 85% 10%, transparent 0deg, rgba(255,255,255,0.4) 15deg, transparent 30deg, rgba(255,223,137,0.5) 45deg, transparent 60deg, rgba(255,255,255,0.4) 75deg, transparent 90deg), radial-gradient(circle at 85% 10%, #FFF9E3 0%, #FFD700 15%, rgba(255,215,0,0.4) 30%, transparent 60%);"
-        t_color = "#1E1E1E"
+        salut_complet, t_color = "Bonjour☀️", "#1E1E1E"
+        pattern_style = "background-color: #87CEEB; background-image: radial-gradient(circle at 85% 10%, #FFF9E3 0%, #FFD700 15%, rgba(255,215,0,0.4) 30%, transparent 60%);"
         glow_text = "0 0 30px rgba(255, 255, 255, 1), 0 0 60px rgba(255, 200, 0, 0.6)"
     else:
-        salut_complet = "Bonsoir🌕"
-        pattern_style = "background-color: #05070a; background-image: radial-gradient(1px 1px at 25% 35%, white, transparent), radial-gradient(1px 1px at 50% 10%, white, transparent); background-size: 150px 150px, 200px 200px;"
-        t_color = "#FFFFFF"
+        salut_complet, t_color = "Bonsoir🌕", "#FFFFFF"
+        pattern_style = "background-color: #05070a; background-image: radial-gradient(1px 1px at 25% 35%, white, transparent), radial-gradient(1px 1px at 50% 10%, white, transparent);"
         glow_text = "0 0 40px rgba(255,255,255,0.9), 0 0 80px rgba(255,255,255,0.4)"
 
-    # --- LE BLOC MONOLITHIQUE ---
     import streamlit.components.v1 as components
     display_annonce = "block" if MESSAGE_ACCUEIL else "none"
 
     components.html(f"""
         <style>
-            /* Variables CSS pour s'adapter au thème clair/sombre du système */
-            :root {{
-                --bg-box: #f0f2f6; /* Fond clair pour les boîtes */
-                --text-main: #31333F; /* Texte foncé */
-                --text-muted: #555555; /* Texte grisé */
-            }}
-            
-            @media (prefers-color-scheme: dark) {{
-                :root {{
-                    --bg-box: #1a1c23; /* Fond sombre d'origine */
-                    --text-main: #ffffff; /* Texte blanc */
-                    --text-muted: rgba(255,255,255,0.6);
-                }}
-            }}
-
-            /* EFFET RGB ULTRA RAPIDE (1.5s) */
+            :root {{ --bg-box: #f0f2f6; --text-main: #31333F; --text-muted: #555555; }}
+            @media (prefers-color-scheme: dark) {{ :root {{ --bg-box: #1a1c23; --text-main: #ffffff; --text-muted: rgba(255,255,255,0.6); }} }}
             @keyframes border-glow {{
                 0% {{ border-color: #ff0000; box-shadow: 0 0 25px #ff0000; }}
-                20% {{ border-color: #ff8000; box-shadow: 0 0 25px #ff8000; }}
-                40% {{ border-color: #ffff00; box-shadow: 0 0 25px #ffff00; }}
-                60% {{ border-color: #00ff00; box-shadow: 0 0 25px #00ff00; }}
-                80% {{ border-color: #00d4ff; box-shadow: 0 0 25px #00d4ff; }}
+                50% {{ border-color: #00ff00; box-shadow: 0 0 25px #00ff00; }}
                 100% {{ border-color: #ff0000; box-shadow: 0 0 25px #ff0000; }}
             }}
-            
-            .container-annonce {{
-                display: {display_annonce};
-                background-color: var(--bg-box);
-                color: var(--text-main);
-                padding: 40px 20px;
-                text-align: center;
-                border-top: 6px solid #ff0000;
-                border-bottom: 6px solid #ff0000;
-                animation: border-glow 1.5s linear infinite;
-            }}
-            
-            .footer-box {{
-                background-color: var(--bg-box);
-                color: var(--text-main);
-                border-left: 10px solid #ff4b4b;
-                padding: 45px 20px;
-                text-align: center;
-            }}
+            .container-annonce {{ display: {display_annonce}; background-color: var(--bg-box); color: var(--text-main); padding: 40px 20px; text-align: center; border-top: 6px solid #ff0000; border-bottom: 6px solid #ff0000; animation: border-glow 1.5s linear infinite; }}
+            .footer-box {{ background-color: var(--bg-box); color: var(--text-main); border-left: 10px solid #ff4b4b; padding: 45px 20px; text-align: center; }}
         </style>
-        
-        <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; width: 100%; border-radius: 25px; overflow: hidden; border: none; box-shadow: 0 20px 60px rgba(0,0,0,0.5);">
-            
-            <div style="text-align: center; padding: 70px 20px; color: {t_color}; {pattern_style} box-sizing: border-box;">
-                <h1 style="font-size: 5.5em; margin: 0; font-weight: 900; letter-spacing: -3px; text-shadow: {glow_text}; line-height: 1.1;">
-                    {salut_complet}
-                </h1>
-                <p style="font-size: 1.1em; opacity: 0.8; letter-spacing: 5px; font-weight: bold; text-transform: uppercase; margin: 25px 0;">
-                    Unité Fédérale de Rensselaer
-                </p>
-                <div id="clock" style="font-size: 3.8em; letter-spacing: 3px; font-weight: bold; border-top: 2px solid {t_color}33; display: inline-block; padding-top: 10px;">
-                    00:00:00
-                </div>
+        <div style="font-family: 'Helvetica Neue', Arial; width: 100%; border-radius: 25px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.5);">
+            <div style="text-align: center; padding: 70px 20px; color: {t_color}; {pattern_style}">
+                <h1 style="font-size: 5.5em; margin: 0; font-weight: 900; text-shadow: {glow_text};">{salut_complet}</h1>
+                <p style="letter-spacing: 5px; font-weight: bold; text-transform: uppercase;">Unité Fédérale de Rensselaer</p>
+                <div id="clock" style="font-size: 3.8em; font-weight: bold; border-top: 2px solid {t_color}33;">00:00:00</div>
             </div>
-
             <div class="container-annonce">
-                <div style="color: var(--text-muted); font-weight: bold; text-transform: uppercase; letter-spacing: 3px; font-size: 0.9em; margin-bottom: 12px;">📢 Bulletin d'Information</div>
-                <div style="font-size: 35px; font-weight: bold;">
-                    {MESSAGE_ACCUEIL}
-                </div>
+                <div style="text-transform: uppercase; letter-spacing: 3px; font-size: 0.9em;">📢 Bulletin d'Information</div>
+                <div style="font-size: 35px; font-weight: bold;">{MESSAGE_ACCUEIL}</div>
             </div>
-
             <div class="footer-box">
-                <h2 style="margin: 0; font-size: 2.2em; letter-spacing: 2px;">🏛️ RÉPUBLIQUE DE RENSSELAER</h2>
-                <p style="margin: 5px 0 20px 0; font-size: 1.1em; opacity: 0.7; text-transform: uppercase; letter-spacing: 1px;">Terminal Fédéral d'Opérations Nationales</p>
-                <small style="opacity: 0.5; font-size: 0.8em;">VERSION 14.6.0 | SÉCURISÉ PAR PROTOCOLE RCRP-OS</small>
+                <h2 style="font-size: 2.2em;">🏛️ RÉPUBLIQUE DE RENSSELAER</h2>
+                <small style="opacity: 0.5;">VERSION 14.6.0 | SÉCURISÉ PAR PROTOCOLE RCRP-OS</small>
             </div>
         </div>
-
         <script>
             function update() {{
                 const now = new Date();
-                const h = String(now.getHours()).padStart(2, '0');
-                const m = String(now.getMinutes()).padStart(2, '0');
-                const s = String(now.getSeconds()).padStart(2, '0');
-                document.getElementById('clock').textContent = h + ":" + m + ":" + s;
+                document.getElementById('clock').textContent = String(now.getHours()).padStart(2, '0') + ":" + String(now.getMinutes()).padStart(2, '0') + ":" + String(now.getSeconds()).padStart(2, '0');
             }}
-            setInterval(update, 1000);
-            update();
+            setInterval(update, 1000); update();
         </script>
     """, height=820)
 
     st.warning("⚠️ **AVERTISSEMENT :** Toute action effectuée sur ce terminal est enregistrée.")
     st.write("---")
 
-    # 3. COLONNES D'ACCÈS
-    c1, c2, c3 = st.columns(3)
+    # 3. COLONNES D'ACCÈS (MISE À JOUR 4 COLONNES)
+    c1, c2, c3, c4 = st.columns(4)
     with c1:
         st.markdown("### 👥 CIVIL")
-        nom_civil = st.text_input("Ecrivez quelque chose (Optionnel)", placeholder="Ex: Liberté...", key="input_civil_align")
+        st.text_input("Ecrivez quelque chose (Optionnel)", placeholder="Ex: Liberté...", key="input_civil_align")
         if st.button("ACCÉDER AU TERMINAL", key="l_civ_f", use_container_width=True):
             st.session_state.user_auth = "Civil"
             st.rerun()
+
     with c2:
+        st.markdown("### 🏢 ENTREPRISE")
+        login_entre = st.text_input("Code Entreprise", placeholder="Code RCRPFR...", type="password", key="l_entre_f")
+        if st.button("ACCÈS ENTREPRISE", key="b_entre_f", use_container_width=True):
+            if login_entre == KEY_ENTREPRISES:
+                st.session_state.user_auth = "Entreprise"
+                st.rerun()
+            else: st.error("Code erroné.")
+
+    with c3:
         st.markdown("### 👨‍🔧 AGENT RCT")
         login_rct = st.text_input("Identifiant Agent", placeholder="Code RCT", type="password", key="l_rct_ff")
         if st.button("AUTHENTIFICATION RCT", key="b_rct_f", use_container_width=True):
@@ -384,7 +280,8 @@ if st.session_state.user_auth is None:
                 st.session_state.user_auth = "RCT"
                 st.rerun()
             else: st.error("Clé invalide.")
-    with c3:
+
+    with c4:
         st.markdown("### 🛡️ STAFF")
         login_staff = st.text_input("Clé Maîtresse", placeholder="Code STAFF", type="password", key="l_st_ff")
         if st.button("ACCÈS ADMINISTRATEUR", key="b_st_f", use_container_width=True):
