@@ -1758,7 +1758,7 @@ try:
             col_auth, _ = st.columns([1, 2])
             with col_auth:
                 st.subheader("Authentification Entreprise")
-                code_saisi = st.text_input("Code Entreprise", type="password")
+                code_saisi = st.text_input("Code Entreprise", type="password", key="pwd_ent_rdoi")
                 if st.button("🔓 ACCÉDER"):
                     if code_saisi == "RDOI-2026":
                         st.session_state.auth_banque = True
@@ -1767,45 +1767,83 @@ try:
                         st.error("Code incorrect.")
         else:
             st.info("🏢 **Compte :** Rensselaer Driving of Institute")
+            
+            # Lecture des données
             df_b = cloud_conn.read(worksheet="Banque", ttl=0)
             df_f = cloud_conn.read(worksheet="Factures", ttl=0)
             
+            # --- RECHERCHE DU COMPTE (CORRIGÉE) ---
             try:
-                solde_rdoi = df_b[df_b["Code Agent"] == "RDOI_Bank"]["Solde"].values[0]
-            except:
+                # On cherche dans "Nom Roblox" car c'est là qu'est écrit RDOI_Bank sur ton Sheets
+                row_rdoi = df_b[df_b["Nom Roblox"] == "RDOI_Bank"]
+                
+                if not row_rdoi.empty:
+                    # Nettoyage du solde pour s'assurer que c'est un chiffre
+                    val_solde = str(row_rdoi["Solde"].values[0]).replace('$', '').replace(',', '').strip()
+                    solde_rdoi = float(val_solde)
+                else:
+                    solde_rdoi = 0
+                    st.warning("⚠️ Le compte 'RDOI_Bank' n'a pas été trouvé dans la colonne 'Nom Roblox'.")
+            except Exception as e:
                 solde_rdoi = 0
-                st.warning("⚠️ Compte 'RDOI_Bank' introuvable.")
+                st.error(f"Erreur de lecture du solde : {e}")
 
-            st.metric(label="Solde Actuel", value=f"{solde_rdoi:,} $".replace(",", " "))
+            # Affichage du solde formaté
+            st.metric(label="Solde Actuel", value=f"{solde_rdoi:,.0f} $".replace(",", " "))
 
-            # Historique des factures de l'entreprise
+            # Historique des rentrées d'argent (Factures payées par les clients)
             st.subheader("📄 Dernières rentrées d'argent")
-            historique_rdoi = df_f[(df_f["Emetteur"] == "Rensselaer Driving of Institute") & (df_f["Statut"] == "PAYÉ")].sort_index(ascending=False)
+            # Correction : L'émetteur est l'entreprise, on regarde les factures marquées "PAYÉ"
+            historique_rdoi = df_f[
+                (df_f["Emetteur"] == "Rensselaer Driving of Institute") & 
+                (df_f["Statut"] == "PAYÉ")
+            ].sort_index(ascending=False)
+            
             if not historique_rdoi.empty:
                 st.dataframe(historique_rdoi[["Date_Emission", "Cible", "Montant", "Motif"]], use_container_width=True, hide_index=True)
+            else:
+                st.caption("Aucun encaissement récent trouvé.")
 
             # Module de virement sortant
             st.divider()
             st.subheader("💸 Effectuer un virement")
-            with st.expander("Transférer des fonds"):
-                destinataire = st.selectbox("Destinataire", ["---"] + df_b["Nom Roblox"].tolist())
+            with st.expander("Transférer des fonds vers un citoyen"):
+                # Liste propre des destinataires
+                liste_citoyens = sorted(df_b["Nom Roblox"].dropna().unique().tolist())
+                destinataire = st.selectbox("Destinataire", ["---"] + liste_citoyens)
                 montant_v = st.number_input("Montant ($)", min_value=0, step=100)
-                motif_v = st.text_input("Motif")
+                motif_v = st.text_input("Motif du virement", placeholder="Ex: Salaire, Prime...")
 
                 if st.button("🚀 VALIDER LE TRANSFERT", use_container_width=True):
-                    if destinataire != "---" and montant_v > 0 and solde_rdoi >= montant_v:
-                        idx_rdoi = df_b[df_b["Code Agent"] == "RDOI_Bank"].index[0]
-                        idx_dest = df_b[df_b["Nom Roblox"] == destinataire].index[0]
-                        df_b.at[idx_rdoi, "Solde"] -= montant_v
-                        df_b.at[idx_dest, "Solde"] += montant_v
-                        cloud_conn.update(worksheet="Banque", data=df_b)
-                        st.success("Virement effectué !")
-                        time.sleep(1)
-                        st.rerun()
+                    if destinataire != "---" and montant_v > 0:
+                        if solde_rdoi >= montant_v:
+                            try:
+                                # Index des deux comptes
+                                idx_rdoi = df_b[df_b["Nom Roblox"] == "RDOI_Bank"].index[0]
+                                idx_dest = df_b[df_b["Nom Roblox"] == destinataire].index[0]
+                                
+                                # Mise à jour des valeurs
+                                df_b.at[idx_rdoi, "Solde"] = solde_rdoi - montant_v
+                                
+                                # Récupération et mise à jour du solde destinataire
+                                old_solde_dest = float(str(df_b.at[idx_dest, "Solde"]).replace('$', '').replace(',', '').strip() or 0)
+                                df_b.at[idx_dest, "Solde"] = old_solde_dest + montant_v
+                                
+                                # Envoi au Google Sheets
+                                cloud_conn.update(worksheet="Banque", data=df_b)
+                                
+                                st.success(f"✅ Virement de {montant_v}$ effectué vers {destinataire} !")
+                                time.sleep(1.5)
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Erreur technique lors du virement : {e}")
+                        else:
+                            st.error("❌ Solde entreprise insuffisant pour ce virement.")
                     else:
-                        st.error("Vérifiez les informations ou le solde.")
+                        st.warning("Veuillez remplir tous les champs.")
 
-            if st.button("🔒 QUITTER"):
+            st.write("")
+            if st.button("🔒 QUITTER L'ESPACE BANCAIRE", use_container_width=True):
                 st.session_state.auth_banque = False
                 st.rerun()
 except ValueError:
