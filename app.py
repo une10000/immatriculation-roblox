@@ -1092,138 +1092,151 @@ with tabs[0]:
         </div>
         """
         st.components.v1.html(ticket_html, height=500)
-# --- ONGLET 2 : SERVICES AGENTS ---
+# --- ONGLET 2 : SERVICES AGENTS / ENTREPRISES ---
 if len(tabs) > 1:
     with tabs[1]:
-        roles_autorises = ["RCT", "Averis", "Police", "Staff"]
+        # Ajout du rôle "Entreprise"
+        roles_autorises = ["RCT", "Averis", "Police", "Staff", "Entreprise"]
         if any(r in st.session_state.user_auth for r in roles_autorises):
-            st.markdown("## 🛡️ Administration & Blacklist RCT")
             
             # ==========================================
-            # 1. ADMINISTRATION BLACKLIST
+            # 1. ADMINISTRATION BLACKLIST (Masqué pour Entreprise)
             # ==========================================
-            with st.container(border=True):
-                col_add, col_list = st.columns([1, 1.5])
-                
-                # --- PARTIE GAUCHE : AJOUTER ---
-                with col_add:
-                    st.markdown("#### 🚫 Bannir un client")
-                    b_nom = st.selectbox("Citoyen à bannir", ["---"] + df_b["Nom Roblox"].tolist(), key="rct_ban_nom")
-                    b_raison = st.text_area("Raison du bannissement", placeholder="Ex: Impayés récurrents...", key="rct_ban_raison")
+            if st.session_state.user_auth != "Entreprise":
+                st.markdown("## 🛡️ Administration & Blacklist RCT")
+                with st.container(border=True):
+                    col_add, col_list = st.columns([1, 1.5])
                     
-                    if st.button("🔴 AJOUTER À LA LISTE", use_container_width=True):
-                        if b_nom != "---" and b_raison:
-                            try:
-                                with st.spinner("Mise à jour..."):
-                                    # ttl=60 évite de spammer l'API
-                                    df_bl = cloud_conn.read(worksheet="Blacklist_RCT", ttl=60).fillna("")
-                                    if b_nom in df_bl['Nom'].tolist():
-                                        st.error("Cette personne est déjà blacklistée.")
-                                    else:
-                                        new_ban = pd.DataFrame([{"Nom": b_nom, "Raison": b_raison}])
-                                        df_final = pd.concat([df_bl, new_ban], ignore_index=True)
+                    # --- PARTIE GAUCHE : AJOUTER ---
+                    with col_add:
+                        st.markdown("#### 🚫 Bannir un client")
+                        b_nom = st.selectbox("Citoyen à bannir", ["---"] + df_b["Nom Roblox"].tolist(), key="rct_ban_nom")
+                        b_raison = st.text_area("Raison du bannissement", placeholder="Ex: Impayés récurrents...", key="rct_ban_raison")
+                        
+                        if st.button("🔴 AJOUTER À LA LISTE", use_container_width=True):
+                            if b_nom != "---" and b_raison:
+                                try:
+                                    with st.spinner("Mise à jour..."):
+                                        df_bl = cloud_conn.read(worksheet="Blacklist_RCT", ttl=60).fillna("")
+                                        if b_nom in df_bl['Nom'].tolist():
+                                            st.error("Cette personne est déjà blacklistée.")
+                                        else:
+                                            new_ban = pd.DataFrame([{"Nom": b_nom, "Raison": b_raison}])
+                                            df_final = pd.concat([df_bl, new_ban], ignore_index=True)
+                                            cloud_conn.update(worksheet="Blacklist_RCT", data=df_final)
+                                            st.success(f"✅ {b_nom} banni.")
+                                            time.sleep(1)
+                                            st.cache_data.clear()
+                                            st.rerun()
+                                except Exception as e:
+                                    st.error(f"Erreur : {e}")
+                            else:
+                                st.warning("Champs incomplets.")
+
+                    # --- PARTIE DROITE : LISTE & UNBAN ---
+                    with col_list:
+                        st.markdown("#### 📜 Liste Noire Actuelle")
+                        try:
+                            df_show_bl = cloud_conn.read(worksheet="Blacklist_RCT", ttl=60).fillna("")
+                            if not df_show_bl.empty:
+                                st.dataframe(df_show_bl, use_container_width=True, hide_index=True, height=200)
+                                st.divider()
+                                unban_nom = st.selectbox("Sélectionner pour débannir", ["---"] + df_show_bl["Nom"].tolist(), key="unban_select")
+                                if st.button("🟢 RETIRER DE LA LISTE", use_container_width=True):
+                                    if unban_nom != "---":
+                                        df_final = df_show_bl[df_show_bl["Nom"] != unban_nom]
                                         cloud_conn.update(worksheet="Blacklist_RCT", data=df_final)
-                                        st.success(f"✅ {b_nom} banni.")
+                                        st.success(f"{unban_nom} autorisé.")
                                         time.sleep(1)
                                         st.cache_data.clear()
                                         st.rerun()
-                            except Exception as e:
-                                st.error(f"Erreur : {e}")
-                        else:
-                            st.warning("Champs incomplets.")
-
-                # --- PARTIE DROITE : LISTE & UNBAN ---
-                with col_list:
-                    st.markdown("#### 📜 Liste Noire Actuelle")
-                    try:
-                        df_show_bl = cloud_conn.read(worksheet="Blacklist_RCT", ttl=60).fillna("")
-                        if not df_show_bl.empty:
-                            st.dataframe(df_show_bl, use_container_width=True, hide_index=True, height=200)
-                            st.divider()
-                            unban_nom = st.selectbox("Sélectionner pour débannir", ["---"] + df_show_bl["Nom"].tolist(), key="unban_select")
-                            if st.button("🟢 RETIRER DE LA LISTE", use_container_width=True):
-                                if unban_nom != "---":
-                                    df_final = df_show_bl[df_show_bl["Nom"] != unban_nom]
-                                    cloud_conn.update(worksheet="Blacklist_RCT", data=df_final)
-                                    st.success(f"{unban_nom} autorisé.")
-                                    time.sleep(1)
-                                    st.cache_data.clear()
-                                    st.rerun()
-                        else:
-                            st.info("La blacklist est vide.")
-                    except:
-                        st.error("Onglet 'Blacklist_RCT' introuvable dans le Sheets.")
+                            else:
+                                st.info("La blacklist est vide.")
+                        except:
+                            st.error("Onglet 'Blacklist_RCT' introuvable dans le Sheets.")
 
             # ==========================================
             # 2. AUTHENTIFICATION & POINTAGE
             # ==========================================
+            st.markdown("## ⏱️ Terminal de Pointage")
             with st.container(border=True):
                 c_auth, c_stats = st.columns([1, 2.5])
                 
-                with c_auth:
-                    agent_code_saisi = st.text_input("🔑 Code Agent", type="password", key="main_agent_auth")
-                
                 agent_identifie = None
+                agent_valide = False
+                
+                with c_auth:
+                    # Si c'est une entreprise, on affiche la liste déroulante
+                    if st.session_state.user_auth == "Entreprise":
+                        agent_identifie = st.selectbox("🏢 Sélection de l'entité", ["Rensselaer Driving of Institute"], key="main_agent_auth_entre")
+                        agent_valide = True # Directement valide
+                    # Sinon, on garde le système de code secret pour les agents
+                    else:
+                        agent_code_saisi = st.text_input("🔑 Code Agent", type="password", key="main_agent_auth")
+                        if agent_code_saisi:
+                            df_b.columns = df_b.columns.str.strip()
+                            df_b["Code_Clean"] = df_b["Code"].astype(str).apply(lambda x: x.strip().split('.')[0])
+                            res_agent = df_b[df_b["Code_Clean"] == agent_code_saisi.strip()]
+                            
+                            if not res_agent.empty:
+                                agent_identifie = res_agent.iloc[0]["Nom Roblox"]
+                                agent_valide = True
+                            else:
+                                st.error("❌ Code Agent Invalide")
+                
                 en_service = False
                 
-                if agent_code_saisi:
-                    df_b.columns = df_b.columns.str.strip()
-                    df_b["Code_Clean"] = df_b["Code"].astype(str).apply(lambda x: x.strip().split('.')[0])
-                    res_agent = df_b[df_b["Code_Clean"] == agent_code_saisi.strip()]
-                    
-                    if not res_agent.empty:
-                        agent_identifie = res_agent.iloc[0]["Nom Roblox"]
+                # Si l'agent (ou l'entreprise) est bien identifié
+                if agent_valide and agent_identifie:
+                    df_clock = cloud_conn.read(worksheet="Clock", ttl=60).fillna("")
+                    df_clock.columns = df_clock.columns.str.strip().str.lower()
+                    session_active = df_clock[(df_clock["nom"] == agent_identifie) & (df_clock["statut"] == "en cours")]
+                    en_service = not session_active.empty
+
+                    with c_stats:
+                        st.markdown(f"### 🎖️ Identifiant : {agent_identifie}")
+                        h_actuelle = datetime.now(timezone(timedelta(hours=1))).strftime("%H:%M")
+                        m_actuelle, m_debut, m_fin = st.columns(3)
+                        m_actuelle.metric("Heure Actuelle", h_actuelle)
                         
-                        df_clock = cloud_conn.read(worksheet="Clock", ttl=60).fillna("")
-                        df_clock.columns = df_clock.columns.str.strip().str.lower()
-                        session_active = df_clock[(df_clock["nom"] == agent_identifie) & (df_clock["statut"] == "en cours")]
-                        en_service = not session_active.empty
-
-                        with c_stats:
-                            st.markdown(f"### 🎖️ Agent : {agent_identifie}")
-                            h_actuelle = datetime.now(timezone(timedelta(hours=1))).strftime("%H:%M")
-                            m_actuelle, m_debut, m_fin = st.columns(3)
-                            m_actuelle.metric("Heure Actuelle", h_actuelle)
-                            
-                            if en_service:
-                                h_deb_brute = session_active.iloc[-1]['début']
-                                h_deb_clean = h_deb_brute.split(' ')[1][:5] if ' ' in h_deb_brute else h_deb_brute[:5]
-                                m_debut.metric("Heure de Début", h_deb_clean)
-                                try:
-                                    diff = datetime.now(timezone(timedelta(hours=1))) - datetime.strptime(h_deb_brute, "%d/%m/%Y %H:%M:%S").replace(tzinfo=timezone(timedelta(hours=1)))
-                                    duree_min = int(diff.total_seconds() / 60)
-                                    m_fin.metric("Temps de Service", f"{duree_min} min")
-                                except:
-                                    m_fin.metric("Temps de Service", "Calcul...")
-                            else:
-                                m_debut.metric("Heure de Début", "--:--")
-                                m_fin.metric("Temps de Service", "0 min")
-
-                        st.divider()
-
-                        job_auto = "POLSTA" if st.session_state.user_auth == "Staff" else "RCT"
-                        if "Averis" in st.session_state.user_auth: job_auto = "Averis"
-                        
-                        if not en_service:
-                            st.info(f"💡 **Information :** Vous êtes connecté en tant que **{job_auto}**.")
-                            if st.button(f"▶️ DÉBUT DE SERVICE ({job_auto})", use_container_width=True, type="primary"):
-                                h_deb = datetime.now(timezone(timedelta(hours=1))).strftime("%d/%m/%Y %H:%M:%S")
-                                new_row = pd.DataFrame([{"nom": agent_identifie, "action": "SERVICE", "job": job_auto, "début": h_deb, "fin": "", "statut": "en cours"}])
-                                cloud_conn.update(worksheet="Clock", data=pd.concat([df_clock, new_row], ignore_index=True))
-                                st.success(f"✅ Session {job_auto} a débuté !")
-                                time.sleep(1); st.rerun()
+                        if en_service:
+                            h_deb_brute = session_active.iloc[-1]['début']
+                            h_deb_clean = h_deb_brute.split(' ')[1][:5] if ' ' in h_deb_brute else h_deb_brute[:5]
+                            m_debut.metric("Heure de Début", h_deb_clean)
+                            try:
+                                diff = datetime.now(timezone(timedelta(hours=1))) - datetime.strptime(h_deb_brute, "%d/%m/%Y %H:%M:%S").replace(tzinfo=timezone(timedelta(hours=1)))
+                                duree_min = int(diff.total_seconds() / 60)
+                                m_fin.metric("Temps de Service", f"{duree_min} min")
+                            except:
+                                m_fin.metric("Temps de Service", "Calcul...")
                         else:
-                            st.warning(f"🚨 **Information :** Session **{job_auto}** en cours.")
-                            if st.button(f"⏹️ FIN DE SERVICE ({job_auto})", use_container_width=True):
-                                h_fin = datetime.now(timezone(timedelta(hours=1))).strftime("%d/%m/%Y %H:%M:%S")
-                                df_clock.at[session_active.index[-1], "fin"] = h_fin
-                                df_clock.at[session_active.index[-1], "statut"] = "à valider"
-                                cloud_conn.update(worksheet="Clock", data=df_clock)
-                                st.success(f"✅ Session {job_auto} a pris fin !")
-                                time.sleep(1); st.rerun()
-                    else:
-                        st.error("❌ Code Agent Invalide")
+                            m_debut.metric("Heure de Début", "--:--")
+                            m_fin.metric("Temps de Service", "0 min")
 
+                    st.divider()
+
+                    # Détermination dynamique du job pour la base de données Clock
+                    job_auto = "POLSTA" if st.session_state.user_auth == "Staff" else "RCT"
+                    if "Averis" in st.session_state.user_auth: job_auto = "Averis"
+                    if st.session_state.user_auth == "Entreprise": job_auto = "Entreprise"
+                    
+                    if not en_service:
+                        st.info(f"💡 **Information :** Vous êtes connecté en tant que **{job_auto}**.")
+                        if st.button(f"▶️ DÉBUT DE SERVICE ({job_auto})", use_container_width=True, type="primary"):
+                            h_deb = datetime.now(timezone(timedelta(hours=1))).strftime("%d/%m/%Y %H:%M:%S")
+                            new_row = pd.DataFrame([{"nom": agent_identifie, "action": "SERVICE", "job": job_auto, "début": h_deb, "fin": "", "statut": "en cours"}])
+                            cloud_conn.update(worksheet="Clock", data=pd.concat([df_clock, new_row], ignore_index=True))
+                            st.success(f"✅ Session {job_auto} a débuté !")
+                            time.sleep(1); st.rerun()
+                    else:
+                        st.warning(f"🚨 **Information :** Session **{job_auto}** en cours.")
+                        if st.button(f"⏹️ FIN DE SERVICE ({job_auto})", use_container_width=True):
+                            h_fin = datetime.now(timezone(timedelta(hours=1))).strftime("%d/%m/%Y %H:%M:%S")
+                            df_clock.at[session_active.index[-1], "fin"] = h_fin
+                            df_clock.at[session_active.index[-1], "statut"] = "à valider"
+                            cloud_conn.update(worksheet="Clock", data=df_clock)
+                            st.success(f"✅ Session {job_auto} a pris fin !")
+                            time.sleep(1); st.rerun()
             # ==========================================
             # 3. GESTION DES FACTURES & RETARDS
             # ==========================================
