@@ -1769,65 +1769,57 @@ try:
             df_b = cloud_conn.read(worksheet="Banque", ttl=0)
             df_f = cloud_conn.read(worksheet="Factures", ttl=0)
             
-            # Recherche du solde RDOI
             try:
                 row_rdoi = df_b[df_b["Nom Roblox"] == "RDOI_Bank"]
                 solde_rdoi = float(str(row_rdoi["Solde"].values[0]).replace('$', '').replace(',', '').strip())
             except:
                 solde_rdoi = 0
 
-            # --- MISE EN PAGE EN COLONNES (Comme l'immatriculation) ---
+            # --- MISE EN PAGE EN COLONNES ---
             col_virement, col_aperçu = st.columns([1.3, 1])
 
             with col_virement:
                 st.markdown("### 💸 Effectuer un virement")
                 
-                with st.container(border=True):
+                # --- DÉBUT DU FORMULAIRE (Bloque le refresh automatique) ---
+                with st.form("form_virement_v8", border=True):
                     st.info(f"🏢 **Compte :** RDOI_Bank  \n💰 **Solde :** {solde_rdoi:,.0f} $".replace(",", " "))
                     
                     destinataire = st.selectbox("Destinataire du transfert", ["---"] + sorted(df_b["Nom Roblox"].dropna().unique().tolist()), key="k_dest_v8")
                     montant_v = st.number_input("Montant à transférer ($)", min_value=0, step=500, key="k_mnt_v8")
                     motif_v = st.text_input("Motif / Libellé", placeholder="Ex: Salaire de base, Prime...", key="k_mot_v8")
-
-                    # Vérifications en direct
-                    error_msg = ""
-                    can_send = True
                     
-                    if destinataire == "---":
-                        can_send = False
-                    elif montant_v <= 0:
-                        can_send = False
+                    # Le bouton du formulaire
+                    submit_virement = st.form_submit_button("🚀 VALIDER LE TRANSFERT", use_container_width=True, type="primary")
+
+                # --- LOGIQUE APRÈS CLIC ---
+                if submit_virement:
+                    if destinataire == "---" or montant_v <= 0:
+                        st.error("❌ Formulaire invalide (Vérifie le destinataire et le montant).")
                     elif solde_rdoi < montant_v:
                         st.error(f"⚠️ Solde insuffisant ! (Manque {montant_v - solde_rdoi}$)")
-                        can_send = False
-                    
-                    if st.button("🚀 VALIDER LE TRANSFERT", use_container_width=True, type="primary", disabled=not can_send):
+                    else:
                         with st.spinner("Transfert en cours..."):
                             try:
-                                # Indexation
                                 idx_rdoi = df_b[df_b["Nom Roblox"] == "RDOI_Bank"].index[0]
                                 idx_dest = df_b[df_b["Nom Roblox"] == destinataire].index[0]
-                                
-                                # Calculs
                                 solde_dest_raw = float(str(df_b.at[idx_dest, "Solde"]).replace('$', '').replace(',', '').strip() or 0)
                                 
-                                # Update Dataframe
+                                # Update soldes
                                 df_b.at[idx_rdoi, "Solde"] = solde_rdoi - montant_v
                                 df_b.at[idx_dest, "Solde"] = solde_dest_raw + montant_v
                                 
-                                # Enregistrement
                                 cloud_conn.update(worksheet="Banque", data=df_b)
                                 
                                 st.balloons()
-                                st.success(f"✅ Virement de {montant_v}$ effectué vers {destinataire} !")
-                                time.sleep(3)
+                                st.success(f"✅ Virement de {montant_v}$ effectué !")
+                                time.sleep(2)
                                 st.cache_data.clear()
                                 st.rerun()
                             except Exception as e:
-                                st.error(f"Erreur technique : {e}")
+                                st.error(f"Erreur : {e}")
 
-                # Historique rapide en dessous
-                st.markdown("#### 📄 Revenus récents (Factures payées)")
+                st.markdown("#### 📄 Revenus récents")
                 historique = df_f[(df_f["Emetteur"] == "Rensselaer Driving of Institute") & (df_f["Statut"] == "PAYÉ")].sort_index(ascending=False).head(5)
                 if not historique.empty:
                     st.dataframe(historique[["Date_Emission", "Cible", "Montant"]], use_container_width=True, hide_index=True)
@@ -1835,10 +1827,9 @@ try:
             with col_aperçu:
                 st.markdown("### 🖼️ Reçu de Transaction")
                 
-                # Variables pour le ticket
+                # Note : l'aperçu affichera les infos saisies uniquement après validation ou refresh manuel
+                # Pour garder un aperçu "propre" avant validation :
                 date_t = datetime.now().strftime("%d/%m/%Y %H:%M")
-                dest_t = destinataire if destinataire != "---" else "---"
-                motif_t = motif_v if motif_v else "---"
                 
                 ticket_bank_html = f"""
                 <div style='border: 2px solid #2e7d32; padding: 20px; background-color: #f1f8e9; color: #1b5e20; font-family: "Courier New", monospace; border-radius: 10px;'>
@@ -1849,15 +1840,8 @@ try:
                     <hr style='border: 0.5px dashed #2e7d32; margin: 15px 0;'>
                     <p style='font-size:0.9em;'><strong>RÉF :</strong> TR-{random.randint(100000, 999999)}</p>
                     <p style='font-size:0.9em;'><strong>DATE :</strong> {date_t}</p>
-                    <p style='font-size:0.9em;'><strong>ÉMETTEUR :</strong> RDOI_Bank</p>
-                    <p style='font-size:0.9em;'><strong>BÉNÉFICIAIRE :</strong> {dest_t}</p>
-                    <p style='font-size:0.9em;'><strong>MOTIF :</strong> {motif_t}</p>
-                    <div style='margin-top: 20px; padding: 10px; background: #2e7d32; color: white; text-align: center; border-radius: 5px;'>
-                        <strong style='font-size:1.2em;'>MONTANT : {montant_v:,} $</strong>
-                    </div>
-                    <div style='text-align:center; margin-top:15px; font-size: 0.7em; opacity: 0.8;'>
-                        DÉBIT IMMÉDIAT<br>Système de Compensation Interbancaire
-                    </div>
+                    <p style='font-size:0.9em;'><strong>STATUT :</strong> EN ATTENTE</p>
+                    <p style='font-size:0.7em; color: #666; margin-top:20px;'>Les détails apparaîtront sur le reçu final après confirmation du transfert.</p>
                 </div>
                 """
                 st.components.v1.html(ticket_bank_html, height=450)
