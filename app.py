@@ -871,7 +871,7 @@ if st.session_state.user_auth in ["RCT", "Staff", "Entreprise"]:
     tab_labels.append("👮 SERVICES AGENT")
 
 # Nouvel onglet Banque
-if st.session_state.user_auth in ["Staff", "Entreprise"]:
+if st.session_state.user_auth == "Entreprise":
     tab_labels.append("🏦 BANQUE")
 
 if st.session_state.user_auth == "Staff": 
