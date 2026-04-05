@@ -1477,7 +1477,7 @@ if len(tabs) > 1:
                     else:
                         st.success("✅ Aucun APB en cours.")
                         
-# ==========# ==========================================
+# ==========================================
 # 5. INTERVENTION SUR CITOYEN & FACTURATION
 # ==========================================
 st.divider()
@@ -1742,7 +1742,6 @@ if len(tabs) > 2:
             if "audit_logs" in st.session_state and st.session_state.audit_logs:
                 with st.container(height=150, border=True):
                     for log in reversed(st.session_state.audit_logs): st.write(f"🔹 {log}")
-
 # ==========================================
 #         ONGLET 4 : BANQUE ENTREPRISE
 # ==========================================
@@ -1758,94 +1757,115 @@ try:
             col_auth, _ = st.columns([1, 2])
             with col_auth:
                 st.subheader("Authentification Entreprise")
-                code_saisi = st.text_input("Code Entreprise", type="password", key="pwd_ent_rdoi")
-                if st.button("🔓 ACCÉDER"):
+                code_saisi = st.text_input("Code Entreprise", type="password", key="pwd_ent_v8")
+                if st.button("🔓 ACCÉDER", use_container_width=True):
                     if code_saisi == "RDOI-2026":
                         st.session_state.auth_banque = True
                         st.rerun()
                     else:
                         st.error("Code incorrect.")
         else:
-            st.info("🏢 **Compte :** Rensselaer Driving of Institute")
-            
-            # Lecture des données
+            # --- CHARGEMENT DES DONNÉES ---
             df_b = cloud_conn.read(worksheet="Banque", ttl=0)
             df_f = cloud_conn.read(worksheet="Factures", ttl=0)
             
-            # --- RECHERCHE DU COMPTE (CORRIGÉE) ---
+            # Recherche du solde RDOI
             try:
-                # On cherche dans "Nom Roblox" car c'est là qu'est écrit RDOI_Bank sur ton Sheets
                 row_rdoi = df_b[df_b["Nom Roblox"] == "RDOI_Bank"]
-                
-                if not row_rdoi.empty:
-                    # Nettoyage du solde pour s'assurer que c'est un chiffre
-                    val_solde = str(row_rdoi["Solde"].values[0]).replace('$', '').replace(',', '').strip()
-                    solde_rdoi = float(val_solde)
-                else:
-                    solde_rdoi = 0
-                    st.warning("⚠️ Le compte 'RDOI_Bank' n'a pas été trouvé dans la colonne 'Nom Roblox'.")
-            except Exception as e:
+                solde_rdoi = float(str(row_rdoi["Solde"].values[0]).replace('$', '').replace(',', '').strip())
+            except:
                 solde_rdoi = 0
-                st.error(f"Erreur de lecture du solde : {e}")
 
-            # Affichage du solde formaté
-            st.metric(label="Solde Actuel", value=f"{solde_rdoi:,.0f} $".replace(",", " "))
+            # --- MISE EN PAGE EN COLONNES (Comme l'immatriculation) ---
+            col_virement, col_aperçu = st.columns([1.3, 1])
 
-            # Historique des rentrées d'argent (Factures payées par les clients)
-            st.subheader("📄 Dernières rentrées d'argent")
-            # Correction : L'émetteur est l'entreprise, on regarde les factures marquées "PAYÉ"
-            historique_rdoi = df_f[
-                (df_f["Emetteur"] == "Rensselaer Driving of Institute") & 
-                (df_f["Statut"] == "PAYÉ")
-            ].sort_index(ascending=False)
-            
-            if not historique_rdoi.empty:
-                st.dataframe(historique_rdoi[["Date_Emission", "Cible", "Montant", "Motif"]], use_container_width=True, hide_index=True)
-            else:
-                st.caption("Aucun encaissement récent trouvé.")
+            with col_virement:
+                st.markdown("### 💸 Effectuer un virement")
+                
+                with st.container(border=True):
+                    st.info(f"🏢 **Compte :** RDOI_Bank  \n💰 **Solde :** {solde_rdoi:,.0f} $".replace(",", " "))
+                    
+                    destinataire = st.selectbox("Destinataire du transfert", ["---"] + sorted(df_b["Nom Roblox"].dropna().unique().tolist()), key="k_dest_v8")
+                    montant_v = st.number_input("Montant à transférer ($)", min_value=0, step=500, key="k_mnt_v8")
+                    motif_v = st.text_input("Motif / Libellé", placeholder="Ex: Salaire de base, Prime...", key="k_mot_v8")
 
-            # Module de virement sortant
-            st.divider()
-            st.subheader("💸 Effectuer un virement")
-            with st.expander("Transférer des fonds vers un citoyen"):
-                # Liste propre des destinataires
-                liste_citoyens = sorted(df_b["Nom Roblox"].dropna().unique().tolist())
-                destinataire = st.selectbox("Destinataire", ["---"] + liste_citoyens)
-                montant_v = st.number_input("Montant ($)", min_value=0, step=100)
-                motif_v = st.text_input("Motif du virement", placeholder="Ex: Salaire, Prime...")
-
-                if st.button("🚀 VALIDER LE TRANSFERT", use_container_width=True):
-                    if destinataire != "---" and montant_v > 0:
-                        if solde_rdoi >= montant_v:
+                    # Vérifications en direct
+                    error_msg = ""
+                    can_send = True
+                    
+                    if destinataire == "---":
+                        can_send = False
+                    elif montant_v <= 0:
+                        can_send = False
+                    elif solde_rdoi < montant_v:
+                        st.error(f"⚠️ Solde insuffisant ! (Manque {montant_v - solde_rdoi}$)")
+                        can_send = False
+                    
+                    if st.button("🚀 VALIDER LE TRANSFERT", use_container_width=True, type="primary", disabled=not can_send):
+                        with st.spinner("Transfert en cours..."):
                             try:
-                                # Index des deux comptes
+                                # Indexation
                                 idx_rdoi = df_b[df_b["Nom Roblox"] == "RDOI_Bank"].index[0]
                                 idx_dest = df_b[df_b["Nom Roblox"] == destinataire].index[0]
                                 
-                                # Mise à jour des valeurs
+                                # Calculs
+                                solde_dest_raw = float(str(df_b.at[idx_dest, "Solde"]).replace('$', '').replace(',', '').strip() or 0)
+                                
+                                # Update Dataframe
                                 df_b.at[idx_rdoi, "Solde"] = solde_rdoi - montant_v
+                                df_b.at[idx_dest, "Solde"] = solde_dest_raw + montant_v
                                 
-                                # Récupération et mise à jour du solde destinataire
-                                old_solde_dest = float(str(df_b.at[idx_dest, "Solde"]).replace('$', '').replace(',', '').strip() or 0)
-                                df_b.at[idx_dest, "Solde"] = old_solde_dest + montant_v
-                                
-                                # Envoi au Google Sheets
+                                # Enregistrement
                                 cloud_conn.update(worksheet="Banque", data=df_b)
                                 
+                                st.balloons()
                                 st.success(f"✅ Virement de {montant_v}$ effectué vers {destinataire} !")
-                                time.sleep(1.5)
+                                time.sleep(3)
+                                st.cache_data.clear()
                                 st.rerun()
                             except Exception as e:
-                                st.error(f"Erreur technique lors du virement : {e}")
-                        else:
-                            st.error("❌ Solde entreprise insuffisant pour ce virement.")
-                    else:
-                        st.warning("Veuillez remplir tous les champs.")
+                                st.error(f"Erreur technique : {e}")
 
-            st.write("")
-            if st.button("🔒 QUITTER L'ESPACE BANCAIRE", use_container_width=True):
+                # Historique rapide en dessous
+                st.markdown("#### 📄 Revenus récents (Factures payées)")
+                historique = df_f[(df_f["Emetteur"] == "Rensselaer Driving of Institute") & (df_f["Statut"] == "PAYÉ")].sort_index(ascending=False).head(5)
+                if not historique.empty:
+                    st.dataframe(historique[["Date_Emission", "Cible", "Montant"]], use_container_width=True, hide_index=True)
+
+            with col_aperçu:
+                st.markdown("### 🖼️ Reçu de Transaction")
+                
+                # Variables pour le ticket
+                date_t = datetime.now().strftime("%d/%m/%Y %H:%M")
+                dest_t = destinataire if destinataire != "---" else "---"
+                motif_t = motif_v if motif_v else "---"
+                
+                ticket_bank_html = f"""
+                <div style='border: 2px solid #2e7d32; padding: 20px; background-color: #f1f8e9; color: #1b5e20; font-family: "Courier New", monospace; border-radius: 10px;'>
+                    <div style='text-align:center;'>
+                        <h2 style='margin:0;'>BANQUE RDOI</h2>
+                        <small>TRANSACTION SÉCURISÉE</small>
+                    </div>
+                    <hr style='border: 0.5px dashed #2e7d32; margin: 15px 0;'>
+                    <p style='font-size:0.9em;'><strong>RÉF :</strong> TR-{random.randint(100000, 999999)}</p>
+                    <p style='font-size:0.9em;'><strong>DATE :</strong> {date_t}</p>
+                    <p style='font-size:0.9em;'><strong>ÉMETTEUR :</strong> RDOI_Bank</p>
+                    <p style='font-size:0.9em;'><strong>BÉNÉFICIAIRE :</strong> {dest_t}</p>
+                    <p style='font-size:0.9em;'><strong>MOTIF :</strong> {motif_t}</p>
+                    <div style='margin-top: 20px; padding: 10px; background: #2e7d32; color: white; text-align: center; border-radius: 5px;'>
+                        <strong style='font-size:1.2em;'>MONTANT : {montant_v:,} $</strong>
+                    </div>
+                    <div style='text-align:center; margin-top:15px; font-size: 0.7em; opacity: 0.8;'>
+                        DÉBIT IMMÉDIAT<br>Système de Compensation Interbancaire
+                    </div>
+                </div>
+                """
+                st.components.v1.html(ticket_bank_html, height=450)
+
+            if st.button("🔒 SE DÉCONNECTER", use_container_width=True):
                 st.session_state.auth_banque = False
                 st.rerun()
+
 except ValueError:
     pass
 # ======================================================================================
