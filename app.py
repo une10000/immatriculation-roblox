@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import time
+import random
 from datetime import datetime, timedelta, timezone
 from streamlit_gsheets import GSheetsConnection
 
