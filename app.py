@@ -1479,20 +1479,23 @@ if len(tabs) > 1:
                         st.success("✅ Aucun APB en cours.")
                         
 # ==========================================
-# 5. INTERVENTION SUR CITOYEN & FACTURATION
-# ==========================================
-st.divider()
+        # 5. INTERVENTION SUR CITOYEN & FACTURATION
+        # ==========================================
+        st.divider()
 
-# Vérification de sécurité : Target sélectionnée + Agent connecté
-if 'target' not in locals() or target == "---":
-    st.warning("⚠️ Sélectionnez un citoyen en haut de la page pour ouvrir le module d'intervention.")
-elif not agent_identifie:
-    st.info("🔒 Veuillez vous identifier (Section 2) pour accéder à la facturation.")
-else:
-    st.markdown(f"### ⚡ INTERVENTION : {target.upper()}")
-    
-    col_form, col_facture, col_vehicules = st.columns([1.2, 1, 1]) 
-
+        # Vérification si un citoyen est sélectionné
+        # Note : 'target' doit être défini plus haut dans ton code (selectbox de recherche)
+        if 'target' not in locals() or target == "---":
+            st.warning("⚠️ Sélectionnez un citoyen en haut de la page pour ouvrir le module d'intervention.")
+        
+        # Correction de ton erreur 'agent_identifie'
+        elif 'agent_identifie' not in locals() or not agent_identifie:
+            st.info("🔒 Veuillez vous identifier (Section 2) pour accéder à la facturation.")
+            
+        else:
+            st.markdown(f"### ⚡ INTERVENTION : {target.upper()}")
+            col_form, col_facture, col_vehicules = st.columns([1.2, 1, 1])
+            
     # --- COLONNE 1 : FORMULAIRE D'ACTION ---
     with col_form:
         with st.form("form_intervention", border=True):
