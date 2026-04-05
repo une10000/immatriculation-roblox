@@ -867,8 +867,13 @@ if target and target != "---":
 # 7. LOGIQUE DES ONGLETS (CORRIGÉE ET MISE A JOUR INTERCHANGEABLES EN 1 ÉTAPE)
 # ======================================================================================
 tab_labels = ["🚗 IMMATRICULATION"]
-if st.session_state.user_auth in ["RCT", "Staff"]: tab_labels.append("👮 SERVICES AGENT")
-if st.session_state.user_auth == "Staff": tab_labels.append("🛠️ ADMINISTRATION")
+
+# Ajout de "Entreprise" (et potentiellement des autres si tu les utilises) pour qu'ils voient l'onglet
+if st.session_state.user_auth in ["RCT", "Staff", "Entreprise"]: 
+    tab_labels.append("👮 SERVICES AGENT")
+    
+if st.session_state.user_auth == "Staff": 
+    tab_labels.append("🛠️ ADMINISTRATION")
 
 tabs = st.tabs(tab_labels)
 # --- ONGLET 1 : IMMATRICULATION & RADIATION (ALIGNÉ) ---
