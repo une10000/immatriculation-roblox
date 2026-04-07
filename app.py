@@ -856,7 +856,7 @@ if target and target != "---":
 
                 # --- ZONE DE RADIATION (A l'intérieur de la boucle) ---
                 with st.expander("🗑️ Radier"):
-                    st.warning("⚠️ Attention : Cette action est irréversible. Elle sera enregistrée et vous pouvez être condamné en cas d'utilisation inappropriée")
+                    st.warning("⚠️ Attention : Vous allez effacer une immatriculation. Cette action sera enregistrée et vous pouvez être penalisée en cas d'utilisation inappropriée")
                     
                     # Demande du code pour confirmation
                     r_cod_check = st.text_input(
