@@ -856,7 +856,7 @@ if target and target != "---":
 
                 # --- ZONE DE RADIATION (A l'intérieur de la boucle) ---
                 with st.expander("🗑️ Radier"):
-                    st.warning("⚠️ Attention : Vous allez effacer une immatriculation. Cette action sera enregistrée et vous pouvez être penalisée en cas d'utilisation inappropriée")
+                    st.warning("⚠️ Attention : Vous allez effacer une immatriculation. Cette action sera enregistrée et vous pouvez être pénalisé en cas d'utilisation inappropriée.")
                     
                     # Demande du code pour confirmation
                     r_cod_check = st.text_input(
@@ -869,27 +869,38 @@ if target and target != "---":
                         # Vérification du code agent ou accès Staff
                         if str(r_cod_check) == str(veh.get("CODE", "")) or st.session_state.user_auth == "Staff":
                             
-                            # 1. Suppression dans la base de données
+                            # 1. Suppression dans la base de données principale
                             df_all_immat = cloud_conn.read(worksheet="Copie de Immatriculations", ttl=0)
                             df_updated = df_all_immat[df_all_immat["Numéro de la plaque"] != veh["Numéro de la plaque"]]
                             cloud_conn.update(worksheet="Copie de Immatriculations", data=df_updated)
                             
-                            # 2. Système de Logs
+                            # 2. --- SYSTÈME DE LOGS ---
                             try:
                                 import datetime
                                 import pandas as pd
+                                
+                                # On crée la nouvelle ligne de log
                                 new_log = {
-                                    "Date": datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
-                                    "Agent": r_cod_check, 
-                                    "Action": "RADIATION",
-                                    "Cible": f"Plaque: {veh['Numéro de la plaque']} - Propriétaire: {target}"
+                                    "Date": datetime.datetime.now().strftime("%d/%m/%Y"), 
+                                    "Heure": datetime.datetime.now().strftime("%H:%M:%S"), 
+                                    "Agent": r_cod_check,                                  
+                                    "Action": "RADIATION",                                 
+                                    "Véhicule": veh['Numéro de la plaque'],               
+                                    "Propriétaire": target                                 
                                 }
-                                # On essaie d'ajouter aux logs
+                                
+                                # On lit la feuille "Logs"
                                 df_logs = cloud_conn.read(worksheet="Logs", ttl=0)
+                                
+                                # On ajoute la nouvelle ligne à la suite
                                 df_logs = pd.concat([df_logs, pd.DataFrame([new_log])], ignore_index=True)
+                                
+                                # On renvoie le tout sur Google Sheets
                                 cloud_conn.update(worksheet="Logs", data=df_logs)
-                            except:
-                                st.error("Log non enregistré, mais radiation effectuée.")
+                                
+                            except Exception as e:
+                                # Si la feuille "Logs" n'existe pas ou s'il y a une erreur
+                                st.error(f"⚠️ Erreur Log : {e}")
 
                             # 3. Rafraîchissement
                             st.success(f"Véhicule {veh['Numéro de la plaque']} supprimé.")
