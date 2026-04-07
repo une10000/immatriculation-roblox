@@ -839,6 +839,7 @@ if target and target != "---":
                     elif "AVERIS" in assu: color, status_txt = "#E67E22", "⚠️ ATTENTION : ASSURÉ AVERIS"
                     else: color, status_txt = "#d32f2f", "🚨 DANGER : NON-ASSURÉ"
 
+                # Affichage du Titre de Circulation
                 st.markdown(f"""
                     <div style="border: 2px solid black; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; line-height: 1.2;">
                         <center><b>TITRE DE CIRCULATION</b><br><small>RÉPUBLIQUE DE RENSSERLAER</small></center>
@@ -853,45 +854,51 @@ if target and target != "---":
                     </div>
                 """, unsafe_allow_html=True)
 
-with st.expander("🗑️ Radier"):
-    st.warning("⚠️ Attention : Cette action est irréversible. Elle supprimera définitivement le véhicule de la base de données.")
-    
-    # On demande le code agent pour valider l'action
-    r_cod_check = st.text_input("Veuillez saisir votre Code Agent pour confirmer", type="password", key=f"rad_input_{veh['Numéro de la plaque']}_{i}")
-    
-    if st.button("CONFIRMER LA RADIATION", key=f"btn_confirm_{veh['Numéro de la plaque']}_{i}", use_container_width=True, type="primary"):
-        # 1. Vérification du code (soit le code du véhicule, soit le code agent via session_state)
-        if str(r_cod_check) == str(veh.get("CODE", "")) or st.session_state.user_auth == "Staff":
-            
-            # --- ACTION DE RADIATION ---
-            df_all_immat = cloud_conn.read(worksheet="Copie de Immatriculations", ttl=0)
-            df_updated = df_all_immat[df_all_immat["Numéro de la plaque"] != veh["Numéro de la plaque"]]
-            cloud_conn.update(worksheet="Copie de Immatriculations", data=df_updated)
-            
-            # --- SYSTÈME DE LOGS ---
-            # On prépare la ligne de log (Qui, Quoi, Quand)
-            import datetime
-            new_log = {
-                "Date": datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
-                "Agent": r_cod_check, # Ou st.session_state.get('username') si tu as un pseudo
-                "Action": "RADIATION",
-                "Cible": f"Plaque: {veh['Numéro de la plaque']} - Propriétaire: {veh.get('Propriétaire', 'Inconnu')}"
-            }
-            
-            # Enregistrement dans ton onglet de Logs (à adapter selon le nom de ton worksheet)
-            try:
-                df_logs = cloud_conn.read(worksheet="Logs", ttl=0)
-                df_logs = pd.concat([df_logs, pd.DataFrame([new_log])], ignore_index=True)
-                cloud_conn.update(worksheet="Logs", data=df_logs)
-            except:
-                st.error("Erreur lors de l'écriture du log, mais la radiation a été effectuée.")
+                # --- ZONE DE RADIATION (A l'intérieur de la boucle) ---
+                with st.expander("🗑️ Radier"):
+                    st.warning("⚠️ Attention : Cette action est irréversible.")
+                    
+                    # Demande du code pour confirmation
+                    r_cod_check = st.text_input(
+                        "Code Agent pour confirmer", 
+                        type="password", 
+                        key=f"rad_input_{veh['Numéro de la plaque']}_{i}"
+                    )
+                    
+                    if st.button("CONFIRMER LA RADIATION", key=f"btn_confirm_{veh['Numéro de la plaque']}_{i}", use_container_width=True, type="primary"):
+                        # Vérification du code agent ou accès Staff
+                        if str(r_cod_check) == str(veh.get("CODE", "")) or st.session_state.user_auth == "Staff":
+                            
+                            # 1. Suppression dans la base de données
+                            df_all_immat = cloud_conn.read(worksheet="Copie de Immatriculations", ttl=0)
+                            df_updated = df_all_immat[df_all_immat["Numéro de la plaque"] != veh["Numéro de la plaque"]]
+                            cloud_conn.update(worksheet="Copie de Immatriculations", data=df_updated)
+                            
+                            # 2. Système de Logs
+                            try:
+                                import datetime
+                                import pandas as pd
+                                new_log = {
+                                    "Date": datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+                                    "Agent": r_cod_check, 
+                                    "Action": "RADIATION",
+                                    "Cible": f"Plaque: {veh['Numéro de la plaque']} - Propriétaire: {target}"
+                                }
+                                # On essaie d'ajouter aux logs
+                                df_logs = cloud_conn.read(worksheet="Logs", ttl=0)
+                                df_logs = pd.concat([df_logs, pd.DataFrame([new_log])], ignore_index=True)
+                                cloud_conn.update(worksheet="Logs", data=df_logs)
+                            except:
+                                st.error("Log non enregistré, mais radiation effectuée.")
 
-            # --- FINALISATION ---
-            st.success(f"Le véhicule {veh['Numéro de la plaque']} a été radié avec succès.")
-            st.cache_data.clear()
-            st.rerun()
-        else:
-            st.error("Code Agent incorrect. Action annulée.")
+                            # 3. Rafraîchissement
+                            st.success(f"Véhicule {veh['Numéro de la plaque']} supprimé.")
+                            st.cache_data.clear()
+                            st.rerun()
+                        else:
+                            st.error("Code Agent incorrect.")
+    else:
+        st.info("Aucun véhicule trouvé pour ce citoyen.")
 # ======================================================================================
 # 7. LOGIQUE DES ONGLETS (CORRIGÉE ET MISE A JOUR INTERCHANGEABLES EN 1 ÉTAPE)
 # ======================================================================================
