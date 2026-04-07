@@ -190,7 +190,8 @@ if st.session_state.user_auth is not None:
 # 5. LOCKSCREEN (CONNEXION)
 # ======================================================================================
 if st.session_state.user_auth is None:
-    MESSAGE_ACCUEIL = ""
+    # 📢 MODIFICATION ICI : Si vide, l'espace blanc disparaîtra
+    MESSAGE_ACCUEIL = "" 
 
     st.markdown("""
         <style>
@@ -201,7 +202,9 @@ if st.session_state.user_auth is None:
         </style>
     """, unsafe_allow_html=True)
 
-    t_now_lock = datetime.now(timezone.utc) + timedelta(hours=1)
+    # Gestion de l'heure et du design
+    from datetime import datetime, timezone, timedelta
+    t_now_lock = datetime.now(timezone.utc) + timedelta(hours=2) # Heure UTC+2
     h_lock = t_now_lock.hour
 
     if 5 <= h_lock < 18:
@@ -214,7 +217,11 @@ if st.session_state.user_auth is None:
         glow_text = "0 0 40px rgba(255,255,255,0.9), 0 0 80px rgba(255,255,255,0.4)"
 
     import streamlit.components.v1 as components
+    
+    # --- LOGIQUE DE HAUTEUR DYNAMIQUE ---
     display_annonce = "block" if MESSAGE_ACCUEIL else "none"
+    # Si message : 820px, si pas de message : 560px
+    hauteur_composant = 820 if MESSAGE_ACCUEIL else 560
 
     components.html(f"""
         <style>
@@ -225,24 +232,37 @@ if st.session_state.user_auth is None:
                 50% {{ border-color: #00ff00; box-shadow: 0 0 25px #00ff00; }}
                 100% {{ border-color: #ff0000; box-shadow: 0 0 25px #ff0000; }}
             }}
-            .container-annonce {{ display: {display_annonce}; background-color: var(--bg-box); color: var(--text-main); padding: 40px 20px; text-align: center; border-top: 6px solid #ff0000; border-bottom: 6px solid #ff0000; animation: border-glow 1.5s linear infinite; }}
+            .container-annonce {{ 
+                display: {display_annonce}; 
+                background-color: var(--bg-box); 
+                color: var(--text-main); 
+                padding: 40px 20px; 
+                text-align: center; 
+                border-top: 6px solid #ff0000; 
+                border-bottom: 6px solid #ff0000; 
+                animation: border-glow 1.5s linear infinite; 
+            }}
             .footer-box {{ background-color: var(--bg-box); color: var(--text-main); border-left: 10px solid #ff4b4b; padding: 45px 20px; text-align: center; }}
         </style>
+
         <div style="font-family: 'Helvetica Neue', Arial; width: 100%; border-radius: 25px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.5);">
             <div style="text-align: center; padding: 70px 20px; color: {t_color}; {pattern_style}">
                 <h1 style="font-size: 5.5em; margin: 0; font-weight: 900; text-shadow: {glow_text};">{salut_complet}</h1>
                 <p style="letter-spacing: 5px; font-weight: bold; text-transform: uppercase;">Unité Fédérale de Rensselaer</p>
                 <div id="clock" style="font-size: 3.8em; font-weight: bold; border-top: 2px solid {t_color}33;">00:00:00</div>
             </div>
+            
             <div class="container-annonce">
                 <div style="text-transform: uppercase; letter-spacing: 3px; font-size: 0.9em;">📢 Bulletin d'Information</div>
                 <div style="font-size: 35px; font-weight: bold;">{MESSAGE_ACCUEIL}</div>
             </div>
+
             <div class="footer-box">
                 <h2 style="font-size: 2.2em;">🏛️ RÉPUBLIQUE DE RENSSELAER</h2>
                 <small style="opacity: 0.5;">VERSION 14.6.0 | SÉCURISÉ PAR PROTOCOLE RCRP-OS</small>
             </div>
         </div>
+
         <script>
             function update() {{
                 const now = new Date();
@@ -250,12 +270,12 @@ if st.session_state.user_auth is None:
             }}
             setInterval(update, 1000); update();
         </script>
-    """, height=820)
+    """, height=hauteur_composant)
 
     st.warning("⚠️ **AVERTISSEMENT :** Toute action effectuée sur ce terminal est enregistrée.")
     st.write("---")
 
-    # 3. COLONNES D'ACCÈS (MISE À JOUR 4 COLONNES)
+    # 3. COLONNES D'ACCÈS
     c1, c2, c3, c4 = st.columns(4)
     with c1:
         st.markdown("### 👥 CIVIL")
