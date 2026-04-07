@@ -190,7 +190,7 @@ if st.session_state.user_auth is not None:
 # 5. LOCKSCREEN (CONNEXION)
 # ======================================================================================
 if st.session_state.user_auth is None:
-    # 📢 MODIFICATION ICI : Si vide, l'espace blanc disparaîtra
+    # Si MESSAGE_ACCUEIL est vide, le bandeau rouge disparaît et la hauteur s'adapte
     MESSAGE_ACCUEIL = "" 
 
     st.markdown("""
@@ -202,9 +202,9 @@ if st.session_state.user_auth is None:
         </style>
     """, unsafe_allow_html=True)
 
-    # Gestion de l'heure et du design
+    # Gestion de l'heure UTC+2 et du design dynamique
     from datetime import datetime, timezone, timedelta
-    t_now_lock = datetime.now(timezone.utc) + timedelta(hours=2) # Heure UTC+2
+    t_now_lock = datetime.now(timezone.utc) + timedelta(hours=2)
     h_lock = t_now_lock.hour
 
     if 5 <= h_lock < 18:
@@ -220,8 +220,8 @@ if st.session_state.user_auth is None:
     
     # --- LOGIQUE DE HAUTEUR DYNAMIQUE ---
     display_annonce = "block" if MESSAGE_ACCUEIL else "none"
-    # Si message : 820px, si pas de message : 560px
-    hauteur_composant = 820 if MESSAGE_ACCUEIL else 560
+    # 650px est le réglage idéal pour ne rien couper sans laisser de blanc
+    hauteur_composant = 820 if MESSAGE_ACCUEIL else 650
 
     components.html(f"""
         <style>
@@ -242,7 +242,14 @@ if st.session_state.user_auth is None:
                 border-bottom: 6px solid #ff0000; 
                 animation: border-glow 1.5s linear infinite; 
             }}
-            .footer-box {{ background-color: var(--bg-box); color: var(--text-main); border-left: 10px solid #ff4b4b; padding: 45px 20px; text-align: center; }}
+            .footer-box {{ 
+                background-color: var(--bg-box); 
+                color: var(--text-main); 
+                border-left: 10px solid #ff4b4b; 
+                padding: 45px 20px; 
+                text-align: center;
+                margin-bottom: 10px;
+            }}
         </style>
 
         <div style="font-family: 'Helvetica Neue', Arial; width: 100%; border-radius: 25px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.5);">
