@@ -874,14 +874,17 @@ if target and target != "---":
                             df_updated = df_all_immat[df_all_immat["Numéro de la plaque"] != veh["Numéro de la plaque"]]
                             cloud_conn.update(worksheet="Copie de Immatriculations", data=df_updated)
                             
-                            # 2. --- SYSTÈME DE LOGS (ADAPTÉ À TES COLONNES) ---
+# 2. --- SYSTÈME DE LOGS (HEURE UTC+2) ---
                             try:
-                                import datetime
+                                from datetime import datetime, timezone, timedelta
                                 import pandas as pd
                                 
+                                # Calcul de l'heure exacte (UTC+2)
+                                horodateur_actuel = (datetime.now(timezone.utc) + timedelta(hours=2)).strftime("%d/%m/%Y %H:%M:%S")
+
                                 # On crée la nouvelle ligne de log avec tes noms de colonnes exacts
                                 new_log = {
-                                    "Horodateur": datetime.now(timezone.utc) + timedelta(hours=1), 
+                                    "Horodateur": horodateur_actuel, 
                                     "Utilisateur": str(r_cod_check),                                  
                                     "Action": "Radiation",                                 
                                     "Cible": str(veh.get('Numéro de la plaque', 'Inconnue'))               
@@ -897,22 +900,16 @@ if target and target != "---":
                                 cloud_conn.update(worksheet="Logs", data=df_logs)
                                 
                             except Exception as e:
-                                # Si la feuille "Logs" pose problème
                                 st.error(f"⚠️ Erreur Log : {e}")
 
                             # 3. Message de confirmation et Rafraîchissement
                             st.success(f"✅ Succès ! L'immatriculation pour la plaque {veh['Numéro de la plaque']} a bien été effacée.")
                             
-                            # Petite pause de 1.5 secondes pour laisser le temps de lire le message
                             import time
                             time.sleep(1.5)
                             
                             st.cache_data.clear()
                             st.rerun()
-                        else:
-                            st.error("Code Agent incorrect.")
-    else:
-        st.info("Aucun véhicule trouvé pour ce citoyen.")
 # ======================================================================================
 # 7. LOGIQUE DES ONGLETS (CORRIGÉE ET MISE A JOUR INTERCHANGEABLES EN 1 ÉTAPE)
 # ======================================================================================
