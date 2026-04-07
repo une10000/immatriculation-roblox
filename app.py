@@ -817,7 +817,7 @@ for _, fac in mes_factures.iterrows():
                 else:
                     st.error("Code incorrect.")
 # ======================================================================================
-# SECTION VÉHICULES (SÉCURISÉE : Vérification du Code Agent via Feuille Banque)
+# SECTION VÉHICULES (SÉCURISÉE : Vérification Agent OU Propriétaire)
 # ======================================================================================
 
 if target and target != "---":
@@ -828,10 +828,15 @@ if target and target != "---":
         v_cols = st.columns(3)
         for i, (_, veh) in enumerate(v_data.iterrows()):
             with v_cols[i % 3]:
+                # On récupère les infos du véhicule
+                plaque_actuelle = veh.get('Numéro de la plaque', '')
+                code_prive_vehicule = str(veh.get('CODE', '')) # Le code mis par le civil à l'inscription
+                
                 date_display = str(veh.get("Horodateur", "Non spécifiée"))
                 assu = str(veh.get("Assurance", "")).upper()
                 role = st.session_state.user_auth
                 
+                # ... (Gestion des couleurs et affichage Markdown inchangée) ...
                 color = "green"
                 status_txt = "✅ VÉHICULE EN RÈGLE"
                 if role == "RCT":
@@ -846,7 +851,7 @@ if target and target != "---":
                         <b>DATE :</b> {date_display}<br>
                         <b>NOM :</b> {target}<br>
                         <b>MODÈLE :</b> {veh.get('Marque du véhicule', '')}<br>
-                        <b>PLAQUE :</b> <span style="border: 1px solid black; padding: 0 3px;">{veh.get('Numéro de la plaque', '')}</span><br>
+                        <b>PLAQUE :</b> <span style="border: 1px solid black; padding: 0 3px;">{plaque_actuelle}</span><br>
                         <b>ASSURANCE :</b> {veh.get('Assurance', '')}
                         <hr style="border-top: 1px solid #ccc; margin: 10px 0;">
                         <div style="text-align: center; color: {color}; font-weight: bold; font-size: 0.8em;">{status_txt}</div>
@@ -855,64 +860,66 @@ if target and target != "---":
 
                 # --- ZONE DE RADIATION ---
                 with st.expander("🗑️ Radier"):
-                    st.warning("⚠️ Attention : Cette action est irréversible.")
+                    st.info("Saisissez votre Code Agent OU le code privé du véhicule.")
                     
                     r_cod_check = st.text_input(
-                        "Code Agent pour confirmer", 
+                        "Code de confirmation", 
                         type="password", 
-                        key=f"rad_input_{veh['Numéro de la plaque']}_{i}"
+                        key=f"rad_input_{plaque_actuelle}_{i}"
                     )
                     
-                    if st.button("CONFIRMER LA RADIATION", key=f"btn_confirm_{veh['Numéro de la plaque']}_{i}", use_container_width=True, type="primary"):
+                    if st.button("CONFIRMER LA RADIATION", key=f"btn_confirm_{plaque_actuelle}_{i}", use_container_width=True, type="primary"):
                         
-                        # --- VÉRIFICATION DU CODE AGENT DANS LA FEUILLE BANQUE ---
+                        # 1. Vérification dans la feuille BANQUE (pour les agents)
                         try:
                             df_banque = cloud_conn.read(worksheet="Banque", ttl=0)
-                            # On transforme la colonne 'Code' en liste de strings pour comparer facilement
-                            liste_codes_valides = df_banque["Code"].astype(str).tolist()
+                            liste_codes_agents = df_banque["Code"].astype(str).tolist()
                         except:
-                            st.error("Impossible de vérifier la base des agents (Feuille Banque).")
-                            liste_codes_valides = []
+                            liste_codes_agents = []
 
-                        # L'action passe si : le code est dans la banque OU si l'utilisateur est Staff
-                        if str(r_cod_check) in liste_codes_valides or st.session_state.user_auth == "Staff":
+                        # 2. LOGIQUE DE SÉCURITÉ
+                        is_agent = str(r_cod_check) in liste_codes_agents
+                        is_owner = str(r_cod_check) == code_prive_vehicule
+                        is_staff = st.session_state.user_auth == "Staff"
+
+                        if is_agent or is_owner or is_staff:
                             
-                            # 1. Suppression de l'immatriculation
+                            # ACTION : Suppression
                             df_all_immat = cloud_conn.read(worksheet="Copie de Immatriculations", ttl=0)
-                            df_updated = df_all_immat[df_all_immat["Numéro de la plaque"] != veh["Numéro de la plaque"]]
+                            df_updated = df_all_immat[df_all_immat["Numéro de la plaque"] != plaque_actuelle]
                             cloud_conn.update(worksheet="Copie de Immatriculations", data=df_updated)
                             
-                            # 2. Système de Logs (UTC+2)
+                            # LOGS (UTC+2)
                             try:
                                 from datetime import datetime, timezone, timedelta
                                 import pandas as pd
                                 
                                 horodateur_actuel = (datetime.now(timezone.utc) + timedelta(hours=2)).strftime("%d/%m/%Y %H:%M:%S")
+                                type_user = "Agent/Staff" if (is_agent or is_staff) else "Civil"
 
                                 new_log = {
                                     "Horodateur": horodateur_actuel, 
-                                    "Utilisateur": str(r_cod_check),                                  
+                                    "Utilisateur": f"{r_cod_check} ({type_user})",                                  
                                     "Action": "Radiation",                                 
-                                    "Cible": str(veh.get('Numéro de la plaque', 'Inconnue'))               
+                                    "Cible": plaque_actuelle               
                                 }
                                 
                                 df_logs = cloud_conn.read(worksheet="Logs", ttl=0)
                                 df_logs = pd.concat([df_logs, pd.DataFrame([new_log])], ignore_index=True)
                                 cloud_conn.update(worksheet="Logs", data=df_logs)
-                            except Exception as e:
-                                st.error(f"⚠️ Erreur Log : {e}")
+                            except:
+                                pass
 
-                            # 3. Confirmation et Rerun
-                            st.success(f"✅ Succès ! Le véhicule {veh['Numéro de la plaque']} a été supprimé par l'agent {r_cod_check}.")
+                            st.success(f"✅ Véhicule {plaque_actuelle} radié.")
                             import time
                             time.sleep(1.5)
                             st.cache_data.clear()
                             st.rerun()
                             
                         else:
-                            st.error("🚨 Code Agent invalide ou inconnu dans la base Banque. Action refusée.")
+                            st.error("🚨 Code incorrect. Vous n'êtes ni l'agent autorisé, ni le propriétaire de ce véhicule.")
     else:
-        st.info("Aucun véhicule trouvé pour ce citoyen.")
+        st.info("Aucun véhicule trouvé.")
 # ======================================================================================
 # 7. LOGIQUE DES ONGLETS (CORRIGÉE ET MISE A JOUR INTERCHANGEABLES EN 1 ÉTAPE)
 # ======================================================================================
