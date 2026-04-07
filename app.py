@@ -874,19 +874,17 @@ if target and target != "---":
                             df_updated = df_all_immat[df_all_immat["Numéro de la plaque"] != veh["Numéro de la plaque"]]
                             cloud_conn.update(worksheet="Copie de Immatriculations", data=df_updated)
                             
-                            # 2. --- SYSTÈME DE LOGS ---
+                            # 2. --- SYSTÈME DE LOGS (ADAPTÉ À TES COLONNES) ---
                             try:
                                 import datetime
                                 import pandas as pd
                                 
-                                # On crée la nouvelle ligne de log
+                                # On crée la nouvelle ligne de log avec tes noms de colonnes exacts
                                 new_log = {
-                                    "Date": datetime.datetime.now().strftime("%d/%m/%Y"), 
-                                    "Heure": datetime.datetime.now().strftime("%H:%M:%S"), 
-                                    "Agent": r_cod_check,                                  
-                                    "Action": "RADIATION",                                 
-                                    "Véhicule": veh['Numéro de la plaque'],               
-                                    "Propriétaire": target                                 
+                                    "Horodateur": datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S"), 
+                                    "Utilisateur": str(r_cod_check),                                  
+                                    "Action": "Radiation",                                 
+                                    "Cible": str(veh.get('Numéro de la plaque', 'Inconnue'))               
                                 }
                                 
                                 # On lit la feuille "Logs"
@@ -899,11 +897,16 @@ if target and target != "---":
                                 cloud_conn.update(worksheet="Logs", data=df_logs)
                                 
                             except Exception as e:
-                                # Si la feuille "Logs" n'existe pas ou s'il y a une erreur
+                                # Si la feuille "Logs" pose problème
                                 st.error(f"⚠️ Erreur Log : {e}")
 
-                            # 3. Rafraîchissement
-                            st.success(f"Véhicule {veh['Numéro de la plaque']} supprimé.")
+                            # 3. Message de confirmation et Rafraîchissement
+                            st.success(f"✅ Succès ! L'immatriculation pour la plaque {veh['Numéro de la plaque']} a bien été effacée.")
+                            
+                            # Petite pause de 1.5 secondes pour laisser le temps de lire le message
+                            import time
+                            time.sleep(1.5)
+                            
                             st.cache_data.clear()
                             st.rerun()
                         else:
