@@ -855,7 +855,7 @@ if target and target != "---":
 
                 # --- ZONE DE RADIATION ---
                 with st.expander("🗑️ Radier"):
-                    st.warning("⚠️ Attention : Cette action nécessite un Code Agent valide.")
+                    st.warning("⚠️ Attention : Cette action est irréversible.")
                     
                     r_cod_check = st.text_input(
                         "Code Agent pour confirmer", 
