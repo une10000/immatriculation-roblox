@@ -881,7 +881,7 @@ if target and target != "---":
                                 
                                 # On crée la nouvelle ligne de log avec tes noms de colonnes exacts
                                 new_log = {
-                                    "Horodateur": datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S"), 
+                                    "Horodateur": datetime.now(timezone.utc) + timedelta(hours=1), 
                                     "Utilisateur": str(r_cod_check),                                  
                                     "Action": "Radiation",                                 
                                     "Cible": str(veh.get('Numéro de la plaque', 'Inconnue'))               
