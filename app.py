@@ -860,7 +860,7 @@ if target and target != "---":
 
                 # --- ZONE DE RADIATION ---
                 with st.expander("🗑️ Radier"):
-                    st.info("Saisissez votre Code Agent OU le code privé du véhicule.")
+                    st.warning("Saisissez votre Code. Attention! Ceci est irréversible ")
                     
                     r_cod_check = st.text_input(
                         "Code de confirmation", 
