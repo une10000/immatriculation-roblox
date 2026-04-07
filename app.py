@@ -191,7 +191,7 @@ if st.session_state.user_auth is not None:
 # ======================================================================================
 if st.session_state.user_auth is None:
     # Si MESSAGE_ACCUEIL est vide, le bandeau rouge disparaît et la hauteur s'adapte
-    MESSAGE_ACCUEIL = "hello" 
+    MESSAGE_ACCUEIL = "" 
 
     st.markdown("""
         <style>
