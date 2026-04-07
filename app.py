@@ -860,7 +860,7 @@ if target and target != "---":
 
                 # --- ZONE DE RADIATION ---
                 with st.expander("🗑️ Radier"):
-                    st.warning("S.V.P., mettez votre code de radiation. ⚠️-Attention! Ceci est irréversible ")
+                    st.warning("S.V.P., mettez votre code de radiation. ⚠️ Attention! Ceci est irréversible ")
                     
                     r_cod_check = st.text_input(
                         "Code de confirmation", 
