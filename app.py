@@ -190,7 +190,7 @@ if st.session_state.user_auth is not None:
 # 5. LOCKSCREEN (CONNEXION)
 # ======================================================================================
 if st.session_state.user_auth is None:
-    MESSAGE_ACCUEIL = "Joyeuses Pâques 🐣"
+    MESSAGE_ACCUEIL = ""
 
     st.markdown("""
         <style>
