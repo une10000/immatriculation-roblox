@@ -779,7 +779,7 @@ for _, fac in mes_factures.iterrows():
         unsafe_allow_html=True
     )
 
-    # 4. BOUTON DE PAIEMENT
+# 4. BOUTON DE PAIEMENT
     if fac["Statut"] == "EN ATTENTE":
         if st.button(f"💳 RÉGLER LA FACTURE #{fac['ID']}", key=f"pay_{fac['ID']}", use_container_width=True):
             try:
@@ -787,31 +787,52 @@ for _, fac in mes_factures.iterrows():
                     df_b = cloud_conn.read(worksheet="Banque", ttl=0)
                     df_all_f = cloud_conn.read(worksheet="Factures", ttl=0)
                     target_val = fac["Cible"]
-                    emetteur_val = fac["Emetteur"]
+                    emetteur_val = str(fac["Emetteur"]).upper()
+                    
+                    # Récupération du solde du payeur
                     idx_b = df_b[df_b["Nom Roblox"] == target_val].index[0]
                     solde_actuel = float(str(df_b.at[idx_b, "Solde"]).replace("$", "").replace(",", ""))
                     montant_facture = float(str(fac["Montant"]).replace(",", ""))
 
                     if solde_actuel >= montant_facture:
+                        # 1. Déduction du solde du payeur
                         df_b.at[idx_b, "Solde"] = solde_actuel - montant_facture
-                        # REDIRECTION
-                        if "RCT" in emetteur_val.upper():
-                            idx_dest = df_b[df_b["Nom Roblox"] == "une10000"].index[0]
-                            df_b.at[idx_dest, "Solde"] = float(str(df_b.at[idx_dest, "Solde"]).replace("$", "")) + montant_facture
-                        elif "AVERIS" in emetteur_val.upper():
-                            idx_dest = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
-                            df_b.at[idx_dest, "Solde"] = float(str(df_b.at[idx_dest, "Solde"]).replace("$", "")) + montant_facture
                         
+                        # 2. REDIRECTION (Ajout au solde du destinataire)
+                        dest_account = None
+                        
+                        if "RCT" in emetteur_val:
+                            dest_account = "une10000"
+                        elif "AVERIS" in emetteur_val:
+                            dest_account = "Moune2010"
+                        elif "RENSSELAER" in emetteur_val or "RDOI" in emetteur_val:
+                            # 👉 REMPLACE ICI PAR LE NOM ROBLOX DU PATRON DE RDOI OU DE L'ENTREPRISE
+                            dest_account = "RDOI_Bank" 
+
+                        # Si un compte de destination est défini pour cet émetteur (POLSTA n'en a peut-être pas)
+                        if dest_account:
+                            try:
+                                idx_dest = df_b[df_b["Nom Roblox"] == dest_account].index[0]
+                                solde_dest = float(str(df_b.at[idx_dest, "Solde"]).replace("$", "").replace(",", ""))
+                                df_b.at[idx_dest, "Solde"] = solde_dest + montant_facture
+                            except IndexError:
+                                st.warning(f"⚠️ Le compte destinataire '{dest_account}' n'existe pas dans la base Banque. L'argent a été déduit mais non transféré.")
+
+                        # 3. Mise à jour du statut de la facture
                         df_all_f.loc[df_all_f["ID"] == fac["ID"], "Statut"] = "PAYÉ"
+                        
+                        # 4. Envoi à la base de données
                         cloud_conn.update(worksheet="Banque", data=df_b)
                         cloud_conn.update(worksheet="Factures", data=df_all_f)
-                        st.success("✅ Facture payée !")
+                        
+                        st.success("✅ Facture payée avec succès !")
                         st.cache_data.clear()
+                        time.sleep(1) # Laisse le temps au message de s'afficher
                         st.rerun()
                     else:
                         st.error("❌ Solde insuffisant.")
             except Exception as e:
-                st.error(f"Erreur : {e}")
+                st.error(f"Erreur lors du paiement : {e}")
 # 5. ZONE D'ANNULATION
     if st.session_state.user_auth in ["Staff", "Admin", "POLSTA"]:
         with st.expander(f"🗑️ Zone d'annulation - Facture #{fac['ID']}"):
