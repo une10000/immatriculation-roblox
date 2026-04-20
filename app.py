@@ -801,13 +801,14 @@ for _, fac in mes_factures.iterrows():
                         # 2. REDIRECTION (Ajout au solde du destinataire)
                         dest_account = None
                         
-                        if "RCT" in emetteur_val:
+                        if "C-RCT" in emetteur_val:
+                            dest_account = "C-RCTB"
+                        elif "RCT" in emetteur_val:
                             dest_account = "une10000"
                         elif "AVERIS" in emetteur_val:
                             dest_account = "Moune2010"
                         elif "RENSSELAER" in emetteur_val or "RDOI" in emetteur_val:
-                            # 👉 REMPLACE ICI PAR LE NOM ROBLOX DU PATRON DE RDOI OU DE L'ENTREPRISE
-                            dest_account = "RDOI_Bank" 
+                            dest_account = "RDOI_Bank"
 
                         # Si un compte de destination est défini pour cet émetteur (POLSTA n'en a peut-être pas)
                         if dest_account:
@@ -1677,12 +1678,14 @@ else:
         st.markdown("#### 📄 Aperçu")
         
         # En-tête de ticket dynamique
-        if f_emetteur == "Rensselaer Driving of Institute":
-            header_ticket = "FACTURE RDOI"
-        elif f_emetteur == "Averis":
-            header_ticket = "FACTURE AVERIS"
-        else:
-            header_ticket = "FACTURE OFFICIELLE"
+    if f_emetteur == "C-RCT":
+        header_ticket = "FACTURE C-RCT"
+    elif f_emetteur == "Rensselaer Driving of Institute":
+        header_ticket = "FACTURE RDOI"
+    elif f_emetteur == "Averis":
+        header_ticket = "FACTURE AVERIS"
+    else:
+        header_ticket = "FACTURE OFFICIELLE"
         
         nom_signataire = str(agent_identifie if agent_identifie else "NON CONNECTÉ").upper()
         nom_emetteur = str(f_emetteur if f_emetteur else "INCONNU").upper()
@@ -1869,6 +1872,7 @@ try:
         
         if "auth_banque" not in st.session_state:
             st.session_state.auth_banque = False
+            st.session_state.ent_active = "RDOI_Bank" # Par défaut
 
         if not st.session_state.auth_banque:
             col_auth, _ = st.columns([1, 2])
@@ -1876,60 +1880,67 @@ try:
                 st.subheader("Authentification Entreprise")
                 code_saisi = st.text_input("Code Entreprise", type="password", key="pwd_ent_v8")
                 if st.button("🔓 ACCÉDER", use_container_width=True):
+                    # Gestion des accès par entreprise
                     if code_saisi == "RDOI-2026":
                         st.session_state.auth_banque = True
+                        st.session_state.ent_active = "RDOI_Bank"
+                        st.rerun()
+                    elif code_saisi == "CRCT-2026": # Code exemple pour C-RCT
+                        st.session_state.auth_banque = True
+                        st.session_state.ent_active = "C-RCTB"
                         st.rerun()
                     else:
                         st.error("Code incorrect.")
         else:
+            # --- CONFIGURATION DYNAMIQUE ---
+            nom_banque = st.session_state.ent_active
+            label_ent = "C-RCT" if nom_banque == "C-RCTB" else "RDOI"
+            
             # --- CHARGEMENT DES DONNÉES ---
             df_b = cloud_conn.read(worksheet="Banque", ttl=0)
             df_f = cloud_conn.read(worksheet="Factures", ttl=0)
             
             try:
-                row_rdoi = df_b[df_b["Nom Roblox"] == "RDOI_Bank"]
-                solde_rdoi = float(str(row_rdoi["Solde"].values[0]).replace('$', '').replace(',', '').strip())
+                row_ent = df_b[df_b["Nom Roblox"] == nom_banque]
+                solde_ent = float(str(row_ent["Solde"].values[0]).replace('$', '').replace(',', '').strip())
             except:
-                solde_rdoi = 0
+                solde_ent = 0
 
             # --- MISE EN PAGE EN COLONNES ---
             col_virement, col_aperçu = st.columns([1.3, 1])
 
             with col_virement:
-                st.markdown("### 💸 Effectuer un virement")
+                st.markdown(f"### 💸 Virement {label_ent}")
                 
-                # --- DÉBUT DU FORMULAIRE (Bloque le refresh automatique) ---
                 with st.form("form_virement_v8", border=True):
-                    st.info(f"🏢 **Compte :** RDOI_Bank  \n💰 **Solde :** {solde_rdoi:,.0f} $".replace(",", " "))
+                    st.info(f"🏢 **Compte :** {nom_banque}  \n💰 **Solde :** {solde_ent:,.0f} $".replace(",", " "))
                     
-                    destinataire = st.selectbox("Destinataire du transfert", ["---"] + sorted(df_b["Nom Roblox"].dropna().unique().tolist()), key="k_dest_v8")
-                    montant_v = st.number_input("Montant à transférer ($)", min_value=0, step=500, key="k_mnt_v8")
-                    motif_v = st.text_input("Motif / Libellé", placeholder="Ex: Salaire de base, Prime...", key="k_mot_v8")
+                    destinataire = st.selectbox("Destinataire", ["---"] + sorted(df_b["Nom Roblox"].dropna().unique().tolist()), key="k_dest_v8")
+                    montant_v = st.number_input("Montant ($)", min_value=0, step=500, key="k_mnt_v8")
+                    motif_v = st.text_input("Motif", placeholder="Ex: Salaire, Frais C-RCT...", key="k_mot_v8")
                     
-                    # Le bouton du formulaire
                     submit_virement = st.form_submit_button("🚀 VALIDER LE TRANSFERT", use_container_width=True, type="primary")
 
-                # --- LOGIQUE APRÈS CLIC ---
                 if submit_virement:
                     if destinataire == "---" or montant_v <= 0:
-                        st.error("❌ Formulaire invalide (Vérifie le destinataire et le montant).")
-                    elif solde_rdoi < montant_v:
-                        st.error(f"⚠️ Solde insuffisant ! (Manque {montant_v - solde_rdoi}$)")
+                        st.error("❌ Formulaire invalide.")
+                    elif solde_ent < montant_v:
+                        st.error(f"⚠️ Solde insuffisant ! (Manque {montant_v - solde_ent}$)")
                     else:
                         with st.spinner("Transfert en cours..."):
                             try:
-                                idx_rdoi = df_b[df_b["Nom Roblox"] == "RDOI_Bank"].index[0]
+                                idx_exp = df_b[df_b["Nom Roblox"] == nom_banque].index[0]
                                 idx_dest = df_b[df_b["Nom Roblox"] == destinataire].index[0]
                                 solde_dest_raw = float(str(df_b.at[idx_dest, "Solde"]).replace('$', '').replace(',', '').strip() or 0)
                                 
                                 # Update soldes
-                                df_b.at[idx_rdoi, "Solde"] = solde_rdoi - montant_v
+                                df_b.at[idx_exp, "Solde"] = solde_ent - montant_v
                                 df_b.at[idx_dest, "Solde"] = solde_dest_raw + montant_v
                                 
                                 cloud_conn.update(worksheet="Banque", data=df_b)
                                 
                                 st.balloons()
-                                st.success(f"✅ Virement de {montant_v}$ effectué !")
+                                st.success(f"✅ Virement de {montant_v}$ effectué depuis {nom_banque} !")
                                 time.sleep(2)
                                 st.cache_data.clear()
                                 st.rerun()
@@ -1937,28 +1948,29 @@ try:
                                 st.error(f"Erreur : {e}")
 
                 st.markdown("#### 📄 Revenus récents")
-                historique = df_f[(df_f["Emetteur"] == "Rensselaer Driving of Institute") & (df_f["Statut"] == "PAYÉ")].sort_index(ascending=False).head(5)
+                # Filtre dynamique selon l'entreprise
+                emetteur_filtre = "C-RCT" if nom_banque == "C-RCTB" else "Rensselaer Driving of Institute"
+                historique = df_f[(df_f["Emetteur"] == emetteur_filtre) & (df_f["Statut"] == "PAYÉ")].sort_index(ascending=False).head(5)
                 if not historique.empty:
                     st.dataframe(historique[["Date_Emission", "Cible", "Montant"]], use_container_width=True, hide_index=True)
 
             with col_aperçu:
                 st.markdown("### 🖼️ Reçu de Transaction")
-                
-                # Note : l'aperçu affichera les infos saisies uniquement après validation ou refresh manuel
-                # Pour garder un aperçu "propre" avant validation :
                 date_t = datetime.now().strftime("%d/%m/%Y %H:%M")
                 
+                # Ticket adaptatif
                 ticket_bank_html = f"""
                 <div style='border: 2px solid #2e7d32; padding: 20px; background-color: #f1f8e9; color: #1b5e20; font-family: "Courier New", monospace; border-radius: 10px;'>
                     <div style='text-align:center;'>
-                        <h2 style='margin:0;'>BANQUE RDOI</h2>
+                        <h2 style='margin:0;'>BANQUE {label_ent}</h2>
                         <small>TRANSACTION SÉCURISÉE</small>
                     </div>
                     <hr style='border: 0.5px dashed #2e7d32; margin: 15px 0;'>
+                    <p style='font-size:0.9em;'><strong>COMPTE :</strong> {nom_banque}</p>
                     <p style='font-size:0.9em;'><strong>RÉF :</strong> TR-{random.randint(100000, 999999)}</p>
                     <p style='font-size:0.9em;'><strong>DATE :</strong> {date_t}</p>
                     <p style='font-size:0.9em;'><strong>STATUT :</strong> EN ATTENTE</p>
-                    <p style='font-size:0.7em; color: #666; margin-top:20px;'>Les détails apparaîtront sur le reçu final après confirmation du transfert.</p>
+                    <p style='font-size:0.7em; color: #666; margin-top:20px;'>Détails disponibles après validation.</p>
                 </div>
                 """
                 st.components.v1.html(ticket_bank_html, height=450)
