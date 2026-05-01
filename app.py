@@ -1590,7 +1590,6 @@ if len(tabs) > 1:
 # ==========================================
 st.divider()
 
-# Vérification si un citoyen est sélectionné
 if 'target' not in locals() or target == "---":
     st.warning("⚠️ Sélectionnez un citoyen en haut de la page pour ouvrir le module d'intervention.")
 
@@ -1601,36 +1600,33 @@ else:
     st.markdown(f"### ⚡ INTERVENTION : {target.upper()}")
     col_form, col_facture, col_vehicules = st.columns([1.2, 1, 1])
 
-    # --- COLONNE 1 : FORMULAIRE D'ACTION ---
     with col_form:
         with st.form("form_intervention", border=True):
-            # Choix de l'émetteur avec ajout de C-RCT
+            # Gestion des rôles et émetteurs
             if st.session_state.user_auth == "Staff":
                 f_emetteur = st.selectbox("Émetteur", ["POLSTA", "Averis", "RCT", "C-RCT", "Rensselaer Driving of Institute"], key="em_ui")
             elif st.session_state.user_auth == "Entreprise":
-                f_emetteur = "Rensselaer Driving of Institute"
+                # Si l'agent est du C-RCT, on verrouille sur C-RCT, sinon RDOI
+                if "C-RCT" in agent_identifie:
+                    f_emetteur = "C-RCT"
+                else:
+                    f_emetteur = "Rensselaer Driving of Institute"
                 st.info(f"🏢 **Émetteur :** {f_emetteur}")
             elif "Averis" in st.session_state.user_auth:
                 f_emetteur = "Averis"
-                st.info(f"🏢 **Émetteur :** {f_emetteur}")
-            elif "C-RCT" in st.session_state.user_auth:
-                f_emetteur = "C-RCT"
                 st.info(f"🏢 **Émetteur :** {f_emetteur}")
             else:
                 f_emetteur = "RCT"
                 st.info(f"🏢 **Émetteur :** {f_emetteur}")
             
-            # Libellé dynamique
             label_montant = "Frais de prestation ($)" if f_emetteur in ["Rensselaer Driving of Institute", "C-RCT"] else "Amende ($)"
             f_val = st.number_input(label_montant, 0, 100000, 500, step=100, key="val_live")
             
-            # Gestion des points (uniquement Staff + POLSTA)
             can_pull_points = (st.session_state.user_auth == "Staff" and f_emetteur == "POLSTA")
             f_pts = st.slider("Retrait de points", 0, 25, 0, disabled=not can_pull_points, key="pts_live")
             
-            f_motif = st.text_area("Motif / Prestation", key="mot_live", placeholder="Ex: Frais bancaires, Passage de permis...")
+            f_motif = st.text_area("Motif / Prestation", key="mot_live", placeholder="Ex: Frais bancaires, Frais de dossier...")
             
-            # Récupération des véhicules
             target_veh = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
             liste_plaques = ["AUCUN"] + target_veh["Numéro de la plaque"].tolist() if not target_veh.empty else ["AUCUN"]
             f_plate = st.selectbox("Véhicule lié", liste_plaques, key="plate_live")
@@ -1639,8 +1635,8 @@ else:
             
             if submit_facture:
                 if f_motif:
-                    # Définition du compte de réception (Banque C-RCTB -> Moune2010)
-                    receveur_final = "Moune2010" if f_emetteur == "C-RCT" else f_emetteur
+                    # L'argent va vers C-RCTB si l'émetteur est C-RCT
+                    receveur_final = "C-RCTB" if f_emetteur == "C-RCT" else f_emetteur
 
                     with st.spinner("Enregistrement..."):
                         df_all_f = cloud_conn.read(worksheet="Factures", ttl=0).fillna("") 
@@ -1657,7 +1653,6 @@ else:
                             "Date_Limite": (datetime.now() + timedelta(hours=24)).strftime("%d/%m/%Y %H:%M")
                         }
                         
-                        # Mise à jour des points
                         if f_pts > 0 and can_pull_points:
                             try:
                                 idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
@@ -1667,11 +1662,10 @@ else:
                             except Exception as e:
                                 st.error(f"Erreur points: {e}")
                         
-                        # Envoi facture
                         updated_df_f = pd.concat([df_all_f, pd.DataFrame([new_f])], ignore_index=True)
                         cloud_conn.update(worksheet="Factures", data=updated_df_f)
                         
-                        st.success(f"✅ Facture enregistrée (Destinataire : {receveur_final})")
+                        st.success(f"✅ Facture envoyée au compte : {receveur_final}")
                         time.sleep(1)
                         st.rerun()
                 else:
@@ -1682,33 +1676,26 @@ else:
         st.markdown("#### 📄 Aperçu")
         
         if f_emetteur == "C-RCT":
-            header_ticket = "FACTURE C-RCT (BANQUE)"
+            header_ticket = "FACTURE C-RCT"
         elif f_emetteur == "Rensselaer Driving of Institute":
             header_ticket = "FACTURE RDOI"
-        elif f_emetteur == "Averis":
-            header_ticket = "FACTURE AVERIS"
         else:
             header_ticket = "FACTURE OFFICIELLE"
         
-        nom_signataire = str(agent_identifie if agent_identifie else "NON CONNECTÉ").upper()
-        nom_emetteur = str(f_emetteur if f_emetteur else "INCONNU").upper()
-        motif_ticket = str(st.session_state.get('mot_live', '...')).upper()
-
         st.markdown(f"""
         <div style="border: 2px solid black; padding: 15px; background: white; color: black; font-family: 'Courier New', monospace; line-height: 1.2; box-shadow: 4px 4px 0px #888;">
             <center><b>{header_ticket}</b><br><small>RÉPUBLIQUE DE RENSSERLAER</small></center>
             <hr style="border-top: 1px dashed black; margin: 10px 0;">
-            <b>SIGNATAIRE :</b> {nom_signataire}<br>
-            <b>ÉMETTEUR   :</b> {nom_emetteur}<br>
+            <b>SIGNATAIRE :</b> {str(agent_identifie).upper()}<br>
+            <b>ÉMETTEUR   :</b> {str(f_emetteur).upper()}<br>
             <b>DATE       :</b> {datetime.now().strftime('%d/%m/%Y %H:%M')}<br>
             <b>NOM        :</b> {target}<br>
-            <b>OBJET      :</b> {motif_ticket}<br>
-            <b>PLAQUE     :</b> <span style="border: 1px solid black; padding: 0 3px;">{st.session_state.get('plate_live', 'AUCUN')}</span><br>
+            <b>OBJET      :</b> {str(st.session_state.get('mot_live', '...')).upper()}<br>
             <b>MONTANT    :</b> {st.session_state.get('val_live', 0)}$
             <hr style="border-top: 1px dashed black; margin: 10px 0;">
             <div style="text-align: center; font-weight: bold;">
                 {"POINTS : -" + str(st.session_state.get('pts_live', 0)) if can_pull_points else "SERVICE PROFESSIONNEL"}<br>
-                <small>Document certifié conforme</small>
+                <small>Compte de dépôt : {"C-RCTB" if f_emetteur == "C-RCT" else f_emetteur}</small>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -1719,16 +1706,9 @@ else:
         if not target_veh.empty:
             for _, veh in target_veh.iterrows():
                 assu_v = str(veh.get('Assurance', '')).upper()
-                user_is_rct = "RCT" in st.session_state.user_auth
-                
-                if user_is_rct:
-                    if "RCT" in assu_v: col_v, txt_v = "#27ae60", "✅ ASSURÉ RCT"
-                    elif "AVERIS" in assu_v: col_v, txt_v = "#E67E22", "⚠️ ASSURÉ AVERIS"
-                    elif any(word in assu_v for word in ["OUI", "✅"]): col_v, txt_v = "#27ae60", "✅ VÉHICULE EN RÈGLE"
-                    else: col_v, txt_v = "#d32f2f", "🚨 NON-ASSURÉ"
-                else:
-                    if any(word in assu_v for word in ["RCT", "AVERIS", "OUI", "✅"]): col_v, txt_v = "#27ae60", "✅ VÉHICULE ASSURÉ"
-                    else: col_v, txt_v = "#d32f2f", "🚨 NON-ASSURÉ"
+                if "RCT" in assu_v: col_v, txt_v = "#27ae60", "✅ ASSURÉ RCT"
+                elif "AVERIS" in assu_v: col_v, txt_v = "#E67E22", "⚠️ ASSURÉ AVERIS"
+                else: col_v, txt_v = "#d32f2f", "🚨 NON-ASSURÉ"
 
                 st.markdown(f"""
                 <div style="border: 2px solid black; padding: 10px; background: white; color: black; font-family: 'Courier New', monospace; margin-bottom: 10px; font-size: 0.85em;">
