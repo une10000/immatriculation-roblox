@@ -1868,7 +1868,7 @@ try:
                         st.session_state.auth_banque = True
                         st.session_state.ent_active = "RDOI_Bank"
                         st.rerun()
-                    elif code_saisi == "CRCT-2026": # Code exemple pour CDC
+                    elif code_saisi == "CountyDC-2026": # Code exemple pour CDC
                         st.session_state.auth_banque = True
                         st.session_state.ent_active = "CDCB"
                         st.rerun()
