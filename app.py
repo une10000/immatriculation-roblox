@@ -801,7 +801,7 @@ for _, fac in mes_factures.iterrows():
                         # 2. REDIRECTION (Ajout au solde du destinataire)
                         dest_account = None
                         
-                        if "C-RCT" in emetteur_val:
+                        if "CDC" in emetteur_val:
                             dest_account = "CDCB"
                         elif "RCT" in emetteur_val:
                             dest_account = "une10000"
@@ -1604,11 +1604,11 @@ else:
         with st.form("form_intervention", border=True):
             # Gestion des rôles et émetteurs
             if st.session_state.user_auth == "Staff":
-                f_emetteur = st.selectbox("Émetteur", ["POLSTA", "Averis", "RCT", "C-RCT", "Rensselaer Driving of Institute"], key="em_ui")
+                f_emetteur = st.selectbox("Émetteur", ["POLSTA", "Averis", "RCT", "CDC", "Rensselaer Driving of Institute"], key="em_ui")
             elif st.session_state.user_auth == "Entreprise":
-                # Si l'agent est du C-RCT, on verrouille sur C-RCT, sinon RDOI
-                if "C-RCT" in agent_identifie:
-                    f_emetteur = "C-RCT"
+                # Si l'agent est du CDC, on verrouille sur CDC, sinon RDOI
+                if "CDC" in agent_identifie:
+                    f_emetteur = "CDC"
                 else:
                     f_emetteur = "Rensselaer Driving of Institute"
                 st.info(f"🏢 **Émetteur :** {f_emetteur}")
@@ -1619,7 +1619,7 @@ else:
                 f_emetteur = "RCT"
                 st.info(f"🏢 **Émetteur :** {f_emetteur}")
             
-            label_montant = "Frais de prestation ($)" if f_emetteur in ["Rensselaer Driving of Institute", "C-RCT"] else "Amende ($)"
+            label_montant = "Frais de prestation ($)" if f_emetteur in ["Rensselaer Driving of Institute", "CDC"] else "Amende ($)"
             f_val = st.number_input(label_montant, 0, 100000, 500, step=100, key="val_live")
             
             can_pull_points = (st.session_state.user_auth == "Staff" and f_emetteur == "POLSTA")
@@ -1635,8 +1635,8 @@ else:
             
             if submit_facture:
                 if f_motif:
-                    # L'argent va vers CDCB si l'émetteur est C-RCT
-                    receveur_final = "CDCB" if f_emetteur == "C-RCT" else f_emetteur
+                    # L'argent va vers CDCB si l'émetteur est CDC
+                    receveur_final = "CDCB" if f_emetteur == "CDC" else f_emetteur
 
                     with st.spinner("Enregistrement..."):
                         df_all_f = cloud_conn.read(worksheet="Factures", ttl=0).fillna("") 
@@ -1675,8 +1675,8 @@ else:
     with col_facture:
         st.markdown("#### 📄 Aperçu")
         
-        if f_emetteur == "C-RCT":
-            header_ticket = "FACTURE C-RCT"
+        if f_emetteur == "CDC":
+            header_ticket = "FACTURE CDC"
         elif f_emetteur == "Rensselaer Driving of Institute":
             header_ticket = "FACTURE RDOI"
         else:
@@ -1695,7 +1695,7 @@ else:
             <hr style="border-top: 1px dashed black; margin: 10px 0;">
             <div style="text-align: center; font-weight: bold;">
                 {"POINTS : -" + str(st.session_state.get('pts_live', 0)) if can_pull_points else "SERVICE PROFESSIONNEL"}<br>
-                <small>Compte de dépôt : {"CDCB" if f_emetteur == "C-RCT" else f_emetteur}</small>
+                <small>Compte de dépôt : {"CDCB" if f_emetteur == "CDC" else f_emetteur}</small>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -1868,7 +1868,7 @@ try:
                         st.session_state.auth_banque = True
                         st.session_state.ent_active = "RDOI_Bank"
                         st.rerun()
-                    elif code_saisi == "CRCT-2026": # Code exemple pour C-RCT
+                    elif code_saisi == "CRCT-2026": # Code exemple pour CDC
                         st.session_state.auth_banque = True
                         st.session_state.ent_active = "CDCB"
                         st.rerun()
@@ -1877,7 +1877,7 @@ try:
         else:
             # --- CONFIGURATION DYNAMIQUE ---
             nom_banque = st.session_state.ent_active
-            label_ent = "C-RCT" if nom_banque == "CDCB" else "RDOI"
+            label_ent = "CDC" if nom_banque == "CDCB" else "RDOI"
             
             # --- CHARGEMENT DES DONNÉES ---
             df_b = cloud_conn.read(worksheet="Banque", ttl=0)
@@ -1900,7 +1900,7 @@ try:
                     
                     destinataire = st.selectbox("Destinataire", ["---"] + sorted(df_b["Nom Roblox"].dropna().unique().tolist()), key="k_dest_v8")
                     montant_v = st.number_input("Montant ($)", min_value=0, step=500, key="k_mnt_v8")
-                    motif_v = st.text_input("Motif", placeholder="Ex: Salaire, Frais C-RCT...", key="k_mot_v8")
+                    motif_v = st.text_input("Motif", placeholder="Ex: Salaire, Frais CDC...", key="k_mot_v8")
                     
                     submit_virement = st.form_submit_button("🚀 VALIDER LE TRANSFERT", use_container_width=True, type="primary")
 
@@ -1932,7 +1932,7 @@ try:
 
                 st.markdown("#### 📄 Revenus récents")
                 # Filtre dynamique selon l'entreprise
-                emetteur_filtre = "C-RCT" if nom_banque == "CDCB" else "Rensselaer Driving of Institute"
+                emetteur_filtre = "CDC" if nom_banque == "CDCB" else "Rensselaer Driving of Institute"
                 historique = df_f[(df_f["Emetteur"] == emetteur_filtre) & (df_f["Statut"] == "PAYÉ")].sort_index(ascending=False).head(5)
                 if not historique.empty:
                     st.dataframe(historique[["Date_Emission", "Cible", "Montant"]], use_container_width=True, hide_index=True)
