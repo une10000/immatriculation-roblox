@@ -802,7 +802,7 @@ for _, fac in mes_factures.iterrows():
                         dest_account = None
                         
                         if "C-RCT" in emetteur_val:
-                            dest_account = "C-RCTB"
+                            dest_account = "CDCB"
                         elif "RCT" in emetteur_val:
                             dest_account = "une10000"
                         elif "AVERIS" in emetteur_val:
@@ -1283,7 +1283,7 @@ if len(tabs) > 1:
                     if st.session_state.user_auth == "Entreprise":
                         agent_identifie = st.selectbox(
                             "🏢 Sélection de l'entité", 
-                            ["Rensselaer Driving of Institute", "C-RCTB"], 
+                            ["Rensselaer Driving of Institute", "CDCB"], 
                             key="main_agent_auth_entre"
                         )
                         agent_valide = True 
@@ -1635,8 +1635,8 @@ else:
             
             if submit_facture:
                 if f_motif:
-                    # L'argent va vers C-RCTB si l'émetteur est C-RCT
-                    receveur_final = "C-RCTB" if f_emetteur == "C-RCT" else f_emetteur
+                    # L'argent va vers CDCB si l'émetteur est C-RCT
+                    receveur_final = "CDCB" if f_emetteur == "C-RCT" else f_emetteur
 
                     with st.spinner("Enregistrement..."):
                         df_all_f = cloud_conn.read(worksheet="Factures", ttl=0).fillna("") 
@@ -1695,7 +1695,7 @@ else:
             <hr style="border-top: 1px dashed black; margin: 10px 0;">
             <div style="text-align: center; font-weight: bold;">
                 {"POINTS : -" + str(st.session_state.get('pts_live', 0)) if can_pull_points else "SERVICE PROFESSIONNEL"}<br>
-                <small>Compte de dépôt : {"C-RCTB" if f_emetteur == "C-RCT" else f_emetteur}</small>
+                <small>Compte de dépôt : {"CDCB" if f_emetteur == "C-RCT" else f_emetteur}</small>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -1870,14 +1870,14 @@ try:
                         st.rerun()
                     elif code_saisi == "CRCT-2026": # Code exemple pour C-RCT
                         st.session_state.auth_banque = True
-                        st.session_state.ent_active = "C-RCTB"
+                        st.session_state.ent_active = "CDCB"
                         st.rerun()
                     else:
                         st.error("Code incorrect.")
         else:
             # --- CONFIGURATION DYNAMIQUE ---
             nom_banque = st.session_state.ent_active
-            label_ent = "C-RCT" if nom_banque == "C-RCTB" else "RDOI"
+            label_ent = "C-RCT" if nom_banque == "CDCB" else "RDOI"
             
             # --- CHARGEMENT DES DONNÉES ---
             df_b = cloud_conn.read(worksheet="Banque", ttl=0)
@@ -1932,7 +1932,7 @@ try:
 
                 st.markdown("#### 📄 Revenus récents")
                 # Filtre dynamique selon l'entreprise
-                emetteur_filtre = "C-RCT" if nom_banque == "C-RCTB" else "Rensselaer Driving of Institute"
+                emetteur_filtre = "C-RCT" if nom_banque == "CDCB" else "Rensselaer Driving of Institute"
                 historique = df_f[(df_f["Emetteur"] == emetteur_filtre) & (df_f["Statut"] == "PAYÉ")].sort_index(ascending=False).head(5)
                 if not historique.empty:
                     st.dataframe(historique[["Date_Emission", "Cible", "Montant"]], use_container_width=True, hide_index=True)
