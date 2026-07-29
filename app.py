@@ -1803,41 +1803,115 @@ if len(tabs) > 2:
             st.divider()
             st.markdown("### 🧧 Terminal de Paie Nationale")
             with st.container(border=True):
-                list_users = sorted(df_b["Nom Roblox"].unique().tolist()) if not df_b.empty else []
-                target_paie = st.selectbox("👤 Sélectionner le bénéficiaire :", ["---"] + list_users, key="paie_target_select")
+                tab_individuel, tab_global = st.tabs(["👤 Paie Individuelle", "🌐 Paie Globale"])
+                
+                # OPTION 1 : PAIE INDIVIDUELLE
+                with tab_individuel:
+                    list_users = sorted(df_b["Nom Roblox"].unique().tolist()) if not df_b.empty else []
+                    target_paie = st.selectbox("Sélectionner le bénéficiaire :", ["---"] + list_users, key="paie_target_select")
 
-                if target_paie != "---":
-                    user_data = df_b[df_b["Nom Roblox"] == target_paie].iloc[0]
-                    user_jobs = str(user_data.get("Emploiement", "")).split(" / ")
-                    solde_actuel = float(str(user_data.get("Solde", 0)).replace('$', '').replace(',', '').strip())
+                    if target_paie != "---":
+                        user_data = df_b[df_b["Nom Roblox"] == target_paie].iloc[0]
+                        user_jobs = str(user_data.get("Emploiement", "")).split(" / ")
+                        solde_actuel = float(str(user_data.get("Solde", 0)).replace('$', '').replace(',', '').strip())
 
-                    logs_paie = df_admin_clock[(df_admin_clock["nom"] == target_paie) & (df_admin_clock["statut"] == "Validé")]
-                    min_rct, min_pol = 0, 0
-                    for _, r in logs_paie.iterrows():
-                        try:
-                            d = (datetime.strptime(str(r["fin"]), "%d/%m/%Y %H:%M:%S") - datetime.strptime(str(r["début"]), "%d/%m/%Y %H:%M:%S")).total_seconds() / 60
-                            if "RCT" in str(r["job"]).upper(): min_rct += d
-                            elif "POL" in str(r["job"]).upper(): min_pol += d
-                        except: continue
+                        logs_paie = df_admin_clock[(df_admin_clock["nom"] == target_paie) & (df_admin_clock["statut"] == "Validé")]
+                        min_rct, min_pol = 0, 0
+                        for _, r in logs_paie.iterrows():
+                            try:
+                                d = (datetime.strptime(str(r["fin"]), "%d/%m/%Y %H:%M:%S") - datetime.strptime(str(r["début"]), "%d/%m/%Y %H:%M:%S")).total_seconds() / 60
+                                if "RCT" in str(r["job"]).upper(): min_rct += d
+                                elif "POL" in str(r["job"]).upper(): min_pol += d
+                            except: continue
 
-                    total_brut = 15000 + int(2000 * min(min_rct/1200, 1)) + int(3000 * min(min_pol/1200, 1))
-                    if "Staff" in user_jobs: total_brut += 4000
-                    
-                    # Déductions assurances
-                    user_vehs = df_i[df_i["Nom d'utilisateur ROBLOX"] == target_paie]
-                    total_deduc = len(user_vehs) * 150 # Exemple simplifié
-                    net_to_pay = total_brut - total_deduc
-
-                    st.markdown(f"**Net à verser : {net_to_pay:,} $**")
-                    if st.button("🚀 VIRER LA PAIE", use_container_width=True, type="primary"):
-                        idx_c = df_b[df_b["Nom Roblox"] == target_paie].index[0]
-                        df_b.at[idx_c, "Solde"] = solde_actuel + net_to_pay
-                        for idx_log in logs_paie.index: df_admin_clock.at[idx_log, "statut"] = "Payé"
+                        total_brut = 15000 + int(2000 * min(min_rct/1200, 1)) + int(3000 * min(min_pol/1200, 1))
+                        if "Staff" in user_jobs: total_brut += 4000
                         
-                        cloud_conn.update(worksheet="Banque", data=df_b)
-                        cloud_conn.update(worksheet="Clock", data=df_admin_clock)
-                        st.balloons()
-                        st.rerun()
+                        user_vehs = df_i[df_i["Nom d'utilisateur ROBLOX"] == target_paie]
+                        total_deduc = len(user_vehs) * 150
+                        net_to_pay = total_brut - total_deduc
+
+                        st.markdown(f"**Net à verser : {net_to_pay:,} $** *(Inclut les primes Staff et autres bonus applicables)*")
+                        
+                        if st.button("🚀 VIRER LA PAIE", use_container_width=True, type="primary", key="btn_paie_indiv"):
+                            if "Averis" in user_jobs and "Moune2010" in df_b["Nom Roblox"].values:
+                                idx_m = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
+                                solde_m = float(str(df_b.at[idx_m, "Solde"]).replace('$', '').replace(',', '').strip())
+                                df_b.at[idx_m, "Solde"] = solde_m + net_to_pay
+                                st.success("Redirection effectuée vers Moune2010.")
+                            else:
+                                idx_c = df_b[df_b["Nom Roblox"] == target_paie].index[0]
+                                df_b.at[idx_c, "Solde"] = solde_actuel + net_to_pay
+                                
+                            for idx_log in logs_paie.index: df_admin_clock.at[idx_log, "statut"] = "Payé"
+                            
+                            cloud_conn.update(worksheet="Banque", data=df_b)
+                            cloud_conn.update(worksheet="Clock", data=df_admin_clock)
+                            st.balloons()
+                            st.rerun()
+
+                # OPTION 2 : PAIE GLOBALE
+                with tab_global:
+                    st.write("Calcul et versement du salaire net pour **tous les citoyens**.")
+                    
+                    if st.button("🚀 VIRER LA PAIE À TOUT LE MONDE", use_container_width=True, type="primary", key="btn_paie_globale"):
+                        if df_b.empty:
+                            st.warning("Aucun citoyen trouvé dans la base.")
+                        else:
+                            progress_bar = st.progress(0)
+                            status_text = st.empty()
+                            total_users = len(df_b)
+                            
+                            for index, row in df_b.iterrows():
+                                user_name = row["Nom Roblox"]
+                                status_text.text(f"Traitement : {user_name}...")
+                                
+                                # Lecture dynamique du solde pour éviter les conflits d'écrasement
+                                try:
+                                    solde_actuel = float(str(df_b.at[index, "Solde"]).replace('$', '').replace(',', '').strip())
+                                except:
+                                    solde_actuel = 0.0
+
+                                user_jobs = str(row.get("Emploiement", "")).split(" / ")
+
+                                logs_paie = df_admin_clock[(df_admin_clock["nom"] == user_name) & (df_admin_clock["statut"] == "Validé")]
+                                min_rct, min_pol = 0, 0
+                                for _, r in logs_paie.iterrows():
+                                    try:
+                                        d = (datetime.strptime(str(r["fin"]), "%d/%m/%Y %H:%M:%S") - datetime.strptime(str(r["début"]), "%d/%m/%Y %H:%M:%S")).total_seconds() / 60
+                                        if "RCT" in str(r["job"]).upper(): min_rct += d
+                                        elif "POL" in str(r["job"]).upper(): min_pol += d
+                                    except: continue
+
+                                total_brut = 15000 + int(2000 * min(min_rct/1200, 1)) + int(3000 * min(min_pol/1200, 1))
+                                if "Staff" in user_jobs: total_brut += 4000
+
+                                user_vehs = df_i[df_i["Nom d'utilisateur ROBLOX"] == user_name]
+                                total_deduc = len(user_vehs) * 150
+                                net_to_pay = total_brut - total_deduc
+                                
+                                if "Averis" in user_jobs and "Moune2010" in df_b["Nom Roblox"].values:
+                                    idx_moune = df_b[df_b["Nom Roblox"] == "Moune2010"].index[0]
+                                    try:
+                                        solde_moune = float(str(df_b.at[idx_moune, "Solde"]).replace('$', '').replace(',', '').strip())
+                                    except:
+                                        solde_moune = 0.0
+                                    df_b.at[idx_moune, "Solde"] = solde_moune + net_to_pay
+                                else:
+                                    df_b.at[index, "Solde"] = solde_actuel + net_to_pay
+
+                                for idx_log in logs_paie.index:
+                                    df_admin_clock.at[idx_log, "statut"] = "Payé"
+
+                                progress_bar.progress((index + 1) / total_users)
+
+                            status_text.text("Sauvegarde en cours sur Google Sheets...")
+                            cloud_conn.update(worksheet="Banque", data=df_b)
+                            cloud_conn.update(worksheet="Clock", data=df_admin_clock)
+
+                            st.success("Toutes les paies ont été versées avec succès !")
+                            st.balloons()
+                            st.rerun()
 
             # --- D. JOURNAUX D'AUDIT ---
             st.divider()
