@@ -1025,7 +1025,7 @@ with tabs[0]:
                     if f_owner.strip() in df_blacklist['Nom'].str.strip().tolist():
                         is_banned = True
                         raison_ban = df_blacklist[df_blacklist['Nom'].str.strip() == f_owner.strip()]['Raison'].values[0]
-                        st.error(f"🚫 **ACTION INTERDITE** : {f_owner} est banni de la RCT.")
+                        st.error(f"🚫 **ACTION INTERDITE** : {f_owner} est banni du RCT.")
                         st.warning(f"⚠️ **Motif :** {raison_ban}")
                 except:
                     pass
