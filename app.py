@@ -510,19 +510,11 @@ with st.container():
                 roles_autorises = ["Staff", "Admin", "Entreprise", "Police"]
                 
                 with st.container(border=True):
-                    # --- FILIGRANE SÉCURISÉ : PERMIS ---
+                    # --- NUMÉRO DE SÉRIE SÉCURISÉ ---
                     st.markdown("""
-                        <div style="position: relative; height: 0px;">
-                            <div style="position: absolute; right: 0px; top: -10px; font-size: 10px; color: rgba(0,0,0,0.2); font-family: monospace; pointer-events: none; text-align: right;">
-                                DOC-ID: RCRP-P-8392<br>
-                                <span style="letter-spacing: 2px;">||| | || || | ||| ||</span>
-                            </div>
-                            <div style="position: absolute; right: 5%; top: 30px; font-size: 55px; 
-                                        font-weight: 900; color: rgba(0,0,0,0.025); 
-                                        transform: rotate(-8deg); text-align: center; pointer-events: none; 
-                                        z-index: 0; font-family: 'Arial Black', Impact, sans-serif; letter-spacing: 5px;">
-                                RCRPFR DMV
-                            </div>
+                        <div style="text-align: right; font-size: 10px; color: #b0b0b0; font-family: monospace; margin-bottom: -5px;">
+                            🔒 DOC-ID: RCRP-P-8392<br>
+                            <span style="letter-spacing: 2px;">||| | || || | ||| ||</span>
                         </div>
                     """, unsafe_allow_html=True)
                     
@@ -573,19 +565,11 @@ with st.container():
             st.markdown("### 🏦 Dossier Bancaire")
             if not citoyen_info.empty:
                 with st.container(border=True):
-                    # --- FILIGRANE SÉCURISÉ : BANQUE ---
+                    # --- NUMÉRO DE SÉRIE SÉCURISÉ ---
                     st.markdown("""
-                        <div style="position: relative; height: 0px;">
-                            <div style="position: absolute; right: 0px; top: -10px; font-size: 10px; color: rgba(0,0,0,0.2); font-family: monospace; pointer-events: none; text-align: right;">
-                                SEC-KEY: BQ-2026-FR<br>
-                                <span style="letter-spacing: 2px;">|| ||| | || | ||| ||</span>
-                            </div>
-                            <div style="position: absolute; right: 2%; top: 30px; font-size: 50px; 
-                                        font-weight: 900; color: rgba(0,0,0,0.025); 
-                                        transform: rotate(-8deg); text-align: center; pointer-events: none; 
-                                        z-index: 0; font-family: 'Arial Black', Impact, sans-serif; letter-spacing: 5px;">
-                                TRÉSORERIE
-                            </div>
+                        <div style="text-align: right; font-size: 10px; color: #b0b0b0; font-family: monospace; margin-bottom: -5px;">
+                            🔒 SEC-KEY: BQ-2026-FR<br>
+                            <span style="letter-spacing: 2px;">|| ||| | || | ||| ||</span>
                         </div>
                     """, unsafe_allow_html=True)
 
@@ -692,19 +676,11 @@ with st.container():
         with col3:
             st.markdown("### 📁 Archives Judiciaires")
             with st.container(border=True):
-                # --- FILIGRANE SÉCURISÉ : ARCHIVES ---
+                # --- NUMÉRO DE SÉRIE SÉCURISÉ ---
                 st.markdown("""
-                    <div style="position: relative; height: 0px;">
-                        <div style="position: absolute; right: 0px; top: -10px; font-size: 10px; color: rgba(0,0,0,0.2); font-family: monospace; pointer-events: none; text-align: right;">
-                            REF-ARC: JUS-9912<br>
-                            <span style="letter-spacing: 2px;">||| || | || || | |||</span>
-                        </div>
-                        <div style="position: absolute; right: 10%; top: 30px; font-size: 60px; 
-                                    font-weight: 900; color: rgba(0,0,0,0.025); 
-                                    transform: rotate(-8deg); text-align: center; pointer-events: none; 
-                                    z-index: 0; font-family: 'Arial Black', Impact, sans-serif; letter-spacing: 5px;">
-                            JUSTICE
-                        </div>
+                    <div style="text-align: right; font-size: 10px; color: #b0b0b0; font-family: monospace; margin-bottom: -5px;">
+                        🔒 REF-ARC: JUS-9912<br>
+                        <span style="letter-spacing: 2px;">||| || | || || | |||</span>
                     </div>
                 """, unsafe_allow_html=True)
                 
