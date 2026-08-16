@@ -494,218 +494,225 @@ with st.container():
         col1, col2, col3 = st.columns(3)
 # ---------------- COLONNE 1 : POINTS & PERMIS ----------------
         with col1:
+            st.markdown("### 🪪 Permis de conduire")
             p_data = df_p[df_p["Nom Roblox"] == target]
+            
             if not p_data.empty:
                 row_p = p_data.iloc[0]
                 
-                # Récupération sécurisée des points PKW (par défaut 25) et LKW (par défaut 0 car soumis à examen)
+                # Récupération sécurisée des points PKW (défaut 25) et LKW (défaut 0)
                 v_pkw = row_p.get("PTS PKW", 25)
                 pts_pkw = int(v_pkw) if str(v_pkw).isdigit() else 25
 
                 v_lkw = row_p.get("PTS LKW", 0)
                 pts_lkw = int(v_lkw) if str(v_lkw).isdigit() else 0
                 
-                # --- FILIGRANE EMPILÉ GRAND ET DISCRET ---
-                st.markdown("""
-                    <div style="position: relative; height: 0px;">
-                        <div style="position: absolute; right: -5px; top: -10px; font-size: 22px; 
-                                    line-height: 1.1; font-weight: 900; color: rgba(0,0,0,0.06); 
-                                    transform: rotate(-15deg); text-align: center; pointer-events: none; z-index: 0;">
-                            🚙<br>🛻<br>PERMIS<br>OFFICIEL
-                        </div>
-                    </div>
-                """, unsafe_allow_html=True)
-
-                st.subheader("🪪 Permis de conduire")
+                roles_autorises = ["Staff", "Admin", "Entreprise", "Police"]
                 
-                # Liste des rôles autorisés à rendre un permis
-                roles_autorises = ["Staff", "Admin", "Entreprise"]
-                
-                # Séparation visuelle en 2 sous-colonnes (PKW / LKW)
-                c_pkw, c_lkw = st.columns(2)
-                
-                # --- SECTION PKW ---
-                with c_pkw:
-                    st.metric("PTS PKW", f"{pts_pkw}/25")
-                    color_pkw = "green" if pts_pkw > 0 else "red"
-                    st.markdown(f"Statut : <b style='color:{color_pkw};'>{'VALIDE' if pts_pkw > 0 else 'SUSPENDU'}</b>", unsafe_allow_html=True)
-                    
-                    if st.session_state.user_auth in roles_autorises and pts_pkw <= 0:
-                        if st.button("🔓 Rendre PKW", key=f"res_pkw_{target}", use_container_width=True):
-                            df_p.loc[df_p["Nom Roblox"] == target, "PTS PKW"] = 25
-                            cloud_conn.update(worksheet="Points Permis", data=df_p)
-                            st.success("Permis PKW rendu !")
-                            time.sleep(1)
-                            st.rerun()
-
-                # --- SECTION LKW ---
-                with c_lkw:
-                    st.metric("PTS LKW", f"{pts_lkw}/25")
-                    color_lkw = "green" if pts_lkw > 0 else "red"
-                    st.markdown(f"Statut : <b style='color:{color_lkw};'>{'VALIDE' if pts_lkw > 0 else 'SUSPENDU'}</b>", unsafe_allow_html=True)
-                    
-                    if st.session_state.user_auth in roles_autorises and pts_lkw <= 0:
-                        if st.button("🔓 Rendre LKW", key=f"res_lkw_{target}", use_container_width=True):
-                            df_p.loc[df_p["Nom Roblox"] == target, "PTS LKW"] = 25
-                            cloud_conn.update(worksheet="Points Permis", data=df_p)
-                            st.success("Permis LKW rendu !")
-                            time.sleep(1)
-                            st.rerun()
-            else: 
-                st.info("Aucun permis trouvé.")
-# ---------------- COLONNE 2 : BANQUE & PAIE ----------------
-        with col2:
-            if not citoyen_info.empty:
-                # --- FILIGRANE EMPILÉ XXL ---
-                st.markdown("""
-                    <div style="position: relative; height: 0px;">
-                        <div style="position: absolute; right: 0px; top: -15px; font-size: 32px; 
-                                    line-height: 0.9; font-weight: 900; color: rgba(0,0,0,0.06); 
-                                    transform: rotate(-12deg); text-align: center; pointer-events: none; z-index: 0;">
-                            💳<br>💵<br><span style="font-size: 16px;">DOSSIER<br>BANCAIRE</span>
-                        </div>
-                    </div>
-                """, unsafe_allow_html=True)
-
-                # Affichage principal du solde
-                st.metric("SOLDE BANCAIRE", f"{citoyen_info.iloc[0]['Solde']}$")
-                job_raw = str(citoyen_info.iloc[0]['Emploiement'])
-                st.write(f"🏢 Métier : **{job_raw}**")
-
-                # --- CALCULATEUR DE PAIE (BIEN ALIGNÉ DANS COL2) ---
-                with st.expander("💳 Détails de ma prochaine paie", expanded=False):
-                    m_pol, m_rct = 0, 0
-                    
-                    try:
-                        # On lit l'onglet Clock
-                        df_admin_clock = cloud_conn.read(worksheet="Clock", ttl=5).fillna("")
-                        df_paie_clean = df_admin_clock.copy()
-                        df_paie_clean.columns = df_paie_clean.columns.str.strip().str.lower()
-                        
-                        # Filtrage par utilisateur et statut validé
-                        logs = df_paie_clean[
-                            (df_paie_clean["nom"].str.strip() == target.strip()) & 
-                            (df_paie_clean["statut"].str.contains("Valid", case=False, na=False))
-                        ]
-                        
-                        for _, r in logs.iterrows():
-                            t_debut = pd.to_datetime(r["début"], dayfirst=True, errors='coerce')
-                            t_fin = pd.to_datetime(r["fin"], dayfirst=True, errors='coerce')
-                            
-                            if pd.notnull(t_debut) and pd.notnull(t_fin):
-                                diff = (t_fin - t_debut).total_seconds() / 60
-                                if diff > 0:
-                                    job_str = str(r["job"]).upper()
-                                    if "POL" in job_str: m_pol += diff
-                                    elif "RCT" in job_str: m_rct += diff
-                    except Exception as e:
-                        st.error(f"Erreur données paie : {e}")
-
-                    # Calcul des Primes
-                    ratio_pol = min(m_pol/1200, 1.0)
-                    ratio_rct = min(m_rct/1200, 1.0)
-                    
-                    p_pol = int(3000 * ratio_pol) if "police" in job_raw.lower() else 0
-                    p_rct = int(2000 * ratio_rct) if "agent rct" in job_raw.lower() else 0
-                    p_staff = 4000 if "staff" in job_raw.lower() else 0
-                    p_averis = 2000 if "averis" in job_raw.lower() else 0
-                    p_sp = 1000 if "service public" in job_raw.lower() else 0
-                    
-                    # Taxes Véhicules
-                    mes_v = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
-                    count_rct = len(mes_v[mes_v["Assurance"].str.contains("RCT", na=False, case=False)])
-                    is_trio = count_rct >= 3
-                    taxe_v = 200 if is_trio else (len(mes_v) * 150)
-
-                    # Total NET (Base 15k)
-                    net = 15000 + p_pol + p_rct + p_staff + p_averis + p_sp - taxe_v
-
-                    # --- AFFICHAGE VISUEL DANS L'EXPANDER ---
-                    c_cred, c_deb = st.columns(2)
-                    with c_cred:
-                        st.markdown("<div style='color: #4CAF50; font-weight:bold; margin-bottom:5px;'>📥 REVENUS</div>", unsafe_allow_html=True)
-                        st.markdown(f"➕ **Base Civile** : `15,000$`")
-                        if p_staff > 0: st.markdown(f"⭐ **Prime Staff** : `{p_staff}$`")
-                        if p_averis > 0: st.markdown(f"🛡️ **Prime Averis** : `{p_averis}$`")
-                        if p_sp > 0: st.markdown(f"👷 **Prime Service Public** : `{p_sp}$`")
-                        
-                        if "police" in job_raw.lower():
-                            st.markdown(f"👮 **Prime Police** : `{p_pol}$`")
-                            st.progress(ratio_pol, text=f"{int(m_pol/60)}h{int(m_pol%60):02d} / 15h")
-                        if "agent rct" in job_raw.lower():
-                            st.markdown(f"👷‍♂️ **Prime RCT** : `{p_rct}$`")
-                            st.progress(ratio_rct, text=f"{int(m_rct/60)}h{int(m_rct%60):02d} / 15h")
-
-                    with c_deb:
-                        st.markdown("<div style='color: #E53935; font-weight:bold; margin-bottom:5px;'>📤 DÉPENSES</div>", unsafe_allow_html=True)
-                        st.markdown(f"🚗 **Assurances** : `{taxe_v}$`")
-                        st.caption("Offre Trio RCT ✅" if is_trio else f"{len(mes_v)} véhicule(s)")
-
-                    st.divider()
-                    # Bloc optimisé pour les deux modes (Clair/Sombre)
-                    st.markdown(f"""
-                        <div style="
-                            background-color: rgba(76, 175, 80, 0.1); 
-                            padding: 15px; 
-                            border-radius: 8px; 
-                            border: 1px solid rgba(76, 175, 80, 0.3);
-                            border-left: 5px solid #4CAF50; 
-                            display: flex; 
-                            justify-content: space-between; 
-                            align-items: center;">
-                            <span style="font-size: 1.1em; font-weight: 500;">NET ESTIMÉ</span>
-                            <span style="font-size: 1.5em; font-weight: bold; color: #4CAF50;">{int(net):,}$</span>
+                with st.container(border=True):
+                    # --- FILIGRANE EMPILÉ DISCRET ---
+                    st.markdown("""
+                        <div style="position: relative; height: 0px;">
+                            <div style="position: absolute; right: 5px; top: 10px; font-size: 22px; 
+                                        line-height: 1.1; font-weight: 900; color: rgba(0,0,0,0.04); 
+                                        transform: rotate(-15deg); text-align: center; pointer-events: none; z-index: 0;">
+                                🚙<br>🛻<br>OFFICIEL
+                            </div>
                         </div>
                     """, unsafe_allow_html=True)
-                # --- MODIFICATION MÉTIER (RÉSERVÉ STAFF) ---
-                if st.session_state.user_auth in ["Staff", "Admin"]:
-                    st.write("") # Petit espacement
-                    if st.button("✏️ Modifier Métier", key=f"edit_{target}", use_container_width=True):
-                        st.session_state[f"mode_{target}"] = not st.session_state.get(f"mode_{target}", False)
                     
-                    if st.session_state.get(f"mode_{target}", False):
-                        opts = ["Sans-Emploi", "Agent RCT", "Averis", "Police", "Staff", "Service Public"]
-                        cur = [j.strip() for j in job_raw.split("/") if j.strip() in opts]
-                        new_m = st.multiselect("Accréditations :", opts, default=cur)
+                    c_pkw, c_lkw = st.columns(2)
+                    
+                    # --- SECTION PKW ---
+                    with c_pkw:
+                        st.markdown("##### 🚗 Cat. PKW")
+                        st.metric("Points actuels", f"{pts_pkw}/25")
                         
-                        if st.button("💾 Enregistrer les modifications", type="primary", use_container_width=True):
-                            txt = " / ".join(new_m) if new_m else "Sans-Emploi"
-                            df_b.loc[df_b["Nom Roblox"] == target, "Emploiement"] = txt
-                            cloud_conn.update(worksheet="Banque", data=df_b)
-                            st.success("Modifications enregistrées !")
-                            st.session_state[f"mode_{target}"] = False
-                            time.sleep(1)
-                            st.rerun()
-# ---------------- COLONNE 3 : ARCHIVES & REMBOURSEMENT ----------------
-        with col3:
-            st.markdown("### 📁 ARCHIVES")
-            try:
-                # On recharge les factures pour être à jour
-                df_f_check = cloud_conn.read(worksheet="Factures", ttl=20).fillna("")
-                archives = df_f_check[(df_f_check["Cible"] == target) & (df_f_check["Statut"] == "PAYÉ")]
-                
-                if not archives.empty:
-                    # Bouton déroulant pour voir l'historique
-                    with st.expander(f"👁️ Voir l'historique ({len(archives)} factures)"):
-                        for _, f in archives.iterrows():
-# --- AFFICHAGE DU PETIT TICKET D'ARCHIVE CORRIGÉ ---
-                            st.markdown(f"""
-                            <div style="border: 1px solid #000; padding: 12px; background: #f9f9f9; color: black; margin-bottom: 8px; border-left: 5px solid green; font-family: monospace;">
-                                <div style="display: flex; justify-content: space-between; font-size: 0.8em;">
-                                    <b>REF: #{f['ID']}</b>
-                                    <b style="color: green;">ACQUITTÉE ✔</b>
-                                </div>
-                                <hr style="margin: 5px 0; border-top: 1px dashed #ccc;">
-                                <div style="font-size: 0.9em; line-height: 1.4;">
-                                    <b>ÉMETTEUR :</b> {f.get('Agent_Signataire', 'N/A')}<br>
-                                    <b>SERVICE :</b> {f.get('Emetteur', 'GÉNÉRAL')}<br>
-                                    <hr style="margin: 5px 0; border-top: 1px dashed #eee;">
-                                    <b>MOTIF :</b> {f['Motif']}<br>
-                                    <b>MONTANT :</b> {f['Montant']}$<br>
-                                    <b>POINTS :</b> {f.get('Points', 0)}
-                                </div>
+                        if pts_pkw > 0:
+                            st.markdown("<div style='background-color: #d4edda; color: #155724; padding: 5px; border-radius: 5px; text-align: center; font-weight: bold; font-size: 14px; border: 1px solid #c3e6cb;'>✅ VALIDE</div>", unsafe_allow_html=True)
+                        else:
+                            st.markdown("<div style='background-color: #f8d7da; color: #721c24; padding: 5px; border-radius: 5px; text-align: center; font-weight: bold; font-size: 14px; border: 1px solid #f5c6cb;'>❌ SUSPENDU</div>", unsafe_allow_html=True)
+                        
+                        if st.session_state.user_auth in roles_autorises and pts_pkw <= 0:
+                            st.write("")
+                            if st.button("🔓 Rendre PKW", key=f"res_pkw_{target}", use_container_width=True):
+                                df_p.loc[df_p["Nom Roblox"] == target, "PTS PKW"] = 25
+                                cloud_conn.update(worksheet="Points Permis", data=df_p)
+                                st.success("Permis PKW rendu !")
+                                time.sleep(1)
+                                st.rerun()
+
+                    # --- SECTION LKW ---
+                    with c_lkw:
+                        st.markdown("##### 🚚 Cat. LKW")
+                        st.metric("Points actuels", f"{pts_lkw}/25")
+                        
+                        if pts_lkw > 0:
+                            st.markdown("<div style='background-color: #d4edda; color: #155724; padding: 5px; border-radius: 5px; text-align: center; font-weight: bold; font-size: 14px; border: 1px solid #c3e6cb;'>✅ VALIDE</div>", unsafe_allow_html=True)
+                        else:
+                            st.markdown("<div style='background-color: #fff3cd; color: #856404; padding: 5px; border-radius: 5px; text-align: center; font-weight: bold; font-size: 14px; border: 1px solid #ffeeba;'>⚠️ NON ACQUIS</div>", unsafe_allow_html=True)
+                        
+                        if st.session_state.user_auth in roles_autorises and pts_lkw <= 0:
+                            st.write("")
+                            if st.button("🔓 Accorder LKW", key=f"res_lkw_{target}", use_container_width=True):
+                                df_p.loc[df_p["Nom Roblox"] == target, "PTS LKW"] = 25
+                                cloud_conn.update(worksheet="Points Permis", data=df_p)
+                                st.success("Permis LKW accordé !")
+                                time.sleep(1)
+                                st.rerun()
+            else: 
+                st.info("📭 Aucun permis trouvé.")
+
+        # ---------------- COLONNE 2 : BANQUE & PAIE ----------------
+        with col2:
+            st.markdown("### 🏦 Dossier Bancaire")
+            if not citoyen_info.empty:
+                with st.container(border=True):
+                    # --- FILIGRANE EMPILÉ XXL ---
+                    st.markdown("""
+                        <div style="position: relative; height: 0px;">
+                            <div style="position: absolute; right: 0px; top: -5px; font-size: 32px; 
+                                        line-height: 0.9; font-weight: 900; color: rgba(0,0,0,0.04); 
+                                        transform: rotate(-12deg); text-align: center; pointer-events: none; z-index: 0;">
+                                💳<br>💵<br><span style="font-size: 16px;">BANQUE</span>
                             </div>
-                            """, unsafe_allow_html=True)
+                        </div>
+                    """, unsafe_allow_html=True)
+
+                    # Affichage principal
+                    st.metric("SOLDE DISPONIBLE", f"{citoyen_info.iloc[0]['Solde']}$")
+                    job_raw = str(citoyen_info.iloc[0]['Emploiement'])
+                    st.markdown(f"🏢 **Métier(s) :** {job_raw}")
+                    st.write("")
+
+                    # --- CALCULATEUR DE PAIE ---
+                    with st.expander("💳 Détails de la prochaine paie", expanded=False):
+                        m_pol, m_rct = 0, 0
+                        
+                        try:
+                            df_admin_clock = cloud_conn.read(worksheet="Clock", ttl=5).fillna("")
+                            df_paie_clean = df_admin_clock.copy()
+                            df_paie_clean.columns = df_paie_clean.columns.str.strip().str.lower()
+                            
+                            logs = df_paie_clean[
+                                (df_paie_clean["nom"].str.strip() == target.strip()) & 
+                                (df_paie_clean["statut"].str.contains("Valid", case=False, na=False))
+                            ]
+                            
+                            for _, r in logs.iterrows():
+                                t_debut = pd.to_datetime(r["début"], dayfirst=True, errors='coerce')
+                                t_fin = pd.to_datetime(r["fin"], dayfirst=True, errors='coerce')
+                                
+                                if pd.notnull(t_debut) and pd.notnull(t_fin):
+                                    diff = (t_fin - t_debut).total_seconds() / 60
+                                    if diff > 0:
+                                        job_str = str(r["job"]).upper()
+                                        if "POL" in job_str: m_pol += diff
+                                        elif "RCT" in job_str: m_rct += diff
+                        except Exception as e:
+                            st.error(f"Erreur calcul : {e}")
+
+                        # Calcul des Primes et Taxes
+                        ratio_pol = min(m_pol/1200, 1.0)
+                        ratio_rct = min(m_rct/1200, 1.0)
+                        
+                        p_pol = int(3000 * ratio_pol) if "police" in job_raw.lower() else 0
+                        p_rct = int(2000 * ratio_rct) if "agent rct" in job_raw.lower() else 0
+                        p_staff = 4000 if "staff" in job_raw.lower() else 0
+                        p_averis = 2000 if "averis" in job_raw.lower() else 0
+                        p_sp = 1000 if "service public" in job_raw.lower() else 0
+                        
+                        mes_v = df_i[df_i["Nom d'utilisateur ROBLOX"] == target]
+                        count_rct = len(mes_v[mes_v["Assurance"].str.contains("RCT", na=False, case=False)])
+                        is_trio = count_rct >= 3
+                        taxe_v = 200 if is_trio else (len(mes_v) * 150)
+
+                        net = 15000 + p_pol + p_rct + p_staff + p_averis + p_sp - taxe_v
+
+                        # Affichage Visuel
+                        c_cred, c_deb = st.columns(2)
+                        with c_cred:
+                            st.markdown("<div style='color: #4CAF50; font-weight:bold; margin-bottom:5px;'>📥 REVENUS</div>", unsafe_allow_html=True)
+                            st.markdown(f"➕ **Base** : `15,000$`")
+                            if p_staff > 0: st.markdown(f"⭐ **Staff** : `{p_staff}$`")
+                            if p_averis > 0: st.markdown(f"🛡️ **Averis** : `{p_averis}$`")
+                            if p_sp > 0: st.markdown(f"👷 **Service P.** : `{p_sp}$`")
+                            
+                            if "police" in job_raw.lower():
+                                st.markdown(f"👮 **Police** : `{p_pol}$`")
+                                st.progress(ratio_pol, text=f"{int(m_pol/60)}h{int(m_pol%60):02d} / 15h")
+                            if "agent rct" in job_raw.lower():
+                                st.markdown(f"👷‍♂️ **RCT** : `{p_rct}$`")
+                                st.progress(ratio_rct, text=f"{int(m_rct/60)}h{int(m_rct%60):02d} / 15h")
+
+                        with c_deb:
+                            st.markdown("<div style='color: #E53935; font-weight:bold; margin-bottom:5px;'>📤 DÉPENSES</div>", unsafe_allow_html=True)
+                            st.markdown(f"🚗 **Assurances** : `{taxe_v}$`")
+                            st.caption("Offre Trio RCT ✅" if is_trio else f"{len(mes_v)} véhicule(s)")
+
+                        st.divider()
+                        st.markdown(f"""
+                            <div style="background-color: rgba(76, 175, 80, 0.1); padding: 15px; border-radius: 8px; border: 1px solid rgba(76, 175, 80, 0.3); border-left: 5px solid #4CAF50; display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-size: 1.1em; font-weight: 500;">NET ESTIMÉ</span>
+                                <span style="font-size: 1.5em; font-weight: bold; color: #4CAF50;">{int(net):,}$</span>
+                            </div>
+                        """, unsafe_allow_html=True)
+
+                    # --- MODIFICATION MÉTIER ---
+                    if st.session_state.user_auth in ["Staff", "Admin"]:
+                        st.write("")
+                        if st.button("✏️ Modifier Métier", key=f"edit_{target}", use_container_width=True):
+                            st.session_state[f"mode_{target}"] = not st.session_state.get(f"mode_{target}", False)
+                        
+                        if st.session_state.get(f"mode_{target}", False):
+                            opts = ["Sans-Emploi", "Agent RCT", "Averis", "Police", "Staff", "Service Public"]
+                            cur = [j.strip() for j in job_raw.split("/") if j.strip() in opts]
+                            new_m = st.multiselect("Accréditations :", opts, default=cur)
+                            
+                            if st.button("💾 Enregistrer", type="primary", use_container_width=True):
+                                txt = " / ".join(new_m) if new_m else "Sans-Emploi"
+                                df_b.loc[df_b["Nom Roblox"] == target, "Emploiement"] = txt
+                                cloud_conn.update(worksheet="Banque", data=df_b)
+                                st.success("Modifications enregistrées !")
+                                st.session_state[f"mode_{target}"] = False
+                                time.sleep(1)
+                                st.rerun()
+
+        # ---------------- COLONNE 3 : ARCHIVES & REMBOURSEMENT ----------------
+        with col3:
+            st.markdown("### 📁 Archives Judiciaires")
+            with st.container(border=True):
+                try:
+                    df_f_check = cloud_conn.read(worksheet="Factures", ttl=20).fillna("")
+                    archives = df_f_check[(df_f_check["Cible"] == target) & (df_f_check["Statut"] == "PAYÉ")]
+                    
+                    if not archives.empty:
+                        # Compteur clair
+                        st.metric("Total des cas réglés", len(archives))
+                        
+                        with st.expander(f"👁️ Voir l'historique complet", expanded=False):
+                            for _, f in archives.iterrows():
+                                st.markdown(f"""
+                                <div style="border: 1px solid #ddd; padding: 12px; background: #fafafa; color: #333; margin-bottom: 10px; border-left: 5px solid #28a745; border-radius: 4px; font-family: monospace;">
+                                    <div style="display: flex; justify-content: space-between; font-size: 0.8em;">
+                                        <b>REF: #{f['ID']}</b>
+                                        <b style="color: #28a745;">ACQUITTÉE ✔</b>
+                                    </div>
+                                    <hr style="margin: 8px 0; border-top: 1px dashed #ccc;">
+                                    <div style="font-size: 0.9em; line-height: 1.5;">
+                                        <b>ÉMETTEUR :</b> {f.get('Agent_Signataire', 'N/A')}<br>
+                                        <b>SERVICE :</b> {f.get('Emetteur', 'GÉNÉRAL')}<br>
+                                        <hr style="margin: 8px 0; border-top: 1px dashed #eee;">
+                                        <b>MOTIF :</b> {f['Motif']}<br>
+                                        <b>MONTANT :</b> {f['Montant']}$<br>
+                                        <b>POINTS :</b> {f.get('Points', 0)}
+                                    </div>
+                                </div>
+                                """, unsafe_allow_html=True)
+                    else:
+                        st.info("📭 Casier judiciaire vierge.")
+                except Exception as e:
+                    st.error(f"Erreur : {e}")
                             if st.session_state.user_auth in ["Staff", "Admin"]:
                                 if st.button(f"🔄 Rembourser #{f['ID']}", key=f"ref_{f['ID']}", use_container_width=True):
                                     try:
