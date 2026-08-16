@@ -93,6 +93,7 @@ PRIME_JOB = {
     "Sans-Emploi": 0,
     "Agent RCT": 2000,
     "Averis": 2000,
+    "Pompiers": 2000,
     "Police": 3000,
     "Staff": 4000,
     "Service Public": 1000,
@@ -101,23 +102,32 @@ PRIME_JOB = {
 
 def traiter_paiement_prime(target_name, metier, montant, df_b, cloud_conn):
     source_compte = None
-    if "Averis" in metier:
+    
+    # Seuls ces métiers prélèvent de l'argent sur un compte spécifique
+    if metier == "Averis":
         source_compte = "Moune2010"
-    elif "Agent RCT" in metier:
+    elif metier == "Agent RCT":
         source_compte = "une10000"
     
-    if source_compte:
-        try:
+    try:
+        # Si une source est définie, on prélève
+        if source_compte:
             idx_source = df_b[df_b["Nom Roblox"] == source_compte].index[0]
             df_b.at[idx_source, "Solde"] -= montant
-            idx_target = df_b[df_b["Nom Roblox"] == target_name].index[0]
-            df_b.at[idx_target, "Solde"] += montant
-            cloud_conn.update(worksheet="Banque", data=df_b)
-            return True, f"✅ Prime de {montant}$ versée (Payé par {source_compte})"
-        except Exception as e:
-            return False, f"❌ Erreur lors du virement : {e}"
-    else:
-        return False, "⚠️ Aucun employeur configuré pour prélever cette prime."
+            msg = f"✅ Prime de {montant}$ versée (Payé par {source_compte})"
+        else:
+            # Sinon, création monétaire (Pompiers, Police, Staff, etc.)
+            msg = f"✅ Prime de {montant}$ versée (Budget État - Création)"
+        
+        # Ajout du montant à la cible
+        idx_target = df_b[df_b["Nom Roblox"] == target_name].index[0]
+        df_b.at[idx_target, "Solde"] += montant
+        
+        cloud_conn.update(worksheet="Banque", data=df_b)
+        return True, msg
+        
+    except Exception as e:
+        return False, f"❌ Erreur lors du traitement : {e}"
 
 # Codes de Service
 KEY_RCT = "RCT-26-RCRPFR"
