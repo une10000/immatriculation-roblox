@@ -425,19 +425,28 @@ with st.container():
                     </div>
                 </div>
             """, unsafe_allow_html=True)
-
-        # 2. Alerte Permis Invalide (Orange Flashy)
-        # Tu peux aussi l'ajouter si tu veux que ce soit aussi visible
+# 2. Alerte Permis Invalide (PKW / LKW)
         try:
-            pts_permis = df_p[df_p["Nom Roblox"] == target].iloc[0]["PTS"]
-            if pts_permis <= 0:
+            row_p = df_p[df_p["Nom Roblox"] == target].iloc[0]
+            pts_pkw = float(row_p.get("PTS PKW", 25))
+            pts_lkw = float(row_p.get("PTS LKW", 25))
+            
+            permis_revoques = []
+            if pts_pkw <= 0:
+                permis_revoques.append("PKW")
+            if pts_lkw <= 0:
+                permis_revoques.append("LKW")
+                
+            if permis_revoques:
+                type_permis_str = " & ".join(permis_revoques)
                 st.markdown(f"""
                     <div style="background-color: #ff9800; padding: 20px; border-radius: 10px; border: 4px solid #fb8c00; color: black; text-align: center; margin-bottom: 10px;">
-                        <h2 style="margin:0;">⚠️ PERMIS RÉVOQUÉ (0 PTS) ⚠️</h2>
-                        <p style="font-size: 18px;">L'individu <b>{target}</b> circule sans points valides.</p>
+                        <h2 style="margin:0;">⚠️ PERMIS RÉVOQUÉ ({type_permis_str}) ⚠️</h2>
+                        <p style="font-size: 18px;">L'individu <b>{target}</b> a perdu tous ses points sur le permis <b>{type_permis_str}</b>.</p>
                     </div>
                 """, unsafe_allow_html=True)
         except: pass
+
         # 2. Alerte Dette en retard (Orange)
         maintenant = datetime.now()
         try:
@@ -481,14 +490,17 @@ with st.container():
                     else: st.warning("Veuillez saisir une plaque.")
 
         st.markdown("---")
-        
         # --- D. DOSSIER DÉTAILLÉ (3 COLONNES) ---
         col1, col2, col3 = st.columns(3)
 # ---------------- COLONNE 1 : POINTS & PERMIS ----------------
         with col1:
             p_data = df_p[df_p["Nom Roblox"] == target]
             if not p_data.empty:
-                pts = int(p_data.iloc[0]["PTS"])
+                row_p = p_data.iloc[0]
+                
+                # Récupération des points PKW et LKW (valeur par défaut à 25 si manquante)
+                pts_pkw = int(row_p.get("PTS PKW", 25))
+                pts_lkw = int(row_p.get("PTS LKW", 25))
                 
                 # --- FILIGRANE EMPILÉ GRAND ET DISCRET ---
                 st.markdown("""
@@ -496,22 +508,46 @@ with st.container():
                         <div style="position: absolute; right: -5px; top: -10px; font-size: 22px; 
                                     line-height: 1.1; font-weight: 900; color: rgba(0,0,0,0.06); 
                                     transform: rotate(-15deg); text-align: center; pointer-events: none; z-index: 0;">
-                            🚙<br>🪪<br>PERMIS<br>OFFICIEL
+                            🚙<br>🛻<br>PERMIS<br>OFFICIEL
                         </div>
                     </div>
                 """, unsafe_allow_html=True)
 
-                st.metric("POINTS PERMIS", f"{pts}/25")
-                color = "green" if pts > 0 else "red"
-                st.markdown(f"Statut : <b style='color:{color};'>{'VALIDE' if pts > 0 else 'SUSPENDU'}</b>", unsafe_allow_html=True)
+                st.subheader("🪪 Permis de conduire")
                 
-                if st.session_state.user_auth in ["Staff", "Admin"] and pts <= 0:
-                    if st.button("🔓 Rendre le permis", key=f"res_{target}", use_container_width=True):
-                        df_p.loc[df_p["Nom Roblox"] == target, "PTS"] = 25
-                        cloud_conn.update(worksheet="Points Permis", data=df_p)
-                        st.success("Permis rendu !")
-                        time.sleep(1)
-                        st.rerun()
+                # Liste des rôles autorisés à rendre un permis
+                roles_autorises = ["Staff", "Admin", "Entreprise"]
+                
+                # Séparation visuelle en 2 sous-colonnes (PKW / LKW)
+                c_pkw, c_lkw = st.columns(2)
+                
+                # --- SECTION PKW ---
+                with c_pkw:
+                    st.metric("PTS PKW", f"{pts_pkw}/25")
+                    color_pkw = "green" if pts_pkw > 0 else "red"
+                    st.markdown(f"Statut : <b style='color:{color_pkw};'>{'VALIDE' if pts_pkw > 0 else 'SUSPENDU'}</b>", unsafe_allow_html=True)
+                    
+                    if st.session_state.user_auth in roles_autorises and pts_pkw <= 0:
+                        if st.button("🔓 Rendre PKW", key=f"res_pkw_{target}", use_container_width=True):
+                            df_p.loc[df_p["Nom Roblox"] == target, "PTS PKW"] = 25
+                            cloud_conn.update(worksheet="Points Permis", data=df_p)
+                            st.success("Permis PKW rendu !")
+                            time.sleep(1)
+                            st.rerun()
+
+                # --- SECTION LKW ---
+                with c_lkw:
+                    st.metric("PTS LKW", f"{pts_lkw}/25")
+                    color_lkw = "green" if pts_lkw > 0 else "red"
+                    st.markdown(f"Statut : <b style='color:{color_lkw};'>{'VALIDE' if pts_lkw > 0 else 'SUSPENDU'}</b>", unsafe_allow_html=True)
+                    
+                    if st.session_state.user_auth in roles_autorises and pts_lkw <= 0:
+                        if st.button("🔓 Rendre LKW", key=f"res_lkw_{target}", use_container_width=True):
+                            df_p.loc[df_p["Nom Roblox"] == target, "PTS LKW"] = 25
+                            cloud_conn.update(worksheet="Points Permis", data=df_p)
+                            st.success("Permis LKW rendu !")
+                            time.sleep(1)
+                            st.rerun()
             else: 
                 st.info("Aucun permis trouvé.")
 # ---------------- COLONNE 2 : BANQUE & PAIE ----------------
@@ -840,20 +876,25 @@ for _, fac in mes_factures.iterrows():
             code_confirm = st.text_input("Code Agent", type="password", key=f"code_confirm_{fac['ID']}")
             if st.button("Confirmer l'annulation", key=f"admin_del_{fac['ID']}", use_container_width=True):
                 
-                # --- MODIFICATION ICI ---
                 if code_confirm == "2504": 
-                # -------------------------
-                
                     try:
                         df_f_sync = cloud_conn.read(worksheet="Factures", ttl=0)
                         df_p_sync = cloud_conn.read(worksheet="Points Permis", ttl=0)
                         cible_f = fac.get("Cible")
                         pts_a_rendre = fac.get("Points", 0)
                         
+                        # Récupère la valeur de la colonne E (Permis) du Sheet
+                        type_p = str(fac.get("Permis", "PKW")).upper()
+                        col_pts = "PTS LKW" if "LKW" in type_p else "PTS PKW"
+                        
                         if pts_a_rendre and str(pts_a_rendre).isdigit() and int(pts_a_rendre) > 0:
                             if cible_f in df_p_sync["Nom Roblox"].values:
                                 idx_p = df_p_sync[df_p_sync["Nom Roblox"] == cible_f].index[0]
-                                df_p_sync.at[idx_p, "PTS"] = min(12, int(df_p_sync.at[idx_p, "PTS"]) + int(pts_a_rendre))
+                                
+                                pts_actuels = int(df_p_sync.at[idx_p, col_pts]) if col_pts in df_p_sync.columns and str(df_p_sync.at[idx_p, col_pts]).isdigit() else 25
+                                
+                                # Restitution des points (max 25)
+                                df_p_sync.at[idx_p, col_pts] = min(25, pts_actuels + int(pts_a_rendre))
                                 cloud_conn.update(worksheet="Points Permis", data=df_p_sync)
 
                         df_f_sync.loc[df_f_sync["ID"] == fac["ID"], "Statut"] = "ANNULÉ"
@@ -1623,6 +1664,9 @@ else:
             f_val = st.number_input(label_montant, 0, 100000, 500, step=100, key="val_live")
             
             can_pull_points = (st.session_state.user_auth == "Staff" and f_emetteur == "POLSTA")
+            
+            # Choix du type de permis et retrait des points
+            f_permis_type = st.selectbox("Permis concerné", ["PKW", "LKW"], key="permis_type_live", disabled=not can_pull_points)
             f_pts = st.slider("Retrait de points", 0, 25, 0, disabled=not can_pull_points, key="pts_live")
             
             f_motif = st.text_area("Motif / Prestation", key="mot_live", placeholder="Ex: Frais bancaires, Frais de dossier...")
@@ -1644,6 +1688,7 @@ else:
                             "ID": random.randint(10000, 99999),
                             "Cible": target,
                             "Emetteur": receveur_final,
+                            "Permis": f_permis_type if can_pull_points else "",
                             "Agent_Signataire": agent_identifie,
                             "Montant": f_val,
                             "Points": f_pts if can_pull_points else 0,
@@ -1656,8 +1701,11 @@ else:
                         if f_pts > 0 and can_pull_points:
                             try:
                                 idx_p = df_p[df_p["Nom Roblox"] == target].index[0]
-                                current_pts = int(df_p.at[idx_p, "PTS"])
-                                df_p.at[idx_p, "PTS"] = max(0, current_pts - f_pts)
+                                col_pts = "PTS LKW" if f_permis_type == "LKW" else "PTS PKW"
+                                
+                                # Récupération sécurisée du solde de points actuel
+                                current_pts = int(df_p.at[idx_p, col_pts]) if col_pts in df_p.columns and str(df_p.at[idx_p, col_pts]).isdigit() else 25
+                                df_p.at[idx_p, col_pts] = max(0, current_pts - f_pts)
                                 cloud_conn.update(worksheet="Points Permis", data=df_p)
                             except Exception as e:
                                 st.error(f"Erreur points: {e}")
@@ -1766,7 +1814,7 @@ if len(tabs) > 2:
             except Exception as e:
                 st.error(f"Erreur d'accès à la feuille Clock : {e}")
 
-            # --- B. CRÉATION DE DOSSIER CITOYEN ---
+# --- B. CRÉATION DE DOSSIER CITOYEN ---
             st.divider()
             st.subheader("👤 Nouveau Dossier Citoyen")
             with st.container(border=True):
@@ -1776,7 +1824,7 @@ if len(tabs) > 2:
                     new_discord = st.text_input("Identifiant Discord", key="adm_create_discord")
                 with c_new2:
                     new_jobs = st.multiselect("Emplois initiaux", ["Sans-Emploi", "Agent RCT", "Averis", "Police", "Staff", "Service Public"], default=["Sans-Emploi"])
-                    new_pts = st.slider("Points Permis", 0, 25, 25)
+                    new_pts_pkw = st.slider("Points Permis PKW", 0, 25, 25)
 
                 if st.button("🆕 CRÉER LE DOSSIER", use_container_width=True, type="primary"):
                     if new_name:
@@ -1786,19 +1834,26 @@ if len(tabs) > 2:
                             "Emploiement": " / ".join(new_jobs), "Date d'arrivée": today_str,
                             "Statut": "RAS", "Code": f"{new_name}123", "Code Agent": ""
                         }])
-                        new_row_pts = pd.DataFrame([{"Nom Roblox": new_name, "PTS": new_pts, "Validité": "OUI"}])
+                        
+                        # Attribution des points pour le permis PKW uniquement (LKW à 0 par défaut)
+                        new_row_pts = pd.DataFrame([{
+                            "Nom Roblox": new_name,
+                            "PTS PKW": new_pts_pkw,
+                            "PTS LKW": 0,
+                            "Validité PKW": "OUI" if new_pts_pkw > 0 else "NON",
+                            "Validité LKW": "NON"
+                        }])
                         
                         try:
                             df_b_updated = pd.concat([df_b, new_row_bank], ignore_index=True)
                             df_p_updated = pd.concat([df_p, new_row_pts], ignore_index=True)
                             cloud_conn.update(worksheet="Banque", data=df_b_updated)
                             cloud_conn.update(worksheet="Points Permis", data=df_p_updated)
-                            st.success(f"✅ Dossier créé pour {new_name} !")
+                            st.success(f"✅ Dossier créé pour {new_name} avec permis PKW ({new_pts_pkw} pts) !")
                             time.sleep(1)
                             st.rerun()
                         except Exception as e:
                             st.error(f"Erreur : {e}")
-
             # --- C. TERMINAL DE PAIE NATIONALE (STAFF SEULEMENT) ---
             st.divider()
             st.markdown("### 🧧 Terminal de Paie Nationale")
