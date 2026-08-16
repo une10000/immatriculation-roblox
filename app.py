@@ -862,8 +862,8 @@ for _, fac in mes_factures.iterrows():
                             dest_account = "une10000"
                         elif "AVERIS" in emetteur_val:
                             dest_account = "Moune2010"
-                        elif "RENSSELAER" in emetteur_val or "RDOI" in emetteur_val:
-                            dest_account = "RDOI_Bank"
+                        elif "RENSSELAER" in emetteur_val or "AFCM" in emetteur_val:
+                            dest_account = "AFCM"
 
                         # Si un compte de destination est défini pour cet émetteur (POLSTA n'en a peut-être pas)
                         if dest_account:
@@ -1666,7 +1666,7 @@ else:
             if st.session_state.user_auth == "Staff":
                 f_emetteur = st.selectbox("Émetteur", ["POLSTA", "Averis", "RCT", "CDC", "AFCM"], key="em_ui")
             elif st.session_state.user_auth == "Entreprise":
-                # Si l'agent est du CDC, on verrouille sur CDC, sinon RDOI
+                # Si l'agent est du CDC, on verrouille sur CDC, sinon AFCM
                 if "CDC" in agent_identifie:
                     f_emetteur = "CDC"
                 else:
@@ -2003,7 +2003,7 @@ try:
         
         if "auth_banque" not in st.session_state:
             st.session_state.auth_banque = False
-            st.session_state.ent_active = "RDOI_Bank" # Par défaut
+            st.session_state.ent_active = "AFCM" # Par défaut
 
         if not st.session_state.auth_banque:
             col_auth, _ = st.columns([1, 2])
@@ -2012,9 +2012,9 @@ try:
                 code_saisi = st.text_input("Code Entreprise", type="password", key="pwd_ent_v8")
                 if st.button("🔓 ACCÉDER", use_container_width=True):
                     # Gestion des accès par entreprise
-                    if code_saisi == "RDOI-2026":
+                    if code_saisi == "AFCM-MA-RCT":
                         st.session_state.auth_banque = True
-                        st.session_state.ent_active = "RDOI_Bank"
+                        st.session_state.ent_active = "AFCM"
                         st.rerun()
                     elif code_saisi == "CountyDC-2026": # Code exemple pour CDC
                         st.session_state.auth_banque = True
@@ -2025,7 +2025,7 @@ try:
         else:
             # --- CONFIGURATION DYNAMIQUE ---
             nom_banque = st.session_state.ent_active
-            label_ent = "CDC" if nom_banque == "CDCB" else "RDOI"
+            label_ent = "CDC" if nom_banque == "CDCB" else "AFCM"
             
             # --- CHARGEMENT DES DONNÉES ---
             df_b = cloud_conn.read(worksheet="Banque", ttl=0)
