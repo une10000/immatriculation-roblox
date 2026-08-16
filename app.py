@@ -690,7 +690,7 @@ with st.container():
                         # Compteur clair
                         st.metric("Total des cas réglés", len(archives))
                         
-                        with st.expander(f"👁️ Voir l'historique complet", expanded=False):
+                        with st.expander("👁️ Voir l'historique complet", expanded=False):
                             for _, f in archives.iterrows():
                                 st.markdown(f"""
                                 <div style="border: 1px solid #ddd; padding: 12px; background: #fafafa; color: #333; margin-bottom: 10px; border-left: 5px solid #28a745; border-radius: 4px; font-family: monospace;">
@@ -709,35 +709,33 @@ with st.container():
                                     </div>
                                 </div>
                                 """, unsafe_allow_html=True)
+                                
+                                # Le bouton de remboursement est maintenant correctement indenté dans la boucle
+                                if st.session_state.user_auth in ["Staff", "Admin"]:
+                                    if st.button(f"🔄 Rembourser #{f['ID']}", key=f"ref_{f['ID']}", use_container_width=True):
+                                        try:
+                                            # Calcul des montants
+                                            solde_c = float(str(citoyen_info.iloc[0]['Solde']).replace('$','').replace(',',''))
+                                            remb = float(str(f['Montant']).replace('$','').replace(',',''))
+                                            
+                                            # Mise à jour des DataFrames
+                                            df_b.loc[df_b["Nom Roblox"] == target, "Solde"] = solde_c + remb
+                                            df_f_check.loc[df_f_check["ID"] == f["ID"], "Statut"] = "REMBOURSÉ"
+                                            
+                                            # Envoi vers Google Sheets
+                                            cloud_conn.update(worksheet="Banque", data=df_b)
+                                            cloud_conn.update(worksheet="Factures", data=df_f_check)
+                                            
+                                            st.success(f"Ticket #{f['ID']} remboursé !")
+                                            time.sleep(1)
+                                            st.rerun()
+                                        except Exception as e:
+                                            st.error(f"Erreur remboursement : {e}")
                     else:
-                        st.info("📭 Casier judiciaire vierge.")
+                        st.info("📭 Casier judiciaire vierge ou aucun paiement archivé.")
+                        
                 except Exception as e:
-                    st.error(f"Erreur : {e}")
-                            if st.session_state.user_auth in ["Staff", "Admin"]:
-                                if st.button(f"🔄 Rembourser #{f['ID']}", key=f"ref_{f['ID']}", use_container_width=True):
-                                    try:
-                                        # Calcul des montants
-                                        solde_c = float(str(citoyen_info.iloc[0]['Solde']).replace('$','').replace(',',''))
-                                        remb = float(str(f['Montant']).replace('$','').replace(',',''))
-                                        
-                                        # Mise à jour des DataFrames
-                                        df_b.loc[df_b["Nom Roblox"] == target, "Solde"] = solde_c + remb
-                                        df_f_check.loc[df_f_check["ID"] == f["ID"], "Statut"] = "REMBOURSÉ"
-                                        
-                                        # Envoi vers Google Sheets
-                                        cloud_conn.update(worksheet="Banque", data=df_b)
-                                        cloud_conn.update(worksheet="Factures", data=df_f_check)
-                                        
-                                        st.success(f"Ticket #{f['ID']} remboursé !")
-                                        time.sleep(1)
-                                        st.rerun()
-                                    except Exception as e:
-                                        st.error(f"Erreur remboursement : {e}")
-                else:
-                    st.info("Aucun paiement archivé.")
-                    
-            except Exception as e:
-                st.error(f"Erreur chargement archives : {e}")
+                    st.error(f"Erreur chargement archives : {e}")
 # ======================================================================================
 # 7. LOGIQUE DES ONGLETS (CORRIGÉE)
 # ======================================================================================
