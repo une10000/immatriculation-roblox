@@ -498,9 +498,12 @@ with st.container():
             if not p_data.empty:
                 row_p = p_data.iloc[0]
                 
-                # Récupération des points PKW et LKW (valeur par défaut à 25 si manquante)
-                pts_pkw = int(row_p.get("PTS PKW", 25))
-                pts_lkw = int(row_p.get("PTS LKW", 25))
+                # Récupération sécurisée des points PKW (par défaut 25) et LKW (par défaut 0 car soumis à examen)
+                v_pkw = row_p.get("PTS PKW", 25)
+                pts_pkw = int(v_pkw) if str(v_pkw).isdigit() else 25
+
+                v_lkw = row_p.get("PTS LKW", 0)
+                pts_lkw = int(v_lkw) if str(v_lkw).isdigit() else 0
                 
                 # --- FILIGRANE EMPILÉ GRAND ET DISCRET ---
                 st.markdown("""
