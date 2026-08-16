@@ -1343,7 +1343,7 @@ if len(tabs) > 1:
                     if st.session_state.user_auth == "Entreprise":
                         agent_identifie = st.selectbox(
                             "🏢 Sélection de l'entité", 
-                            ["Rensselaer Driving of Institute", "CDCB"], 
+                            ["AFCM", "CDCB"], 
                             key="main_agent_auth_entre"
                         )
                         agent_valide = True 
@@ -1664,13 +1664,13 @@ else:
         with st.form("form_intervention", border=True):
             # Gestion des rôles et émetteurs
             if st.session_state.user_auth == "Staff":
-                f_emetteur = st.selectbox("Émetteur", ["POLSTA", "Averis", "RCT", "CDC", "Rensselaer Driving of Institute"], key="em_ui")
+                f_emetteur = st.selectbox("Émetteur", ["POLSTA", "Averis", "RCT", "CDC", "AFCM"], key="em_ui")
             elif st.session_state.user_auth == "Entreprise":
                 # Si l'agent est du CDC, on verrouille sur CDC, sinon RDOI
                 if "CDC" in agent_identifie:
                     f_emetteur = "CDC"
                 else:
-                    f_emetteur = "Rensselaer Driving of Institute"
+                    f_emetteur = "AFCM"
                 st.info(f"🏢 **Émetteur :** {f_emetteur}")
             elif "Averis" in st.session_state.user_auth:
                 f_emetteur = "Averis"
@@ -1679,7 +1679,7 @@ else:
                 f_emetteur = "RCT"
                 st.info(f"🏢 **Émetteur :** {f_emetteur}")
             
-            label_montant = "Frais de prestation ($)" if f_emetteur in ["Rensselaer Driving of Institute", "CDC"] else "Amende ($)"
+            label_montant = "Frais de prestation ($)" if f_emetteur in ["AFCM", "CDC"] else "Amende ($)"
             f_val = st.number_input(label_montant, 0, 100000, 500, step=100, key="val_live")
             
             can_pull_points = (st.session_state.user_auth == "Staff" and f_emetteur == "POLSTA")
@@ -1744,8 +1744,8 @@ else:
         
         if f_emetteur == "CDC":
             header_ticket = "FACTURE CDC"
-        elif f_emetteur == "Rensselaer Driving of Institute":
-            header_ticket = "FACTURE RDOI"
+        elif f_emetteur == "AFCM":
+            header_ticket = "AFCM"
         else:
             header_ticket = "FACTURE OFFICIELLE"
         
@@ -2080,7 +2080,7 @@ try:
 
                 st.markdown("#### 📄 Revenus récents")
                 # Filtre dynamique selon l'entreprise
-                emetteur_filtre = "CDC" if nom_banque == "CDCB" else "Rensselaer Driving of Institute"
+                emetteur_filtre = "CDC" if nom_banque == "CDCB" else "AFCM"
                 historique = df_f[(df_f["Emetteur"] == emetteur_filtre) & (df_f["Statut"] == "PAYÉ")].sort_index(ascending=False).head(5)
                 if not historique.empty:
                     st.dataframe(historique[["Date_Emission", "Cible", "Montant"]], use_container_width=True, hide_index=True)
