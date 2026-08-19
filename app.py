@@ -544,7 +544,11 @@ with st.container():
                             st.write("")
                             if st.button("🔓 Rendre PKW", key=f"res_pkw_{target}", use_container_width=True):
                                 df_p.loc[df_p["Nom Roblox"] == target, "PTS PKW"] = 25
-                                cloud_conn.update(worksheet="Points Permis", data=df_p)
+                                
+                                # Nettoyage avant envoi
+                                df_clean = df_p.astype(str)
+                                cloud_conn.update(worksheet="Points Permis", data=df_clean)
+                                
                                 st.success("Permis PKW rendu !")
                                 time.sleep(1)
                                 st.rerun()
@@ -563,13 +567,16 @@ with st.container():
                             st.write("")
                             if st.button("🔓 Accorder LKW", key=f"res_lkw_{target}", use_container_width=True):
                                 df_p.loc[df_p["Nom Roblox"] == target, "PTS LKW"] = 25
-                                cloud_conn.update(worksheet="Points Permis", data=df_p)
+                                
+                                # Nettoyage avant envoi
+                                df_clean = df_p.astype(str)
+                                cloud_conn.update(worksheet="Points Permis", data=df_clean)
+                                
                                 st.success("Permis LKW accordé !")
                                 time.sleep(1)
                                 st.rerun()
             else: 
                 st.info("📭 Aucun permis trouvé.")
-
         # ---------------- COLONNE 2 : BANQUE & PAIE ----------------
         with col2:
             st.markdown("### 🏦 Dossier Bancaire")
