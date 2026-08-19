@@ -504,79 +504,100 @@ with st.container():
         col1, col2, col3 = st.columns(3)
 # ---------------- COLONNE 1 : POINTS & PERMIS ----------------
         with col1:
-            st.markdown("### 🪪 Permis de conduire")
+            st.markdown("### 🪪 Permis de conduire National")
             p_data = df_p[df_p["Nom Roblox"] == target]
             
             if not p_data.empty:
                 row_p = p_data.iloc[0]
                 
-                # Récupération sécurisée des points PKW (défaut 25) et LKW (défaut 0)
-                v_pkw = row_p.get("PTS PKW", 25)
-                pts_pkw = int(v_pkw) if str(v_pkw).isdigit() else 25
+                # Récupération ultra-sécurisée des points PKW (défaut 25)
+                try:
+                    pts_pkw = int(float(row_p.get("PTS PKW", 25)))
+                except (ValueError, TypeError):
+                    pts_pkw = 25
 
-                v_lkw = row_p.get("PTS LKW", 0)
-                pts_lkw = int(v_lkw) if str(v_lkw).isdigit() else 0
+                # Récupération ultra-sécurisée des points LKW (défaut 0)
+                try:
+                    pts_lkw = int(float(row_p.get("PTS LKW", 0)))
+                except (ValueError, TypeError):
+                    pts_lkw = 0
                 
                 roles_autorises = ["Staff", "Admin", "Entreprise", "Police"]
                 
                 with st.container(border=True):
-                    # --- NUMÉRO DE SÉRIE SÉCURISÉ ---
-                    st.markdown("""
-                        <div style="text-align: right; font-size: 10px; color: #b0b0b0; font-family: monospace; margin-bottom: -5px;">
-                            🔒 DOC-ID: RCRP-P-8392<br>
-                            <span style="letter-spacing: 2px;">||| | || || | ||| ||</span>
+                    # --- EN-TÊTE DU PERMIS (Style Document Officiel) ---
+                    st.markdown(f"""
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #e0e0e0; padding-bottom: 10px; margin-bottom: 15px;">
+                            <div>
+                                <h4 style="margin: 0; color: #1f77b4;">République de RCRP</h4>
+                                <span style="font-size: 15px; font-weight: bold;">Titulaire : {target}</span><br>
+                                <span style="font-size: 12px; color: gray;">Dossier géré par la Préfecture de Police</span>
+                            </div>
+                            <div style="text-align: right; font-size: 10px; color: #b0b0b0; font-family: monospace;">
+                                🔒 DOC-ID: RCRP-P-8392<br>
+                                <span style="letter-spacing: 2px;">||| | || || | ||| ||</span>
+                            </div>
                         </div>
                     """, unsafe_allow_html=True)
                     
                     c_pkw, c_lkw = st.columns(2)
                     
-                    # --- SECTION PKW ---
-                    with c_pkw:
-                        st.markdown("##### 🚗 Cat. PKW")
-                        st.metric("Points actuels", f"{pts_pkw}/25")
-                        
-                        if pts_pkw > 0:
-                            st.markdown("<div style='background-color: #d4edda; color: #155724; padding: 5px; border-radius: 5px; text-align: center; font-weight: bold; font-size: 14px; border: 1px solid #c3e6cb;'>✅ VALIDE</div>", unsafe_allow_html=True)
+                    # --- FONCTION POUR LE STATUT VISUEL ---
+                    def get_status_html(pts):
+                        if pts >= 25:
+                            return "<div style='background-color: #d4edda; color: #155724; padding: 5px; border-radius: 5px; text-align: center; font-weight: bold; font-size: 14px; border: 1px solid #c3e6cb;'>✅ INTACT</div>"
+                        elif pts > 0:
+                            return "<div style='background-color: #fff3cd; color: #856404; padding: 5px; border-radius: 5px; text-align: center; font-weight: bold; font-size: 14px; border: 1px solid #ffeeba;'>⚠️ EN INFRACTION</div>"
                         else:
-                            st.markdown("<div style='background-color: #f8d7da; color: #721c24; padding: 5px; border-radius: 5px; text-align: center; font-weight: bold; font-size: 14px; border: 1px solid #f5c6cb;'>❌ SUSPENDU</div>", unsafe_allow_html=True)
+                            return "<div style='background-color: #f8d7da; color: #721c24; padding: 5px; border-radius: 5px; text-align: center; font-weight: bold; font-size: 14px; border: 1px solid #f5c6cb;'>❌ SUSPENDU</div>"
+
+                    # --- SECTION PKW (AUTO) ---
+                    with c_pkw:
+                        st.markdown("##### 🚗 Cat. PKW (Auto)")
+                        st.metric("Solde de points", f"{pts_pkw} / 25")
+                        
+                        # Barre de progression (valeur entre 0.0 et 1.0)
+                        st.progress(max(0.0, min(pts_pkw / 25.0, 1.0)))
+                        st.markdown(get_status_html(pts_pkw), unsafe_allow_html=True)
                         
                         if st.session_state.user_auth in roles_autorises and pts_pkw <= 0:
                             st.write("")
                             if st.button("🔓 Rendre PKW", key=f"res_pkw_{target}", use_container_width=True):
                                 df_p.loc[df_p["Nom Roblox"] == target, "PTS PKW"] = 25
                                 
-                                # Nettoyage avant envoi
                                 df_clean = df_p.astype(str)
                                 cloud_conn.update(worksheet="Points Permis", data=df_clean)
                                 
-                                st.success("Permis PKW rendu !")
+                                st.success("Permis PKW restitué avec succès !")
                                 time.sleep(1)
                                 st.rerun()
 
-                    # --- SECTION LKW ---
+                    # --- SECTION LKW (CAMION) ---
                     with c_lkw:
-                        st.markdown("##### 🚚 Cat. LKW")
-                        st.metric("Points actuels", f"{pts_lkw}/25")
+                        st.markdown("##### 🚚 Cat. LKW (Poids Lourd)")
+                        st.metric("Solde de points", f"{pts_lkw} / 25")
                         
                         if pts_lkw > 0:
-                            st.markdown("<div style='background-color: #d4edda; color: #155724; padding: 5px; border-radius: 5px; text-align: center; font-weight: bold; font-size: 14px; border: 1px solid #c3e6cb;'>✅ VALIDE</div>", unsafe_allow_html=True)
+                            st.progress(max(0.0, min(pts_lkw / 25.0, 1.0)))
+                            st.markdown(get_status_html(pts_lkw), unsafe_allow_html=True)
                         else:
-                            st.markdown("<div style='background-color: #fff3cd; color: #856404; padding: 5px; border-radius: 5px; text-align: center; font-weight: bold; font-size: 14px; border: 1px solid #ffeeba;'>⚠️ NON ACQUIS</div>", unsafe_allow_html=True)
+                            # Affichage spécifique si le joueur n'a pas encore passé le permis LKW
+                            st.progress(0)
+                            st.markdown("<div style='background-color: #e2e3e5; color: #383d41; padding: 5px; border-radius: 5px; text-align: center; font-weight: bold; font-size: 14px; border: 1px solid #d6d8db;'>🚫 NON ACQUIS</div>", unsafe_allow_html=True)
                         
                         if st.session_state.user_auth in roles_autorises and pts_lkw <= 0:
                             st.write("")
                             if st.button("🔓 Accorder LKW", key=f"res_lkw_{target}", use_container_width=True):
                                 df_p.loc[df_p["Nom Roblox"] == target, "PTS LKW"] = 25
                                 
-                                # Nettoyage avant envoi
                                 df_clean = df_p.astype(str)
                                 cloud_conn.update(worksheet="Points Permis", data=df_clean)
                                 
-                                st.success("Permis LKW accordé !")
+                                st.success("Permis LKW accordé au citoyen !")
                                 time.sleep(1)
                                 st.rerun()
             else: 
-                st.info("📭 Aucun permis trouvé.")
+                st.info("📭 Aucun dossier de conduite trouvé pour ce citoyen.")
         # ---------------- COLONNE 2 : BANQUE & PAIE ----------------
         with col2:
             st.markdown("### 🏦 Dossier Bancaire")
