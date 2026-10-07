@@ -342,19 +342,19 @@ if st.session_state.user_auth is None:
     st.warning("⚠️ **AVERTISSEMENT :** Toute action effectuée sur ce terminal est enregistrée.")
     st.write("---")
 
-    # 3. COLONNES D'ACCÈS
+# 3. COLONNES D'ACCÈS
     c1, c2, c3, c4 = st.columns(4)
     with c1:
         st.markdown("### 👥 CIVIL")
-        st.text_input("Ecrivez quelque chose (Optionnel)", placeholder="Ex: Liberté...", key="input_civil_align")
-        if st.button("ACCÉDER AU TERMINAL", key="l_civ_f", use_container_width=True):
+        st.text_input("Ecrivez quelque chose (Optionnel)", placeholder="Ex: Liberté...", key="input_civil_align", disabled=True)
+        if st.button("ACCÉDER AU TERMINAL", key="l_civ_f", use_container_width=True, disabled=True):
             st.session_state.user_auth = "Civil"
             st.rerun()
 
     with c2:
         st.markdown("### 🏢 ENTREPRISE")
-        login_entre = st.text_input("Code Entreprise", placeholder="Code RCRPFR...", type="password", key="l_entre_f")
-        if st.button("ACCÈS ENTREPRISE", key="b_entre_f", use_container_width=True):
+        login_entre = st.text_input("Code Entreprise", placeholder="Code RCRPFR...", type="password", key="l_entre_f", disabled=True)
+        if st.button("ACCÈS ENTREPRISE", key="b_entre_f", use_container_width=True, disabled=True):
             if login_entre == KEY_ENTREPRISES:
                 st.session_state.user_auth = "Entreprise"
                 st.rerun()
@@ -362,8 +362,8 @@ if st.session_state.user_auth is None:
 
     with c3:
         st.markdown("### 👨‍🔧 AGENT RCT")
-        login_rct = st.text_input("Identifiant Agent", placeholder="Code RCT", type="password", key="l_rct_ff")
-        if st.button("AUTHENTIFICATION RCT", key="b_rct_f", use_container_width=True):
+        login_rct = st.text_input("Identifiant Agent", placeholder="Code RCT", type="password", key="l_rct_ff", disabled=True)
+        if st.button("AUTHENTIFICATION RCT", key="b_rct_f", use_container_width=True, disabled=True):
             if login_rct == KEY_RCT:
                 st.session_state.user_auth = "RCT"
                 st.rerun()
@@ -371,8 +371,8 @@ if st.session_state.user_auth is None:
 
     with c4:
         st.markdown("### 🛡️👮‍♂️ POLSTA")
-        login_staff = st.text_input("Clé Maîtresse", placeholder="Code STAFF", type="password", key="l_st_ff")
-        if st.button("ACCÈS ADMINISTRATEUR", key="b_st_f", use_container_width=True):
+        login_staff = st.text_input("Clé Maîtresse", placeholder="Code STAFF", type="password", key="l_st_ff", disabled=True)
+        if st.button("ACCÈS ADMINISTRATEUR", key="b_st_f", use_container_width=True, disabled=True):
             if login_staff == KEY_STAFF:
                 st.session_state.user_auth = "Staff"
                 st.rerun()
