@@ -343,6 +343,8 @@ if st.session_state.user_auth is None:
     st.write("---")
 
 # 3. COLONNES D'ACCÈS
+    st.error("⛔ **CONNEXION IMPOSSIBLE :** Le terminal est actuellement hors service. Les connexions sont désactivées.")
+
     c1, c2, c3, c4 = st.columns(4)
     with c1:
         st.markdown("### 👥 CIVIL")
@@ -378,6 +380,7 @@ if st.session_state.user_auth is None:
                 st.rerun()
             else: st.error("Accès refusé.")
 
+    st.stop()
     st.stop()
 # ======================================================================================
 # LE RESTE DU CODE (S'affiche uniquement après connexion)
