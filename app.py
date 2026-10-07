@@ -5,60 +5,12 @@ import random
 from datetime import datetime, timedelta, timezone
 from streamlit_gsheets import GSheetsConnection
 
-import streamlit as st
-
-# Configuration de la page
+# ======================================================================================
+# 1. INTERFACE & DESIGN (Configuration unique de la page)
+# ======================================================================================
 st.set_page_config(
-    page_title="RCRP FR - Indisponible",
+    page_title="RCRP FR OS - SYSTÈME NATIONAL (INDISPONIBLE)",
     page_icon="⚠️",
-    layout="centered"
-)
-
-# Style CSS personnalisé pour centrer et épuré le rendu
-st.markdown("""
-    <style>
-    .main {
-        text-align: center;
-    }
-    .stAlert {
-        text-align: left;
-    }
-    </style>
-""", unsafe_allow_html=True)
-
-# En-tête principal
-st.title("🔴 RCRP FR")
-st.subheader("Site actuellement indisponible")
-
-# Message d'information
-st.warning(
-    "Le site de **RCRP FR** est temporairement inaccessible. "
-    "Nos équipes effectuent actuellement une maintenance ou une mise à jour du service."
-)
-
-st.write("---")
-
-# Détails complémentaires / Message pour les utilisateurs
-st.info("💡 **Que faire en attendant ?**\n\nVous pouvez rejoindre notre serveur Discord ou consulter nos réseaux officiels pour suivre l'état du service en direct.")
-
-# Liens utiles (à adapter si besoin)
-col1, col2 = st.columns(2)
-
-with col1:
-    st.link_button("💬 Rejoindre le Discord", "https://discord.gg/votre-lien")
-
-with col2:
-    st.link_button("📢 État du service / Annonces", "https://discord.gg/votre-lien-annonces")
-
-st.write("")
-st.caption("Merci de votre patience et de votre compréhension. — L'équipe RCRP FR")
-
-
-
-# 1. INTERFACE & DESIGN
-st.set_page_config(
-    page_title="RCRP FR OS - SYSTÈME NATIONAL",
-    page_icon="🏛️",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -342,7 +294,10 @@ if st.session_state.user_auth is None:
     st.warning("⚠️ **AVERTISSEMENT :** Toute action effectuée sur ce terminal est enregistrée.")
     st.write("---")
 
-# 3. COLONNES D'ACCÈS
+    # BANNIÈRE D'ERREUR/MAINTENANCE (Nouveau)
+    st.error("⛔ **CONNEXION IMPOSSIBLE :** Le terminal est actuellement hors service pour maintenance. Les accès sont temporairement désactivés.")
+
+    # 3. COLONNES D'ACCÈS
     c1, c2, c3, c4 = st.columns(4)
     with c1:
         st.markdown("### 👥 CIVIL")
