@@ -5,6 +5,56 @@ import random
 from datetime import datetime, timedelta, timezone
 from streamlit_gsheets import GSheetsConnection
 
+import streamlit as st
+
+# Configuration de la page
+st.set_page_config(
+    page_title="RCRP FR - Indisponible",
+    page_icon="⚠️",
+    layout="centered"
+)
+
+# Style CSS personnalisé pour centrer et épuré le rendu
+st.markdown("""
+    <style>
+    .main {
+        text-align: center;
+    }
+    .stAlert {
+        text-align: left;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# En-tête principal
+st.title("🔴 RCRP FR")
+st.subheader("Site actuellement indisponible")
+
+# Message d'information
+st.warning(
+    "Le site de **RCRP FR** est temporairement inaccessible. "
+    "Nos équipes effectuent actuellement une maintenance ou une mise à jour du service."
+)
+
+st.write("---")
+
+# Détails complémentaires / Message pour les utilisateurs
+st.info("💡 **Que faire en attendant ?**\n\nVous pouvez rejoindre notre serveur Discord ou consulter nos réseaux officiels pour suivre l'état du service en direct.")
+
+# Liens utiles (à adapter si besoin)
+col1, col2 = st.columns(2)
+
+with col1:
+    st.link_button("💬 Rejoindre le Discord", "https://discord.gg/votre-lien")
+
+with col2:
+    st.link_button("📢 État du service / Annonces", "https://discord.gg/votre-lien-annonces")
+
+st.write("")
+st.caption("Merci de votre patience et de votre compréhension. — L'équipe RCRP FR")
+
+
+
 # 1. INTERFACE & DESIGN
 st.set_page_config(
     page_title="RCRP FR OS - SYSTÈME NATIONAL",
